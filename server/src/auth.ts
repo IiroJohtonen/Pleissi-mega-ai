@@ -110,11 +110,18 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-// Ensimmäisellä käynnistyksellä luodaan testitoimiston käyttäjät yhteisellä aloitussalasanalla.
-export const INITIAL_PASSWORD = "Kiito2026!";
-
+// Ensimmäisellä käynnistyksellä luodaan testitoimiston käyttäjät yhteisellä aloitussalasanalla. Salasana
+// annetaan ympäristömuuttujassa INITIAL_PASSWORD; ilman sitä se arvotaan ja tulostetaan kerran lokiin.
 const userCount = (db.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number }).count;
 if (userCount === 0) {
+  const INITIAL_PASSWORD = process.env.INITIAL_PASSWORD || crypto.randomBytes(9).toString("base64url");
+  if (INITIAL_PASSWORD.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`INITIAL_PASSWORD-salasanassa pitää olla vähintään ${MIN_PASSWORD_LENGTH} merkkiä.`);
+  }
+  if (!process.env.INITIAL_PASSWORD) {
+    console.log(`Kotilo: ensimmäiset käyttäjät luotu. Aloitussalasana kaikille: ${INITIAL_PASSWORD}`);
+    console.log("Kotilo: kirjaudu osoitteella demo@pohjantahti-isannointi.fi ja vaihda salasanat asetuksista.");
+  }
   const insert = db.prepare("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)");
   const seedUsers: [string, string, string][] = [
     ["Demo Isännöitsijä", "demo@pohjantahti-isannointi.fi", "Pääkäyttäjä"],
@@ -234,11 +241,11 @@ export function consumePasswordReset(token: string, password: string): string | 
   return null;
 }
 
+// Istuntotunniste kulkee vain Authorization-otsakkeessa, ei koskaan osoitteessa, jotta se ei päädy
+// selainhistoriaan tai palvelinlokeihin. Tiedostot ladataan samalla otsakkeella.
 function tokenFromRequest(req: Request): string {
   const header = req.headers.authorization || "";
-  if (header.startsWith("Bearer ")) return header.slice(7).trim();
-  // Latauslinkit (liitteet, dokumentit) eivät voi lähettää otsaketta, joten ne antavat tunnisteen osoitteessa.
-  return typeof req.query.token === "string" ? req.query.token : "";
+  return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
 }
 
 // Kaikki rajapinnan kutsut vaativat kirjautumisen, paitsi kirjautuminen itse ja tilatarkistus.

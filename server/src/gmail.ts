@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
 import { INTERNAL_TOKEN } from "./auth.js";
+import { assertSafeFile } from "./scan.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,7 +13,8 @@ const __dirname = path.dirname(__filename);
 const credentialsPath = path.resolve(__dirname, "../credentials.json");
 const tokenPath = path.resolve(__dirname, "../token.json");
 
-const COMPANY_ID = process.env.KIITO_COMPANY_ID || "demo-company";
+// KIITO_COMPANY_ID on muuttujan vanha nimi; se toimii edelleen.
+const COMPANY_ID = process.env.DEFAULT_COMPANY_ID || process.env.KIITO_COMPANY_ID || "demo-company";
 const POLL_INTERVAL_MS = 20_000;
 
 type GmailHeader = {
@@ -192,7 +194,11 @@ function syncKey(accountId: string, key: string): string {
   return accountId === OFFICE_ACCOUNT ? key : `${key}:${accountId}`;
 }
 
+// GMAIL_DISABLED=1 kytkee postin kokonaan pois (testit ja ympäristöt, joista ei saa lähteä postia).
+export const gmailEnabled = process.env.GMAIL_DISABLED !== "1";
+
 async function getGmailClient(accountId: string = OFFICE_ACCOUNT) {
+  if (!gmailEnabled) throw new Error("Gmail on kytketty pois päältä (GMAIL_DISABLED=1).");
   const config = await oauthConfig();
   const { db } = await import("./db.js");
   const row = db.prepare("SELECT token FROM gmail_accounts WHERE id = ?").get(accountId) as { token: string } | undefined;
@@ -285,6 +291,8 @@ async function saveAttachments(
       });
 
       const content = Buffer.from(response.data.data || "", "base64url");
+      // Vaarallinen liite jätetään tallentamatta; viesti itse tuodaan silti.
+      await assertSafeFile(content, part.filename || "");
       const attachmentId = `attachment-${crypto.randomUUID()}`;
 
       await fs.writeFile(path.join(attachmentsDir, attachmentId), content);
@@ -601,7 +609,7 @@ export async function sendGmailReply(input: {
   }
 
   const attachments = input.attachments ?? [];
-  const boundary = `kiito-${crypto.randomUUID()}`;
+  const boundary = `kotilo-${crypto.randomUUID()}`;
 
   const headers = [
     ...(input.to ? [`To: ${input.to}`] : []),
@@ -646,6 +654,10 @@ export async function sendGmailReply(input: {
 }
 
 export function startGmailPolling(): void {
+  if (!gmailEnabled) {
+    console.log("Kotilo Gmail: kytketty pois päältä, postia ei tarkisteta eikä lähetetä.");
+    return;
+  }
   console.log("Kotilo Gmail: automaattinen tarkistus käynnistetty.");
 
   void pollGmail();

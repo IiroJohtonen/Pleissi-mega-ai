@@ -2,7 +2,8 @@ import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
 
-const dataDir = path.resolve(process.cwd(), "data");
+// Tietokanta ja tiedostot ovat oletuksena käynnistyskansion data-kansiossa; DATA_DIR vaihtaa paikan.
+export const dataDir = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), "data"));
 fs.mkdirSync(dataDir, { recursive: true });
 
 export const attachmentsDir = path.join(dataDir, "attachments");
@@ -11,7 +12,26 @@ fs.mkdirSync(attachmentsDir, { recursive: true });
 export const knowledgeFilesDir = path.join(dataDir, "knowledge-files");
 fs.mkdirSync(knowledgeFilesDir, { recursive: true });
 
-export const db = new Database(path.join(dataDir, "kiito.sqlite"));
+// Tietokantatiedoston nimi oli aiemmin kiito.sqlite. Se nimetään uudelleen vasta, kun kaikki muutokset
+// on kirjoitettu päätiedostoon; jos tiedosto on toisen prosessin käytössä, vanha nimi jää käyttöön.
+function databasePath() {
+  const current = path.join(dataDir, "kotilo.sqlite");
+  const legacy = path.join(dataDir, "kiito.sqlite");
+  if (fs.existsSync(current) || !fs.existsSync(legacy)) return current;
+  try {
+    const old = new Database(legacy);
+    old.pragma("wal_checkpoint(TRUNCATE)");
+    old.close();
+    if (fs.existsSync(`${legacy}-wal`) && fs.statSync(`${legacy}-wal`).size > 0) return legacy;
+    fs.renameSync(legacy, current);
+    for (const suffix of ["-wal", "-shm"]) fs.rmSync(legacy + suffix, { force: true });
+    return current;
+  } catch {
+    return legacy;
+  }
+}
+
+export const db = new Database(databasePath());
 
 db.pragma("journal_mode = WAL");
 
@@ -510,7 +530,7 @@ export function seed() {
   db.prepare("INSERT INTO companies (id, name, email_address) VALUES (?, ?, ?)").run(
     "demo-company",
     "As Oy Koivikko",
-    "koivikko@kiito.fi"
+    "koivikko@kotilo.example"
   );
 
   db.prepare("INSERT INTO apartments VALUES (?, ?, ?, ?)").run(

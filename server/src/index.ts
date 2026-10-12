@@ -1,11 +1,15 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import crypto from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { createBackup, hasBackupToday } from "./backup.js";
 import { attachmentsDir, db, knowledgeFilesDir, seed } from "./db.js";
 import {
   aiAvailable,
@@ -18,7 +22,7 @@ import {
   type TopicTicket
 } from "./ai.js";
 import {
-  ADMIN_ROLE, authRouter, consumePasswordReset, createPasswordResets, isAdmin, MANAGER_ROLES, requireAdmin, requireAuth,
+  ADMIN_ROLE, authRouter, consumePasswordReset, createPasswordResets, INTERNAL_TOKEN, isAdmin, MANAGER_ROLES, requireAdmin, requireAuth,
   requireManager, setResidentPassword, type ResidentAccount, type User
 } from "./auth.js";
 import { extractText, UnsupportedDocumentError } from "./extract.js";
@@ -26,11 +30,53 @@ import {
   connectGmailAccount, disconnectGmailAccount, getGmailStatus, gmailAccountFor, gmailAuthUrl, OFFICE_ACCOUNT,
   parseSender, sendGmailReply, startGmailPolling, type OutgoingAttachment
 } from "./gmail.js";
+import { assertSafeFile, isImageOrPdf, UnsafeFileError } from "./scan.js";
 
 seed();
 
 const app = express();
-app.use(cors());
+
+// Välityspalvelimen takana asiakkaan osoite luetaan X-Forwarded-For-otsakkeesta. Arvo on luotettavien
+// välityspalvelimien määrä (yleensä 1); ilman asetusta otsakkeeseen ei luoteta.
+if (process.env.TRUST_PROXY) app.set("trust proxy", Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+
+app.use(helmet());
+
+// Selainkutsut sallitaan vain sovelluksen omista osoitteista. CORS_ORIGINS on pilkuilla erotettu lista.
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || process.env.APP_URL || "http://localhost:5173,http://127.0.0.1:5173")
+  .split(",")
+  .map(origin => origin.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+app.use(cors({ origin: CORS_ORIGINS }));
+
+// Pyyntöjen rajoitus: kirjautunut käyttäjä tunnistetaan istunnostaan, muut osoitteestaan. Raja on väljä,
+// koska käyttöliittymä hakee tehtävät taustalla; tiukempi raja koskee kirjautumista ja salasanan palautusta.
+const tooManyRequests = { error: "Liian monta pyyntöä. Yritä hetken kuluttua uudelleen." };
+const requestKey = (req: express.Request) => {
+  const header = req.headers.authorization || "";
+  return header.startsWith("Bearer ")
+    ? crypto.createHash("sha256").update(header).digest("hex")
+    : ipKeyGenerator(req.ip ?? "");
+};
+app.use("/api", rateLimit({
+  windowMs: 60_000,
+  limit: Number(process.env.RATE_LIMIT_PER_MINUTE) || 1000,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: requestKey,
+  // Palvelimen oma Gmail-tuonti ei kulu rajaan.
+  skip: req => req.headers["x-internal-token"] === INTERNAL_TOKEN,
+  message: tooManyRequests
+}));
+app.use(["/api/auth/login", "/api/auth/forgot", "/api/auth/reset"], rateLimit({
+  windowMs: 15 * 60_000,
+  limit: Number(process.env.AUTH_RATE_LIMIT) || 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: tooManyRequests
+}));
+
 // Raja kattaa vastauksen liitteet, jotka kulkevat pyynnössä base64-muodossa.
 app.use(express.json({ limit: "30mb" }));
 app.use("/api", requireAuth);
@@ -192,6 +238,18 @@ function today() {
   return new Date().toLocaleDateString("sv-SE");
 }
 
+// Tarkistaa vastaanotettavat tiedostot ennen tallennusta. Palauttaa käyttäjälle näytettävän virheen
+// tai null, kun kaikki tiedostot voidaan ottaa vastaan.
+async function unsafeFileMessage(files: { filename: string; content: Buffer }[]): Promise<string | null> {
+  try {
+    for (const file of files) await assertSafeFile(file.content, file.filename);
+    return null;
+  } catch (error) {
+    if (error instanceof UnsafeFileError) return error.message;
+    throw error;
+  }
+}
+
 // AI:n käytössä ovat vain yhtiön omat, voimassa olevat tietueet, joiden teksti on saatu luettua.
 function getKnowledge(companyId: string) {
   const date = today();
@@ -328,8 +386,10 @@ function findResident(companyId: string, senderEmail?: string, senderName?: stri
   return null;
 }
 
+// Tilatarkistus valvontaa varten: vastaa vain, jos tietokantaan saadaan yhteys.
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "kiito-api" });
+  db.prepare("SELECT 1").get();
+  res.json({ ok: true, service: "kotilo-api", uptimeSeconds: Math.round(process.uptime()) });
 });
 
 app.get("/api/companies", (_req, res) => {
@@ -612,6 +672,8 @@ app.post(
     }
 
     const fileName = path.basename(parsed.data.fileName);
+    const unsafe = await unsafeFileMessage([{ filename: fileName, content: req.body }]);
+    if (unsafe) return res.status(400).json({ error: unsafe });
     let text = "";
     let extractionOk = true;
     try {
@@ -1398,6 +1460,10 @@ async function savePortalAttachments(ticketId: string, attachments: z.infer<type
   if (files.reduce((total, file) => total + file.content.length, 0) > 10 * 1024 * 1024) {
     return "Liitteiden yhteiskoko saa olla enintään 10 Mt.";
   }
+  // Selaimen ilmoittama tyyppi ei riitä: sisällön pitää olla oikeasti kuva tai PDF.
+  if (files.some(file => !isImageOrPdf(file.content))) return "Liitteeksi kelpaa kuva tai PDF.";
+  const unsafe = await unsafeFileMessage(files);
+  if (unsafe) return unsafe;
   for (const file of files) {
     const attachmentId = id("attachment");
     await fs.writeFile(path.join(attachmentsDir, attachmentId), file.content);
@@ -2653,6 +2719,8 @@ app.post("/api/tickets/:id/reply", async (req, res) => {
   if (outgoing.reduce((total, attachment) => total + attachment.content.length, 0) > MAX_REPLY_ATTACHMENT_BYTES) {
     return res.status(413).json({ error: "Liitteiden yhteiskoko saa olla enintään 15 Mt." });
   }
+  const unsafe = await unsafeFileMessage(outgoing);
+  if (unsafe) return res.status(400).json({ error: unsafe });
 
   const ticket = getAuthorizedTicket(req.params.id) as any;
   if (!ticket) return res.status(404).json({ error: "Ticket not found" });
@@ -2925,6 +2993,8 @@ app.post("/api/tickets/:id/attachments", async (req, res) => {
   if (files.reduce((total, file) => total + file.content.length, 0) > MAX_REPLY_ATTACHMENT_BYTES) {
     return res.status(413).json({ error: "Liitteiden yhteiskoko saa olla enintään 15 Mt." });
   }
+  const unsafe = await unsafeFileMessage(files);
+  if (unsafe) return res.status(400).json({ error: unsafe });
 
   const timestamp = now();
   const attachmentIds: string[] = [];
@@ -3549,14 +3619,42 @@ async function purgeExpiredData() {
   }
 }
 
+// Kun BACKUP_DIR on asetettu, tietokannasta ja tiedostoista otetaan varmuuskopio kerran päivässä.
+async function backupDaily() {
+  const targetDir = process.env.BACKUP_DIR;
+  if (!targetDir || await hasBackupToday(targetDir)) return;
+  console.log(`Kotilo: varmuuskopio tallennettu kansioon ${await createBackup(targetDir)}`);
+}
+
 function startMaintenanceJobs() {
   const run = () => {
     sendReminderDigests().catch(error => console.error("Muistutusten käsittely epäonnistui:", error?.message ?? error));
     purgeExpiredData().catch(error => console.error("Säilytysajan poistot epäonnistuivat:", error?.message ?? error));
+    backupDaily().catch(error => console.error("Varmuuskopiointi epäonnistui:", error?.message ?? error));
   };
   run();
   setInterval(run, 60 * 60 * 1000);
 }
+
+// Tuotannossa sama palvelin tarjoaa myös käännetyn käyttöliittymän, jolloin selain ja rajapinta ovat
+// samassa osoitteessa. CLIENT_DIST osoittaa käännökseen (oletus ../client/dist).
+const CLIENT_DIST = path.resolve(process.env.CLIENT_DIST || path.join(process.cwd(), "../client/dist"));
+if (process.env.NODE_ENV === "production" && existsSync(path.join(CLIENT_DIST, "index.html"))) {
+  app.use(express.static(CLIENT_DIST));
+  app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
+}
+
+// Odottamaton virhe kirjataan lokiin; käyttäjälle ei näytetä palvelimen sisäisiä tietoja.
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) return next(error);
+  const status = Number(error?.status ?? error?.statusCode) || 500;
+  if (status >= 500) console.error(`${req.method} ${req.path} epäonnistui:`, error);
+  res.status(status).json({
+    error: status === 413 ? "Pyyntö on liian suuri."
+      : status < 500 ? "Virheellinen pyyntö."
+      : "Palvelimella tapahtui virhe. Yritä uudelleen."
+  });
+});
 
 app.listen(PORT, (error?: Error) => {
   if (error) {
