@@ -1,0 +1,399 @@
+import { type FormEvent, useEffect, useState } from "react";
+import { usePaged } from "../components/common";
+import { api, isManager, type OfficeUser } from "../session";
+import type { Company } from "../types";
+import { BookingCalendar } from "./Bookings";
+import { KnowledgeBase } from "./Knowledge";
+import { ParkingSpaces } from "./Parking";
+import { Residents } from "./Residents";
+import { GmailAccountCard } from "./Settings";
+
+export function Companies({
+  companies,
+  openCompanyId,
+  onOpenCompany: setOpenCompanyId,
+  onChanged
+}: {
+  companies: Company[];
+  openCompanyId: string | null;
+  onOpenCompany: (companyId: string | null) => void;
+  onChanged: () => Promise<void>;
+}) {
+  const [detailTab, setDetailTab] = useState<"residents" | "material" | "sauna" | "laundry" | "parking">("residents");
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [businessId, setBusinessId] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [emailAddress, setEmailAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  function closeForm() {
+    setAdding(false);
+    setFormError("");
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setFormError("");
+    try {
+      await api("/companies", {
+        method: "POST",
+        body: JSON.stringify({ name, businessId, address, phone, emailAddress })
+      });
+      setName("");
+      setBusinessId("");
+      setAddress("");
+      setPhone("");
+      setEmailAddress("");
+      setAdding(false);
+      await onChanged();
+    } catch (error) {
+      let message = "Taloyhtiön lisääminen epäonnistui.";
+      try {
+        message = JSON.parse((error as Error).message).error || message;
+      } catch {
+        // Palvelin ei palauttanut JSON-virhettä.
+      }
+      setFormError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const pagedCompanies = usePaged(companies, "");
+  const openCompany = companies.find(company => company.id === openCompanyId);
+
+  if (openCompany) {
+    return (
+      <section className="content">
+        <button className="back-link" onClick={() => setOpenCompanyId(null)}>← Kaikki taloyhtiöt</button>
+
+        <CompanyCard company={openCompany} onSaved={onChanged} />
+        <GmailAccountCard target={openCompany.id} />
+
+        <div className="card-tabs">
+          <button className={detailTab === "residents" ? "active" : ""} onClick={() => setDetailTab("residents")}>
+            Asukkaat
+          </button>
+          <button className={detailTab === "material" ? "active" : ""} onClick={() => setDetailTab("material")}>
+            Materiaalit
+          </button>
+          <button className={detailTab === "sauna" ? "active" : ""} onClick={() => setDetailTab("sauna")}>
+            Saunavuorot
+          </button>
+          <button className={detailTab === "laundry" ? "active" : ""} onClick={() => setDetailTab("laundry")}>
+            Pyykkitupavuorot
+          </button>
+          <button className={detailTab === "parking" ? "active" : ""} onClick={() => setDetailTab("parking")}>
+            Autopaikat
+          </button>
+        </div>
+        {detailTab === "residents" ? (
+          <Residents
+            companyId={openCompany.id}
+            companies={companies}
+            onChanged={onChanged}
+          />
+        ) : detailTab === "material" ? (
+          <KnowledgeBase companyId={openCompany.id} />
+        ) : detailTab === "parking" ? (
+          <ParkingSpaces key={openCompany.id} embedded companies={[openCompany]} defaultCompanyId={openCompany.id} />
+        ) : (
+          <BookingCalendar
+            key={`${openCompany.id}-${detailTab}`}
+            embedded
+            resource={detailTab}
+            companyId={openCompany.id}
+            companies={[openCompany]}
+            onCompanyChange={() => undefined}
+          />
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="content">
+      <div className="residents-toolbar">
+        <span>{companies.length} taloyhtiötä</span>
+        {isManager() && <button className="secondary" onClick={() => setAdding(true)}>Lisää taloyhtiö</button>}
+      </div>
+
+      {companies.length === 0 ? <div className="empty">Ei taloyhtiöitä.</div> : (
+        <div className="table-card">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Nimi</th>
+                <th>Y-tunnus</th>
+                <th>Osoite</th>
+                <th>Puhelin</th>
+                <th>Sähköposti</th>
+                <th>Vastuuisännöitsijä</th>
+                <th>Asukkaita</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagedCompanies.items.map(company => (
+                <tr
+                  key={company.id}
+                  className="clickable"
+                  title="Avaa taloyhtiön tiedot ja asukkaat"
+                  onClick={() => setOpenCompanyId(company.id)}
+                  onKeyDown={event => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setOpenCompanyId(company.id);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <td><strong>{company.name}</strong></td>
+                  <td>{company.business_id || "–"}</td>
+                  <td>{company.address || "–"}</td>
+                  <td>{company.phone || "–"}</td>
+                  <td>{company.email_address || "–"}</td>
+                  <td>{company.manager_name || "–"}</td>
+                  <td>{company.resident_count ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {pagedCompanies.pager}
+
+      {adding && (
+        <div className="overlay" onClick={closeForm}>
+          <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+            <button className="close" onClick={closeForm}>×</button>
+            <h2>Lisää taloyhtiö</h2>
+            <p className="muted">Taloyhtiö tulee valittavaksi tehtävänäkymiin ja asukastietokantaan.</p>
+
+            <form className="ticket-form" onSubmit={handleSubmit}>
+              <label>
+                <span>Nimi</span>
+                <input value={name} onChange={event => setName(event.target.value)} placeholder="Esim. As Oy Koivikko" />
+              </label>
+
+              <label>
+                <span>Y-tunnus</span>
+                <input value={businessId} onChange={event => setBusinessId(event.target.value)} placeholder="Valinnainen" />
+              </label>
+
+              <label>
+                <span>Osoite</span>
+                <input value={address} onChange={event => setAddress(event.target.value)} placeholder="Valinnainen" />
+              </label>
+
+              <label>
+                <span>Puhelin</span>
+                <input value={phone} onChange={event => setPhone(event.target.value)} placeholder="Valinnainen" />
+              </label>
+
+              <label>
+                <span>Sähköposti, johon tehtävät saapuvat</span>
+                <input type="email" value={emailAddress} onChange={event => setEmailAddress(event.target.value)} placeholder="Valinnainen" />
+              </label>
+
+              {formError && <p className="send-error">{formError}</p>}
+
+              <div className="drawer-actions compact-actions">
+                <button type="button" onClick={closeForm}>Peruuta</button>
+                <button className="primary" type="submit" disabled={submitting || !name.trim()}>
+                  {submitting ? "Lisätään…" : "Lisää taloyhtiö"}
+                </button>
+              </div>
+            </form>
+          </aside>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CompanyCard({
+  company,
+  onSaved
+}: {
+  company: Company;
+  onSaved: () => Promise<void>;
+}) {
+  const initialValues = {
+    name: company.name,
+    businessId: company.business_id ?? "",
+    address: company.address ?? "",
+    phone: company.phone ?? "",
+    emailAddress: company.email_address ?? "",
+    managerId: company.manager_id ?? "",
+    // Muut isännöitsijät pilkuilla erotettuna, jotta muutoksen tunnistus toimii kuten muissa kentissä.
+    managerIds: [...(company.manager_ids ?? [])].sort().join(","),
+    maintenanceName: company.maintenance_name ?? "",
+    maintenancePhone: company.maintenance_phone ?? "",
+    maintenanceEmail: company.maintenance_email ?? "",
+    maintenanceEmergencyPhone: company.maintenance_emergency_phone ?? ""
+  };
+  const [values, setValues] = useState(initialValues);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  // Vastuuisännöitsijäksi voi valita isännöitsijän tai pääkäyttäjän.
+  const [managers, setManagers] = useState<OfficeUser[]>([]);
+  useEffect(() => {
+    api<OfficeUser[]>("/users")
+      .then(users => setManagers(users.filter(user => user.role === "Isännöitsijä" || user.role === "Pääkäyttäjä")))
+      .catch(() => setManagers([]));
+  }, []);
+
+  useEffect(() => {
+    setValues(initialValues);
+    setSaved(false);
+    setError("");
+  }, [company.id]);
+
+  function field(key: keyof typeof initialValues) {
+    return {
+      value: values[key],
+      onChange: (event: { target: { value: string } }) => {
+        setValues(prev => ({ ...prev, [key]: event.target.value }));
+        setSaved(false);
+      }
+    };
+  }
+
+  const dirty = (Object.keys(initialValues) as (keyof typeof initialValues)[])
+    .some(key => values[key] !== initialValues[key]);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      await api(`/companies/${encodeURIComponent(company.id)}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: values.name,
+          businessId: values.businessId,
+          address: values.address,
+          phone: values.phone,
+          emailAddress: values.emailAddress,
+          managerId: values.managerId || null,
+          managerIds: values.managerIds.split(",").filter(id => id && id !== values.managerId),
+          maintenance: {
+            name: values.maintenanceName,
+            phone: values.maintenancePhone,
+            email: values.maintenanceEmail,
+            emergencyPhone: values.maintenanceEmergencyPhone
+          }
+        })
+      });
+      await onSaved();
+      setSaved(true);
+    } catch (caught) {
+      let message = "Tietojen tallennus epäonnistui.";
+      try {
+        message = JSON.parse((caught as Error).message).error || message;
+      } catch {
+        // Palvelin ei palauttanut JSON-virhettä.
+      }
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="settings-card ticket-form" onSubmit={handleSubmit}>
+      <h2>Taloyhtiön tiedot</h2>
+      <div className="form-columns">
+        <label>
+          <span>Nimi</span>
+          <input {...field("name")} />
+        </label>
+        <label>
+          <span>Y-tunnus</span>
+          <input {...field("businessId")} />
+        </label>
+        <label>
+          <span>Osoite</span>
+          <input {...field("address")} />
+        </label>
+        <label>
+          <span>Puhelin</span>
+          <input {...field("phone")} />
+        </label>
+        <label>
+          <span>Sähköposti, johon tehtävät saapuvat</span>
+          <input type="email" {...field("emailAddress")} />
+        </label>
+        <label>
+          <span>Vastuuisännöitsijä</span>
+          <select {...field("managerId")}>
+            <option value="">Ei valittu</option>
+            {managers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+          </select>
+        </label>
+        <fieldset className="manager-picks">
+          <legend>Muut isännöitsijät</legend>
+          {managers.filter(user => user.id !== values.managerId).map(user => {
+            const selectedIds = values.managerIds.split(",").filter(Boolean);
+            const checked = selectedIds.includes(user.id);
+            return (
+              <label key={user.id} className={checked ? "checked" : ""}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    const next = checked ? selectedIds.filter(id => id !== user.id) : [...selectedIds, user.id];
+                    setValues(prev => ({ ...prev, managerIds: next.sort().join(",") }));
+                    setSaved(false);
+                  }}
+                />
+                {user.name}
+              </label>
+            );
+          })}
+          {managers.filter(user => user.id !== values.managerId).length === 0 && <span className="muted">Ei muita isännöitsijöitä.</span>}
+        </fieldset>
+      </div>
+
+      <h2>Huoltoyhtiön tiedot</h2>
+      <div className="form-columns">
+        <label>
+          <span>Huoltoyhtiön nimi</span>
+          <input {...field("maintenanceName")} />
+        </label>
+        <label>
+          <span>Sähköposti</span>
+          <input type="email" {...field("maintenanceEmail")} />
+        </label>
+        <label>
+          <span>Puhelin</span>
+          <input {...field("maintenancePhone")} />
+        </label>
+        <label>
+          <span>Päivystysnumero</span>
+          <input {...field("maintenanceEmergencyPhone")} />
+        </label>
+      </div>
+
+      {error && <p className="send-error">{error}</p>}
+
+      {isManager() ? (
+        <div className="draft-actions">
+          <button className="primary" type="submit" disabled={saving || !dirty || !values.name.trim()}>
+            {saving ? "Tallennetaan…" : "Tallenna muutokset"}
+          </button>
+          {saved && !dirty && <span className="saved-indicator">Tallennettu</span>}
+        </div>
+      ) : (
+        <p className="reply-hint">Taloyhtiön tietoja voi muuttaa isännöitsijä tai pääkäyttäjä.</p>
+      )}
+    </form>
+  );
+}

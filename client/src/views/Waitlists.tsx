@@ -1,0 +1,215 @@
+import { useEffect, useState } from "react";
+import { Dropdown, usePaged } from "../components/common";
+import { formatDate } from "../format";
+import { api, errorMessage } from "../session";
+import type { Company } from "../types";
+import type { ParkingSpace } from "./Parking";
+
+export type WaitlistEntry = {
+  id: string;
+  company_id: string;
+  resource: "parking" | "sauna";
+  parking_type: string;
+  note: string;
+  status: "waiting" | "offered";
+  created_at: string;
+  position: number;
+  resident_id?: string;
+  resident_name?: string | null;
+  resident_email?: string | null;
+  apartment_number?: string | null;
+  offered_at?: string | null;
+  offered_by?: string | null;
+};
+
+export function waitlistLabel(entry: Pick<WaitlistEntry, "resource" | "parking_type">) {
+  if (entry.resource === "sauna") return "Saunavuoro";
+  return entry.parking_type ? `Autopaikka · ${entry.parking_type}` : "Autopaikka";
+}
+
+// Toimiston näkymä: jonot ilmoittautumisjärjestyksessä. Vapaan autopaikan voi antaa suoraan jonottajalle.
+export function Waitlists({ companies }: { companies: Company[] }) {
+  const [entries, setEntries] = useState<WaitlistEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [freeSpaces, setFreeSpaces] = useState<ParkingSpace[]>([]);
+  const [parkingId, setParkingId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
+
+  async function loadEntries() {
+    try {
+      const lists = await Promise.all(companies.map(company =>
+        api<WaitlistEntry[]>(`/companies/${encodeURIComponent(company.id)}/waitlist`)));
+      setEntries(lists.flat());
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadEntries();
+  }, [companies.length]);
+
+  const open = entries.find(entry => entry.id === openId) ?? null;
+
+  // Autopaikkajonottajalle haetaan taloyhtiön vapaat paikat, toivotun tyypin mukaan rajattuna.
+  useEffect(() => {
+    setFreeSpaces([]);
+    setParkingId("");
+    if (!open || open.resource !== "parking") return;
+    api<ParkingSpace[]>(`/companies/${encodeURIComponent(open.company_id)}/parking`)
+      .then(spaces => setFreeSpaces(spaces.filter(space =>
+        !space.resident_id && (!open.parking_type || space.type === open.parking_type))))
+      .catch(() => setFreeSpaces([]));
+  }, [openId]);
+
+  async function act(path: string, body?: unknown, close = true) {
+    setSaving(true);
+    setError("");
+    try {
+      await api(path, { method: "POST", body: JSON.stringify(body ?? {}) });
+      if (close) setOpenId(null);
+      await loadEntries();
+    } catch (actionError) {
+      setError(errorMessage(actionError, "Toiminto epäonnistui."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const paged = usePaged(entries, "");
+
+  return (
+    <section className="content">
+      <a className="back-link" href="#/companies">← Taloyhtiöt</a>
+
+      <div className="residents-toolbar">
+        <span>{entries.length} jonottajaa</span>
+      </div>
+
+      {loading ? <div className="empty">Ladataan…</div>
+        : loadError ? <p className="send-error">Jonojen lataus epäonnistui.</p>
+        : entries.length === 0 ? <div className="empty">Jonoissa ei ole ketään. Asukas ilmoittautuu jonoon asukasportaalissa.</div>
+        : (
+          <div className="table-card">
+            <table className="data-table report-topics">
+              <thead>
+                <tr>
+                  <th>Sija</th>
+                  <th>Asukas</th>
+                  <th>Asunto</th>
+                  <th>Taloyhtiö</th>
+                  <th>Jono</th>
+                  <th>Jonossa alkaen</th>
+                  <th>Tila</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paged.items.map(entry => (
+                  <tr
+                    key={entry.id}
+                    className="clickable"
+                    role="button"
+                    tabIndex={0}
+                    title="Avaa jonottajan tiedot"
+                    onClick={() => { setOpenId(entry.id); setError(""); }}
+                    onKeyDown={event => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setOpenId(entry.id);
+                        setError("");
+                      }
+                    }}
+                  >
+                    <td><strong>{entry.position}.</strong></td>
+                    <td>
+                      <strong>{entry.resident_name || "Tuntematon asukas"}</strong>
+                      {entry.note && <span>{entry.note}</span>}
+                    </td>
+                    <td>{entry.apartment_number || "–"}</td>
+                    <td>{companyName(entry.company_id)}</td>
+                    <td>{waitlistLabel(entry)}</td>
+                    <td>{formatDate(entry.created_at)}</td>
+                    <td><span className={`work-order-status ${entry.status === "offered" ? "done" : ""}`}>{entry.status === "offered" ? "Tarjottu" : "Jonossa"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      {paged.pager}
+
+      {open && (
+        <div className="overlay" onClick={() => !saving && setOpenId(null)}>
+          <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+            <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
+            <h2>{open.resident_name || "Tuntematon asukas"}</h2>
+            <p className="muted">
+              {waitlistLabel(open)} · sija {open.position} · {companyName(open.company_id)} · {open.apartment_number || "–"}
+              {open.resident_email ? ` · ${open.resident_email}` : ""}
+            </p>
+            {open.note && <p className="announcement-body">{open.note}</p>}
+            {open.status === "offered" && (
+              <p className="reply-hint">Tarjottu {open.offered_at ? formatDate(open.offered_at) : ""}{open.offered_by ? ` · ${open.offered_by}` : ""}</p>
+            )}
+
+            {open.resource === "parking" && (
+              <div className="ticket-form">
+                {freeSpaces.length === 0 ? (
+                  <p className="muted">
+                    Taloyhtiössä ei ole vapaata {open.parking_type ? `paikkaa tyyppiä ${open.parking_type}` : "autopaikkaa"}.
+                  </p>
+                ) : (
+                  <>
+                    <Dropdown
+                      label="Vapaa autopaikka"
+                      value={parkingId}
+                      options={[
+                        { value: "", label: "Valitse paikka" },
+                        ...freeSpaces.map(space => ({ value: space.id, label: `${space.label} · ${space.type}` }))
+                      ]}
+                      onChange={setParkingId}
+                    />
+                    <div className="draft-actions">
+                      <button
+                        className="primary"
+                        disabled={saving || !parkingId}
+                        onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/assign-parking`, { parkingId })}
+                      >
+                        Anna paikka jonottajalle
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="draft-actions">
+              {open.status === "waiting" && (
+                <button onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/offer`, undefined, false)} disabled={saving}>
+                  Merkitse tarjotuksi
+                </button>
+              )}
+              {open.resource === "sauna" && (
+                <button onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/close`, { outcome: "done" })} disabled={saving}>
+                  Vuoro annettu
+                </button>
+              )}
+              <button className="danger" onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/close`, { outcome: "cancelled" })} disabled={saving}>
+                Poista jonosta
+              </button>
+            </div>
+            {error && <p className="send-error">{error}</p>}
+          </aside>
+        </div>
+      )}
+    </section>
+  );
+}
