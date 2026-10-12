@@ -288,7 +288,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     ? ticket.subject as string
     : /^re:/i.test(inbound.subject.trim()) ? inbound.subject : `Re: ${inbound.subject}`;
 
-  let sentMessageId = "";
+  let sentMessageId: string;
   try {
     const sent = await sendGmailReply({
       to: recipient,

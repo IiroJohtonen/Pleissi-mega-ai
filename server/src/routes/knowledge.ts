@@ -190,7 +190,7 @@ knowledgeRouter.post(
     const unsafe = await unsafeFileMessage([{ filename: fileName, content: req.body }]);
     if (unsafe) return res.status(400).json({ error: unsafe });
     let text = "";
-    let extractionOk = true;
+    let extractionOk: boolean;
     try {
       text = await extractText(req.body, fileName, parsed.data.mimeType);
       extractionOk = text.length > 0;

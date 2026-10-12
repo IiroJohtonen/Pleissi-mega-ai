@@ -90,7 +90,7 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
   const paged = usePaged(notices, "");
   const open = notices.find(notice => notice.id === openId) ?? null;
   const pendingCount = notices.filter(notice => notice.status === "pending").length;
-  let result: MoveResult | null = null;
+  let result: MoveResult | null;
   try {
     result = open?.result ? JSON.parse(open.result) : null;
   } catch {

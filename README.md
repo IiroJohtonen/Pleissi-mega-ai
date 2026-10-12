@@ -1,50 +1,44 @@
-# Kiito MVP
+# Kotilo
 
-Kiito is an MVP implementation based on **Kiito – tuotespeksi V1**.
+Kotilo on isännöitsijätoimiston työkalu, joka kokoaa asukkaiden yhteydenotot tehtäviksi, auttaa vastaamaan niihin ja hoitaa taloyhtiön arjen varaukset ja ilmoitukset. Projektin aiempi nimi oli Kiito; kansion nimi `kiito-mvp` on peruja siitä.
 
-It demonstrates the core V1 workflow:
+Tilanne ja puuttuvat osat on kuvattu tiedostossa [shared/PRODUCT_SCOPE.md](shared/PRODUCT_SCOPE.md).
 
-- Incoming resident messages become tickets.
-- AI triages company, apartment/resident, type and priority.
-- Emergency issues bypass the normal decision queue.
-- Tickets can be linked to existing tickets.
-- Every normal outgoing action goes through a decision queue:
-  - **AI hoitaa**
-  - **Minä hoidan**
-  - **Ohita**
-- Company-specific knowledge is isolated by company.
-- AI self-service answers use only the selected company's knowledge documents.
-- Audit history is stored for decisions and ticket events.
-- The project includes an API endpoint for incoming email/web messages.
+## Mitä Kotilo tekee
 
-## Stack
+- **Tehtävät:** sähköposti, asukasportaali ja käsin kirjatut asiat päätyvät samaan päätösjonoon. Tehtävällä on käsittelijä, prioriteetti, määräaika, viestiketju, liitteet, muistiinpanot ja loki.
+- **AI-apu:** käsittelijä voi pyytää vastausehdotuksen, joka perustuu vain kyseisen taloyhtiön tietopankkiin. Raportti toistuvista aiheista ehdottaa uusia vakiotietoja.
+- **Asukasportaali:** asukas näkee tiedotteet, tekee ilmoituksia, varaa sauna- ja pyykkitupavuoroja, jonottaa autopaikkaa ja tekee muuttoilmoituksen.
+- **Taloyhtiön hallinta:** asukkaat, autopaikat, vuorot, jonot, tiedotteet, muuttoilmoitukset, työtilaukset huoltoyhtiölle ja laskutusraportit.
+- **Roolit:** pääkäyttäjä, isännöitsijä ja asiakaspalvelu. Isännöitsijä näkee vain omat taloyhtiönsä.
 
-- Node.js + TypeScript
-- Express API
-- React + Vite
-- SQLite
-- Simple CSS
-- Optional OpenAI integration through `OPENAI_API_KEY`
-- Mock/rule-based AI fallback when no API key is configured
+## Rakenne
 
-## Requirements
+```
+server/   Express-rajapinta, SQLite-tietokanta, Gmail-yhteys
+  src/index.ts        käynnistys, tietoturva-asetukset ja reitittimien kytkentä
+  src/routes/         rajapinnan reitit aihealueittain
+  src/access.ts       kirjautuneen käyttäjän yhtiönäkyvyys
+  src/auth.ts         kirjautuminen, istunnot, käyttäjät ja roolit
+  src/db.ts           tietokannan rakenne ja päivitykset
+  src/jobs.ts         muistutukset, säilytysajan poistot ja varmuuskopiot
+  test/               rajapinnan testit
+client/   React-käyttöliittymä (Vite)
+  src/views/          näkymät (työtila, asetukset, portaali, …)
+  src/tickets/        tehtäväkortti, tehtävän tiedot ja työtilaukset
+  src/session.ts      istunto ja rajapintakutsut
+```
 
-- Node.js 20+
-- npm
+## Käyttöönotto kehityskoneella
 
-## Run
-
-Open the `kiito-mvp` folder in VS Code.
-
-Terminal 1:
+Tarvitset Node.js-version 22 tai uudemman.
 
 ```bash
 cd server
+cp .env.example .env      # Windowsissa: copy .env.example .env
 npm install
 npm run dev
 ```
-
-Terminal 2:
 
 ```bash
 cd client
@@ -52,73 +46,79 @@ npm install
 npm run dev
 ```
 
-Then open the URL printed by Vite, normally:
+Käyttöliittymä aukeaa osoitteessa http://localhost:5173 ja rajapinta osoitteessa http://localhost:4000.
 
-http://localhost:5173
+Ensimmäisellä käynnistyksellä palvelin luo esimerkkitaloyhtiön ja neljä käyttäjää. Aloitussalasana tulostuu palvelimen lokiin, ellei sitä ole annettu muuttujassa `INITIAL_PASSWORD`. Kirjaudu osoitteella `demo@pohjantahti-isannointi.fi` ja vaihda käyttäjien osoitteet ja salasanat asetuksista.
 
-The API runs on:
+### AI
 
-http://localhost:4000
+Aseta `ANTHROPIC_API_KEY` tiedostoon `server/.env`. Ilman avainta vastausehdotukset tehdään avainsanahaulla tietopankista, joten sovellus toimii myös ilman AI-tiliä.
 
-## Optional AI
+### Gmail
 
-Copy `server/.env.example` to `server/.env`.
+Saapuva ja lähtevä posti kulkee Gmailin kautta. Tallenna Google Cloudin OAuth-clientin tiedot tiedostoon `server/credentials.json` ja yhdistä tili sovelluksen asetuksista (Asetukset → Gmail). Taloyhtiölle voi yhdistää oman tilin; muuten käytetään toimiston tiliä. Tiedostot `credentials.json` ja `token.json` ovat salaisuuksia eivätkä kuulu repoon.
 
-Set:
+## Tarkistukset
 
-```env
-OPENAI_API_KEY=your_key
-OPENAI_MODEL=your_model
+Molemmissa kansioissa (`server` ja `client`):
+
+```bash
+npm run lint        # ESLint
+npm run typecheck   # TypeScript
+npm test            # testit
+npm run build       # tuotantokäännös
 ```
 
-If the key is absent, Kiito uses the deterministic local triage engine. This is useful for development and keeps the project runnable without an AI account.
+Palvelimen testit käynnistävät oman palvelimen tyhjään väliaikaiseen tietokantaan. Gmail ja AI ovat testeissä pois päältä, joten testit eivät lähetä postia eivätkä kutsu ulkoisia palveluja. Samat tarkistukset ajetaan GitHub Actionsissa (`.github/workflows/ci.yml`).
 
-`DEFAULT_COMPANY_ID` selects the default company. `AUTHORIZED_COMPANY_IDS` is a comma-separated server-side allowlist for the company selector and company-scoped ticket APIs (for example `demo-company,another-company`). Company IDs supplied by the browser are accepted only when present in this allowlist.
+## Asetukset
 
-## Demo data
+Kaikki asetukset ovat ympäristömuuttujia; selitykset ovat tiedostossa [server/.env.example](server/.env.example).
 
-The server creates demo companies, apartments, residents, knowledge documents and tickets automatically on first startup.
+| Muuttuja | Tarkoitus |
+| --- | --- |
+| `APP_URL`, `CORS_ORIGINS` | Osoitteet, joista selain saa kutsua rajapintaa |
+| `INITIAL_PASSWORD` | Ensimmäisten käyttäjien salasana tyhjään tietokantaan |
+| `DATA_DIR` | Tietokannan ja liitteiden kansio |
+| `BACKUP_DIR`, `BACKUP_KEEP` | Päivittäinen varmuuskopio ja säilytettävien kopioiden määrä |
+| `CLAMAV_HOST`, `CLAMAV_PORT` | Liitteiden virustarkistus ClamAV:lla |
+| `TRUST_PROXY` | Välityspalvelimien määrä palvelimen edessä |
+| `GMAIL_DISABLED` | `1` kytkee postin pois |
+| `VITE_API_URL` (client) | Rajapinnan osoite, jos se ei ole oletus |
 
-## Incoming message API
+## Tietoturva
 
-POST:
+- Rajapinta vaatii kirjautumisen. Istuntotunniste kulkee vain `Authorization`-otsakkeessa.
+- Selainkutsut sallitaan vain osoitteista `APP_URL` ja `CORS_ORIGINS`.
+- Pyyntöjä rajoitetaan käyttäjä- ja osoitekohtaisesti; kirjautumista ja salasanan palautusta tiukemmin.
+- Ajettavia tiedostoja ei oteta vastaan liitteinä. Asukkaan liitteen pitää olla kuva tai PDF. Kun `CLAMAV_HOST` on asetettu, jokainen liite tarkistetaan ClamAV:lla, ja tiedosto hylätään, jos tarkistus ei ole käytettävissä.
+- Asukkaan tiedot voi viedä ja poistaa asukkaan lomakkeelta. Suljetuille tehtäville ja lokille voi asettaa säilytysajan asetuksista.
 
-`http://localhost:4000/api/inbound/messages`
+## Varmuuskopiot
 
-Example:
-
-```json
-{
-  "companyId": "demo-company",
-  "channel": "email",
-  "senderName": "Matti Meikäläinen",
-  "senderEmail": "matti@example.com",
-  "subject": "Keittiössä vuotaa vettä",
-  "body": "Hanasta tulee vettä lattialle."
-}
+```bash
+cd server
+npm run backup -- /polku/varmuuskopioille
 ```
 
-The backend creates a ticket, runs triage and either places it in the decision queue or routes it as an emergency.
+Komento tallentaa eheän kopion tietokannasta sekä liitteet ja tietopankin tiedostot omaan aikaleimattuun kansioonsa. Kun `BACKUP_DIR` on asetettu, palvelin ottaa kopion itse kerran päivässä ja säilyttää `BACKUP_KEEP` uusinta (oletus 14). Kopiot kannattaa viedä toiselle levylle tai palveluun.
 
-## Important production work still needed
+Palautus: pysäytä palvelin ja kopioi varmuuskopion `kotilo.sqlite`, `attachments` ja `knowledge-files` kansioon `DATA_DIR`.
 
-This is an MVP codebase, not a production-ready property-management platform. Before a real pilot you should add:
+## Tuotantoajo
 
-- Real authentication and RBAC
-- Proper tenant/company authorization
-- Production email ingestion
-- Email sending
-- Real resident registry synchronization
-- File/image storage
-- Malware scanning for attachments
-- Real AI provider configuration and evaluation
-- GDPR/DPA/DPIA implementation
-- Encryption and secrets management
-- Rate limiting and abuse protection
-- Production database
-- Monitoring, backups and audit retention
-- Human approval enforcement on legally sensitive actions
-- Emergency phone routing
-- Integration with property-management systems
+Tuotannossa palvelin tarjoaa myös käännetyn käyttöliittymän, joten tarvitaan vain yksi palvelu ja yksi osoite.
 
-The product specification explicitly calls for human approval for outgoing actions except defined self-service/acknowledgement cases, and for company-level data isolation. Those principles are represented in the MVP architecture.
+```bash
+docker build -t kotilo .
+docker run -p 4000:4000 -v kotilo-data:/data --env-file server/.env kotilo
+```
+
+Ilman Dockeria: käännä `client` ja `server` komennolla `npm run build` ja käynnistä palvelin kansiosta `server` komennolla `NODE_ENV=production npm start`.
+
+Ennen oikeaa käyttöä:
+
+- Aseta palvelimen eteen HTTPS-päätepiste (esim. Caddy tai nginx) ja `TRUST_PROXY=1`.
+- Aseta `APP_URL` sovelluksen julkiseen osoitteeseen.
+- Liitä `/data` pysyvään levyyn ja aseta `BACKUP_DIR` toiselle levylle.
+- Valvo osoitetta `/api/health`; se vastaa vain, kun tietokanta on käytettävissä.

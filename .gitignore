@@ -11,3 +11,6 @@ server/data/
 # Gmailin OAuth-clientin tiedot ja kirjautumistunniste: salaisuuksia, eivät kuulu repoon.
 server/credentials.json
 server/token.json
+
+# Paikalliset varmuuskopiot (npm run backup).
+server/backups/

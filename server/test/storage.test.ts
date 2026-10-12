@@ -34,6 +34,26 @@ describe("tallennus", () => {
     }
   });
 
+  it("tuotantotilassa palvelin tarjoaa käyttöliittymän samasta osoitteesta", async () => {
+    const clientDist = await tempDir("kotilo-client-");
+    fs.writeFileSync(path.join(clientDist, "index.html"), "<!doctype html><title>Kotilo</title>");
+    fs.writeFileSync(path.join(clientDist, "app.js"), "console.log('kotilo')");
+    const server = await startServer({ env: { NODE_ENV: "production", CLIENT_DIST: clientDist } });
+    try {
+      const page = await fetch(`${server.url}/`);
+      assert.equal(page.status, 200);
+      assert.match(await page.text(), /<title>Kotilo<\/title>/);
+      assert.equal(await (await fetch(`${server.url}/app.js`)).text(), "console.log('kotilo')");
+      // Selaimen sisäiset osoitteet palauttavat saman sivun; rajapinnan tuntematon polku ei.
+      assert.match(await (await fetch(`${server.url}/asetukset/loki`)).text(), /<title>Kotilo<\/title>/);
+      const api = await fetch(`${server.url}/api/ei-ole`);
+      assert.equal(api.status, 401);
+      assert.equal((await fetch(`${server.url}/api/health`)).status, 200);
+    } finally {
+      await server.stop();
+    }
+  });
+
   it("vanha kiito.sqlite nimetään uudelleen ja tiedot säilyvät", async () => {
     const dataDir = await tempDir();
     let server = await startServer({ dataDir });

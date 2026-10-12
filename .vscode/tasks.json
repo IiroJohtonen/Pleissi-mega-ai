@@ -2,13 +2,13 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Kiito API",
+      "label": "Kotilo API",
       "type": "shell",
       "command": "cd server && npm install && npm run dev",
       "problemMatcher": []
     },
     {
-      "label": "Kiito Web",
+      "label": "Kotilo Web",
       "type": "shell",
       "command": "cd client && npm install && npm run dev",
       "problemMatcher": []

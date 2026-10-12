@@ -10,8 +10,10 @@ import { assertSafeFile } from "./scan.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const credentialsPath = path.resolve(__dirname, "../credentials.json");
-const tokenPath = path.resolve(__dirname, "../token.json");
+// Googlen OAuth-clientin tiedot ja vanha kirjautumistunniste ovat oletuksena server-kansiossa.
+// Tuotannossa ne annetaan polkuina, jotta salaisuudet eivät ole sovelluksen kansiossa.
+const credentialsPath = path.resolve(process.env.GMAIL_CREDENTIALS_FILE || path.join(__dirname, "../credentials.json"));
+const tokenPath = path.resolve(process.env.GMAIL_TOKEN_FILE || path.join(__dirname, "../token.json"));
 
 // KIITO_COMPANY_ID on muuttujan vanha nimi; se toimii edelleen.
 const COMPANY_ID = process.env.DEFAULT_COMPANY_ID || process.env.KIITO_COMPANY_ID || "demo-company";

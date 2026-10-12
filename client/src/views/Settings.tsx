@@ -268,19 +268,13 @@ function OfficeSettings({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [gmail, setGmail] = useState<GmailStatus | null>(null);
+
 
   useEffect(() => {
     setEmailAddress(company?.email_address ?? "");
     setSaved(false);
     setError("");
   }, [company?.id]);
-
-  useEffect(() => {
-    api<GmailStatus>("/gmail/status")
-      .then(setGmail)
-      .catch(() => setGmail({ connected: false }));
-  }, []);
 
   if (!company) return <div className="empty">Yhtiötä ei ole valittu.</div>;
   const companyId = company.id;
@@ -330,10 +324,6 @@ function OfficeSettings({
     }
   }
 
-  const addressMismatch = Boolean(
-    gmail?.connected && gmail.emailAddress && emailAddress.trim()
-    && gmail.emailAddress.toLowerCase() !== emailAddress.trim().toLowerCase()
-  );
 
   return (
     <section className="settings-layout">
