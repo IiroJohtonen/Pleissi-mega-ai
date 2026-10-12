@@ -1,0 +1,2858 @@
+* { box-sizing: border-box; }
+
+:root {
+  font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #181c20;
+  background: #f5f6f3;
+}
+
+body { margin: 0; }
+button { font: inherit; cursor: pointer; }
+
+.app {
+  min-height: 100vh;
+  display: flex;
+}
+
+.sidebar {
+  width: 250px;
+  background: #171c22;
+  color: white;
+  padding: 26px 18px;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0 11px 34px;
+  text-decoration: none;
+  transition: opacity .15s ease;
+}
+
+.brand:hover { opacity: .85; }
+.brand img { display: block; height: 46px; }
+
+.logo {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #9bd3ff;
+  color: #181c20;
+  font-weight: 900;
+}
+
+.brand strong { display: block; font-size: 20px; }
+.brand span { display: block; font-size: 11px; color: #aab0b6; margin-top: 2px; }
+
+nav { display: grid; gap: 6px; }
+
+nav button {
+  border: 0;
+  background: transparent;
+  color: #b8bdc2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 12px 11px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: background .15s ease, color .15s ease, transform .15s ease;
+}
+
+nav button:hover {
+  background: #242c35;
+  color: white;
+  transform: translateX(1px);
+}
+
+nav button.active {
+  background: #262d34;
+  color: white;
+  box-shadow: inset 0 0 0 1px rgba(155, 211, 255, .12);
+}
+
+.form-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+@media (max-width: 900px) {
+  .form-columns { grid-template-columns: 1fr; }
+}
+
+.card-tabs { display: flex; gap: 8px; margin-top: 6px; }
+
+.card-tabs button {
+  border: 1px solid #d9dbde;
+  background: white;
+  color: #4b535d;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.card-tabs button.active {
+  background: #171c22;
+  border-color: #171c22;
+  color: white;
+}
+
+.knowledge-base { display: grid; gap: 12px; }
+.knowledge-intro { margin: 0; font-size: 13px; line-height: 1.5; max-width: 720px; }
+.toolbar-actions { display: flex; gap: 8px; }
+
+.knowledge-test .reporter-link { margin-top: 12px; }
+
+.knowledge-test input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #dfe3e7;
+  border-radius: 7px;
+  background: #f9faf8;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.test-result { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e6e7e9; }
+.test-result p { margin: 0 0 8px; white-space: pre-wrap; }
+
+.suggest-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawer-section .suggest-header h3 { margin: 0; font-size: 20px; }
+.suggest-header .ai-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px 9px 13px;
+  border: 0;
+  border-radius: 99px;
+  background: linear-gradient(135deg, #1d2936 0%, #171c22 60%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(155, 211, 255, .28);
+  transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+
+/* Otsikkorivin ja sen alla olevan sisällön väliin jää ilmaa. */
+.drawer-section .suggest-header { margin-bottom: 16px; }
+.drawer-section .suggest-header + .draft-editor,
+.drawer-section .ai-reason { margin-top: 0; }
+
+.suggest-header .ai-button svg { width: 15px; height: 15px; color: #9bd3ff; }
+.suggest-header .ai-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px rgba(155, 211, 255, .6), 0 6px 16px rgba(13, 16, 20, .16);
+}
+
+.suggest-header .ai-button:disabled {
+  background: #d9dde2;
+  color: #6e7680;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.suggest-header .ai-button:disabled svg { color: #898f95; }
+
+.source-link { text-decoration: none; }
+.source-link:hover { background: #d2ddea; }
+
+.source-pill {
+  display: inline-block;
+  background: #e5ecf3;
+  border: 1px solid #d2ddea;
+  color: #37475a;
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.knowledge-entry {
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.knowledge-entry.clickable { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.knowledge-entry.clickable:hover { border-color: #babfc4; box-shadow: 0 4px 12px rgba(20, 25, 30, .05); }
+.knowledge-content { font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.drawer .knowledge-entry-actions { margin-top: 18px; }
+
+.knowledge-entry-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11px; }
+.knowledge-entry-top .date { margin-left: auto; color: #898f95; }
+.knowledge-entry h2 { font-size: 16px; margin: 10px 0 4px; }
+.knowledge-entry p { color: #646a71; font-size: 13px; line-height: 1.6; margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.knowledge-file { color: #37475a; font-size: 12px; font-weight: 700; }
+
+.knowledge-state { border-radius: 99px; padding: 3px 9px; font-weight: 700; background: #e5ecf3; color: #37475a; }
+.knowledge-state.expired, .knowledge-state.unreadable { background: #fbeae6; color: #9c2b1f; }
+.knowledge-state.upcoming { background: #fdf5dc; color: #7a5c0c; }
+
+.knowledge-entry-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.knowledge-entry-actions button {
+  border: 1px solid #d9dcdf;
+  background: white;
+  border-radius: 7px;
+  padding: 6px 11px;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.knowledge-entry-actions button.danger { color: #b3402f; }
+.knowledge-history { margin-top: 12px; padding-top: 6px; border-top: 1px solid #e6e7e9; }
+
+.back-link {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: #4b535d;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.back-link { text-decoration: none; }
+.back-link:hover { text-decoration: underline; }
+.section-title { font-size: 16px; margin: 10px 0 0; }
+
+.table-card {
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  overflow-x: auto;
+}
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.data-table th {
+  text-align: left;
+  padding: 12px 18px;
+  color: #898f95;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e4e6;
+  white-space: nowrap;
+}
+
+.data-table td { padding: 14px 18px; color: #646a71; border-bottom: 1px solid #eeeff1; }
+.data-table tr:last-child td { border-bottom: 0; }
+.data-table tr.clickable { cursor: pointer; }
+.data-table tr.clickable:hover td, .data-table tr.clickable:focus-visible td { background: #f3f6f9; }
+.data-table td strong { color: #1d2329; }
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-group > button:first-child { flex: 1; min-width: 0; white-space: nowrap; }
+
+nav button.nav-toggle {
+  flex: none;
+  padding: 10px 8px;
+}
+
+nav button.nav-toggle:hover { transform: none; }
+nav button.nav-toggle .tab-icon { transition: transform .15s ease; }
+nav button.nav-toggle.open .tab-icon { transform: rotate(180deg); }
+
+nav button.nav-sub {
+  margin-left: 14px;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+
+nav b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  margin-left: auto;
+  background: #9bd3ff;
+  color: #181c20;
+  border-radius: 99px;
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+.tab-icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+nav button.nav-sub .tab-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid #303740;
+  padding-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-button {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #b8bdc2;
+  transition: background .15s ease, color .15s ease;
+}
+
+.settings-button .tab-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.settings-button:hover {
+  background: #242c35;
+  color: white;
+}
+
+.settings-button.active {
+  background: #262d34;
+  color: white;
+  box-shadow: inset 0 0 0 1px rgba(155, 211, 255, .12);
+}
+
+.company {
+  min-width: 0;
+}
+
+.company small, .company span { display: block; color: #899097; font-size: 11px; }
+.company strong { display: block; margin: 5px 0; font-size: 13px; }
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 44px 46px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: #747a80;
+  margin: 0 0 8px;
+}
+
+h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
+.muted { color: #717880; }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.refresh, .secondary {
+  border: 1px solid #d9dbde;
+  background: white;
+  padding: 9px 14px;
+  border-radius: 8px;
+}
+
+.secondary {
+  background: #e5ecf3;
+  border-color: #d2ddea;
+}
+
+.content { display: grid; gap: 12px; }
+
+.queue-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.queue-summary > button {
+  min-width: 150px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.queue-summary > button:hover { border-color: #9bd3ff; background: #f3f6f9; }
+
+.queue-summary > div,
+.queue-summary > button {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  row-gap: 2px;
+  min-width: 150px;
+  padding: 14px 18px 13px;
+  border: 1px solid #e1e4e7;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.queue-summary > button { min-width: 120px; }
+
+/* Luo tiketti -painike laskureiden perässä, samankorkuisena mutta painikkeen näköisenä. */
+.queue-summary > button.create-ticket {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  margin-left: auto;
+  padding: 9px 16px;
+  border-radius: 9px;
+  border-color: #171c22;
+  background: #171c22;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.queue-summary > button.create-ticket:hover { background: #26303b; border-color: #26303b; }
+
+/* Laskuri: otsikko ylhäällä, luku isona sen alla ja selite pienenä alimpana. */
+.queue-summary span {
+  color: #666c72;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.queue-summary strong {
+  color: #191f25;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.queue-summary small {
+  color: #898f95;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ticket-filters {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2e4e7;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.ticket-filters label {
+  display: grid;
+  gap: 5px;
+  min-width: 150px;
+  color: #747a80;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ticket-filters select {
+  min-width: 150px;
+  border: 1px solid #dfe2e5;
+  border-radius: 7px;
+  background: #fafbf9;
+  padding: 8px 10px;
+  color: #272e35;
+  font: inherit;
+  font-size: 12px;
+}
+
+.clear-filters {
+  border: 0;
+  background: transparent;
+  color: #5e6a78;
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ticket-card {
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 12px;
+  padding: 14px 15px 12px;
+  box-shadow: 0 3px 12px rgba(21, 27, 34, .03);
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.ticket-card:hover {
+  border-color: #c9ccd0;
+  box-shadow: 0 8px 20px rgba(21, 27, 34, .05);
+  transform: translateY(-1px);
+}
+
+.ticket-card.managed {
+  border-color: #c5d5e7;
+  background: linear-gradient(180deg, #fff 0%, #f5f8fc 100%);
+}
+
+.ticket-top {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.priority, .type, .status-badge {
+  display: inline-block;
+  padding: 4px 7px;
+  border-radius: 99px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.priority { background: #e8eaec; }
+.priority.emergency { background: #ffd9d5; color: #9c2b1f; }
+.priority.urgent { background: #ffe6b4; color: #8a5700; }
+.priority.normal { background: #e7f0ff; color: #28548f; }
+.priority.low { background: #edeef0; color: #5f656b; }
+.type { background: #f1f2f3; color: #656b71; }
+.status-badge {
+  background: #dfe8f2;
+  color: #3b4e63;
+}
+
+.date { margin-left: auto; color: #898f95; font-size: 10px; }
+
+.ticket-row {
+  display: grid;
+  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) 150px 118px 118px;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 9px 13px;
+  border: 1px solid #e2e4e6;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.ticket-row > .priority,
+.ticket-row > .type,
+.ticket-row > .status-badge { justify-self: start; }
+
+/* Sarakeotsikot käyttävät samaa ruudukkoa kuin rivit, jotta ne osuvat kenttien kohdalle. */
+.ticket-row-header {
+  display: grid;
+  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) 150px 118px 118px;
+  gap: 12px;
+  padding: 4px 14px 0;
+}
+
+.ticket-row-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  justify-self: start;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: #898f95;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ticket-row-header > button:nth-last-child(-n+2) { justify-self: end; }
+.ticket-row > .date { text-align: right; }
+
+/* Pikasuodattimet sarakeotsikoiden yläpuolella: päällä oleva suodatin näkyy tummana. */
+.filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 8px; min-height: 28px; }
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 5px 4px 11px;
+  border-radius: 99px;
+  background: #171c22;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filter-chip small {
+  color: #aab0b6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.filter-chip button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.filter-chip button:hover { background: rgba(255, 255, 255, .3); }
+
+/* Suodatin- ja hakupainike sarakeotsikoiden yläpuolella; samaa harmaata tyyliä kuin otsikot. */
+.filter-toggle {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #898f95;
+}
+
+.filter-toggle:hover { background: #e6e7e9; color: #191f25; }
+.filter-toggle.active { color: #191f25; }
+.filter-toggle svg { width: 15px; height: 15px; }
+.filter-toggle + .filter-chip { margin-left: 6px; }
+
+/* Sarakekohtaiset hakukentät samassa ruudukossa kuin otsikot ja rivit. */
+.ticket-row-search {
+  display: grid;
+  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) 150px 118px 118px;
+  gap: 12px;
+  padding: 0 14px;
+}
+
+.ticket-row-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #d9dbde;
+  border-radius: 7px;
+  background: #fff;
+  color: #1d2329;
+  font: inherit;
+  font-size: 12px;
+}
+
+.ticket-row-search input:focus { outline: 2px solid #9bd3ff; border-color: #9bd3ff; }
+
+@media (max-width: 700px) {
+  .ticket-row-search { display: none; }
+}
+
+/* Piste kertoo, että jokin suodatin on päällä, vaikka palkki olisi piilossa. */
+.filter-toggle i {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3f7fbf;
+  border: 1px solid #f5f6f3;
+}
+
+.ticket-row-header button:hover,
+.ticket-row-header button.active { color: #191f25; }
+
+.ticket-row-header svg { width: 12px; height: 12px; opacity: .45; transition: transform .15s ease; }
+.ticket-row-header button.active svg { opacity: 1; }
+.ticket-row-header svg.up { transform: rotate(180deg); }
+
+@media (max-width: 700px) {
+  .ticket-row-header { display: none; }
+}
+
+.ticket-row:hover,
+.ticket-row:focus-visible {
+  border-color: #bdc6d0;
+  box-shadow: 0 5px 14px rgba(21, 27, 34, .05);
+  outline: none;
+}
+
+/* Merkki tiketissä, johon asukas on vastannut eikä hänelle ole vielä vastattu. */
+.new-reply,
+.meta .new-reply {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: #3f7fbf;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.meta .new-reply { margin-left: 0; }
+
+/* Myöhässä oleva tehtävä: sama merkki kuin uudella viestillä, mutta varoitusvärillä. */
+.new-reply.overdue { background: #b3402f; }
+.queue-summary > button.overdue { border-color: #e0b4ad; }
+.queue-summary > button.overdue strong { color: #b3402f; }
+
+.fact-due { display: flex; align-items: center; gap: 4px; }
+.fact-due input {
+  margin: -4px 0 -4px -7px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+}
+.fact-due input:hover:not(:disabled),
+.fact-due input:focus { border-color: #cfd4d9; background: #fff; outline: 0; }
+
+/* Asukkaan tietojen vienti ja poisto lomakkeen lopussa, erillään tavallisesta tallennuksesta. */
+.privacy-actions { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e6e7e9; }
+.privacy-actions h3 { margin: 0 0 4px; font-size: 13px; }
+.privacy-actions .reply-hint { margin: 0 0 10px; }
+
+/* Taloyhtiö näkyy päätösjonon kortissa ensimmäisenä ja muita merkkejä selvemmin. */
+.ticket-company {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 99px;
+  background: #171c22;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ticket-company .tab-icon { width: 13px; height: 13px; color: #9bd3ff; }
+
+.ticket-number {
+  color: #6e7680;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.drawer-ticket-number {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.ticket-row-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ticket-row-main strong,
+.ticket-row-main span,
+.ticket-row-contact {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-row-main strong {
+  color: #232a31;
+  font-size: 12px;
+}
+
+.ticket-row-main span,
+.ticket-row-contact {
+  color: #7a8087;
+  font-size: 10px;
+}
+
+.ticket-main {
+  display: grid;
+  grid-template-columns: 1.35fr .9fr;
+  gap: 18px;
+}
+
+.ticket-main h2 { margin: 0 0 6px; font-size: 17px; }
+.ticket-main p { margin: 0; line-height: 1.45; color: #5c6269; font-size: 13px; }
+
+.meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.meta span {
+  padding: 4px 7px;
+  background: #f7f8f7;
+  border-radius: 6px;
+  color: #666c72;
+  font-size: 10px;
+}
+
+.draft-pill {
+  background: #e9f0f8;
+  color: #2d4867;
+  border: 1px solid #c9d9ec;
+}
+
+.recommendation {
+  background: #f3f5f8;
+  border: 1px solid #dfe5eb;
+  border-radius: 9px;
+  padding: 10px 11px;
+}
+
+.recommendation small {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: #6e7680;
+}
+
+.recommendation strong {
+  display: block;
+  font-size: 11px;
+  margin: 6px 0;
+}
+
+.recommendation p { font-size: 11px; color: #585e65; line-height: 1.45; }
+
+.actions, .drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.compact-actions {
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+.actions button, .drawer-actions button {
+  border: 1px solid #d9dcdf;
+  background: white;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12px;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.actions button:hover, .drawer-actions button:hover {
+  border-color: #babfc4;
+  box-shadow: 0 4px 12px rgba(20, 25, 30, .05);
+}
+
+.actions button.primary, .drawer-actions button.primary {
+  background: #171c22;
+  color: white;
+  border-color: #171c22;
+}
+
+.ticket-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.ticket-form label {
+  display: grid;
+  gap: 8px;
+  color: #4b535d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.required-label {
+  color: #9c2b1f;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.ticket-form input,
+.ticket-form select,
+.ticket-form textarea {
+  width: 100%;
+  border: 1px solid #dfe3e7;
+  border-radius: 10px;
+  background: #f9faf8;
+  padding: 10px 12px;
+  font: inherit;
+  color: #1d2329;
+}
+
+.ticket-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.ticket-form input:focus,
+.ticket-form select:focus,
+.ticket-form textarea:focus {
+  outline: 2px solid rgba(111, 130, 152, .2);
+  border-color: #c3ccd7;
+}
+
+.form-drawer {
+  width: min(560px, 90vw);
+}
+
+/* Asukkaan käsittelynäkymä: sama vaaleansininen pohja kuin tiketin tiedoissa. */
+.resident-drawer { background: #eef1f5; }
+.resident-drawer .ticket-form input { background: #fff; }
+
+.resident-row.clickable { cursor: pointer; }
+.resident-row.clickable:hover, .resident-row.clickable:focus-visible { background: #f3f6f9; }
+
+.skip-overlay {
+  z-index: 2;
+  justify-content: center;
+  align-items: center;
+}
+
+.skip-drawer {
+  width: min(460px, 90vw);
+  height: auto;
+  min-height: 260px;
+  margin: 24px auto;
+  border-radius: 16px;
+}
+
+.empty {
+  padding: 50px 32px;
+  background: white;
+  border-radius: 14px;
+  color: #717880;
+  text-align: center;
+  border: 1px solid #e4e6e9;
+  font-weight: 600;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 16, 20, .28);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(880px, 95vw);
+  height: 100%;
+  overflow-y: auto;
+  background: #fff;
+  padding: 34px;
+  box-shadow: -20px 0 50px rgba(0,0,0,.12);
+  position: relative;
+}
+
+/* Tikettinäkymä: tiedot vasemmalla, aikajana omana palstanaan oikealla. */
+.drawer.drawer-split {
+  width: min(1320px, 96vw);
+  padding: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.drawer-main {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 34px;
+  background: #eef1f5;
+}
+
+/* Tikettinäkymän yläpalkki: tiketin numero ja tila vasemmalla, toimintonapit oikealla. */
+.drawer-topbar {
+  position: sticky;
+  top: -34px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  margin: -34px -34px 6px;
+  padding: 12px 34px;
+  background: #eef1f5;
+  border-bottom: 1px solid #d9dde2;
+}
+
+.drawer-topbar-number { color: #4b535d; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.drawer-topbar .drawer-actions { margin-top: 0; }
+.drawer-topbar-tools { display: flex; align-items: center; gap: 8px; }
+
+/* Liitteet-pudotusvalikko yläpalkissa */
+.attachments-menu > button {
+  border: 1px solid #d9dcdf;
+  background: white;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.attachments-menu > button:hover { border-color: #babfc4; }
+.assign-picker.attachments-menu > button svg.clip { width: 14px; height: 14px; color: #4b535d; transform: none; }
+.attachments-menu > button b { min-width: 18px; padding: 1px 6px; border-radius: 99px; background: #e5ecf3; color: #37475a; font-size: 11px; text-align: center; }
+.attachments-menu .assign-menu { width: 320px; max-height: 340px; overflow-y: auto; }
+
+.attachments-menu .assign-menu a {
+  display: grid;
+  gap: 1px;
+  padding: 8px;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.attachments-menu .assign-menu a:hover, .attachments-menu .assign-menu a:focus-visible { background: #f3f6f9; outline: none; }
+.attachments-menu .assign-menu a strong { font-size: 13px; color: #1d2329; overflow-wrap: anywhere; }
+.attachments-menu .assign-menu a em { font-style: normal; font-size: 11px; color: #747a80; }
+/* Valikko aukeaa yläpalkista alaspäin. */
+.drawer-topbar .assign-menu { bottom: auto; top: calc(100% + 8px); }
+
+.drawer-main .drawer-section { border-top-color: #d9dde2; }
+.drawer-main .draft-editor { background: transparent; border-color: #cdd3da; box-shadow: none; }
+
+.drawer-timeline {
+  flex: 0 0 40%;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 34px 28px;
+  background: #fff;
+  border-left: 1px solid #dfe3e7;
+}
+
+.drawer-timeline h3 { margin: 0 0 12px; font-size: 13px; }
+
+/* Aikajanan sähköpostit: saapuneet ja lähteneet omina kortteinaan, tiivistettävissä väkäsestä. */
+.message.inbound,
+.message.outbound {
+  padding: 10px 12px 11px;
+  border: 1px solid #e2e4e6;
+  border-left-width: 3px;
+  border-radius: 0 10px 10px 0;
+  background: #f7f8f9;
+}
+
+/* Saapuneet vihreän sävyissä, lähetetyt sinisen: suunnan erottaa yhdellä vilkaisulla. */
+.message.inbound { background: #f0f8f3; border-color: #cfe6d8; border-left-color: #3f9a6b; }
+.message.inbound .message-direction { background: #3f9a6b; color: #fff; }
+.message.inbound .message-quoted-toggle { color: #2a7550; }
+.message.inbound p.message-quoted { border-left-color: #cfe6d8; }
+.message.outbound { background: #eaf2fb; border-color: #cfdff0; border-left-color: #3f7fbf; }
+
+.message-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.message-head small { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.message-head svg { flex: none; width: 14px; height: 14px; color: #747a80; transition: transform .15s ease; }
+.message.collapsed .message-head svg { transform: rotate(-90deg); }
+
+.message-direction {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: #dfe3e7;
+  color: #37475a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.message.outbound .message-direction { background: #3f7fbf; color: #fff; }
+
+.message.inbound strong,
+.message.outbound strong { margin: 8px 0 3px; font-size: 13px; color: #191f25; }
+
+.message.inbound p,
+.message.outbound p { font-size: 13px; line-height: 1.6; color: #272e35; overflow-wrap: anywhere; }
+
+/* Vastaa-painike saapuneen viestin oikeassa reunassa; vastaus lähtee saman viestin ketjuun. */
+.message { position: relative; }
+.message.inbound .message-head { padding-right: 86px; }
+
+.message-reply {
+  position: absolute;
+  top: 7px;
+  right: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 7px;
+  border: 1px solid #cdd3da;
+  border-radius: 99px;
+  background: #fff;
+  color: #37475a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.message-reply svg { width: 12px; height: 12px; }
+.message-reply:hover { border-color: #3f7fbf; color: #28548f; }
+.message.inbound .message-head svg { position: absolute; top: 12px; right: 12px; }
+.message.replying { border-color: #3f7fbf; box-shadow: 0 0 0 2px rgba(63, 127, 191, .18); }
+
+.reply-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 9px;
+  background: #e7f0ff;
+  color: #28548f;
+  font-size: 12px;
+}
+
+.reply-target button {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.reply-target button:hover { background: rgba(40, 84, 143, .12); }
+
+/* Tiivistettynä näkyy vain aihe ja viestin ensimmäinen rivi. */
+.message.collapsed strong { margin-top: 6px; }
+.message.collapsed p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #747a80; font-size: 12px; }
+
+@media (max-width: 900px) {
+  .drawer.drawer-split { display: block; overflow-y: auto; }
+  .drawer-main, .drawer-timeline { overflow: visible; }
+  .drawer-timeline { border-left: 0; border-top: 1px solid #dfe3e7; }
+}
+
+/* Ilmoittajan hakukenttä näyttää samalta kuin muut tiketin tietokentät. */
+/* Muokattavat tietokentät (tyyppi, prioriteetti) näyttävät tekstiltä, kunnes niihin osoittaa. */
+.fact-dropdown { position: relative; display: inline-block; }
+
+.fact-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -4px 0 -4px -7px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.fact-dropdown-trigger:hover,
+.fact-dropdown-trigger[aria-expanded="true"] { border-color: #cdd3da; }
+
+.fact-dropdown-trigger.priority {
+  margin-left: 0;
+  padding: 4px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.fact-dropdown-trigger svg { width: 12px; height: 12px; opacity: .6; transition: transform .15s ease; }
+.fact-dropdown-trigger svg.up { transform: rotate(180deg); }
+
+/* Avautuva lista: tiketin taustan värinen, pyöristetty ja kevyesti varjostettu. */
+.fact-dropdown ul {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -7px;
+  z-index: 5;
+  min-width: 190px;
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+  background: #eef1f5;
+  border: 1px solid #cdd3da;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(13, 16, 20, .16);
+}
+
+.fact-dropdown li button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #272e35;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.fact-dropdown li button:hover,
+.fact-dropdown li button:focus-visible { background: #dfe3e7; outline: none; }
+.fact-dropdown li button.selected { font-weight: 700; }
+.fact-dropdown li button svg { width: 14px; height: 14px; color: #3f7fbf; }
+
+.drawer-main > h2 { font-size: 34px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 10px; }
+
+.ai-reason {
+  margin: 12px 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.ai-reason.found { background: #e7f0ff; border-color: #c5d5e7; color: #28548f; }
+.ai-reason.missing { background: #fff3d6; border-color: #e9c46a; color: #7a5200; }
+.ai-reason.created { background: #e3f4e8; border-color: #a9d6b6; color: #1f5c33; }
+.ai-reason.created::before { content: "✓ "; }
+.ai-reason.missing::before { content: "⚠ "; }
+.ai-reason.missing { position: relative; padding-right: 40px; }
+
+.ai-reason-close {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.ai-reason-close:hover { background: rgba(122, 82, 0, .12); }
+
+.ticket-description { margin: 18px 0 4px; }
+
+.ticket-description h3 {
+  margin: 0 0 5px;
+  color: #898f95;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ticket-description p {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #cdd3da;
+  border-radius: 10px;
+  background: transparent;
+  color: #1d2329;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 120px;
+  max-height: 520px;
+  overflow-y: auto;
+  resize: vertical;
+}
+
+.fact-right { grid-column: 2; }
+.fact-number { grid-column: 1 / -1; }
+.ticket-facts .fact-number dd { font-weight: 800; font-variant-numeric: tabular-nums; }
+.drawer-main > h2:first-child { margin-top: 0; }
+.fact-search { position: relative; display: flex; align-items: center; gap: 4px; }
+
+.fact-search input {
+  flex: 0 1 220px;
+  min-width: 0;
+  margin: -4px 0 -4px -7px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.fact-search input:hover { border-color: #d9dde2; }
+.fact-search input:focus { border-color: #d9dde2; outline: 2px solid #9bd3ff; outline-offset: 0; }
+
+.fact-search-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: -4px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #666c72;
+}
+
+.fact-search-button:hover { background: #dfe3e7; color: #191f25; }
+.fact-search-button svg { width: 15px; height: 15px; }
+
+.fact-search ul {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -7px;
+  z-index: 5;
+  width: min(320px, 100%);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #eef1f5;
+  border: 1px solid #cdd3da;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(13, 16, 20, .14);
+}
+
+.fact-search li {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.fact-search li:hover { background: #dfe3e7; }
+.fact-search li span { color: #898f95; font-size: 11px; font-weight: 400; }
+.fact-search li.empty-option { color: #898f95; cursor: default; }
+.fact-search li.empty-option:hover { background: none; }
+.fact-search li.clear-option { color: #9c2b1f; border-top: 1px solid #d9dde2; border-radius: 0 0 7px 7px; }
+.ticket-facts dd { overflow-wrap: anywhere; }
+
+.close {
+  position: absolute;
+  right: 22px;
+  top: 18px;
+  border: 0;
+  background: transparent;
+  font-size: 30px;
+  color: #666c72;
+}
+
+.drawer h2 { font-size: 27px; margin: 14px 0 4px; }
+.drawer-section { border-top: 1px solid #e6e7e9; margin-top: 25px; padding-top: 20px; }
+.drawer-section h3 { margin: 0 0 12px; font-size: 13px; }
+
+.draft-editor {
+  width: 100%;
+  min-height: 170px;
+  border: 1px solid #dfe3e7;
+  border-radius: 12px;
+  resize: vertical;
+  background: linear-gradient(180deg, #fafcf9 0%, #f3f5f8 100%);
+  color: #1c232a;
+  padding: 14px 15px;
+  font: inherit;
+  line-height: 1.7;
+  box-shadow: inset 0 1px 2px rgba(18, 23, 29, .04);
+}
+
+.draft-editor:focus {
+  outline: 2px solid rgba(111, 130, 152, .2);
+  border-color: #c3ccd7;
+}
+
+.draft-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.draft-actions button {
+  border: 1px solid #d9dcdf;
+  background: white;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.draft-actions button.primary {
+  background: #171c22;
+  color: white;
+  border-color: #171c22;
+}
+
+.draft-actions button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.reply-hint {
+  margin: 10px 0 0;
+  color: #898f95;
+  font-size: 11px;
+}
+
+.send-error {
+  margin: 8px 0 0;
+  color: #b3402f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.saved-indicator {
+  color: #4d627a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.message {
+  border-left: 3px solid #dcdfe2;
+  padding: 7px 0 7px 12px;
+  margin: 10px 0;
+}
+
+.message.outbound { border-left-color: #69819c; }
+.message.note { border-left-color: #d9b44a; background: #fdf9ec; padding-right: 12px; border-radius: 0 8px 8px 0; }
+.message p { white-space: pre-wrap; margin: 4px 0 0; }
+
+.ticket-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+  margin: 18px 0 0;
+}
+
+.ticket-facts dt {
+  color: #898f95;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ticket-facts dd { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
+
+.reporter, .attachment {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 12px;
+}
+
+.reporter span, .attachment span { color: #898f95; font-size: 11px; text-align: right; }
+.attachment { color: inherit; text-decoration: none; }
+.attachment:hover strong { text-decoration: underline; }
+
+.reporter { align-items: center; }
+.reporter-meta { display: flex; align-items: center; gap: 10px; }
+
+.reporter-meta button {
+  border: 0;
+  background: transparent;
+  color: #b3402f;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.reporter-link { display: flex; gap: 8px; margin-top: 12px; }
+
+.reporter-link select {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #dfe3e7;
+  border-radius: 7px;
+  background: white;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.reporter-link button {
+  border: 1px solid #d9dcdf;
+  background: white;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.reporter-link button:disabled, .reporter-meta button:disabled { opacity: .45; cursor: not-allowed; }
+
+.drawer-empty { margin: 0; color: #898f95; font-size: 12px; }
+
+.timeline-event {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0 6px 15px;
+  color: #666c72;
+  font-size: 11px;
+}
+
+.timeline-event small { color: #898f95; font-size: 10px; text-align: right; }
+
+.note-form { display: grid; gap: 8px; margin-top: 14px; justify-items: start; }
+
+.note-form textarea {
+  width: 100%;
+  border: 1px solid #dfe3e7;
+  border-radius: 10px;
+  resize: vertical;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.note-form button {
+  border: 1px solid #d9dcdf;
+  background: white;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.note-form button:disabled { opacity: .45; cursor: not-allowed; }
+.message small, .audit span { display: block; color: #898f95; font-size: 10px; }
+.message strong { display: block; margin: 4px 0; font-size: 12px; }
+.message p { font-size: 12px; line-height: 1.5; }
+
+.audit {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 11px;
+}
+
+.audit { gap: 12px; }
+.audit span { white-space: nowrap; }
+
+.audit-email { margin: 0 0 8px; font-size: 12px; color: #4b535d; }
+.audit-email summary { cursor: pointer; color: #37475a; font-weight: 600; }
+
+.audit-email p {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #e2e4e6;
+  border-radius: 8px;
+  background: #f3f5f8;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.settings { max-width: 640px; }
+
+/* Asetukset: lomakkeet vasemmalla, käyttäjät oikealla. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(280px, 420px);
+  align-items: start;
+  gap: 16px;
+}
+
+.settings-users ul { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+
+.settings-users li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 0;
+  border-top: 1px solid #eeeff1;
+}
+
+.user-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #171c22;
+  color: #9bd3ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.settings-users li strong { display: block; font-size: 13px; color: #1d2329; }
+.settings-users li div span { display: block; color: #898f95; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.settings-users li em {
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: #e5ecf3;
+  color: #37475a;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.settings-users-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.settings-users-head button { padding: 7px 12px; font-size: 12px; }
+
+.settings-users li.clickable { cursor: pointer; margin: 0 -10px; padding: 9px 10px; border-radius: 8px; }
+.settings-users li.clickable:hover, .settings-users li.clickable:focus-visible { background: #f3f6f9; outline: none; }
+.resident-drawer .ticket-form select { background: #fff; }
+
+.company .logout {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #9bd3ff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.company .logout:hover { text-decoration: underline; }
+
+/* Kirjautumissivu */
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #171c22;
+}
+
+.login-card {
+  width: min(400px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 34px 32px 30px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+}
+
+.login-card img { height: 54px; justify-self: start; padding: 10px 14px; border-radius: 12px; background: #171c22; }
+.login-card h1 { margin: 6px 0 0; font-size: 24px; letter-spacing: -.02em; }
+.login-card > p { margin: -8px 0 4px; color: #717880; font-size: 13px; }
+.login-card label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: #4b535d; }
+
+.login-card input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #dfe3e7;
+  border-radius: 10px;
+  background: #f9faf8;
+  color: #1d2329;
+  font: inherit;
+  font-weight: 400;
+}
+
+.login-card input:focus { outline: 2px solid #9bd3ff; border-color: #9bd3ff; }
+
+.login-card button {
+  margin-top: 4px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #171c22;
+  color: #fff;
+  font-weight: 700;
+}
+
+.login-card button:disabled { opacity: .5; cursor: not-allowed; }
+.login-card .send-error { margin: 0; }
+
+.settings-card.settings-users .reply-hint { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #eeeff1; }
+
+@media (max-width: 1100px) {
+  .settings-layout { grid-template-columns: 1fr; }
+}
+
+.settings-card {
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-top: 0;
+}
+
+.settings-card h2 { font-size: 16px; margin: 0; }
+.settings-card h2:not(:first-child) { margin-top: 12px; }
+.settings-card p { font-size: 13px; line-height: 1.5; margin: 10px 0 0; }
+.settings-card .reply-hint { margin: -8px 0 0; font-size: 11px; }
+
+.residents-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #717880;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.resident-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 110px;
+  align-items: center;
+  gap: 16px;
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 13px;
+}
+
+.resident-row span { color: #646a71; overflow-wrap: anywhere; }
+.resident-row.with-company { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr) 110px; }
+.resident-row > .type { justify-self: start; }
+
+/* Asukaslistan sarakeotsikot samassa ruudukossa kuin rivit. */
+.ticket-row-header.resident-row-header {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 110px;
+  gap: 16px;
+  padding: 4px 19px 0;
+}
+
+.ticket-row-header.resident-row-header.with-company {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr) 110px;
+}
+
+.ticket-row-header.resident-row-header > button:nth-last-child(-n+2) { justify-self: start; }
+
+@media (max-width: 900px) {
+  .ticket-row-header.resident-row-header { display: none; }
+}
+.residents-toolbar .filter-chips { padding: 0; }
+
+.ticket-filters input {
+  min-width: 240px;
+  border: 1px solid #dfe2e5;
+  border-radius: 7px;
+  background: #fafbf9;
+  padding: 8px 10px;
+  color: #272e35;
+  font: inherit;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .resident-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+.knowledge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.knowledge-card {
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.knowledge-card span {
+  font-size: 9px;
+  font-weight: 900;
+  color: #848a90;
+  letter-spacing: .08em;
+}
+
+.knowledge-card h2 { font-size: 18px; margin: 10px 0; }
+.knowledge-card p { color: #646a71; line-height: 1.6; font-size: 13px; }
+
+@media (max-width: 900px) {
+  .sidebar { width: 190px; }
+  .main { padding: 28px 20px; }
+  .ticket-main { grid-template-columns: 1fr; }
+  .ticket-row {
+    grid-template-columns: 56px minmax(160px, 1fr) auto auto;
+  }
+  .ticket-row-contact,
+  .ticket-row .date { display: none; }
+  .knowledge-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 650px) {
+  .app { display: block; }
+  .sidebar { width: auto; }
+  .company { display: none; }
+  nav { grid-template-columns: repeat(3, 1fr); }
+  nav button { text-align: center; }
+  nav button.nav-sub { margin-left: 0; }
+  .queue-summary { display: grid; grid-template-columns: 1fr 1fr; }
+  .queue-summary > div { min-width: 0; }
+  .ticket-filters { align-items: stretch; }
+  .ticket-filters label,
+  .ticket-filters select { min-width: 0; width: 100%; }
+  .ticket-filters label { flex: 1 1 100%; }
+  .ticket-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 9px;
+  }
+  .ticket-row .type,
+  .ticket-row .status-badge { display: none; }
+  .ticket-row-main span { max-width: 100%; }
+}
+
+/* Raportit */
+.report-period { display: grid; gap: 5px; color: #747a80; font-size: 10px; font-weight: 700; }
+.report-period .card-tabs { margin-top: 0; gap: 6px; }
+.report-period .card-tabs button { padding: 7px 14px; font-size: 12px; }
+
+.report-card {
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  padding: 20px 22px;
+  min-width: 0;
+}
+
+.report-card h2 { margin: 0; font-size: 16px; color: #191f25; }
+.report-card > .muted { margin: 6px 0 16px; font-size: 13px; line-height: 1.5; max-width: 720px; }
+.report-card .table-card { border-radius: 10px; }
+
+.report-tag {
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: #e5ecf3;
+  color: #37475a;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.report-ai-head { margin-bottom: 10px; }
+.report-ai-head h2 { margin: 0; }
+.report-topics td { vertical-align: top; }
+.report-topics td span { display: block; margin-top: 3px; color: #747a80; font-size: 12px; line-height: 1.45; }
+.report-topics td:first-child { min-width: 220px; }
+.report-topics td:last-child { min-width: 240px; line-height: 1.45; }
+
+/* Moderni alasvetovalikko suodattimiin ja lomakkeisiin */
+.dropdown { position: relative; display: grid; gap: 5px; min-width: 170px; }
+.dropdown-label { color: #747a80; font-size: 10px; font-weight: 700; }
+.ticket-form .dropdown-label { color: #4b535d; font-size: 12px; }
+
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid #dfe2e5;
+  border-radius: 9px;
+  background: #fff;
+  color: #272e35;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.ticket-form .dropdown-trigger { padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 400; }
+.dropdown-trigger span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown-trigger:hover:not(:disabled) { border-color: #b8bdc2; }
+.dropdown-trigger[aria-expanded="true"] { border-color: #3f7fbf; box-shadow: 0 0 0 3px rgba(63, 127, 191, .16); }
+.dropdown-trigger:disabled { opacity: .5; cursor: not-allowed; }
+.dropdown-trigger svg { flex: none; width: 13px; height: 13px; color: #747a80; transition: transform .15s ease; }
+.dropdown-trigger svg.up { transform: rotate(180deg); }
+
+.dropdown ul {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 6;
+  min-width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #dfe3e7;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(13, 16, 20, .16);
+}
+
+.dropdown li button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #272e35;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dropdown li button:hover, .dropdown li button:focus-visible { background: #eef1f5; outline: none; }
+.dropdown li button.selected { font-weight: 700; }
+.dropdown li button svg { width: 14px; height: 14px; color: #3f7fbf; }
+
+.calendar-toolbar { align-items: center; }
+.calendar-company { font-size: 13px; }
+.calendar-count { padding-bottom: 0; }
+.calendar-slot.hidden-slot { border: 1px solid transparent; background: transparent; }
+
+/* Vuorovarausten asetukset: kytkimet */
+.booking-settings-company { display: grid; gap: 6px; margin-top: 14px; font-size: 12px; font-weight: 700; color: #4b535d; }
+
+.booking-settings-company select {
+  border: 1px solid #dfe3e7;
+  border-radius: 10px;
+  background: #f9faf8;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 400;
+  color: #1d2329;
+}
+
+.booking-settings-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid #eeeff1; }
+.booking-settings-section h3 { margin: 0 0 4px; font-size: 14px; }
+
+.switch-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  cursor: pointer;
+}
+
+.switch-row strong { display: block; font-size: 13px; color: #1d2329; }
+.switch-row small { display: block; margin-top: 1px; color: #747a80; font-size: 12px; }
+.switch-row input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.switch-row i {
+  flex: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 99px;
+  background: #c9ccd0;
+  transition: background .15s ease;
+}
+
+.switch-row i::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(13, 16, 20, .25);
+  transition: transform .15s ease;
+}
+
+.switch-row input:checked + i { background: #3f7fbf; }
+.switch-row input:checked + i::after { transform: translateX(18px); }
+.switch-row input:focus-visible + i { outline: 2px solid #9bd3ff; outline-offset: 2px; }
+.switch-row input:disabled + i { opacity: .5; }
+
+.booking-settings-duration {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+}
+
+.booking-settings-duration strong { display: block; font-size: 13px; color: #1d2329; }
+.booking-settings-duration small { display: block; margin-top: 1px; color: #747a80; font-size: 12px; }
+
+.booking-settings-duration select {
+  flex: none;
+  border: 1px solid #dfe3e7;
+  border-radius: 9px;
+  background: #f9faf8;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: #1d2329;
+}
+
+.booking-settings-duration select:disabled { opacity: .5; }
+
+.price-input { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #4b535d; }
+
+.price-input input {
+  width: 92px;
+  border: 1px solid #dfe3e7;
+  border-radius: 9px;
+  background: #f9faf8;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: right;
+  color: #1d2329;
+}
+
+/* Laskutusraporttien välilehdet */
+.billing-tabs-head { margin-bottom: 16px; border-bottom: 1px solid #e2e4e6; }
+.billing-tabs-head h2 { margin: 0 0 10px; }
+.billing-tabs { display: flex; gap: 4px; }
+
+.billing-tabs button {
+  margin-bottom: -1px;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #717880;
+  cursor: pointer;
+}
+
+.billing-tabs button:hover { color: #1d2329; }
+.billing-tabs button.active { color: #2f6ba8; border-bottom-color: #3f7fbf; }
+.billing-tabs-head + .report-ai-head h2,
+.billing-tabs-head + h2 { font-size: 14px; }
+.billing-tabs { flex-wrap: wrap; }
+
+.billing-filter { flex-wrap: wrap; gap: 6px; margin: 12px 0 14px; }
+.billing-filter button { padding: 6px 12px; font-size: 12px; cursor: pointer; }
+
+/* Työtilaukset tikettinäkymässä */
+.work-orders .suggest-header .secondary { padding: 7px 12px; font-size: 12px; }
+
+.work-order {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dfe3e7;
+  border-left: 3px solid #3f7fbf;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.work-order.done { border-left-color: #9aa1a8; }
+.work-order-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+.work-order p { margin: 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.work-order small { color: #747a80; font-size: 11px; }
+.work-order .secondary { justify-self: start; margin-top: 4px; padding: 6px 12px; font-size: 12px; }
+
+.work-order-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.work-order-buttons .secondary:disabled { opacity: .5; cursor: not-allowed; }
+.work-order .work-order-form { margin-top: 10px; }
+
+/* Liitteen lisääminen Liitteet-valikosta */
+.attachments-add {
+  display: block;
+  margin-top: 4px;
+  padding: 9px 8px;
+  border-top: 1px solid #eeeff1;
+  color: #2f6ba8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.attachments-add:hover { background: #f3f6f9; border-radius: 0 0 10px 10px; }
+.attachments-add input { display: none; }
+.attachments-menu .assign-menu .send-error { margin: 4px 8px; color: #b3402f; }
+
+.work-order-status { border-radius: 99px; padding: 2px 9px; font-size: 11px; font-weight: 700; background: #e6f1fb; color: #24527f; }
+.work-order-status.done { background: #eceef0; color: #4b535d; }
+
+.work-order-form { margin-top: 12px; }
+.work-order-files { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; font-size: 13px; }
+.work-order-files legend { padding: 0; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: #4b535d; }
+.ticket-form .work-order-files label { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.ticket-form .work-order-files input { width: auto; }
+
+.report-card h2.report-subhead { margin: 24px 0 10px; font-size: 14px; }
+.report-topics td a { color: inherit; text-decoration: none; }
+.report-topics td a:hover strong { text-decoration: underline; }
+
+/* Tiedotteet */
+.announcement-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; }
+.draft-actions .danger { color: #b3402f; }
+
+.portal-announcements { display: grid; gap: 12px; }
+
+.portal-announcements article {
+  background: #fff;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  padding: 18px 22px;
+}
+
+.portal-announcements small { color: #747a80; font-size: 12px; }
+.portal-announcements h2 { margin: 4px 0 8px; font-size: 17px; }
+.portal-announcements p { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Sähköpostin lainattu aiempi viesti on oletuksena piilossa */
+.message-quoted-toggle {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #3f7fbf;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.message-quoted-toggle:hover { text-decoration: underline; }
+.message.collapsed .message-quoted-toggle, .message.collapsed .message-quoted { display: none; }
+.message p.message-quoted { margin-top: 6px; padding-left: 10px; border-left: 2px solid #d9dde2; color: #747a80; font-size: 12px; }
+
+/* Hätätapaus päätösjonossa */
+.ticket-card.emergency { border-color: #e0b4ad; border-left: 4px solid #c8402f; background: #fff8f7; }
+.ticket-card.emergency:hover { border-color: #c8402f; }
+
+/* Taloyhtiön muut isännöitsijät */
+.manager-picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.manager-picks legend { padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: #4b535d; }
+
+.ticket-form .manager-picks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid #dfe3e7;
+  border-radius: 99px;
+  background: #f9faf8;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.ticket-form .manager-picks label.checked { border-color: #3f7fbf; background: #eaf2fb; color: #28548f; font-weight: 600; }
+.ticket-form .manager-picks input { width: auto; margin: 0; accent-color: #3f7fbf; }
+
+/* Tiketin siirto toiselle isännöitsijälle */
+.assign-picker { position: relative; }
+.assign-picker > button { display: inline-flex; align-items: center; gap: 6px; }
+.assign-picker > button svg { width: 13px; height: 13px; color: #747a80; transition: transform .15s ease; }
+.assign-picker.open > button svg { transform: rotate(180deg); }
+.ticket-card:has(.assign-picker.open) { position: relative; z-index: 5; }
+
+.assign-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  display: grid;
+  gap: 2px;
+  width: 270px;
+  padding: 8px;
+  border: 1px solid #dfe3e7;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(20, 25, 30, .16);
+  text-align: left;
+}
+
+.assign-menu small { padding: 4px 8px 6px; color: #898f95; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.assign-menu p { margin: 0; padding: 6px 8px; color: #747a80; font-size: 12px; }
+
+.actions .assign-menu button, .drawer-actions .assign-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  font-weight: 400;
+  text-align: left;
+}
+
+.actions .assign-menu button:hover, .drawer-actions .assign-menu button:hover,
+.assign-menu button:focus-visible { background: #f3f6f9; box-shadow: none; outline: none; }
+.assign-menu button.current { background: #eaf2fb; }
+.assign-menu .user-avatar { flex: none; width: 30px; height: 30px; font-size: 11px; }
+.assign-name { display: grid; min-width: 0; flex: 1; }
+.assign-name strong { font-size: 13px; color: #1d2329; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.assign-name em { font-style: normal; font-size: 11px; color: #747a80; }
+.assign-menu button > svg { flex: none; width: 16px; height: 16px; color: #3f7fbf; }
+
+.assignee-pill { background: #eef1f5; color: #37475a; }
+
+/* Kirjautumissivun linkit ja ilmoitus */
+.login-card button.login-link {
+  margin-top: 2px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: #2f6ba8;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.login-card button.login-link:hover { text-decoration: underline; background: none; }
+.login-notice { margin: 0; padding: 10px 12px; border-radius: 10px; background: #e6f1fb; color: #24527f; font-size: 12px; font-weight: 600; line-height: 1.5; }
+
+/* Asukkaan viestiketju portaalissa */
+.portal-thread { display: grid; gap: 14px; }
+.portal-thread-head h2 { margin: 0 0 4px; font-size: 20px; }
+.portal-thread-head p { margin: 0; font-size: 13px; }
+.portal-messages { display: grid; gap: 10px; }
+
+.portal-message {
+  max-width: 78%;
+  padding: 10px 14px;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.portal-message.mine { justify-self: end; background: #eaf2fb; border-color: #cfdff0; }
+.portal-message small { color: #747a80; font-size: 11px; }
+.portal-message p { margin: 4px 0 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.portal-thread-files { display: grid; gap: 4px; padding: 12px 16px; border: 1px solid #e2e4e6; border-radius: 12px; background: #fff; font-size: 13px; }
+.portal-thread-files a { color: #2f6ba8; text-decoration: none; }
+.portal-thread-files a:hover { text-decoration: underline; }
+.portal-thread-files small { color: #747a80; }
+.portal .back-link { cursor: pointer; }
+
+/* Gmail-tilin kortti */
+.gmail-card .draft-actions { margin-top: 14px; }
+.gmail-card .draft-actions .secondary { padding: 8px 14px; font-size: 12px; }
+.gmail-shared { color: #747a80; font-weight: 400; }
+.settings-card.gmail-card .reply-hint { margin: 10px 0 0; }
+
+/* Asetusten välilehdet */
+.settings-tabs { margin: 0 0 16px; }
+.settings-tabs button { cursor: pointer; }
+
+/* Muuttoilmoitukset ja jonot */
+.move-people { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.form-drawer h3 { margin: 18px 0 6px; font-size: 13px; }
+
+.move-new-residents { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.move-new-residents legend { padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: #4b535d; }
+.move-new-residents .secondary { justify-self: start; padding: 7px 12px; font-size: 12px; }
+.move-person { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
+
+.move-person button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #dfe3e7;
+  border-radius: 8px;
+  background: #fff;
+  color: #646a71;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.portal-queues { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+
+.portal-queues article {
+  display: grid;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+
+.portal-queues h2 { margin: 0; font-size: 17px; }
+.portal-queues p { margin: 0; font-size: 13px; }
+.portal-queues .secondary { justify-self: start; padding: 8px 14px; font-size: 12px; }
+.portal-queue-position { font-size: 15px !important; color: #1d2329; }
+.portal-queue-position strong { font-size: 22px; }
+
+.settings-users li:not(.clickable) { cursor: default; }
+
+@media (max-width: 700px) {
+  .move-person { grid-template-columns: 1fr auto; }
+  .move-person input[type="email"] { grid-column: 1; }
+}
+
+/* Tiivistettävän osion otsikko asetuksissa */
+.collapse-heading { margin: 0; }
+
+.collapse-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapse-head svg { flex: none; width: 16px; height: 16px; color: #8a9199; transition: transform .15s ease; }
+.collapse-head[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.collapse-head:hover svg { color: #3f7fbf; }
+.collapse-head:focus-visible { outline: 2px solid #9bd3ff; outline-offset: 3px; border-radius: 6px; }
+
+.report-ai-head .calendar-week strong { min-width: 130px; text-transform: capitalize; }
+.report-ai-head .calendar-week button:disabled { opacity: .4; cursor: not-allowed; }
+
+.ticket-form .repeat-choice label:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.report-ai-head .secondary { padding: 7px 12px; font-size: 12px; }
+
+/* Varauksen toistuvuuden valinta */
+.repeat-choice { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.repeat-choice legend { padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: #4b535d; }
+
+.ticket-form .repeat-choice label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #d9dde2;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.ticket-form .repeat-choice label:has(input:checked) { border-color: #3f7fbf; box-shadow: 0 0 0 2px rgba(63, 127, 191, .18); }
+.ticket-form .repeat-choice input { width: auto; margin: 2px 0 0; }
+.repeat-choice strong { display: block; font-size: 13px; color: #1d2329; }
+.repeat-choice small { display: block; margin-top: 2px; color: #747a80; font-size: 12px; font-weight: 400; }
+.booking-notice { margin: 0; }
+
+/* Asukasportaali */
+.portal { min-height: 100vh; }
+
+.portal-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  padding: 14px 32px;
+  background: #171c22;
+  color: #fff;
+}
+
+.portal-header img { height: 38px; }
+.portal-header nav { display: flex; gap: 6px; }
+.portal-header nav button { padding: 9px 14px; }
+
+.portal-user { margin-left: auto; display: grid; justify-items: end; gap: 1px; font-size: 12px; }
+.portal-user span { color: #aab0b6; font-size: 11px; }
+
+.portal-user button {
+  margin-top: 5px;
+  padding: 7px 12px;
+  border: 1px solid #3a434d;
+  border-radius: 8px;
+  background: #242c35;
+  color: #9bd3ff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.portal-user button:hover { background: #2e3843; border-color: #9bd3ff; }
+
+.portal-main { max-width: 1100px; margin: 0 auto; padding: 32px; display: grid; gap: 16px; }
+.portal-main h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+
+/* Asukkaan tiketit */
+.portal-tickets-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.portal-tickets-head p { margin: 0; font-size: 13px; }
+.portal-tickets-head .portal-new { flex: none; }
+.portal-new:disabled { opacity: .6; cursor: not-allowed; }
+.portal-sent { margin: 0; padding: 10px 14px; border-radius: 10px; background: #e6f1fb; color: #24527f; font-size: 13px; font-weight: 600; }
+
+.portal-ticket-form {
+  background: white;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  padding: 22px 24px;
+}
+
+.portal-ticket-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+.portal-new {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: #171c22;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.resident-row.portal-ticket { grid-template-columns: minmax(0, 1.6fr) auto minmax(0, 1fr) minmax(0, 1fr); }
+.portal-thread .message { margin: 0 0 10px; }
+.portal-thread .message-head { cursor: default; }
+.portal-thread .ticket-form textarea { background: #fff; }
+.calendar-slot.booked.other { border-color: #e2e4e6; border-left-color: #b8bdc2; background: #f1f2f3; color: #747a80; cursor: default; }
+
+/* Vuorokalenteri (sauna ja pyykkitupa) */
+.calendar-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px 22px;
+  padding: 12px;
+  border: 1px solid #e2e4e7;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.calendar-toolbar label { display: grid; gap: 5px; color: #747a80; font-size: 10px; font-weight: 700; }
+
+.calendar-toolbar select {
+  min-width: 190px;
+  border: 1px solid #dfe2e5;
+  border-radius: 7px;
+  background: #fafbf9;
+  padding: 8px 10px;
+  color: #272e35;
+  font: inherit;
+  font-size: 12px;
+}
+
+.calendar-week { display: flex; align-items: center; gap: 8px; }
+.calendar-week strong { min-width: 150px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.calendar-week button {
+  padding: 7px 11px;
+  border: 1px solid #d9dbde;
+  border-radius: 8px;
+  background: #fff;
+  color: #272e35;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.calendar-week button:hover { border-color: #9bd3ff; }
+.calendar-count { margin-left: auto; padding-bottom: 8px; color: #717880; font-size: 12px; font-weight: 600; }
+
+.calendar {
+  display: grid;
+  grid-template-columns: 64px repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  background: #fff;
+  overflow-x: auto;
+}
+
+.calendar-row { display: contents; }
+.calendar-day { padding: 4px 0 8px; text-align: center; border-bottom: 2px solid #eeeff1; }
+.calendar-day strong { display: block; font-size: 12px; text-transform: capitalize; }
+.calendar-day span { color: #898f95; font-size: 11px; }
+.calendar-day.today { border-bottom-color: #3f7fbf; }
+.calendar-day.today strong { color: #28548f; }
+
+.calendar-time {
+  display: grid;
+  align-items: center;
+  color: #747a80;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-slot {
+  min-height: 46px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 9px;
+  font-size: 11px;
+  text-align: left;
+  overflow: hidden;
+}
+
+.calendar-slot.free {
+  border: 1px dashed #d9dde2;
+  background: #fafbfc;
+  color: transparent;
+  font-weight: 700;
+  text-align: center;
+}
+
+.calendar-slot.free:hover:not(:disabled) { border-color: #3f7fbf; background: #eaf2fb; color: #28548f; }
+.calendar-slot.free:disabled { border-style: solid; border-color: #f1f2f3; background: #f7f8f9; cursor: default; }
+
+.calendar-slot.booked { border: 1px solid #c5d5e7; border-left: 3px solid #3f7fbf; background: #eaf2fb; color: #272e35; }
+.calendar-slot.booked:hover { border-color: #3f7fbf; }
+.calendar-slot.booked.past { opacity: .6; }
+.calendar-slot strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-slot span { color: #646a71; }
+
+.drawer-actions .danger { border-color: #e0b4ad; color: #9c2b1f; }
+.drawer-actions .danger:hover { background: #fbeae6; }
+
+/* Vastauksen liitteet */
+.reply-attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 2px; }
+.reply-attachments .send-error { flex-basis: 100%; margin: 0; }
+
+.attach-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px dashed #b8bdc2;
+  border-radius: 9px;
+  color: #37475a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.attach-button:hover { border-color: #3f7fbf; color: #28548f; }
+.attach-button svg { width: 14px; height: 14px; }
+.attach-button input { display: none; }
+
+.reply-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 6px 5px 10px;
+  border-radius: 9px;
+  background: #dfe5eb;
+  color: #272e35;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.reply-file small { color: #747a80; white-space: nowrap; }
+
+.reply-file button {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #4b535d;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.reply-file button:hover { background: rgba(21, 27, 34, .1); }
+
+/* Asetusten linkkikortti ja lokisivu */
+.settings-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .15s ease;
+}
+
+.settings-link:hover { border-color: #9bd3ff; }
+.settings-link > span { font-size: 20px; color: #717880; }
+
+/* Lokin hakukenttä: vasemmassa reunassa, selkeästi erottuva. */
+.log-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(520px, 100%);
+  justify-self: start;
+  padding: 0 14px;
+  border: 1.5px solid #b8bdc2;
+  border-radius: 11px;
+  background: #fff;
+  color: #4b535d;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.log-search:focus-within { border-color: #3f7fbf; box-shadow: 0 0 0 3px rgba(63, 127, 191, .18); }
+.log-search svg { flex: none; width: 17px; height: 17px; }
+
+.log-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #1d2329;
+  font: inherit;
+  font-size: 14px;
+}
+
+.log-search input::placeholder { color: #898f95; }
+
+.log-table td { vertical-align: top; }
+.log-table td:first-child { white-space: nowrap; }
+.log-table a { color: #28548f; text-decoration: none; }
+.log-table a:hover { text-decoration: underline; }
+.log-table .audit-email { margin: 6px 0 0; }
+
+/* CSV-tuonti */
+.csv-example {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid #d9dde2;
+  border-radius: 8px;
+  background: #fff;
+  color: #37475a;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.import-format { margin: 12px 0 4px; }
+.import-example { margin: 12px 0 4px; }
+
+.import-skipped { margin: 0; padding-left: 18px; color: #4b535d; font-size: 12px; line-height: 1.6; }
+.resident-drawer .ticket-form input[type="file"] { padding: 8px; }
+.resident-drawer .ticket-form .ai-reason { margin: 0; }
+
+/* Listojen sivutus */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 0 4px;
+  color: #717880;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pager button {
+  padding: 8px 14px;
+  border: 1px solid #d9dbde;
+  border-radius: 9px;
+  background: #fff;
+  color: #272e35;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pager button:hover:not(:disabled) { border-color: #9bd3ff; }
+.pager button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Toistuvan aiheen tietokortti */
+.topic-drawer > .report-tag { margin-left: 0; }
+.topic-drawer > h2 { margin-top: 10px; }
+.topic-drawer .drawer-section { border-top-color: #d9dde2; }
+.topic-text { margin: 0; font-size: 14px; line-height: 1.55; color: #272e35; }
+.topic-drawer .ticket-form textarea { background: #fff; min-height: 150px; }
+
+.topic-ticket {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 9px 10px;
+  margin: 0 -10px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.topic-ticket:hover { background: #dfe3e7; }
+.topic-ticket strong { display: block; font-size: 13px; }
+.topic-ticket small { display: block; margin-top: 2px; color: #747a80; font-size: 12px; line-height: 1.4; }
+
+.ai-button.topic-create {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 99px;
+  background: #171c22;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-button.topic-create:hover { background: #26303b; }
+
+.knowledge-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+
+.knowledge-tags span {
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: #e5ecf3;
+  color: #37475a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ai-reason.created a { color: inherit; font-weight: 700; }
+
+.report-chart { display: flex; gap: 8px; }
+
+.report-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 180px;
+  color: #898f95;
+  font-size: 10px;
+  text-align: right;
+  min-width: 14px;
+  transform: translateY(-5px);
+}
+
+.report-plot { flex: 1; min-width: 0; }
+
+.report-bars {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 180px;
+  border-bottom: 1px solid #d9dbde;
+  background: linear-gradient(#eeeff1, #eeeff1) top / 100% 1px no-repeat,
+    linear-gradient(#eeeff1, #eeeff1) center / 100% 1px no-repeat;
+}
+
+.report-bar-col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.report-bar-col:hover { background: rgba(21, 27, 34, .04); }
+
+.report-bar {
+  width: 100%;
+  max-width: 34px;
+  background: #3f7fbf;
+  border-radius: 4px 4px 0 0;
+}
+
+.report-bar-col:hover .report-bar { background: #2f6299; }
+
+.report-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: #171c22;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.report-bar-col:hover .report-tooltip { display: block; }
+.report-bar-col:nth-child(-n+3) .report-tooltip { left: 0; transform: none; }
+.report-bar-col:nth-last-child(-n+3) .report-tooltip { left: auto; right: 0; transform: none; }
+
+.report-labels { display: flex; gap: 2px; margin-top: 6px; }
+
+.report-labels span {
+  flex: 1;
+  min-width: 0;
+  color: #898f95;
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.report-rows { display: grid; gap: 10px; margin-top: 16px; }
+
+.report-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 32px 44px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #4b535d;
+}
+
+.report-row-track { height: 10px; }
+.report-row-fill { height: 100%; min-width: 2px; background: #3f7fbf; border-radius: 0 4px 4px 0; }
+.report-row strong { color: #191f25; text-align: right; }
+.report-row small { color: #898f95; text-align: right; }
+
+@media (max-width: 700px) {
+  .report-row { grid-template-columns: 96px minmax(0, 1fr) 28px 40px; gap: 8px; }
+}

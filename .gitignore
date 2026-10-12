@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+server/data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.tsbuildinfo
+.DS_Store
+
+# Gmailin OAuth-clientin tiedot ja kirjautumistunniste: salaisuuksia, eivät kuulu repoon.
+server/credentials.json
+server/token.json
