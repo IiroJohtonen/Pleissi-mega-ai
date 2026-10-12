@@ -1,0 +1,392 @@
+import path from "node:path";
+import express, { type Router } from "express";
+import { z } from "zod";
+import { companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket } from "../access.js";
+import { isAdmin } from "../auth.js";
+import { attachmentsDir, db } from "../db.js";
+import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now } from "../util.js";
+
+export const ticketsRouter: Router = express.Router();
+
+// Uusi saapunut tehtävä osoitetaan taloyhtiön vastuuisännöitsijälle. Tila ei muutu, joten
+// tehtävä näkyy edelleen päätösjonossa.
+export function assignToCompanyManager(ticketId: string, companyId: string) {
+  db.prepare("UPDATE tickets SET assignee_id = (SELECT manager_id FROM companies WHERE id = ?) WHERE id = ?")
+    .run(companyId, ticketId);
+}
+
+ticketsRouter.get("/tickets", (req, res) => {
+  const companyId = companyIdFromContext(req.query.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const rows = db.prepare(`
+    SELECT t.*, r.name AS resident_name, a.apartment_number, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    FROM tickets t
+    LEFT JOIN residents r ON r.id = t.resident_id
+    LEFT JOIN apartments a ON a.id = t.apartment_id
+    WHERE t.company_id = ?
+    ORDER BY
+      CASE t.priority
+        WHEN 'emergency' THEN 1
+        WHEN 'urgent' THEN 2
+        WHEN 'normal' THEN 3
+        ELSE 4
+      END,
+      t.created_at DESC
+  `).all(companyId);
+  res.json(rows);
+});
+
+ticketsRouter.post("/tickets", (req, res) => {
+  const schema = z.object({
+    companyId: z.string().default(DEFAULT_COMPANY_ID),
+    subject: z.string().min(1),
+    summary: z.string().min(1),
+    type: z.string().default("Ilmoitus"),
+    priority: z.enum(["emergency", "urgent", "normal", "low"]).default("normal"),
+    residentName: z.string().optional(),
+    apartmentNumber: z.string().optional(),
+    sourceChannel: z.string().default("manual")
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error);
+
+  const companyId = companyIdFromContext(parsed.data.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const company = db.prepare("SELECT id FROM companies WHERE id = ?").get(companyId) as { id: string } | undefined;
+  if (!company) return res.status(404).json({ error: "Company not found" });
+
+  const ticketId = id("ticket");
+  const timestamp = now();
+  const apartment = parsed.data.apartmentNumber
+    ? db.prepare("SELECT id FROM apartments WHERE company_id = ? AND apartment_number = ?").get(companyId, parsed.data.apartmentNumber) as { id: string } | undefined
+    : undefined;
+  const resident = parsed.data.residentName
+    ? db.prepare("SELECT id FROM residents WHERE company_id = ? AND lower(name) = lower(?)").get(companyId, parsed.data.residentName) as { id: string } | undefined
+    : undefined;
+
+  db.prepare(`
+    INSERT INTO tickets
+    (id, company_id, apartment_id, resident_id, type, priority, status, subject, summary,
+     source_channel, ai_action, ai_reason, draft, created_at, updated_at, assignee_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    ticketId,
+    companyId,
+    apartment?.id ?? null,
+    resident?.id ?? null,
+    parsed.data.type,
+    parsed.data.priority,
+    "waiting_manager",
+    parsed.data.subject,
+    parsed.data.summary,
+    parsed.data.sourceChannel,
+    "human",
+    "Manuaalinen tehtävä",
+    "",
+    timestamp,
+    timestamp,
+    // Käsin luotu tehtävä on luojansa käsittelyssä.
+    res.locals.user?.id ?? null
+  );
+
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"),
+    ticketId,
+    "isannoitsija",
+    "ticket_created_manual",
+    JSON.stringify({ subject: parsed.data.subject, source_channel: parsed.data.sourceChannel }),
+    timestamp
+  );
+
+  res.status(201).json({ ok: true, ticketId, status: "waiting_manager" });
+});
+
+ticketsRouter.get("/my-tickets", (req, res) => {
+  const companyId = companyIdFromContext(req.query.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const rows = db.prepare(`
+    SELECT t.*, r.name AS resident_name, a.apartment_number, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    FROM tickets t
+    LEFT JOIN residents r ON r.id = t.resident_id
+    LEFT JOIN apartments a ON a.id = t.apartment_id
+    WHERE t.company_id = ?
+      -- Myös kolmatta osapuolta (esim. huoltoyhtiötä) odottava tehtävä pysyy käsittelijänsä omissa.
+      AND t.status IN ('waiting_manager', 'waiting_third_party')
+      AND t.assignee_id = ?
+    ORDER BY t.updated_at DESC
+  `).all(companyId, res.locals.user?.id ?? "");
+  res.json(rows);
+});
+
+ticketsRouter.get("/decision-queue", (req, res) => {
+  const companyId = companyIdFromContext(req.query.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const rows = db.prepare(`
+    SELECT t.*, r.name AS resident_name, a.apartment_number, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    FROM tickets t
+    LEFT JOIN residents r ON r.id = t.resident_id
+    LEFT JOIN apartments a ON a.id = t.apartment_id
+    WHERE t.company_id = ?
+      AND t.status = 'open'
+    ORDER BY t.priority = 'emergency' DESC, t.created_at DESC
+  `).all(companyId);
+  res.json(rows);
+});
+
+ticketsRouter.get("/tickets/:id", (req, res) => {
+  if (!getAuthorizedTicket(req.params.id)) {
+    return res.status(404).json({ error: "Ticket not found" });
+  }
+  const ticket = db.prepare(`
+    SELECT t.*, r.name AS resident_name, a.apartment_number, c.name AS company_name
+    FROM tickets t
+    LEFT JOIN residents r ON r.id = t.resident_id
+    LEFT JOIN apartments a ON a.id = t.apartment_id
+    LEFT JOIN companies c ON c.id = t.company_id
+    WHERE t.id = ?
+  `).get(req.params.id);
+
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+  const messages = db.prepare(
+    "SELECT * FROM messages WHERE ticket_id = ? ORDER BY created_at"
+  ).all(req.params.id);
+
+  const audit = db.prepare(
+    "SELECT * FROM audit_log WHERE ticket_id = ? ORDER BY created_at DESC"
+  ).all(req.params.id);
+
+  const reporters = db.prepare(`
+    SELECT r.id, r.name, r.email, a.apartment_number
+    FROM ticket_reporters tr
+    JOIN residents r ON r.id = tr.resident_id
+    LEFT JOIN apartments a ON a.id = r.apartment_id
+    WHERE tr.ticket_id = ?
+    ORDER BY r.name
+  `).all(req.params.id);
+
+  const apartments = db.prepare(`
+    SELECT a.id, a.apartment_number, a.address
+    FROM apartments a
+    WHERE a.id = (SELECT apartment_id FROM tickets WHERE id = ?)
+       OR a.id IN (
+         SELECT r.apartment_id
+         FROM ticket_reporters tr
+         JOIN residents r ON r.id = tr.resident_id
+         WHERE tr.ticket_id = ?
+       )
+    ORDER BY a.apartment_number
+  `).all(req.params.id, req.params.id);
+
+  const notes = db.prepare(
+    "SELECT * FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at"
+  ).all(req.params.id);
+
+  const attachments = db.prepare(
+    "SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at, filename"
+  ).all(req.params.id);
+
+  const workOrders = db.prepare(
+    "SELECT * FROM work_orders WHERE ticket_id = ? ORDER BY ordered_at DESC"
+  ).all(req.params.id);
+
+  // Huoltoyhtiön yhteystiedot työtilausta varten.
+  const contractor = db.prepare(
+    "SELECT maintenance_name AS name, maintenance_email AS email, maintenance_phone AS phone FROM companies WHERE id = (SELECT company_id FROM tickets WHERE id = ?)"
+  ).get(req.params.id);
+
+  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor });
+});
+
+ticketsRouter.put("/tickets/:id/fields", (req, res) => {
+  const schema = z.object({
+    type: z.string().trim().min(1).max(60).optional(),
+    priority: z.enum(["emergency", "urgent", "normal", "low"]).optional(),
+    // Käsittelijä: toimiston käyttäjän tunniste, null = ei käsittelijää.
+    assigneeId: z.string().nullable().optional(),
+    // Määräaika VVVV-KK-PP, null = ei määräaikaa.
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    actor: z.string().default("isannoitsija")
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista tyyppi, prioriteetti ja määräaika." });
+
+  const ticket = getAuthorizedTicket(req.params.id) as any;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+  if (parsed.data.assigneeId !== undefined && parsed.data.assigneeId !== (ticket.assignee_id ?? null)) {
+    const assignee = parsed.data.assigneeId
+      ? db.prepare("SELECT id, name FROM users WHERE id = ?").get(parsed.data.assigneeId) as { id: string; name: string } | undefined
+      : undefined;
+    if (parsed.data.assigneeId && !assignee) return res.status(404).json({ error: "Käyttäjää ei löytynyt." });
+    // Tehtävän saa antaa toiselle taloyhtiön vastuuisännöitsijä tai pääkäyttäjä. Jos taloyhtiöllä ei
+    // ole vastuuisännöitsijää, jakaminen on sallittu kaikille, jotta tehtävät eivät jää jumiin.
+    const company = db.prepare("SELECT manager_id FROM companies WHERE id = ?").get(ticket.company_id) as { manager_id: string | null };
+    if (company.manager_id && company.manager_id !== res.locals.user?.id && !isAdmin(res)) {
+      return res.status(403).json({ error: "Vain taloyhtiön vastuuisännöitsijä voi antaa tehtävän toiselle." });
+    }
+    const assignedAt = now();
+    // Käsittelijän vaihto ei muuta tilaa: avoin tehtävä pysyy päätösjonossa uuden käsittelijän nimissä.
+    db.prepare("UPDATE tickets SET assignee_id = ?, updated_at = ? WHERE id = ?").run(
+      assignee?.id ?? null, assignedAt, req.params.id
+    );
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+      id("audit"), req.params.id, res.locals.user?.name ?? parsed.data.actor, "ticket_assigned",
+      JSON.stringify({ to: assignee?.name ?? null }), assignedAt
+    );
+  }
+
+  const type = parsed.data.type ?? ticket.type;
+  const priority = parsed.data.priority ?? ticket.priority;
+  const dueDate = parsed.data.dueDate === undefined ? ticket.due_date ?? null : parsed.data.dueDate;
+  if (type === ticket.type && priority === ticket.priority && dueDate === (ticket.due_date ?? null)) {
+    return res.json({ ok: true });
+  }
+
+  const timestamp = now();
+  db.prepare("UPDATE tickets SET type = ?, priority = ?, due_date = ?, updated_at = ? WHERE id = ?").run(
+    type, priority, dueDate, timestamp, req.params.id
+  );
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"),
+    req.params.id,
+    parsed.data.actor,
+    "ticket_updated",
+    JSON.stringify({
+      type: type === ticket.type ? undefined : { from: ticket.type, to: type },
+      priority: priority === ticket.priority ? undefined : { from: ticket.priority, to: priority },
+      due_date: dueDate === (ticket.due_date ?? null) ? undefined : { from: ticket.due_date ?? null, to: dueDate }
+    }),
+    timestamp
+  );
+
+  res.json({ ok: true });
+});
+
+ticketsRouter.post("/tickets/:id/reporters", (req, res) => {
+  const schema = z.object({
+    residentId: z.string().min(1),
+    actor: z.string().default("isannoitsija")
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error);
+
+  const ticket = getAuthorizedTicket(req.params.id) as any;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+  const resident = db.prepare(
+    "SELECT id, name, apartment_id FROM residents WHERE id = ? AND company_id = ?"
+  ).get(parsed.data.residentId, ticket.company_id) as
+    | { id: string; name: string; apartment_id: string }
+    | undefined;
+  if (!resident) return res.status(404).json({ error: "Asukasta ei löytynyt tästä yhtiöstä." });
+
+  const timestamp = now();
+  const result = db.prepare(
+    "INSERT OR IGNORE INTO ticket_reporters (ticket_id, resident_id) VALUES (?, ?)"
+  ).run(req.params.id, resident.id);
+
+  // Tehtävällä on yksi ilmoittaja: yhteyshenkilö ja asunto seuraavat aina viimeksi valittua asukasta.
+  db.prepare(`
+    UPDATE tickets
+    SET resident_id = ?,
+        apartment_id = ?,
+        updated_at = ?
+    WHERE id = ?
+  `).run(resident.id, resident.apartment_id, timestamp, req.params.id);
+
+  if (result.changes > 0) {
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+      id("audit"),
+      req.params.id,
+      parsed.data.actor,
+      "reporter_linked",
+      JSON.stringify({ resident_id: resident.id, name: resident.name }),
+      timestamp
+    );
+  }
+
+  res.status(201).json({ ok: true });
+});
+
+ticketsRouter.delete("/tickets/:id/reporters/:residentId", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as any;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+  const result = db.prepare(
+    "DELETE FROM ticket_reporters WHERE ticket_id = ? AND resident_id = ?"
+  ).run(req.params.id, req.params.residentId);
+  if (result.changes === 0) return res.status(404).json({ error: "Reporter not linked" });
+
+  const timestamp = now();
+
+  if (ticket.resident_id === req.params.residentId) {
+    const removed = db.prepare("SELECT apartment_id FROM residents WHERE id = ?")
+      .get(req.params.residentId) as { apartment_id: string } | undefined;
+    const next = db.prepare(`
+      SELECT r.id, r.apartment_id
+      FROM ticket_reporters tr
+      JOIN residents r ON r.id = tr.resident_id
+      WHERE tr.ticket_id = ?
+      ORDER BY r.name
+      LIMIT 1
+    `).get(req.params.id) as { id: string; apartment_id: string } | undefined;
+
+    db.prepare("UPDATE tickets SET resident_id = ?, apartment_id = ? WHERE id = ?").run(
+      next?.id ?? null,
+      ticket.apartment_id === removed?.apartment_id ? next?.apartment_id ?? null : ticket.apartment_id,
+      req.params.id
+    );
+  }
+
+  db.prepare("UPDATE tickets SET updated_at = ? WHERE id = ?").run(timestamp, req.params.id);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"),
+    req.params.id,
+    typeof req.query.actor === "string" && req.query.actor ? req.query.actor : "isannoitsija",
+    "reporter_unlinked",
+    JSON.stringify({ resident_id: req.params.residentId }),
+    timestamp
+  );
+
+  res.json({ ok: true });
+});
+
+ticketsRouter.post("/tickets/:id/notes", (req, res) => {
+  const schema = z.object({
+    body: z.string().trim().min(1),
+    author: z.string().default("isannoitsija")
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error);
+
+  if (!getAuthorizedTicket(req.params.id)) {
+    return res.status(404).json({ error: "Ticket not found" });
+  }
+
+  const timestamp = now();
+  db.prepare("INSERT INTO ticket_notes VALUES (?, ?, ?, ?, ?)").run(
+    id("note"),
+    req.params.id,
+    parsed.data.author,
+    parsed.data.body,
+    timestamp
+  );
+  db.prepare("UPDATE tickets SET updated_at = ? WHERE id = ?").run(timestamp, req.params.id);
+
+  res.status(201).json({ ok: true });
+});
+
+ticketsRouter.get("/attachments/:id", (req, res) => {
+  const attachment = db.prepare("SELECT * FROM attachments WHERE id = ?")
+    .get(req.params.id) as { id: string; ticket_id: string; filename: string } | undefined;
+
+  if (!attachment || !getAuthorizedTicket(attachment.ticket_id)) {
+    return res.status(404).json({ error: "Attachment not found" });
+  }
+
+  res.download(path.join(attachmentsDir, attachment.id), attachment.filename, {
+    headers: { "Content-Type": "application/octet-stream" }
+  });
+});
