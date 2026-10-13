@@ -532,10 +532,10 @@ if (!(db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).so
   db.exec("ALTER TABLE residents ADD COLUMN erased_at TEXT");
 }
 
-// Muistutussähköpostit käsittelijöille (0 = pois) ja suljettujen tehtävien ja lokin säilytysaika
-// kuukausina (0 = säilytetään toistaiseksi).
+// Muistutussähköpostit käsittelijöille (0 = pois), suljettujen tehtävien ja lokin säilytysaika
+// kuukausina (0 = säilytetään toistaiseksi) ja saapuvan tehtävän prioriteetin arviointi AI:lla (0 = pois).
 const officeColumns = db.prepare("PRAGMA table_info(office_settings)").all() as { name: string }[];
-for (const column of ["reminder_emails", "retention_months"]) {
+for (const column of ["reminder_emails", "retention_months", "ai_priority"]) {
   if (!officeColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE office_settings ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`);
   }

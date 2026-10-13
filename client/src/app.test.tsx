@@ -186,6 +186,14 @@ describe("sovellus", () => {
     }
   });
 
+  it("näyttää toimiston asetuksissa AI-prioriteetin kytkimen pois päältä", async () => {
+    await renderApp(staff("Pääkäyttäjä"), "#/settings");
+    fireEvent.click(await screen.findByText("Isännöitsijätoimiston tiedot"));
+    const label = await screen.findByText("AI arvioi saapuvan tehtävän prioriteetin");
+    const toggle = label.closest("label")?.querySelector("input") as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+  });
+
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {
     const calls = mockApi();
     await renderApp(staff("Pääkäyttäjä"));

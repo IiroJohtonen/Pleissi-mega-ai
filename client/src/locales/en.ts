@@ -1147,5 +1147,9 @@ export const en: Record<string, string> = {
   "AI dokumentaatio ja sisäinen dokumentaatio": "AI documentation and internal documentation",
   "Valitse, onko tietue AI:n vai vain henkilökunnan käytössä.": "Choose whether the record is used by AI or by staff only.",
   "Sulje testi": "Close test",
-  "Testaa AI:n vastaus": "Test AI's answer"
+  "Testaa AI:n vastaus": "Test AI's answer",
+  "AI arvioi saapuvan tehtävän prioriteetin": "AI assesses the priority of incoming tickets",
+  "Pois päältä prioriteetti päätellään viestin avainsanoista.": "When off, the priority is inferred from keywords in the message.",
+  "AI lukee sähköpostilla tai asukasportaalista saapuvan viestin ja valitsee prioriteetin, joka määrää tehtävän määräajan. Hätätapaukseksi arvioitu tehtävä hälyttää vastuuisännöitsijän. Käsittelijä voi aina vaihtaa prioriteetin, ja jos AI ei vastaa, käytetään avainsanoja.": "AI reads a message arriving by email or from the resident portal and chooses the priority, which sets the ticket's due date. A ticket assessed as an emergency alerts the responsible manager. The assignee can always change the priority, and if AI does not respond, keywords are used.",
+  "AI ei ole käytössä palvelimella, joten prioriteetti päätellään toistaiseksi avainsanoista.": "AI is not enabled on the server, so for now the priority is inferred from keywords."
 };

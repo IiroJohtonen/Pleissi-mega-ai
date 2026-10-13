@@ -12,6 +12,7 @@ import {
   BOOKING_RESOURCES, bookingKindError, bookingRules, bookingTimes, createBookings, deleteBooking,
   MAX_BOOKING_OCCURRENCES
 } from "./bookings.js";
+import { aiPriorityEnabled } from "./office.js";
 import { assignToCompanyManager } from "./tickets.js";
 
 export const portalRouter: Router = express.Router();
@@ -43,7 +44,9 @@ portalRouter.post("/portal/tickets", async (req, res) => {
   const company = db.prepare("SELECT maintenance_emergency_phone FROM companies WHERE id = ?").get(resident.companyId) as
     | { maintenance_emergency_phone: string }
     | undefined;
-  const result = await triage(parsed.data.subject, parsed.data.description, [], company?.maintenance_emergency_phone || undefined);
+  const result = await triage(
+    parsed.data.subject, parsed.data.description, [], company?.maintenance_emergency_phone || undefined, aiPriorityEnabled()
+  );
 
   const ticketId = id("ticket");
   const timestamp = now();

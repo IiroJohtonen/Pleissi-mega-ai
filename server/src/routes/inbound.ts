@@ -6,6 +6,7 @@ import { db } from "../db.js";
 import { alertEmergency } from "../notify.js";
 import { id, now } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
+import { aiPriorityEnabled } from "./office.js";
 import { findResident } from "./residents.js";
 import { assignToCompanyManager } from "./tickets.js";
 
@@ -120,7 +121,8 @@ if (input.sourceMessageId) {
     input.subject,
     input.body,
     [],
-    company.maintenance_emergency_phone || undefined
+    company.maintenance_emergency_phone || undefined,
+    aiPriorityEnabled()
   );
   const source = knowledge.find(item => item.id === result.sourceId);
 

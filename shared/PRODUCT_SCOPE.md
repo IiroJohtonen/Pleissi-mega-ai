@@ -18,6 +18,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 - Vastausehdotus taloyhtiön tietopankin pohjalta, pyydettäessä
 - Raportti toistuvista aiheista ja ehdotukset uusiksi vakiotiedoiksi
 - Avainsanahaku varalla, kun AI-avainta ei ole
+- AI arvioi saapuvan tehtävän prioriteetin, kun pääkäyttäjä kytkee sen päälle toimiston asetuksista (oletuksena pois)
 
 **Taloyhtiöt ja asukkaat**
 - Taloyhtiöt, vastuuisännöitsijä ja muut isännöitsijät, huoltoyhtiön tiedot
@@ -46,7 +47,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 
 **Tehtävien käsittely**
 - Hätätapauksesta ei hälytetä huoltoyhtiön päivystystä, eikä hälytys kulje tekstiviestillä tai puhelulla
-- Saapuvan viestin luokittelu on avainsanahaku, ei AI
+- Saapuvan viestin tyyppi päätellään avainsanoista, ei AI:lla
 - "AI hoitaa" -päätös ei lähetä vastausta automaattisesti
 
 **Kanavat ja integraatiot**

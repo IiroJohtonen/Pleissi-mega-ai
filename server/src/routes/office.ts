@@ -9,12 +9,23 @@ export const officeRouter: Router = express.Router();
 // Isännöitsijätoimiston omat tiedot. Lukea saa jokainen käyttäjä, muuttaa vain pääkäyttäjä.
 const OFFICE_SELECT = `
   SELECT name, business_id AS businessId, address, phone,
-         reminder_emails AS reminderEmails, retention_months AS retentionMonths
+         reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority
   FROM office_settings WHERE id = 1
 `;
 
+// aiAvailable kertoo, onko palvelimelle asetettu AI-avain; ilman sitä AI-asetukset eivät vaikuta.
+function officeSettings() {
+  return { ...(db.prepare(OFFICE_SELECT).get() as Record<string, unknown>), aiAvailable: Boolean(process.env.ANTHROPIC_API_KEY) };
+}
+
+// Arvioiko AI saapuvan tehtävän prioriteetin. Oletuksena pois, kunnes pääkäyttäjä kytkee sen päälle.
+export function aiPriorityEnabled(): boolean {
+  const row = db.prepare("SELECT ai_priority FROM office_settings WHERE id = 1").get() as { ai_priority: number } | undefined;
+  return Boolean(row?.ai_priority);
+}
+
 officeRouter.get("/office", (_req, res) => {
-  res.json(db.prepare(OFFICE_SELECT).get());
+  res.json(officeSettings());
 });
 
 officeRouter.put("/office", requireAdmin, (req, res) => {
@@ -25,7 +36,8 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     phone: z.string().trim().max(40).default(""),
     // Muistutukset ja säilytysaika päivitetään vain, kun ne ovat pyynnössä mukana.
     reminderEmails: z.boolean().optional(),
-    retentionMonths: z.number().int().min(0).max(240).optional()
+    retentionMonths: z.number().int().min(0).max(240).optional(),
+    aiPriority: z.boolean().optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
   db.prepare("UPDATE office_settings SET name = ?, business_id = ?, address = ?, phone = ? WHERE id = 1")
@@ -36,7 +48,10 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   if (parsed.data.retentionMonths !== undefined) {
     db.prepare("UPDATE office_settings SET retention_months = ? WHERE id = 1").run(parsed.data.retentionMonths);
   }
-  res.json(db.prepare(OFFICE_SELECT).get());
+  if (parsed.data.aiPriority !== undefined) {
+    db.prepare("UPDATE office_settings SET ai_priority = ? WHERE id = 1").run(parsed.data.aiPriority ? 1 : 0);
+  }
+  res.json(officeSettings());
 });
 
 // Koko alustan loki: kaikkien hallinnoitavien yhtiöiden tehtävien tapahtumat uusimmasta alkaen.

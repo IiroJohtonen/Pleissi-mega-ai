@@ -117,6 +117,8 @@ function UserSettings() {
 export type OfficeInfo = {
   name: string; businessId: string; address: string; phone: string;
   reminderEmails?: number; retentionMonths?: number;
+  // aiPriority: 1 = AI arvioi saapuvan tehtävän prioriteetin. aiAvailable: palvelimella on AI-avain.
+  aiPriority?: number; aiAvailable?: boolean;
 };
 
 // Gmail-tili, jolla posti lähtee ja saapuu. target "office" = toimiston tili, muuten taloyhtiön tunniste.
@@ -226,6 +228,8 @@ function OfficeSettings({
   const [phone, setPhone] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
   const [reminderEmails, setReminderEmails] = useState(false);
+  const [aiPriority, setAiPriority] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(true);
   const [retentionMonths, setRetentionMonths] = useState(0);
   // Viimeksi tallennettu säilytysaika; lyhentäminen varmistetaan, koska se poistaa tietoja pysyvästi.
   const [storedRetention, setStoredRetention] = useState(0);
@@ -238,6 +242,8 @@ function OfficeSettings({
         setAddress(office.address);
         setPhone(office.phone);
         setReminderEmails(Boolean(office.reminderEmails));
+        setAiPriority(Boolean(office.aiPriority));
+        setAiAvailable(office.aiAvailable !== false);
         setRetentionMonths(office.retentionMonths ?? 0);
         setStoredRetention(office.retentionMonths ?? 0);
       })
@@ -270,7 +276,7 @@ function OfficeSettings({
     try {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
-        body: JSON.stringify({ name, businessId, address, phone, reminderEmails, retentionMonths })
+        body: JSON.stringify({ name, businessId, address, phone, reminderEmails, retentionMonths, aiPriority })
       });
       MANAGEMENT_OFFICE.name = office.name;
       setStoredRetention(office.retentionMonths ?? 0);
@@ -362,6 +368,28 @@ function OfficeSettings({
         <p className="reply-hint">
           {t("Koosteessa ovat tehtävät, joiden määräaika on mennyt tai joissa asukkaan viesti on odottanut vastausta yli kaksi päivää. Viesti lähtee toimiston Gmail-tililtä käyttäjän kirjautumisosoitteeseen. Myöhässä olevat tehtävät näkyvät sovelluksessa aina.")}
         </p>
+
+        <h2>{t("AI")}</h2>
+
+        <label className="switch-row">
+          <span>
+            <strong>{t("AI arvioi saapuvan tehtävän prioriteetin")}</strong>
+            <small>{t("Pois päältä prioriteetti päätellään viestin avainsanoista.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={aiPriority}
+            onChange={event => { setAiPriority(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("AI lukee sähköpostilla tai asukasportaalista saapuvan viestin ja valitsee prioriteetin, joka määrää tehtävän määräajan. Hätätapaukseksi arvioitu tehtävä hälyttää vastuuisännöitsijän. Käsittelijä voi aina vaihtaa prioriteetin, ja jos AI ei vastaa, käytetään avainsanoja.")}
+        </p>
+        {aiPriority && !aiAvailable && (
+          <p className="send-error">{t("AI ei ole käytössä palvelimella, joten prioriteetti päätellään toistaiseksi avainsanoista.")}</p>
+        )}
 
         <h2>{t("Tietojen säilytys")}</h2>
 

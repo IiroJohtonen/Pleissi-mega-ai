@@ -55,6 +55,8 @@ Ensimmäisellä käynnistyksellä palvelin luo esimerkkitaloyhtiön ja neljä k�
 
 Aseta `ANTHROPIC_API_KEY` tiedostoon `server/.env`. Ilman avainta vastausehdotukset tehdään avainsanahaulla tietopankista, joten sovellus toimii myös ilman AI-tiliä.
 
+Saapuvan tehtävän prioriteetin voi antaa AI:n arvioitavaksi: Asetukset → Isännöitsijätoimiston tiedot → AI. Asetus on oletuksena pois päältä, jolloin prioriteetti päätellään avainsanoista. Jokainen saapuva viesti on silloin yksi AI-kutsu.
+
 ### Gmail
 
 Saapuva ja lähtevä posti kulkee Gmailin kautta. Tallenna Google Cloudin OAuth-clientin tiedot tiedostoon `server/credentials.json` ja yhdistä tili sovelluksen asetuksista (Asetukset → Gmail). Taloyhtiölle voi yhdistää oman tilin; muuten käytetään toimiston tiliä. Tiedostot `credentials.json` ja `token.json` ovat salaisuuksia eivätkä kuulu repoon.
