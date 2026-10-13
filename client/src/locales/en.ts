@@ -1164,5 +1164,13 @@ export const en: Record<string, string> = {
   "Poistetaanko tehtävä #{0}?": "Delete ticket #{0}?",
   "Tehtävä poistetaan pysyvästi viesteineen, liitteineen, muistiinpanoineen ja työtilauksineen. Poistoa ei voi perua.": "The ticket is deleted permanently with its messages, attachments, notes and work orders. This cannot be undone.",
   "Jos asia on vain hoidettu, sulje tehtävä poistamisen sijaan, niin se jää historiaan.": "If the matter is simply handled, close the ticket instead of deleting it so that it stays in the history.",
-  "Poista tehtävä": "Delete ticket"
+  "Poista tehtävä": "Delete ticket",
+  "AI tarkistaa, koskeeko sähköposti taloyhtiön asioita": "AI checks whether an email concerns the housing company",
+  "Pois päältä jokainen saapuva sähköposti menee päätösjonoon.": "When off, every incoming email goes to the decision queue.",
+  "AI lukee saapuvan sähköpostin ennen päätösjonoa. Mainokset, uutiskirjeet, automaattivastaukset ja muut asiaan kuulumattomat viestit tallentuvat suljettuina tehtävinä merkinnällä AI suodatti: ne löytyvät Kaikista tehtävistä ja ne voi avata uudelleen. Epävarmassa tapauksessa ja AI:n ollessa poissa viesti menee jonoon.": "AI reads an incoming email before the decision queue. Advertising, newsletters, automatic replies and other unrelated messages are saved as closed tickets marked Filtered by AI: they are found under All tickets and can be reopened. When unsure, and when AI is unavailable, the message goes to the queue.",
+  "AI ei ole käytössä palvelimella, joten sähköposteja ei toistaiseksi suodateta.": "AI is not enabled on the server, so for now emails are not filtered.",
+  "AI suodatti viestin: ei koske taloyhtiön asioita": "AI filtered the message: not about the housing company",
+  "AI suodatti": "Filtered by AI",
+  "AI suodatti tämän viestin pois päätösjonosta.": "AI kept this message out of the decision queue.",
+  "Jos viesti kuuluu toimistolle, avaa tehtävä uudelleen.": "If the message belongs to the office, reopen the ticket."
 };

@@ -55,7 +55,7 @@ Ensimmäisellä käynnistyksellä palvelin luo esimerkkitaloyhtiön ja neljä k�
 
 Aseta `ANTHROPIC_API_KEY` tiedostoon `server/.env`. Ilman avainta vastausehdotukset tehdään avainsanahaulla tietopankista, joten sovellus toimii myös ilman AI-tiliä.
 
-Saapuvan tehtävän prioriteetin voi antaa AI:n arvioitavaksi: Asetukset → Isännöitsijätoimiston tiedot → AI. Asetus on oletuksena pois päältä, jolloin prioriteetti päätellään avainsanoista. Jokainen saapuva viesti on silloin yksi AI-kutsu.
+Saapuvan tehtävän prioriteetin voi antaa AI:n arvioitavaksi: Asetukset → Isännöitsijätoimiston tiedot → AI. Asetus on oletuksena pois päältä, jolloin prioriteetti päätellään avainsanoista. Jokainen saapuva viesti on silloin yksi AI-kutsu. Samasta paikasta voi kytkeä päälle tarkistuksen, jossa AI pitää taloyhtiöön liittymättömät sähköpostit (mainokset, uutiskirjeet, automaattivastaukset) poissa päätösjonosta; ne tallentuvat suljettuina tehtävinä. Molemmat arviot tehdään samalla kutsulla.
 
 ### Gmail
 

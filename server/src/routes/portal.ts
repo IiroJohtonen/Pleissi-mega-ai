@@ -45,7 +45,9 @@ portalRouter.post("/portal/tickets", async (req, res) => {
     | { maintenance_emergency_phone: string }
     | undefined;
   const result = await triage(
-    parsed.data.subject, parsed.data.description, [], company?.maintenance_emergency_phone || undefined, aiPriorityEnabled()
+    parsed.data.subject, parsed.data.description, [], company?.maintenance_emergency_phone || undefined,
+    // Kirjautuneen asukkaan ilmoitus koskee aina taloyhtiötä, joten asiaankuuluvuutta ei tarkisteta.
+    { aiPriority: aiPriorityEnabled(), sender: resident.name }
   );
 
   const ticketId = id("ticket");

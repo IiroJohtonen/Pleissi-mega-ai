@@ -532,6 +532,13 @@ export function TicketDrawer({
           </div>
         </div>
         {saveError && <p className="send-error">{saveError}</p>}
+        {ticket.ai_action === "filtered" && ticket.status === "closed" && (
+          <p className="filtered-notice">
+            <strong>{t("AI suodatti tämän viestin pois päätösjonosta.")}</strong>{" "}
+            {ticket.ai_reason}{" "}
+            {t("Jos viesti kuuluu toimistolle, avaa tehtävä uudelleen.")}
+          </p>
+        )}
         <h2>{ticket.subject}</h2>
 
         <dl className="ticket-facts">

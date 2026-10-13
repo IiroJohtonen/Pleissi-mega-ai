@@ -9,7 +9,8 @@ export const officeRouter: Router = express.Router();
 // Isännöitsijätoimiston omat tiedot. Lukea saa jokainen käyttäjä, muuttaa vain pääkäyttäjä.
 const OFFICE_SELECT = `
   SELECT name, business_id AS businessId, address, phone,
-         reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority
+         reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority,
+         ai_relevance AS aiRelevance
   FROM office_settings WHERE id = 1
 `;
 
@@ -22,6 +23,12 @@ function officeSettings() {
 export function aiPriorityEnabled(): boolean {
   const row = db.prepare("SELECT ai_priority FROM office_settings WHERE id = 1").get() as { ai_priority: number } | undefined;
   return Boolean(row?.ai_priority);
+}
+
+// Tarkistaako AI, koskeeko saapuva sähköposti taloyhtiön asioita. Oletuksena pois.
+export function aiRelevanceEnabled(): boolean {
+  const row = db.prepare("SELECT ai_relevance FROM office_settings WHERE id = 1").get() as { ai_relevance: number } | undefined;
+  return Boolean(row?.ai_relevance);
 }
 
 officeRouter.get("/office", (_req, res) => {
@@ -37,7 +44,8 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     // Muistutukset ja säilytysaika päivitetään vain, kun ne ovat pyynnössä mukana.
     reminderEmails: z.boolean().optional(),
     retentionMonths: z.number().int().min(0).max(240).optional(),
-    aiPriority: z.boolean().optional()
+    aiPriority: z.boolean().optional(),
+    aiRelevance: z.boolean().optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
   db.prepare("UPDATE office_settings SET name = ?, business_id = ?, address = ?, phone = ? WHERE id = 1")
@@ -50,6 +58,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   }
   if (parsed.data.aiPriority !== undefined) {
     db.prepare("UPDATE office_settings SET ai_priority = ? WHERE id = 1").run(parsed.data.aiPriority ? 1 : 0);
+  }
+  if (parsed.data.aiRelevance !== undefined) {
+    db.prepare("UPDATE office_settings SET ai_relevance = ? WHERE id = 1").run(parsed.data.aiRelevance ? 1 : 0);
   }
   res.json(officeSettings());
 });

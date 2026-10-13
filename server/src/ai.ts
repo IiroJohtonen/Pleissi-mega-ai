@@ -14,6 +14,9 @@ export type TriageResult = {
   sourceId?: string | null;
   // Kuka päätti prioriteetin: AI vai avainsanahaku.
   priorityBy?: "ai" | "keywords";
+  // true = AI arvioi, ettei viesti koske taloyhtiön asioita; tehtävä ei mene päätösjonoon.
+  filtered?: boolean;
+  filterReason?: string;
 };
 
 export type KnowledgeItem = {
@@ -128,7 +131,7 @@ export function findKnowledgeAnswer(
 }
 
 // Claudea kutsutaan käsittelijän pyytämässä vastausehdotuksessa (suggestReply), raportin aiheissa ja,
-// kun toimisto on kytkenyt sen päälle, saapuvan tehtävän prioriteetin arvioinnissa (classifyPriority).
+// kun toimisto on kytkenyt sen päälle, saapuvan viestin arvioinnissa (assessIncoming).
 function claudeClient(): { client: Anthropic; model: string } | null {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   return { client: new Anthropic(), model: process.env.ANTHROPIC_MODEL || "claude-opus-5-5" };
@@ -336,26 +339,45 @@ Order the topics from most to fewest tickets.
     .sort((a, b) => b.ticketIds.length - a.ticketIds.length);
 }
 
-const PrioritySchema = z.object({
+const AssessmentSchema = z.object({
+  relevant: z.boolean(),
+  relevanceReason: z.string(),
   priority: z.enum(["emergency", "urgent", "normal", "low"]),
   reason: z.string()
 });
 
-export type PriorityAssessment = z.infer<typeof PrioritySchema>;
+export type IncomingAssessment = z.infer<typeof AssessmentSchema>;
 
-// Arvioi saapuvan viestin prioriteetin Claudella. Null = AI ei ole käytössä tai kutsu epäonnistui,
-// jolloin kutsuja käyttää avainsanahakua. Kutsulle on aikaraja, koska asukas odottaa portaalissa
-// tehtävän tallentumista.
-export async function classifyPriority(subject: string, body: string): Promise<PriorityAssessment | null> {
+// Arvioi saapuvan viestin Claudella yhdellä kutsulla: koskeeko viesti taloyhtiön asioita ja mikä on
+// sen prioriteetti. Kutsuja käyttää vain ne osat, jotka toimisto on kytkenyt päälle. Null = AI ei ole
+// käytössä tai kutsu epäonnistui, jolloin viesti käsitellään kuten ilman AI:ta. Kutsulle on aikaraja,
+// koska asukas odottaa portaalissa tehtävän tallentumista.
+export async function assessIncoming(subject: string, body: string, sender = ""): Promise<IncomingAssessment | null> {
   const ai = claudeClient();
   if (!ai) return null;
 
   const system = `
-You are Kotilo, an AI secretary for a Finnish property management office. A resident of a housing
-company has just sent a message, and you decide how quickly the office must act on it. Your choice
-sets the ticket's deadline and its place in the property manager's queue.
+You are Kotilo, an AI secretary for a Finnish property management office. A message has just
+arrived in the mailbox the office uses for a housing company. You assess two things: whether the
+message belongs in the property manager's work queue at all, and how quickly the office must act
+on it.
 
-priority:
+relevant: true when the message concerns the housing company, its building, apartments or
+residents, or the property management office's work for it. That covers fault reports, questions,
+requests, complaints and notices from residents and shareholders, and messages about the property
+from maintenance companies, contractors, authorities, the board or other parties the office deals
+with. false when the message has nothing for the office to act on in that role: advertising and
+sales pitches, newsletters, automated notifications and delivery failures, out-of-office replies,
+phishing and other scams, and messages plainly meant for someone else. A message marked false is
+kept out of the property manager's queue, where nobody may look at it for a long time, while a
+message wrongly let through costs the manager a few seconds. So when you are unsure, answer true,
+and always answer true for anything that describes danger or damage.
+
+relevanceReason: one short sentence in Finnish telling the property manager why the message does
+or does not concern the housing company.
+
+priority: how quickly the office must act. Your choice sets the ticket's deadline and its place in
+the queue. Fill it in also when relevant is false; use low then.
 - emergency: people are in danger, or damage to the building is happening now or is about to and
   gets worse with every hour of waiting. Examples: water leaking or flooding, fire or smoke, smell of
   gas, an electrical hazard, a person stuck in a lift, sewage backing up, a break-in in progress.
@@ -380,6 +402,9 @@ reason: one short sentence in Finnish telling the property manager why you chose
 `;
 
   const user = `
+Sender:
+${sender || "(unknown)"}
+
 Subject:
 ${subject}
 
@@ -395,14 +420,14 @@ ${body.slice(0, 8000)}
       fallbacks: "default",
       system,
       messages: [{ role: "user", content: user }],
-      output_config: { effort: "low", format: betaZodOutputFormat(PrioritySchema) }
+      output_config: { effort: "low", format: betaZodOutputFormat(AssessmentSchema) }
     }, { timeout: 20_000, maxRetries: 1 });
     if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
     const parsed = response.parsed_output;
-    if (!parsed) throw new Error("No priority in the response");
-    return { priority: parsed.priority, reason: parsed.reason.trim() };
+    if (!parsed) throw new Error("No assessment in the response");
+    return { ...parsed, reason: parsed.reason.trim(), relevanceReason: parsed.relevanceReason.trim() };
   } catch (error) {
-    console.error("AI-prioriteetin arviointi epäonnistui, käytetään avainsanahakua:", error);
+    console.error("AI-arviointi epäonnistui, viesti käsitellään ilman AI:ta:", error);
     return null;
   }
 }
@@ -481,17 +506,38 @@ function localTriage(
   };
 }
 
-// Luokittelee saapuvan viestin. Tyyppi päätellään aina paikallisesti. Prioriteetin arvioi AI, kun
-// toimisto on kytkenyt sen päälle (aiPriority); muuten ja AI:n epäonnistuessa se tulee avainsanoista.
+export type TriageOptions = {
+  // AI arvioi prioriteetin; muuten ja AI:n epäonnistuessa se tulee avainsanoista.
+  aiPriority?: boolean;
+  // AI tarkistaa, koskeeko viesti taloyhtiön asioita; muuten ja AI:n epäonnistuessa viesti hyväksytään.
+  aiRelevance?: boolean;
+  sender?: string;
+};
+
+// Luokittelee saapuvan viestin. Tyyppi päätellään aina paikallisesti. AI:ta käytetään vain niihin
+// arvioihin, jotka toimisto on kytkenyt päälle.
 export async function triage(
   subject: string,
   body: string,
   knowledge: KnowledgeItem[],
   emergencyPhone?: string,
-  aiPriority = false
+  options: TriageOptions = {}
 ): Promise<TriageResult> {
-  const assessment = aiPriority ? await classifyPriority(subject, body) : null;
-  if (!assessment) return { ...localTriage(subject, body, knowledge, emergencyPhone), priorityBy: "keywords" };
+  const assessment = options.aiPriority || options.aiRelevance ? await assessIncoming(subject, body, options.sender) : null;
+  const local = (): TriageResult => ({ ...localTriage(subject, body, knowledge, emergencyPhone), priorityBy: "keywords" });
+  if (!assessment) return local();
+
+  // Asiaan kuulumaton viesti ei mene jonoon eikä hälytä, vaikka siinä olisi hätäsanoja.
+  if (options.aiRelevance && !assessment.relevant) {
+    return {
+      ...localTriage(subject, body, knowledge, emergencyPhone, false),
+      priority: "low",
+      filtered: true,
+      filterReason: assessment.relevanceReason || "AI arvioi, ettei viesti koske taloyhtiön asioita.",
+      priorityBy: "ai"
+    };
+  }
+  if (!options.aiPriority) return local();
 
   const reason = assessment.reason || "AI arvioi tehtävän prioriteetin.";
   if (assessment.priority === "emergency") return { ...emergencyTriage(subject, reason, emergencyPhone), priorityBy: "ai" };

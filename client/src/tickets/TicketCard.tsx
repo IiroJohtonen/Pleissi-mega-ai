@@ -224,6 +224,9 @@ export function TicketCard({
           <strong>
             {ticket.subject}
             {ticket.has_new_reply ? <em className="new-reply">{t("Uusi viesti")}</em> : null}
+            {ticket.ai_action === "filtered" && ticket.status === "closed"
+              ? <em className="new-reply filtered" title={ticket.ai_reason}>{t("AI suodatti")}</em>
+              : null}
             {isOverdue(ticket) ? <em className="new-reply overdue" title={t("Määräaika oli {0}", formatDay(ticket.due_date))}>{t("Myöhässä")}</em> : null}
           </strong>
         </div>

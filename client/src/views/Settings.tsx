@@ -119,6 +119,8 @@ export type OfficeInfo = {
   reminderEmails?: number; retentionMonths?: number;
   // aiPriority: 1 = AI arvioi saapuvan tehtävän prioriteetin. aiAvailable: palvelimella on AI-avain.
   aiPriority?: number; aiAvailable?: boolean;
+  // aiRelevance: 1 = AI tarkistaa, koskeeko saapuva sähköposti taloyhtiön asioita.
+  aiRelevance?: number;
 };
 
 // Gmail-tili, jolla posti lähtee ja saapuu. target "office" = toimiston tili, muuten taloyhtiön tunniste.
@@ -229,6 +231,7 @@ function OfficeSettings({
   const [emailAddress, setEmailAddress] = useState("");
   const [reminderEmails, setReminderEmails] = useState(false);
   const [aiPriority, setAiPriority] = useState(false);
+  const [aiRelevance, setAiRelevance] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [retentionMonths, setRetentionMonths] = useState(0);
   // Viimeksi tallennettu säilytysaika; lyhentäminen varmistetaan, koska se poistaa tietoja pysyvästi.
@@ -243,6 +246,7 @@ function OfficeSettings({
         setPhone(office.phone);
         setReminderEmails(Boolean(office.reminderEmails));
         setAiPriority(Boolean(office.aiPriority));
+        setAiRelevance(Boolean(office.aiRelevance));
         setAiAvailable(office.aiAvailable !== false);
         setRetentionMonths(office.retentionMonths ?? 0);
         setStoredRetention(office.retentionMonths ?? 0);
@@ -276,7 +280,7 @@ function OfficeSettings({
     try {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
-        body: JSON.stringify({ name, businessId, address, phone, reminderEmails, retentionMonths, aiPriority })
+        body: JSON.stringify({ name, businessId, address, phone, reminderEmails, retentionMonths, aiPriority, aiRelevance })
       });
       MANAGEMENT_OFFICE.name = office.name;
       setStoredRetention(office.retentionMonths ?? 0);
@@ -389,6 +393,26 @@ function OfficeSettings({
         </p>
         {aiPriority && !aiAvailable && (
           <p className="send-error">{t("AI ei ole käytössä palvelimella, joten prioriteetti päätellään toistaiseksi avainsanoista.")}</p>
+        )}
+
+        <label className="switch-row">
+          <span>
+            <strong>{t("AI tarkistaa, koskeeko sähköposti taloyhtiön asioita")}</strong>
+            <small>{t("Pois päältä jokainen saapuva sähköposti menee päätösjonoon.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={aiRelevance}
+            onChange={event => { setAiRelevance(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("AI lukee saapuvan sähköpostin ennen päätösjonoa. Mainokset, uutiskirjeet, automaattivastaukset ja muut asiaan kuulumattomat viestit tallentuvat suljettuina tehtävinä merkinnällä AI suodatti: ne löytyvät Kaikista tehtävistä ja ne voi avata uudelleen. Epävarmassa tapauksessa ja AI:n ollessa poissa viesti menee jonoon.")}
+        </p>
+        {aiRelevance && !aiAvailable && (
+          <p className="send-error">{t("AI ei ole käytössä palvelimella, joten sähköposteja ei toistaiseksi suodateta.")}</p>
         )}
 
         <h2>{t("Tietojen säilytys")}</h2>

@@ -2994,3 +2994,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .ticket-sections .drawer-section { margin-top: 0; padding-top: 16px; border-top: 0; }
 .ticket-sections .suggest-header { justify-content: flex-end; }
 .ticket-sections .suggest-header > h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* AI:n suodattama viesti: merkki listassa ja selitys tehtäväsivulla. */
+.new-reply.filtered { background: #eceef0; color: #4b535d; }
+.filtered-notice { margin: 12px 0 0; padding: 11px 13px; border-radius: 10px; background: #eceef0; color: #37475a; font-size: 13px; line-height: 1.5; }

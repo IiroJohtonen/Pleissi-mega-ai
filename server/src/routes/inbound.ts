@@ -6,7 +6,7 @@ import { db } from "../db.js";
 import { alertEmergency } from "../notify.js";
 import { id, now } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
-import { aiPriorityEnabled } from "./office.js";
+import { aiPriorityEnabled, aiRelevanceEnabled } from "./office.js";
 import { findResident } from "./residents.js";
 import { assignToCompanyManager } from "./tickets.js";
 
@@ -122,8 +122,16 @@ if (input.sourceMessageId) {
     input.body,
     [],
     company.maintenance_emergency_phone || undefined,
-    aiPriorityEnabled()
+    {
+      aiPriority: aiPriorityEnabled(),
+      // Asiaankuuluvuus tarkistetaan vain sähköposteista; käsin kirjattu asia kuuluu aina jonoon.
+      aiRelevance: input.channel === "email" && aiRelevanceEnabled(),
+      sender: input.senderEmail ? `${input.senderName} <${input.senderEmail}>` : input.senderName
+    }
   );
+  // AI:n suodattama viesti tallennetaan suljettuna tehtävänä: se ei mene päätösjonoon eikä hälytä,
+  // mutta löytyy kaikista tehtävistä ja sen voi avata uudelleen.
+  const filtered = Boolean(result.filtered);
   const source = knowledge.find(item => item.id === result.sourceId);
 
   const ticketId = id("ticket");
@@ -143,19 +151,19 @@ if (input.sourceMessageId) {
     resident?.id ?? null,
     result.type,
     result.priority,
-    "open",
+    filtered ? "closed" : "open",
     input.subject,
     result.summary,
     input.channel,
-    result.emergency ? "emergency" : "pending_decision",
-    result.reason,
+    filtered ? "filtered" : result.emergency ? "emergency" : "pending_decision",
+    filtered ? result.filterReason ?? "" : result.reason,
     // Vastauskenttä alkaa tyhjänä; luonnos syntyy vasta käsittelijän tai AI-ehdotuksen kautta.
     "",
     timestamp,
     timestamp
   );
 
-  assignToCompanyManager(ticketId, companyId);
+  if (!filtered) assignToCompanyManager(ticketId, companyId);
 
   if (source) {
     db.prepare(
@@ -180,7 +188,7 @@ if (input.sourceMessageId) {
     auditId,
     ticketId,
     "ai",
-    result.emergency ? "emergency_routed" : "triaged",
+    filtered ? "ai_filtered" : result.emergency ? "emergency_routed" : "triaged",
     JSON.stringify(result),
     timestamp
   );
@@ -193,11 +201,12 @@ if (input.sourceMessageId) {
   `).run(input.sourceMessageId, ticketId, timestamp);
 }
 
-  if (result.emergency) void alertEmergency(ticketId);
+  if (result.emergency && !filtered) void alertEmergency(ticketId);
 
   res.status(201).json({
     ticketId,
-    emergency: result.emergency,
-    action: result.emergency ? "emergency_routed" : "decision_queue"
+    emergency: result.emergency && !filtered,
+    filtered,
+    action: filtered ? "filtered" : result.emergency ? "emergency_routed" : "decision_queue"
   });
 });

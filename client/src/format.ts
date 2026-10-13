@@ -45,6 +45,7 @@ export function actionLabel(action: string) {
     attachment_added: t("Liite lisätty tehtävälle"),
     triaged: t("AI luokitteli tehtävän"),
     emergency_routed: t("Ohjattu hätätapauksena"),
+    ai_filtered: t("AI suodatti viestin: ei koske taloyhtiön asioita"),
     emergency_alert_sent: t("Hätätapauksesta lähetetty sähköposti vastuuisännöitsijälle"),
     emergency_alert_failed: t("Hätätapauksen sähköposti vastuuisännöitsijälle ei lähtenyt"),
     decision_ai: t("Päätös: AI hoitaa"),
