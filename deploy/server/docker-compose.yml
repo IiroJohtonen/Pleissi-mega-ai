@@ -1,4 +1,4 @@
-# Kotilo palvelimella: alusta ja esittelysivu saman Caddy-välityspalvelimen takana.
+# Kotilo palvelimella: alusta ja kotisivu saman Caddy-välityspalvelimen takana.
 # Caddy hakee ja uusii HTTPS-varmenteet itse (Let's Encrypt).
 # Käynnistys tehdään skriptillä remote-deploy.sh, joka antaa projektille nimen "kotilo".
 services:
@@ -27,7 +27,7 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # Esittelysivu repon kansiosta site.
+      # Kotisivu repon kansiosta site.
       - ../../site:/srv/site:ro
       # Varmenteet säilyvät uudelleenkäynnistysten yli.
       - caddy-data:/data

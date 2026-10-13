@@ -6,15 +6,10 @@ app.kotilo.io {
 	reverse_proxy kotilo:4000
 }
 
-# Esittelysivu (repon kansio site) ei ole vielä tällä palvelimella: kotilo.io ja www.kotilo.io
-# osoittavat toistaiseksi muualle. Kun niiden DNS-tietueet osoittavat tänne, poista kommenttimerkit.
-#
-# kotilo.io {
-# 	root * /srv/site
-# 	encode zstd gzip
-# 	file_server
-# }
-#
-# www.kotilo.io {
-# 	redir https://kotilo.io{uri} permanent
-# }
+# Kotisivu (repon kansio site). Toistaiseksi testiosoitteessa: kotilo.io ja www.kotilo.io
+# osoittavat vielä muualle. Kun niiden DNS-tietueet osoittavat tänne, lisää osoitteet tälle riville.
+test.kotilo.io {
+	root * /srv/site
+	encode zstd gzip
+	file_server
+}

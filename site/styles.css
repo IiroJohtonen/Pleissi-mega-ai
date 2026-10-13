@@ -1,4 +1,4 @@
-/* Kotilon esittelysivu. Värit ja fontti ovat samat kuin alustassa: tumma sivupalkin sävy, vaaleansininen
+/* Kotilon kotisivu. Värit ja fontti ovat samat kuin alustassa: tumma sivupalkin sävy, vaaleansininen
    korostus ja Inter. Fontti tarjotaan sivun omasta kansiosta, ei kolmannen osapuolen palvelusta. */
 @font-face {
   font-family: "Inter Variable";
@@ -53,49 +53,77 @@ a { color: inherit; }
 img { display: block; max-width: 100%; height: auto; }
 
 .wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
-.section { padding-block: 64px; }
-.section > h2, .split h2 { font-size: 28px; line-height: 1.2; letter-spacing: -.02em; margin-bottom: 26px; }
+.section { padding-block: 96px; }
+h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; letter-spacing: -.03em; }
+.label { margin-bottom: 12px; color: var(--blue-deep); font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 
-/* Painikkeet */
-.button {
+/* Pillerinapit: korostettu yhteysnappi ja valkoinen nappi, jonka päässä on nuoli ympyrässä. */
+.pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 11px 20px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  font-size: 15px;
-  font-weight: 700;
+  gap: 18px;
+  border-radius: 99px;
+  font-size: 16px;
+  font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
-  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+  transition: transform .15s ease, background .15s ease;
 }
-.button:hover { transform: translateY(-1px); }
-.button:focus-visible, .links a:focus-visible, .logo:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
-.button.light { background: #fff; color: var(--ink); }
-.button.sky { background: var(--sky); color: var(--ink); }
-.button.ghost { border-color: #3a434d; color: #fff; }
-.button.ghost:hover { border-color: var(--sky); }
-.button.dark { background: var(--night); color: #fff; }
+.pill:hover { transform: translateY(-1px); }
+.pill:focus-visible, .links a:focus-visible, .logo:focus-visible, .foot a:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
+.pill.accent { padding: 9px 26px; background: var(--sky); color: var(--ink); }
+.pill.accent:hover { background: #b6dfff; }
+.pill.more { padding: 5px 5px 5px 28px; background: #fff; color: var(--ink); }
+.pill.more.dark { background: var(--night); color: #fff; }
+.pill.more span { position: relative; width: 38px; height: 38px; border-radius: 99px; background: var(--sky); }
+.pill.more span::after { content: ""; position: absolute; left: 12px; top: 13px; width: 10px; height: 10px; border-top: 2px solid var(--ink); border-right: 2px solid var(--ink); transform: rotate(45deg); }
 
-/* Yläosa */
-.top { background: var(--night); color: #fff; }
-.bar { display: flex; align-items: center; gap: 28px; padding-block: 18px; }
+/* Tumma tausta, jossa on sumeita valoläikkiä. Käytetään yläosassa, esimerkkinäkymässä ja yhteysosiossa. */
+.glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.glow i { position: absolute; border-radius: 50%; filter: blur(90px); }
+.glow i:nth-child(1) { left: -12%; top: 8%; width: 58%; height: 70%; background: #1f6fa8; opacity: .75; transform: rotate(-24deg); }
+.glow i:nth-child(2) { right: -10%; bottom: -18%; width: 46%; height: 60%; background: #3f9bd0; opacity: .55; }
+.glow i:nth-child(3) { right: 6%; top: -22%; width: 44%; height: 58%; background: #0b1622; opacity: .9; }
+
+/* Yläosa täyttää koko näytön: valikko ylhäällä, otsikko alhaalla vasemmalla. */
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding-bottom: 28px;
+  background: #0d2233;
+  color: #fff;
+}
+.bar { position: relative; display: flex; align-items: center; gap: 56px; padding-block: 24px; }
 .logo img { height: 34px; width: auto; }
-.links { display: flex; gap: 24px; margin-left: auto; }
-.links a { color: var(--muted-on-night); font-size: 14px; font-weight: 600; text-decoration: none; }
-.links a:hover { color: #fff; }
+.links { display: flex; gap: 30px; }
+.links a { color: #fff; font-size: 17px; text-decoration: none; }
+.links a:hover { color: var(--sky); }
+.bar .pill { margin-left: auto; }
 
-.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; align-items: center; padding-block: 56px 72px; }
-.eyebrow { color: var(--sky); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 14px; }
-.hero h1 { font-size: clamp(34px, 4.6vw, 52px); line-height: 1.08; font-weight: 800; letter-spacing: -.03em; }
-.hero h1 em { font-style: normal; color: var(--sky); }
-.lede { margin-top: 20px; color: var(--muted-on-night); font-size: 18px; line-height: 1.6; max-width: 34em; }
-.lede.dark { margin: -10px 0 22px; color: var(--muted); font-size: 17px; }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero-text { position: relative; margin-top: auto; padding-block: 48px 72px; }
+.hero h1 { max-width: 15em; font-size: clamp(38px, 5.6vw, 76px); line-height: 1.04; font-weight: 700; letter-spacing: -.04em; }
+.hero-text .pill { margin-top: 30px; }
+.tagline { margin-top: 34px; font-family: Georgia, "Times New Roman", serif; font-size: 19px; }
 
-/* Esimerkkinäkymä päätösjonosta */
-.queue { display: grid; gap: 10px; min-width: 0; }
+/* Sisältö on valkoinen arkki, jonka pyöristetyt yläkulmat nousevat tumman yläosan päälle. */
+.sheet { position: relative; margin-top: -28px; padding-bottom: 96px; border-radius: 28px 28px 0 0; background: var(--surface); }
+
+.intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: end; margin-bottom: 56px; }
+.intro > p { color: var(--muted); font-size: 18px; line-height: 1.6; }
+
+/* Numeroidut kortit */
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.cards li { display: grid; align-content: start; gap: 12px; padding: 26px 24px 30px; border-radius: 20px; background: var(--paper); min-width: 0; }
+.cards b, .journey b { color: var(--blue); font-size: 15px; font-weight: 700; letter-spacing: .04em; }
+.cards h3 { margin-top: 26px; font-size: 22px; line-height: 1.2; letter-spacing: -.02em; }
+.cards p { color: var(--muted); font-size: 15px; line-height: 1.55; }
+
+/* Esimerkkinäkymä päätösjonosta tummalla pohjalla */
+.showcase { position: relative; overflow: hidden; display: grid; place-items: center; padding: 72px 24px; border-radius: 24px; background: #0d2233; color: #fff; }
+.queue { position: relative; display: grid; gap: 10px; width: min(560px, 100%); }
 .queue-head { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted-on-night); font-size: 13px; }
 .queue-head strong { color: #fff; font-size: 15px; }
 .ticket { display: grid; gap: 5px; padding: 14px 16px; border: 1px solid var(--night-line); border-radius: 12px; background: var(--night-raised); }
@@ -107,59 +135,57 @@ img { display: block; max-width: 100%; height: auto; }
 .chip { flex: none; padding: 3px 10px; border-radius: 99px; background: var(--night-line); color: var(--muted-on-night); font-size: 12px; font-weight: 700; }
 .chip.red { background: var(--alarm); color: #fff; }
 
-/* Vaiheet */
-.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.steps li { display: flex; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.steps b { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 99px; background: var(--sky); font-size: 14px; font-weight: 800; }
-.steps h3 { font-size: 17px; }
-.steps p { margin-top: 4px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+/* Asukkaille */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+.prose { display: grid; gap: 18px; justify-items: start; }
+.prose p { color: var(--muted); font-size: 18px; line-height: 1.6; }
+.prose .pill { margin-top: 10px; }
 
-/* Ominaisuudet */
-.band { background: var(--surface); border-block: 1px solid var(--line); }
-.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
-.features li { padding-top: 14px; border-top: 2px solid var(--ink); min-width: 0; }
-.features h3 { font-size: 17px; }
-.features p { margin-top: 6px; color: var(--muted); font-size: 15px; line-height: 1.55; }
-.note { margin-top: 28px; color: var(--muted); font-size: 15px; }
+/* Käyttöönoton vaiheet */
+.section + .section { padding-top: 0; }
+.journey { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+.journey li { display: grid; align-content: start; gap: 10px; padding-top: 22px; border-top: 1px solid var(--ink); min-width: 0; }
+.journey h3 { font-size: 26px; line-height: 1.15; letter-spacing: -.02em; }
+.journey p { color: var(--muted); font-size: 16px; line-height: 1.6; }
 
-/* Asukkaat ja tietosuoja */
-.split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
-.ticks, .dots { display: grid; gap: 10px; }
-.ticks li, .dots li { position: relative; padding-left: 26px; color: var(--muted); font-size: 16px; line-height: 1.5; }
-.ticks li::before { content: ""; position: absolute; left: 2px; top: .42em; width: 12px; height: 7px; border-left: 2.5px solid var(--blue); border-bottom: 2.5px solid var(--blue); transform: rotate(-45deg); }
-.dots li::before { content: ""; position: absolute; left: 4px; top: .6em; width: 7px; height: 7px; border-radius: 2px; background: var(--blue); }
-.panel { padding: 26px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
-.panel h3 { font-size: 18px; margin-bottom: 16px; }
-.panel .dots li { font-size: 15px; }
+/* Yhteys */
+.cta { position: relative; overflow: hidden; display: grid; justify-items: start; gap: 30px; padding: 72px 56px; border-radius: 24px; background: #0d2233; color: #fff; scroll-margin-top: 24px; }
+.cta h2, .cta .pill { position: relative; }
+.cta h2 { max-width: 14em; }
 
-/* Yhteys ja alaosa */
-.contact { background: var(--sky); }
-.contact-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding-block: 44px; }
-.contact h2 { font-size: 28px; letter-spacing: -.02em; }
-.contact p { margin-top: 4px; font-size: 17px; }
-.foot { background: var(--night); color: var(--muted-on-night); font-size: 14px; }
-.foot-inner { display: flex; align-items: center; gap: 20px; padding-block: 24px; }
-.foot-inner a { margin-left: auto; color: #fff; font-weight: 600; text-decoration: none; }
-.foot-inner a:hover { text-decoration: underline; }
+/* Alapalkki */
+.foot { background: var(--night); color: var(--muted-on-night); font-size: 15px; }
+.foot-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; padding-block: 56px 44px; }
+.foot-grid div { display: grid; gap: 8px; justify-items: start; }
+.foot h3 { margin-bottom: 6px; color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.foot a { color: var(--muted-on-night); text-decoration: none; }
+.foot a:hover { color: #fff; }
+.foot-base { display: flex; justify-content: space-between; gap: 20px; padding-block: 18px; border-top: 1px solid var(--night-line); font-size: 13px; }
 
-@media (max-width: 900px) {
-  .hero, .split { grid-template-columns: minmax(0, 1fr); gap: 36px; }
-  .hero { padding-block: 36px 52px; }
-  .steps, .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .links { display: none; }
-  .bar .button { margin-left: auto; }
+@media (max-width: 1000px) {
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (max-width: 600px) {
-  .wrap { padding-inline: 16px; }
-  .section { padding-block: 44px; }
-  .steps, .features { grid-template-columns: minmax(0, 1fr); }
-  .lede { font-size: 16px; }
+@media (max-width: 760px) {
+  .wrap { padding-inline: 18px; }
+  .section { padding-block: 64px; }
+  .sheet { padding-bottom: 64px; }
+  .links { display: none; }
+  .hero-text { padding-block: 32px 48px; }
+  .tagline { font-size: 17px; }
+  .intro, .split { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .intro { margin-bottom: 36px; }
+  .intro > p, .prose p { font-size: 17px; }
+  .cards, .journey { grid-template-columns: minmax(0, 1fr); }
+  .journey { gap: 28px; }
+  .cards h3 { margin-top: 8px; }
+  .showcase { padding: 36px 14px; }
   .ticket-row { flex-wrap: wrap; }
-  .contact-inner .button { width: 100%; }
+  .cta { padding: 44px 24px; }
+  .foot-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 40px 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .button { transition: none; }
+  .pill { transition: none; }
 }

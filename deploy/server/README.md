@@ -1,13 +1,13 @@
 # Kotilo palvelimella (UpCloud)
 
-Palvelin tarjoaa alustan osoitteessa `app.kotilo.io`. Esittelysivu (`site/`) on valmiina repossa, mutta sitä ei vielä tarjota tältä palvelimelta, koska `kotilo.io` ja `www.kotilo.io` osoittavat toistaiseksi muualle. Kun niiden DNS-tietueet osoittavat palvelimeen, esittelysivu otetaan käyttöön poistamalla kommenttimerkit tiedostosta `Caddyfile`.
+Palvelin tarjoaa alustan osoitteessa `app.kotilo.io` ja kotisivun testiosoitteessa `test.kotilo.io`. Osoitteet `kotilo.io` ja `www.kotilo.io` osoittavat toistaiseksi muualle. Kun niiden DNS-tietueet osoittavat palvelimeen, kotisivu siirretään niihin lisäämällä osoitteet tiedoston `Caddyfile` kotisivulohkoon.
 
 | Osoite | Sisältö | Lähde repossa |
 | --- | --- | --- |
-| `kotilo.io` | Esittelysivu | `site/` |
+| `test.kotilo.io` | Kotisivu | `site/` |
 | `app.kotilo.io` | Alusta | `client/` ja `server/` |
 
-Palvelimella on kaksi konttia: Kotilo ja Caddy. Caddy ottaa vastaan liikenteen, hakee HTTPS-varmenteet itse ja ohjaa `app.kotilo.io`:n Kotilolle.
+Palvelimella on kaksi konttia: Kotilo ja Caddy. Caddy ottaa vastaan liikenteen, hakee HTTPS-varmenteet itse, ohjaa `app.kotilo.io`:n Kotilolle ja tarjoaa kotisivun tiedostot suoraan.
 
 ## 1. SSH-avain omalle koneelle
 
@@ -39,8 +39,9 @@ Lisää domainin DNS-hallinnassa A-tietue, joka osoittaa palvelimen IP-osoittees
 | Nimi | Tyyppi | Arvo |
 | --- | --- | --- |
 | `app` | A | palvelimen IP |
+| `test` | A | palvelimen IP |
 
-Esittelysivua varten tarvitaan myöhemmin samanlaiset tietueet nimille `@` (eli kotilo.io) ja `www`.
+Kun kotisivu siirretään pääosoitteeseen, tarvitaan samanlaiset tietueet nimille `@` (eli kotilo.io) ja `www`.
 
 Muutos tulee voimaan yleensä muutamassa minuutissa, joskus vasta tunnin kuluessa. Voit tarkistaa sen komennolla `nslookup app.kotilo.io`.
 
