@@ -1,0 +1,11 @@
+# Cloudflare Tunnelin asetukset. Kopioi tiedosto nimelle %USERPROFILE%\.cloudflared\config.yml ja
+# täydennä tunnelin tunniste, jonka komento "cloudflared tunnel create kotilo" tulostaa.
+tunnel: TUNNELIN-TUNNISTE
+credentials-file: C:\Users\KÄYTTÄJÄ\.cloudflared\TUNNELIN-TUNNISTE.json
+
+ingress:
+  # Alusta: tuotantopalvelin tällä koneella.
+  - hostname: app.kotilo.io
+    service: http://localhost:4100
+  # Kaikki muu hylätään.
+  - service: http_status:404

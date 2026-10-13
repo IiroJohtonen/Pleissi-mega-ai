@@ -1,0 +1,165 @@
+/* Kotilon esittelysivu. Värit ja fontti ovat samat kuin alustassa: tumma sivupalkin sävy, vaaleansininen
+   korostus ja Inter. Fontti tarjotaan sivun omasta kansiosta, ei kolmannen osapuolen palvelusta. */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/inter-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --ink: #181c20;
+  --night: #171c22;
+  --night-raised: #1d2329;
+  --night-line: #272e35;
+  --paper: #f5f6f3;
+  --surface: #ffffff;
+  --line: #dfe3e7;
+  --muted: #4b535d;
+  --muted-on-night: #b8bdc2;
+  --sky: #9bd3ff;
+  --blue: #3f7fbf;
+  --blue-deep: #28548f;
+  --alarm: #b3402f;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+h1, h2, h3 { text-wrap: balance; }
+a { color: inherit; }
+img { display: block; max-width: 100%; height: auto; }
+
+.wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
+.section { padding-block: 64px; }
+.section > h2, .split h2 { font-size: 28px; line-height: 1.2; letter-spacing: -.02em; margin-bottom: 26px; }
+
+/* Painikkeet */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.button:hover { transform: translateY(-1px); }
+.button:focus-visible, .links a:focus-visible, .logo:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
+.button.light { background: #fff; color: var(--ink); }
+.button.sky { background: var(--sky); color: var(--ink); }
+.button.ghost { border-color: #3a434d; color: #fff; }
+.button.ghost:hover { border-color: var(--sky); }
+.button.dark { background: var(--night); color: #fff; }
+
+/* Yläosa */
+.top { background: var(--night); color: #fff; }
+.bar { display: flex; align-items: center; gap: 28px; padding-block: 18px; }
+.logo img { height: 34px; width: auto; }
+.links { display: flex; gap: 24px; margin-left: auto; }
+.links a { color: var(--muted-on-night); font-size: 14px; font-weight: 600; text-decoration: none; }
+.links a:hover { color: #fff; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; align-items: center; padding-block: 56px 72px; }
+.eyebrow { color: var(--sky); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 14px; }
+.hero h1 { font-size: clamp(34px, 4.6vw, 52px); line-height: 1.08; font-weight: 800; letter-spacing: -.03em; }
+.hero h1 em { font-style: normal; color: var(--sky); }
+.lede { margin-top: 20px; color: var(--muted-on-night); font-size: 18px; line-height: 1.6; max-width: 34em; }
+.lede.dark { margin: -10px 0 22px; color: var(--muted); font-size: 17px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+
+/* Esimerkkinäkymä päätösjonosta */
+.queue { display: grid; gap: 10px; min-width: 0; }
+.queue-head { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted-on-night); font-size: 13px; }
+.queue-head strong { color: #fff; font-size: 15px; }
+.ticket { display: grid; gap: 5px; padding: 14px 16px; border: 1px solid var(--night-line); border-radius: 12px; background: var(--night-raised); }
+.ticket.alarm { border-color: var(--alarm); }
+.ticket-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ticket h3 { font-size: 15px; font-weight: 700; }
+.ticket p { color: var(--muted-on-night); font-size: 13px; line-height: 1.45; }
+.ticket .sent { color: var(--sky); font-weight: 600; }
+.chip { flex: none; padding: 3px 10px; border-radius: 99px; background: var(--night-line); color: var(--muted-on-night); font-size: 12px; font-weight: 700; }
+.chip.red { background: var(--alarm); color: #fff; }
+
+/* Vaiheet */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.steps li { display: flex; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.steps b { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 99px; background: var(--sky); font-size: 14px; font-weight: 800; }
+.steps h3 { font-size: 17px; }
+.steps p { margin-top: 4px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+/* Ominaisuudet */
+.band { background: var(--surface); border-block: 1px solid var(--line); }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
+.features li { padding-top: 14px; border-top: 2px solid var(--ink); min-width: 0; }
+.features h3 { font-size: 17px; }
+.features p { margin-top: 6px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.note { margin-top: 28px; color: var(--muted); font-size: 15px; }
+
+/* Asukkaat ja tietosuoja */
+.split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+.ticks, .dots { display: grid; gap: 10px; }
+.ticks li, .dots li { position: relative; padding-left: 26px; color: var(--muted); font-size: 16px; line-height: 1.5; }
+.ticks li::before { content: ""; position: absolute; left: 2px; top: .42em; width: 12px; height: 7px; border-left: 2.5px solid var(--blue); border-bottom: 2.5px solid var(--blue); transform: rotate(-45deg); }
+.dots li::before { content: ""; position: absolute; left: 4px; top: .6em; width: 7px; height: 7px; border-radius: 2px; background: var(--blue); }
+.panel { padding: 26px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.panel h3 { font-size: 18px; margin-bottom: 16px; }
+.panel .dots li { font-size: 15px; }
+
+/* Yhteys ja alaosa */
+.contact { background: var(--sky); }
+.contact-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding-block: 44px; }
+.contact h2 { font-size: 28px; letter-spacing: -.02em; }
+.contact p { margin-top: 4px; font-size: 17px; }
+.foot { background: var(--night); color: var(--muted-on-night); font-size: 14px; }
+.foot-inner { display: flex; align-items: center; gap: 20px; padding-block: 24px; }
+.foot-inner a { margin-left: auto; color: #fff; font-weight: 600; text-decoration: none; }
+.foot-inner a:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .hero, .split { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .hero { padding-block: 36px 52px; }
+  .steps, .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .links { display: none; }
+  .bar .button { margin-left: auto; }
+}
+
+@media (max-width: 600px) {
+  .wrap { padding-inline: 16px; }
+  .section { padding-block: 44px; }
+  .steps, .features { grid-template-columns: minmax(0, 1fr); }
+  .lede { font-size: 16px; }
+  .ticket-row { flex-wrap: wrap; }
+  .contact-inner .button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .button { transition: none; }
+}

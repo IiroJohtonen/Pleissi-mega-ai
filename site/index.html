@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kotilo – isännöintitoimiston työkalu asukkaiden yhteydenottoihin</title>
+  <meta name="description" content="Kotilo kokoaa asukkaiden sähköpostit ja portaalin ilmoitukset yhteen jonoon, auttaa vastaamaan niihin ja hoitaa taloyhtiön varaukset, tiedotteet ja ilmoitukset.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Alustan osoite on tässä tiedostossa kahdessa Kirjaudu-linkissä: https://app.kotilo.io -->
+  <header class="top">
+    <div class="wrap bar">
+      <a class="logo" href="/" aria-label="Kotilo, etusivu"><img src="kotilo-logo.svg" alt="Kotilo" width="118" height="34"></a>
+      <nav class="links" aria-label="Sivun osiot">
+        <a href="#toiminta">Näin se toimii</a>
+        <a href="#ominaisuudet">Ominaisuudet</a>
+        <a href="#asukkaat">Asukkaille</a>
+        <a href="#kayttoonotto">Käyttöönotto</a>
+      </nav>
+      <a class="button light" href="https://app.kotilo.io">Kirjaudu</a>
+    </div>
+
+    <div class="wrap hero">
+      <div>
+        <p class="eyebrow">Isännöintitoimiston työkalu</p>
+        <h1>Asukkaiden yhteydenotot <em>yhteen jonoon</em>.</h1>
+        <p class="lede">Kotilo kokoaa sähköpostit ja asukasportaalin ilmoitukset tehtäviksi, auttaa vastaamaan niihin ja hoitaa taloyhtiön arjen varaukset, tiedotteet ja ilmoitukset. Mikään viesti ei jää jonkun henkilökohtaiseen postilaatikkoon.</p>
+        <div class="actions">
+          <a class="button sky" href="#yhteys">Pyydä esittely</a>
+          <a class="button ghost" href="https://app.kotilo.io">Kirjaudu alustalle</a>
+        </div>
+      </div>
+
+      <div class="queue" aria-label="Esimerkkinäkymä päätösjonosta">
+        <div class="queue-head"><strong>Päätösjono</strong><span>Esimerkkinäkymä</span></div>
+        <div class="ticket alarm">
+          <div class="ticket-row"><h3>#0142 Vesivuoto keittiössä</h3><span class="chip red">Hätätapaus</span></div>
+          <p>As Oy Koivikko · asunto B 12 · sähköposti</p>
+          <p class="sent">Sähköposti lähetetty vastuuisännöitsijälle</p>
+        </div>
+        <div class="ticket">
+          <div class="ticket-row"><h3>#0141 Saunavuoron vaihto</h3><span class="chip">Määräaika pe</span></div>
+          <p>As Oy Koivikko · asunto A 3 · portaali</p>
+        </div>
+        <div class="ticket">
+          <div class="ticket-row"><h3>#0140 Mistä saan avaimen pyöräkellariin?</h3><span class="chip">AI-ehdotus</span></div>
+          <p>As Oy Rantakaari · asunto C 21 · sähköposti</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="wrap section" id="toiminta">
+      <h2>Näin se toimii</h2>
+      <ol class="steps">
+        <li><b>1</b><div><h3>Viesti saapuu</h3><p>Sähköpostilla, asukasportaalista tai toimistolla käsin kirjattuna.</p></div></li>
+        <li><b>2</b><div><h3>Kotilo tekee siitä tehtävän</h3><p>Asukas ja asunto tunnistetaan lähettäjästä, ja saman ketjun vastaukset päätyvät samalle tehtävälle.</p></div></li>
+        <li><b>3</b><div><h3>Isännöitsijä päättää</h3><p>Ota itselle, anna toiselle tai sulje. Vastaus lähtee tehtävältä liitteineen.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="band" id="ominaisuudet">
+      <div class="wrap section">
+        <h2>Mitä Kotilolla tehdään</h2>
+        <ul class="features">
+          <li><h3>Tehtävät hallinnassa</h3><p>Jokaisella tehtävällä on käsittelijä, prioriteetti, määräaika, viestiketju, sisäiset muistiinpanot ja loki. Myöhässä olevat näkyvät heti.</p></li>
+          <li><h3>Hätätapaukset heti tietoon</h3><p>Vesivuoto tai sähkökatko nousee jonon kärkeen, ja taloyhtiön vastuuisännöitsijä saa siitä sähköpostin saman tien.</p></li>
+          <li><h3>AI-vastausehdotukset</h3><p>Ehdotus perustuu vain kyseisen taloyhtiön omiin ohjeisiin ja dokumentteihin. Käsittelijä tarkistaa ja lähettää vastauksen itse.</p></li>
+          <li><h3>AI seuloo ja priorisoi</h3><p>Halutessasi AI arvioi saapuvan viestin prioriteetin ja pitää mainokset ja automaattiviestit poissa jonosta. Molemmat ovat valinnaisia.</p></li>
+          <li><h3>Työtilaukset huoltoyhtiölle</h3><p>Tilaus lähtee suoraan tehtävältä kuvineen, ja kuittaus tehdystä työstä jää tehtävän historiaan.</p></li>
+          <li><h3>Remontit, avaimet ja lukemat</h3><p>Remontti-ilmoitusten hyväksyntä ehtoineen, avainrekisteri luovutuksineen ja asuntojen kulutuslukemat samassa paikassa.</p></li>
+          <li><h3>Vuorot, autopaikat ja jonot</h3><p>Sauna- ja pyykkitupavuorot, autopaikat ja niiden jonot sekä laskutusraportit maksuista.</p></li>
+          <li><h3>Raportit toistuvista aiheista</h3><p>Näet, mistä asukkaat kysyvät toistuvasti, ja voit tehdä aiheesta vakio-ohjeen, jota AI käyttää jatkossa.</p></li>
+          <li><h3>Suomeksi ja englanniksi</h3><p>Käyttöliittymä toimii molemmilla kielillä sekä toimistolle että asukkaille, myös puhelimella.</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="wrap section split" id="asukkaat">
+      <div>
+        <h2>Asukkaille oma portaali</h2>
+        <p class="lede dark">Asukas hoitaa tavallisimmat asiat itse, eikä toimiston tarvitse kirjata niitä käsin.</p>
+        <ul class="ticks">
+          <li>Vikailmoitukset ja kysymykset kuvineen, ja viestiketju isännöitsijän kanssa</li>
+          <li>Taloyhtiön tiedotteet</li>
+          <li>Sauna- ja pyykkitupavuorojen varaus</li>
+          <li>Autopaikka- ja saunavuorojono</li>
+          <li>Muuttoilmoitus ja remontti-ilmoitus</li>
+          <li>Vesi- ja sähkömittarin lukemien ilmoittaminen</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Tietosuoja ja käyttöoikeudet</h3>
+        <ul class="dots">
+          <li>Roolit pääkäyttäjälle, isännöitsijälle ja asiakaspalvelulle. Isännöitsijä näkee vain omat taloyhtiönsä.</li>
+          <li>Asukas näkee vain omat asiansa ja oman taloyhtiönsä tiedotteet.</li>
+          <li>Asukkaan tiedot voi viedä ja poistaa pyynnöstä.</li>
+          <li>Suljetuille tehtäville ja lokille voi asettaa säilytysajan.</li>
+          <li>Päivittäinen varmuuskopio.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="band" id="kayttoonotto">
+      <div class="wrap section">
+        <h2>Käyttöönotto</h2>
+        <ul class="features three">
+          <li><h3>Asukkaat tiedostosta</h3><p>Asukkaat ja asunnot tuodaan CSV- tai Excel-tiedostosta.</p></li>
+          <li><h3>Toimiston sähköposti</h3><p>Kotilo toimii toimiston Gmail- tai Google Workspace -sähköpostin kanssa. Taloyhtiölle voi yhdistää oman osoitteen.</p></li>
+          <li><h3>Ohjeet tietopankkiin</h3><p>Taloyhtiön ohjeet ja dokumentit ladataan tietopankkiin, josta vastausehdotukset haetaan. Sisäiset ohjeet pysyvät vain henkilökunnalla.</p></li>
+        </ul>
+        <p class="note">Kotiloa käytetään selaimella, eikä mitään tarvitse asentaa.</p>
+      </div>
+    </section>
+
+    <section class="contact" id="yhteys">
+      <div class="wrap contact-inner">
+        <div>
+          <h2>Pyydä esittely</h2>
+          <p>Näytämme Kotilon käytännössä esimerkkitaloyhtiön avulla.</p>
+        </div>
+        <a class="button dark" href="mailto:hei@kotilo.io">hei@kotilo.io</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <img src="kotilo-logo.svg" alt="Kotilo" width="90" height="26">
+      <span>© <span id="year">2026</span> Kotilo</span>
+      <a href="https://app.kotilo.io">Kirjaudu</a>
+    </div>
+  </footer>
+
+  <script>document.getElementById("year").textContent = String(new Date().getFullYear());</script>
+</body>
+</html>

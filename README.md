@@ -114,6 +114,10 @@ Komento tallentaa eheän kopion tietokannasta sekä liitteet ja tietopankin tied
 
 Palautus: pysäytä palvelin ja kopioi varmuuskopion `kotilo.sqlite`, `attachments` ja `knowledge-files` kansioon `DATA_DIR`.
 
+## Julkaisu osoitteeseen kotilo.io
+
+Esittelysivu on kansiossa `site/` ja julkaistaan osoitteeseen `kotilo.io`. Alusta julkaistaan osoitteeseen `app.kotilo.io` erillisestä tuotantokopiosta. Vaiheet ja skriptit ovat tiedostossa [deploy/README.md](deploy/README.md).
+
 ## Tuotantoajo
 
 Tuotannossa palvelin tarjoaa myös käännetyn käyttöliittymän, joten tarvitaan vain yksi palvelu ja yksi osoite.
