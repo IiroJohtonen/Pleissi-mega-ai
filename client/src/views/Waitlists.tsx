@@ -4,6 +4,7 @@ import { formatDate } from "../format";
 import { api, errorMessage } from "../session";
 import type { Company } from "../types";
 import type { ParkingSpace } from "./Parking";
+import { t } from "../i18n";
 
 export type WaitlistEntry = {
   id: string;
@@ -23,8 +24,8 @@ export type WaitlistEntry = {
 };
 
 export function waitlistLabel(entry: Pick<WaitlistEntry, "resource" | "parking_type">) {
-  if (entry.resource === "sauna") return "Saunavuoro";
-  return entry.parking_type ? `Autopaikka · ${entry.parking_type}` : "Autopaikka";
+  if (entry.resource === "sauna") return t("Saunavuoro");
+  return entry.parking_type ? `${t("Autopaikka")} · ${t(entry.parking_type)}` : t("Autopaikka");
 }
 
 // Toimiston näkymä: jonot ilmoittautumisjärjestyksessä. Vapaan autopaikan voi antaa suoraan jonottajalle.
@@ -78,7 +79,7 @@ export function Waitlists({ companies }: { companies: Company[] }) {
       if (close) setOpenId(null);
       await loadEntries();
     } catch (actionError) {
-      setError(errorMessage(actionError, "Toiminto epäonnistui."));
+      setError(errorMessage(actionError, t("Toiminto epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -88,27 +89,27 @@ export function Waitlists({ companies }: { companies: Company[] }) {
 
   return (
     <section className="content">
-      <a className="back-link" href="#/companies">← Taloyhtiöt</a>
+      <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="residents-toolbar">
-        <span>{entries.length} jonottajaa</span>
+        <span>{entries.length}{" "}{t("jonottajaa")}</span>
       </div>
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <p className="send-error">Jonojen lataus epäonnistui.</p>
-        : entries.length === 0 ? <div className="empty">Jonoissa ei ole ketään. Asukas ilmoittautuu jonoon asukasportaalissa.</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <p className="send-error">{t("Jonojen lataus epäonnistui.")}</p>
+        : entries.length === 0 ? <div className="empty">{t("Jonoissa ei ole ketään. Asukas ilmoittautuu jonoon asukasportaalissa.")}</div>
         : (
           <div className="table-card">
             <table className="data-table report-topics">
               <thead>
                 <tr>
-                  <th>Sija</th>
-                  <th>Asukas</th>
-                  <th>Asunto</th>
-                  <th>Taloyhtiö</th>
-                  <th>Jono</th>
-                  <th>Jonossa alkaen</th>
-                  <th>Tila</th>
+                  <th>{t("Sija")}</th>
+                  <th>{t("Asukas")}</th>
+                  <th>{t("Asunto")}</th>
+                  <th>{t("Taloyhtiö")}</th>
+                  <th>{t("Jono")}</th>
+                  <th>{t("Jonossa alkaen")}</th>
+                  <th>{t("Tila")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,7 +119,7 @@ export function Waitlists({ companies }: { companies: Company[] }) {
                     className="clickable"
                     role="button"
                     tabIndex={0}
-                    title="Avaa jonottajan tiedot"
+                    title={t("Avaa jonottajan tiedot")}
                     onClick={() => { setOpenId(entry.id); setError(""); }}
                     onKeyDown={event => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -130,14 +131,14 @@ export function Waitlists({ companies }: { companies: Company[] }) {
                   >
                     <td><strong>{entry.position}.</strong></td>
                     <td>
-                      <strong>{entry.resident_name || "Tuntematon asukas"}</strong>
+                      <strong>{entry.resident_name || t("Tuntematon asukas")}</strong>
                       {entry.note && <span>{entry.note}</span>}
                     </td>
                     <td>{entry.apartment_number || "–"}</td>
                     <td>{companyName(entry.company_id)}</td>
                     <td>{waitlistLabel(entry)}</td>
                     <td>{formatDate(entry.created_at)}</td>
-                    <td><span className={`work-order-status ${entry.status === "offered" ? "done" : ""}`}>{entry.status === "offered" ? "Tarjottu" : "Jonossa"}</span></td>
+                    <td><span className={`work-order-status ${entry.status === "offered" ? "done" : ""}`}>{entry.status === "offered" ? t("Tarjottu") : t("Jonossa")}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -150,30 +151,30 @@ export function Waitlists({ companies }: { companies: Company[] }) {
         <div className="overlay" onClick={() => !saving && setOpenId(null)}>
           <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
-            <h2>{open.resident_name || "Tuntematon asukas"}</h2>
+            <h2>{open.resident_name || t("Tuntematon asukas")}</h2>
             <p className="muted">
-              {waitlistLabel(open)} · sija {open.position} · {companyName(open.company_id)} · {open.apartment_number || "–"}
+              {waitlistLabel(open)}{" "}{t("· sija")}{" "}{open.position} · {companyName(open.company_id)} · {open.apartment_number || "–"}
               {open.resident_email ? ` · ${open.resident_email}` : ""}
             </p>
             {open.note && <p className="announcement-body">{open.note}</p>}
             {open.status === "offered" && (
-              <p className="reply-hint">Tarjottu {open.offered_at ? formatDate(open.offered_at) : ""}{open.offered_by ? ` · ${open.offered_by}` : ""}</p>
+              <p className="reply-hint">{t("Tarjottu")}{" "}{open.offered_at ? formatDate(open.offered_at) : ""}{open.offered_by ? ` · ${open.offered_by}` : ""}</p>
             )}
 
             {open.resource === "parking" && (
               <div className="ticket-form">
                 {freeSpaces.length === 0 ? (
                   <p className="muted">
-                    Taloyhtiössä ei ole vapaata {open.parking_type ? `paikkaa tyyppiä ${open.parking_type}` : "autopaikkaa"}.
+                    {t("Taloyhtiössä ei ole vapaata")}{" "}{open.parking_type ? t("paikkaa tyyppiä {0}", open.parking_type) : t("autopaikkaa")}.
                   </p>
                 ) : (
                   <>
                     <Dropdown
-                      label="Vapaa autopaikka"
+                      label={t("Vapaa autopaikka")}
                       value={parkingId}
                       options={[
-                        { value: "", label: "Valitse paikka" },
-                        ...freeSpaces.map(space => ({ value: space.id, label: `${space.label} · ${space.type}` }))
+                        { value: "", label: t("Valitse paikka") },
+                        ...freeSpaces.map(space => ({ value: space.id, label: `${space.label} · ${t(space.type)}` }))
                       ]}
                       onChange={setParkingId}
                     />
@@ -183,7 +184,7 @@ export function Waitlists({ companies }: { companies: Company[] }) {
                         disabled={saving || !parkingId}
                         onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/assign-parking`, { parkingId })}
                       >
-                        Anna paikka jonottajalle
+                        {t("Anna paikka jonottajalle")}
                       </button>
                     </div>
                   </>
@@ -194,16 +195,16 @@ export function Waitlists({ companies }: { companies: Company[] }) {
             <div className="draft-actions">
               {open.status === "waiting" && (
                 <button onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/offer`, undefined, false)} disabled={saving}>
-                  Merkitse tarjotuksi
+                  {t("Merkitse tarjotuksi")}
                 </button>
               )}
               {open.resource === "sauna" && (
                 <button onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/close`, { outcome: "done" })} disabled={saving}>
-                  Vuoro annettu
+                  {t("Vuoro annettu")}
                 </button>
               )}
               <button className="danger" onClick={() => void act(`/waitlist/${encodeURIComponent(open.id)}/close`, { outcome: "cancelled" })} disabled={saving}>
-                Poista jonosta
+                {t("Poista jonosta")}
               </button>
             </div>
             {error && <p className="send-error">{error}</p>}

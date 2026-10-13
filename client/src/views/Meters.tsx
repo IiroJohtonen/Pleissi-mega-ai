@@ -4,6 +4,7 @@ import { formatDay } from "../format";
 import { api, errorMessage } from "../session";
 import type { Company } from "../types";
 import type { Apartment } from "./Keys";
+import { locale, t } from "../i18n";
 
 export type MeterReading = {
   id: string;
@@ -26,7 +27,7 @@ export type MeterReading = {
 export const METER_TYPES: MeterReading["meter_type"][] = ["cold_water", "hot_water", "electricity"];
 
 export function meterLabel(type: string) {
-  return { cold_water: "Kylmä vesi", hot_water: "Lämmin vesi", electricity: "Sähkö" }[type] || type;
+  return { cold_water: t("Kylmä vesi"), hot_water: t("Lämmin vesi"), electricity: t("Sähkö") }[type] || type;
 }
 
 export function meterUnit(type: string) {
@@ -34,7 +35,7 @@ export function meterUnit(type: string) {
 }
 
 export function formatReading(value: number, type: string) {
-  return `${value.toLocaleString("fi-FI", { maximumFractionDigits: 3 })} ${meterUnit(type)}`;
+  return `${value.toLocaleString(locale, { maximumFractionDigits: 3 })} ${meterUnit(type)}`;
 }
 
 // Lukemakenttä hyväksyy sekä pilkun että pisteen desimaalierottimena.
@@ -104,7 +105,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
     event.preventDefault();
     const value = parseReading(valueText);
     if (value === null || !apartmentId) {
-      setError("Valitse asunto ja anna lukema numerona.");
+      setError(t("Valitse asunto ja anna lukema numerona."));
       return;
     }
     setSaving(true);
@@ -117,14 +118,14 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
       setCreating(false);
       await loadReadings();
     } catch (saveError) {
-      setError(errorMessage(saveError, "Lukeman tallennus epäonnistui."));
+      setError(errorMessage(saveError, t("Lukeman tallennus epäonnistui.")));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(reading: MeterReading) {
-    if (!window.confirm("Poistetaanko lukema?")) return;
+    if (!window.confirm(t("Poistetaanko lukema?"))) return;
     setSaving(true);
     setError("");
     try {
@@ -132,7 +133,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
       setOpenId(null);
       await loadReadings();
     } catch (deleteError) {
-      setError(errorMessage(deleteError, "Lukeman poistaminen epäonnistui."));
+      setError(errorMessage(deleteError, t("Lukeman poistaminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -148,7 +149,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
 
   function downloadCsv() {
     const lines = [
-      ["Taloyhtiö", "Asunto", "Osoite", "Mittari", "Lukupäivä", "Lukema", "Yksikkö", "Edellinen lukema", "Kulutus", "Kirjaaja", "Lisätieto"],
+      [t("Taloyhtiö"), t("Asunto"), t("Osoite"), t("Mittari"), t("Lukupäivä"), t("Lukema"), t("Yksikkö"), t("Edellinen lukema"), t("Kulutus"), t("Kirjaaja"), t("Lisätieto")],
       ...visible.map(reading => [
         companyName(reading.company_id),
         reading.apartment_number ?? "",
@@ -175,46 +176,46 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
 
   return (
     <section className="content">
-      <a className="back-link" href="#/companies">← Taloyhtiöt</a>
+      <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="ticket-filters">
         <Dropdown
-          label="Taloyhtiö"
+          label={t("Taloyhtiö")}
           value={companyFilter}
-          options={[{ value: "all", label: "Kaikki" }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
+          options={[{ value: "all", label: t("Kaikki") }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
           onChange={setCompanyFilter}
         />
         <Dropdown
-          label="Mittari"
+          label={t("Mittari")}
           value={typeFilter}
-          options={[{ value: "all", label: "Kaikki" }, ...METER_TYPES.map(option => ({ value: option, label: meterLabel(option) }))]}
+          options={[{ value: "all", label: t("Kaikki") }, ...METER_TYPES.map(option => ({ value: option, label: meterLabel(option) }))]}
           onChange={setTypeFilter}
         />
       </div>
 
       <div className="residents-toolbar">
-        <span>{visible.length} lukemaa</span>
+        <span>{visible.length}{" "}{t("lukemaa")}</span>
         <div className="draft-actions">
-          <button onClick={downloadCsv} disabled={visible.length === 0}>Lataa CSV</button>
-          <button className="secondary" onClick={openCreate}>Lisää lukema</button>
+          <button onClick={downloadCsv} disabled={visible.length === 0}>{t("Lataa CSV")}</button>
+          <button className="secondary" onClick={openCreate}>{t("Lisää lukema")}</button>
         </div>
       </div>
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <div className="empty">Lukemien lataus epäonnistui.</div>
-        : visible.length === 0 ? <div className="empty">{readings.length === 0 ? "Ei lukemia. Asukas ilmoittaa lukeman asukasportaalissa tai toimisto kirjaa sen tässä." : "Ei suodattimia vastaavia lukemia."}</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <div className="empty">{t("Lukemien lataus epäonnistui.")}</div>
+        : visible.length === 0 ? <div className="empty">{readings.length === 0 ? t("Ei lukemia. Asukas ilmoittaa lukeman asukasportaalissa tai toimisto kirjaa sen tässä.") : t("Ei suodattimia vastaavia lukemia.")}</div>
         : (
           <div className="table-card">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Asunto</th>
-                  <th>Taloyhtiö</th>
-                  <th>Mittari</th>
-                  <th>Lukupäivä</th>
-                  <th>Lukema</th>
-                  <th>Kulutus edellisestä</th>
-                  <th>Kirjaaja</th>
+                  <th>{t("Asunto")}</th>
+                  <th>{t("Taloyhtiö")}</th>
+                  <th>{t("Mittari")}</th>
+                  <th>{t("Lukupäivä")}</th>
+                  <th>{t("Lukema")}</th>
+                  <th>{t("Kulutus edellisestä")}</th>
+                  <th>{t("Kirjaaja")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,7 +223,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
                   <tr
                     key={reading.id}
                     className="clickable"
-                    title="Avaa lukema"
+                    title={t("Avaa lukema")}
                     role="button"
                     tabIndex={0}
                     onClick={() => { setOpenId(reading.id); setCreating(false); setError(""); }}
@@ -241,7 +242,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
                     <td>{formatDay(reading.reading_date)}</td>
                     <td>{formatReading(reading.value, reading.meter_type)}</td>
                     <td>{consumption(reading)}</td>
-                    <td>{reading.recorded_by}{reading.source === "portal" ? " · portaali" : ""}</td>
+                    <td>{reading.recorded_by}{reading.source === "portal" ? t(" · portaali") : ""}</td>
                   </tr>
                 ))}
               </tbody>
@@ -258,33 +259,33 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
             <p className="muted">{companyName(open.company_id)}{open.address ? ` · ${open.address}` : ""}</p>
             <dl className="ticket-facts">
               <div>
-                <dt>Lukema</dt>
+                <dt>{t("Lukema")}</dt>
                 <dd>{formatReading(open.value, open.meter_type)}</dd>
               </div>
               <div>
-                <dt>Lukupäivä</dt>
+                <dt>{t("Lukupäivä")}</dt>
                 <dd>{formatDay(open.reading_date)}</dd>
               </div>
               <div>
-                <dt>Edellinen lukema</dt>
+                <dt>{t("Edellinen lukema")}</dt>
                 <dd>{open.previous_value == null ? "–" : `${formatReading(open.previous_value, open.meter_type)} · ${formatDay(open.previous_date)}`}</dd>
               </div>
               <div>
-                <dt>Kulutus edellisestä</dt>
+                <dt>{t("Kulutus edellisestä")}</dt>
                 <dd>{consumption(open)}</dd>
               </div>
               <div>
-                <dt>Kirjaaja</dt>
-                <dd>{open.recorded_by} · {open.source === "portal" ? "asukasportaali" : "toimisto"}</dd>
+                <dt>{t("Kirjaaja")}</dt>
+                <dd>{open.recorded_by} · {open.source === "portal" ? t("asukasportaali") : t("toimisto")}</dd>
               </div>
               <div>
-                <dt>Lisätieto</dt>
+                <dt>{t("Lisätieto")}</dt>
                 <dd>{open.note || "–"}</dd>
               </div>
             </dl>
             {error && <p className="send-error">{error}</p>}
             <div className="draft-actions">
-              <button className="danger" onClick={() => void handleDelete(open)} disabled={saving}>Poista lukema</button>
+              <button className="danger" onClick={() => void handleDelete(open)} disabled={saving}>{t("Poista lukema")}</button>
             </div>
           </aside>
         </div>
@@ -294,50 +295,50 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
         <div className="overlay" onClick={() => !saving && setCreating(false)}>
           <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={() => setCreating(false)} disabled={saving}>×</button>
-            <h2>Lisää lukema</h2>
-            <p className="muted">Kirjaa mittarin lukema asunnolle. Kulutus lasketaan edellisestä lukemasta.</p>
+            <h2>{t("Lisää lukema")}</h2>
+            <p className="muted">{t("Kirjaa mittarin lukema asunnolle. Kulutus lasketaan edellisestä lukemasta.")}</p>
 
             <form className="ticket-form" onSubmit={handleSubmit}>
               <Dropdown
-                label="Taloyhtiö"
+                label={t("Taloyhtiö")}
                 value={formCompany}
                 options={companies.map(company => ({ value: company.id, label: company.name }))}
                 onChange={value => { setFormCompany(value); setApartmentId(""); }}
               />
               <Dropdown
-                label="Asunto"
+                label={t("Asunto")}
                 value={apartmentId}
                 options={[
-                  { value: "", label: "Valitse asunto" },
+                  { value: "", label: t("Valitse asunto") },
                   ...apartments.map(apartment => ({ value: apartment.id, label: `${apartment.apartment_number} · ${apartment.address}` }))
                 ]}
                 onChange={setApartmentId}
               />
               <Dropdown
-                label="Mittari"
+                label={t("Mittari")}
                 value={meterType}
                 options={METER_TYPES.map(option => ({ value: option, label: meterLabel(option) }))}
                 onChange={setMeterType}
               />
               <label>
-                <span>Lukema ({meterUnit(meterType)})</span>
-                <input value={valueText} onChange={event => setValueText(event.target.value)} inputMode="decimal" placeholder="Esim. 123,45" />
+                <span>{t("Lukema (")}{meterUnit(meterType)})</span>
+                <input value={valueText} onChange={event => setValueText(event.target.value)} inputMode="decimal" placeholder={t("Esim. 123,45")} />
               </label>
               <label>
-                <span>Lukupäivä</span>
+                <span>{t("Lukupäivä")}</span>
                 <input type="date" value={readingDate} max={todayText()} onChange={event => setReadingDate(event.target.value)} required />
               </label>
               <label>
-                <span>Lisätieto</span>
-                <input value={note} onChange={event => setNote(event.target.value)} maxLength={300} placeholder="Valinnainen, esim. mittari vaihdettu" />
+                <span>{t("Lisätieto")}</span>
+                <input value={note} onChange={event => setNote(event.target.value)} maxLength={300} placeholder={t("Valinnainen, esim. mittari vaihdettu")} />
               </label>
 
               {error && <p className="send-error">{error}</p>}
 
               <div className="drawer-actions compact-actions">
-                <button type="button" onClick={() => setCreating(false)}>Peruuta</button>
+                <button type="button" onClick={() => setCreating(false)}>{t("Peruuta")}</button>
                 <button className="primary" type="submit" disabled={saving || !apartmentId || !valueText.trim()}>
-                  {saving ? "Tallennetaan…" : "Lisää lukema"}
+                  {saving ? t("Tallennetaan…") : t("Lisää lukema")}
                 </button>
               </div>
             </form>

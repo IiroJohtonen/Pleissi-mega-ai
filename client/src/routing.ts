@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { TicketTab } from "./types";
+import { t } from "./i18n";
 
 const ticketTabs: TicketTab[] = ["queue", "tickets", "my-tickets", "ai-handled", "knowledge", "reports", "companies", "residents", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log"];
 
@@ -35,29 +36,29 @@ export function useRoute() {
 }
 
 export const tabTitles: Record<TicketTab, string> = {
-  queue: "Päätösjono",
-  "my-tickets": "Omat tehtävät",
-  "ai-handled": "AI tehtävät",
-  tickets: "Kaikki tehtävät",
-  knowledge: "Dokumentaatio",
-  reports: "Raportit",
-  log: "Loki",
-  sauna: "Saunavuorot",
-  laundry: "Pyykkitupavuorot",
-  parking: "Autopaikat",
-  announcements: "Tiedotteet",
-  moves: "Muuttoilmoitukset",
+  queue: t("Päätösjono"),
+  "my-tickets": t("Omat tehtävät"),
+  "ai-handled": t("AI tehtävät"),
+  tickets: t("Kaikki tehtävät"),
+  knowledge: t("Dokumentaatio"),
+  reports: t("Raportit"),
+  log: t("Loki"),
+  sauna: t("Saunavuorot"),
+  laundry: t("Pyykkitupavuorot"),
+  parking: t("Autopaikat"),
+  announcements: t("Tiedotteet"),
+  moves: t("Muuttoilmoitukset"),
   renovations: "Remontti-ilmoitukset",
-  keys: "Avainhallinta",
-  meters: "Kulutuslukemat",
-  waitlist: "Jonot",
-  companies: "Taloyhtiöt",
-  residents: "Asukastietokanta",
-  settings: "Asetukset"
+  keys: t("Avainhallinta"),
+  meters: t("Kulutuslukemat"),
+  waitlist: t("Jonot"),
+  companies: t("Taloyhtiöt"),
+  residents: t("Asukastietokanta"),
+  settings: t("Asetukset")
 };
 
 export const emptyTicketMessages: Partial<Record<TicketTab, string>> = {
-  queue: "Ei päätösjonoon sopivia tehtäviä.",
-  "my-tickets": "Ei omia tehtäviä.",
-  "ai-handled": "Ei AI:n hoidossa olevia tehtäviä."
+  queue: t("Ei päätösjonoon sopivia tehtäviä."),
+  "my-tickets": t("Ei omia tehtäviä."),
+  "ai-handled": t("Ei AI:n hoidossa olevia tehtäviä.")
 };

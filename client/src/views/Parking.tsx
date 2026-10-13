@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
 import { api, errorMessage } from "../session";
 import type { Company, Resident } from "../types";
+import { t } from "../i18n";
 
 export type ParkingSpace = {
   id: string;
@@ -102,21 +103,21 @@ export function ParkingSpaces({
       closeForm();
       await loadSpaces();
     } catch (error) {
-      setFormError(errorMessage(error, "Autopaikan tallennus epäonnistui."));
+      setFormError(errorMessage(error, t("Autopaikan tallennus epäonnistui.")));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete() {
-    if (!editing || !window.confirm(`Poistetaanko autopaikka ${editing.label}?`)) return;
+    if (!editing || !window.confirm(t("Poistetaanko autopaikka {0}?", editing.label))) return;
     setSaving(true);
     try {
       await api(`/parking/${encodeURIComponent(editing.id)}`, { method: "DELETE" });
       closeForm();
       await loadSpaces();
     } catch (error) {
-      setFormError(errorMessage(error, "Autopaikan poistaminen epäonnistui."));
+      setFormError(errorMessage(error, t("Autopaikan poistaminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -132,41 +133,41 @@ export function ParkingSpaces({
   const free = visible.filter(space => !space.resident_id).length;
   const parkingFilters: { key: string; label: string; value: string; clear: () => void }[] = [
     ...(companyFilter !== "all"
-      ? [{ key: "company", label: "Taloyhtiö", value: companyName(companyFilter), clear: () => setCompanyFilter("all") }]
+      ? [{ key: "company", label: t("Taloyhtiö"), value: companyName(companyFilter), clear: () => setCompanyFilter("all") }]
       : []),
-    ...(typeFilter !== "all" ? [{ key: "type", label: "Tyyppi", value: typeFilter, clear: () => setTypeFilter("all") }] : []),
+    ...(typeFilter !== "all" ? [{ key: "type", label: t("Tyyppi"), value: t(typeFilter), clear: () => setTypeFilter("all") }] : []),
     ...(statusFilter !== "all"
-      ? [{ key: "status", label: "Tila", value: statusFilter === "free" ? "Vapaat" : "Varatut", clear: () => setStatusFilter("all") }]
+      ? [{ key: "status", label: t("Tila"), value: statusFilter === "free" ? t("Vapaat") : t("Varatut"), clear: () => setStatusFilter("all") }]
       : [])
   ];
 
   return (
     <section className="content">
-      {!embedded && <a className="back-link" href="#/companies">← Taloyhtiöt</a>}
+      {!embedded && <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>}
 
       {filtersOpen && (
         <div className="ticket-filters">
           {!embedded && (
             <Dropdown
-              label="Taloyhtiö"
+              label={t("Taloyhtiö")}
               value={companyFilter}
-              options={[{ value: "all", label: "Kaikki" }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
+              options={[{ value: "all", label: t("Kaikki") }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
               onChange={setCompanyFilter}
             />
           )}
           <Dropdown
-            label="Tyyppi"
+            label={t("Tyyppi")}
             value={typeFilter}
-            options={[{ value: "all", label: "Kaikki" }, ...PARKING_TYPES.map(option => ({ value: option, label: option }))]}
+            options={[{ value: "all", label: t("Kaikki") }, ...PARKING_TYPES.map(option => ({ value: option, label: t(option) }))]}
             onChange={setTypeFilter}
           />
           <Dropdown
-            label="Tila"
+            label={t("Tila")}
             value={statusFilter}
             options={[
-              { value: "all", label: "Kaikki" },
-              { value: "free", label: "Vapaat" },
-              { value: "taken", label: "Varatut" }
+              { value: "all", label: t("Kaikki") },
+              { value: "free", label: t("Vapaat") },
+              { value: "taken", label: t("Varatut") }
             ]}
             onChange={setStatusFilter}
           />
@@ -175,7 +176,7 @@ export function ParkingSpaces({
               setCompanyFilter("all");
               setTypeFilter("all");
               setStatusFilter("all");
-            }}>Tyhjennä suodattimet</button>
+            }}>{t("Tyhjennä suodattimet")}</button>
           )}
         </div>
       )}
@@ -185,8 +186,8 @@ export function ParkingSpaces({
           <button
             className={`filter-toggle ${filtersOpen || parkingFilters.length > 0 ? "active" : ""}`}
             onClick={() => setFiltersOpen(!filtersOpen)}
-            title={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
-            aria-label={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
+            title={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
+            aria-label={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
             aria-expanded={filtersOpen}
           >
             <svg
@@ -202,32 +203,32 @@ export function ParkingSpaces({
             </svg>
             {parkingFilters.length > 0 && <i />}
           </button>
-          <span>{visible.length} autopaikkaa · {free} vapaana</span>
+          <span>{visible.length}{" "}{t("autopaikkaa ·")}{" "}{free}{" "}{t("vapaana")}</span>
           {parkingFilters.map(filter => (
             <span className="filter-chip" key={filter.key}>
               <small>{filter.label}</small>
               {filter.value}
-              <button onClick={filter.clear} title="Poista suodatin" aria-label={`Poista suodatin ${filter.label}`}>×</button>
+              <button onClick={filter.clear} title={t("Poista suodatin")} aria-label={t("Poista suodatin {0}", filter.label)}>×</button>
             </span>
           ))}
         </div>
-        <button className="secondary" onClick={() => openForm(null)}>Lisää autopaikka</button>
+        <button className="secondary" onClick={() => openForm(null)}>{t("Lisää autopaikka")}</button>
       </div>
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <div className="empty">Autopaikkojen lataus epäonnistui.</div>
-        : visible.length === 0 ? <div className="empty">{spaces.length === 0 ? "Ei autopaikkoja." : "Ei suodattimia vastaavia autopaikkoja."}</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <div className="empty">{t("Autopaikkojen lataus epäonnistui.")}</div>
+        : visible.length === 0 ? <div className="empty">{spaces.length === 0 ? t("Ei autopaikkoja.") : t("Ei suodattimia vastaavia autopaikkoja.")}</div>
         : (
           <div className="table-card">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Paikka</th>
-                  <th>Tyyppi</th>
-                  {!embedded && <th>Taloyhtiö</th>}
-                  <th>Haltija</th>
-                  <th>Asunto</th>
-                  <th>Lisätieto</th>
+                  <th>{t("Paikka")}</th>
+                  <th>{t("Tyyppi")}</th>
+                  {!embedded && <th>{t("Taloyhtiö")}</th>}
+                  <th>{t("Haltija")}</th>
+                  <th>{t("Asunto")}</th>
+                  <th>{t("Lisätieto")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,7 +236,7 @@ export function ParkingSpaces({
                   <tr
                     key={space.id}
                     className="clickable"
-                    title="Muokkaa autopaikkaa"
+                    title={t("Muokkaa autopaikkaa")}
                     role="button"
                     tabIndex={0}
                     onClick={() => openForm(space)}
@@ -247,9 +248,9 @@ export function ParkingSpaces({
                     }}
                   >
                     <td><strong>{space.label}</strong></td>
-                    <td><span className="type">{space.type}</span></td>
+                    <td><span className="type">{t(space.type)}</span></td>
                     {!embedded && <td>{companyName(space.company_id)}</td>}
-                    <td>{space.resident_name || <span className="muted">Vapaa</span>}</td>
+                    <td>{space.resident_name || <span className="muted">{t("Vapaa")}</span>}</td>
                     <td>{space.apartment_number || "–"}</td>
                     <td>{space.note || "–"}</td>
                   </tr>
@@ -264,13 +265,13 @@ export function ParkingSpaces({
         <div className="overlay" onClick={closeForm}>
           <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={closeForm}>×</button>
-            <h2>{editing ? `Autopaikka ${editing.label}` : "Lisää autopaikka"}</h2>
-            <p className="muted">{editing ? companyName(editing.company_id) : "Valitse taloyhtiö ja anna paikan tiedot."}</p>
+            <h2>{editing ? t("Autopaikka {0}", editing.label) : t("Lisää autopaikka")}</h2>
+            <p className="muted">{editing ? companyName(editing.company_id) : t("Valitse taloyhtiö ja anna paikan tiedot.")}</p>
 
             <form className="ticket-form" onSubmit={handleSubmit}>
               {!editing && !embedded && (
                 <Dropdown
-                  label="Taloyhtiö"
+                  label={t("Taloyhtiö")}
                   value={formCompany}
                   options={companies.map(company => ({ value: company.id, label: company.name }))}
                   onChange={value => { setFormCompany(value); setResidentId(""); }}
@@ -278,23 +279,23 @@ export function ParkingSpaces({
               )}
 
               <label>
-                <span>Paikan tunnus</span>
-                <input value={label} onChange={event => setLabel(event.target.value)} placeholder="Esim. 14 tai AT 3" />
+                <span>{t("Paikan tunnus")}</span>
+                <input value={label} onChange={event => setLabel(event.target.value)} placeholder={t("Esim. 14 tai AT 3")} />
               </label>
 
               <Dropdown
-                label="Tyyppi"
+                label={t("Tyyppi")}
                 value={type}
                 options={(PARKING_TYPES.includes(type) ? PARKING_TYPES : [type, ...PARKING_TYPES])
-                  .map(option => ({ value: option, label: option }))}
+                  .map(option => ({ value: option, label: t(option) }))}
                 onChange={setType}
               />
 
               <Dropdown
-                label="Haltija"
+                label={t("Haltija")}
                 value={residentId}
                 options={[
-                  { value: "", label: "Vapaa (ei haltijaa)" },
+                  { value: "", label: t("Vapaa (ei haltijaa)") },
                   ...residents.map(resident => ({
                     value: resident.id,
                     label: [resident.name, resident.apartment_number].filter(Boolean).join(" · ")
@@ -304,19 +305,19 @@ export function ParkingSpaces({
               />
 
               <label>
-                <span>Lisätieto</span>
-                <input value={note} onChange={event => setNote(event.target.value)} placeholder="Valinnainen, esim. lämmitystolppa" />
+                <span>{t("Lisätieto")}</span>
+                <input value={note} onChange={event => setNote(event.target.value)} placeholder={t("Valinnainen, esim. lämmitystolppa")} />
               </label>
 
               {formError && <p className="send-error">{formError}</p>}
 
               <div className="drawer-actions compact-actions">
                 {editing && (
-                  <button className="danger" type="button" onClick={handleDelete} disabled={saving}>Poista</button>
+                  <button className="danger" type="button" onClick={handleDelete} disabled={saving}>{t("Poista")}</button>
                 )}
-                <button type="button" onClick={closeForm}>Peruuta</button>
+                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
                 <button className="primary" type="submit" disabled={saving || !label.trim()}>
-                  {saving ? "Tallennetaan…" : editing ? "Tallenna muutokset" : "Lisää autopaikka"}
+                  {saving ? t("Tallennetaan…") : editing ? t("Tallenna muutokset") : t("Lisää autopaikka")}
                 </button>
               </div>
             </form>

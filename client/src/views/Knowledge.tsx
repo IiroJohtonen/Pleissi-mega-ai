@@ -3,23 +3,24 @@ import { DownloadLink, usePaged } from "../components/common";
 import { formatDate, formatDay } from "../format";
 import { api, API, errorMessage, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
+import { locale, t } from "../i18n";
 
 function knowledgeStateLabel(state: string) {
   return {
-    in_use: "AI:n käytössä",
-    expired: "Vanhentunut – ei AI:n käytössä",
-    upcoming: "Ei vielä voimassa – ei AI:n käytössä",
-    unreadable: "Tekstiä ei saatu luettua – ei AI:n käytössä",
-    replaced: "Korvattu uudella versiolla",
-    deleted: "Poistettu"
+    in_use: t("AI:n käytössä"),
+    expired: t("Vanhentunut – ei AI:n käytössä"),
+    upcoming: t("Ei vielä voimassa – ei AI:n käytössä"),
+    unreadable: t("Tekstiä ei saatu luettua – ei AI:n käytössä"),
+    replaced: t("Korvattu uudella versiolla"),
+    deleted: t("Poistettu")
   }[state] || state;
 }
 
 function validityLabel(entry: KnowledgeEntry) {
   if (entry.valid_from && entry.valid_until) return `Voimassa ${formatDay(entry.valid_from)}–${formatDay(entry.valid_until)}`;
-  if (entry.valid_from) return `Voimassa ${formatDay(entry.valid_from)} alkaen`;
-  if (entry.valid_until) return `Voimassa ${formatDay(entry.valid_until)} asti`;
-  return "Voimassa toistaiseksi";
+  if (entry.valid_from) return t("Voimassa {0} alkaen", formatDay(entry.valid_from));
+  if (entry.valid_until) return t("Voimassa {0} asti", formatDay(entry.valid_until));
+  return t("Voimassa toistaiseksi");
 }
 
 type KnowledgeFormState =
@@ -41,7 +42,7 @@ export function Knowledge({
     <section className="content">
       <div className="ticket-filters">
         <label>
-          <span>Taloyhtiö</span>
+          <span>{t("Taloyhtiö")}</span>
           <select value={companyId} onChange={event => onCompanyChange(event.target.value)}>
             {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
           </select>
@@ -98,7 +99,7 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
   }
 
   async function removeEntry(entry: KnowledgeEntry) {
-    if (!window.confirm(`Poistetaanko "${entry.title}"? Se poistuu AI:n käytöstä.`)) return;
+    if (!window.confirm(t("Poistetaanko \"{0}\"? Se poistuu AI:n käytöstä.", entry.title))) return;
     await api(`/knowledge/${entry.id}`, { method: "DELETE" });
     setNotice("");
     await loadEntries();
@@ -123,55 +124,54 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
   return (
     <div className="knowledge-base">
       <p className="muted knowledge-intro">
-        Yhtiön dokumentit ja vakiotiedot, joiden pohjalta AI tekee luonnokset. AI ei käytä muita lähteitä
-        yhtiön tiedoista, eikä näitä tietoja käytetä muiden yhtiöiden luonnoksissa.
+        {t("Yhtiön dokumentit ja vakiotiedot, joiden pohjalta AI tekee luonnokset. AI ei käytä muita lähteitä yhtiön tiedoista, eikä näitä tietoja käytetä muiden yhtiöiden luonnoksissa.")}
       </p>
 
       <div className="residents-toolbar">
-        <span>{entries.length} tietuetta</span>
+        <span>{entries.length}{" "}{t("tietuetta")}</span>
         {isManager() && (
           <div className="toolbar-actions">
-            <button className="secondary" onClick={() => setForm({ mode: "document" })}>Lataa dokumentti</button>
-            <button className="secondary" onClick={() => setForm({ mode: "fact" })}>Lisää vakiotieto</button>
+            <button className="secondary" onClick={() => setForm({ mode: "document" })}>{t("Lataa dokumentti")}</button>
+            <button className="secondary" onClick={() => setForm({ mode: "fact" })}>{t("Lisää vakiotieto")}</button>
           </div>
         )}
       </div>
 
       <form className="settings-card knowledge-test" onSubmit={runTest}>
-        <h2>Testaa</h2>
-        <p className="muted">Kysy kysymys ja näe, minkä vastauksen ja lähteen AI käyttäisi.</p>
+        <h2>{t("Testaa")}</h2>
+        <p className="muted">{t("Kysy kysymys ja näe, minkä vastauksen ja lähteen AI käyttäisi.")}</p>
         <div className="reporter-link">
           <input
             value={question}
             onChange={event => { setQuestion(event.target.value); setTestResult(null); }}
-            placeholder="Esim. Miten saunavuoro varataan?"
+            placeholder={t("Esim. Miten saunavuoro varataan?")}
           />
           <button type="submit" disabled={testing || !question.trim()}>
-            {testing ? "Haetaan…" : "Testaa"}
+            {testing ? t("Haetaan…") : t("Testaa")}
           </button>
         </div>
         {testResult && (testResult.found ? (
           <div className="test-result">
             <p>{testResult.answer}</p>
-            <span className="source-pill">Lähde: {testResult.source?.title}</span>
+            <span className="source-pill">{t("Lähde:")}{" "}{testResult.source?.title}</span>
           </div>
         ) : (
           <p className="test-result muted">
-            AI ei löytänyt vastausta tämän yhtiön tiedoista. Asia siirtyisi isännöitsijälle.
+            {t("AI ei löytänyt vastausta tämän yhtiön tiedoista. Asia siirtyisi isännöitsijälle.")}
           </p>
         ))}
       </form>
 
       {notice && <p className="send-error">{notice}</p>}
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <div className="empty">Tietojen lataus epäonnistui.</div>
-        : entries.length === 0 ? <div className="empty">Tällä taloyhtiöllä ei ole vielä dokumentteja tai vakiotietoja.</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <div className="empty">{t("Tietojen lataus epäonnistui.")}</div>
+        : entries.length === 0 ? <div className="empty">{t("Tällä taloyhtiöllä ei ole vielä dokumentteja tai vakiotietoja.")}</div>
         : pagedEntries.items.map(entry => (
           <article
             className="knowledge-entry clickable"
             key={entry.id}
-            title="Avaa tietokortti"
+            title={t("Avaa tietokortti")}
             onClick={() => setOpenEntryId(entry.id)}
             onKeyDown={event => {
               if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
@@ -183,9 +183,9 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
             tabIndex={0}
           >
             <div className="knowledge-entry-top">
-              <span className="type">{entry.kind === "document" ? "Dokumentti" : "Vakiotieto"}</span>
+              <span className="type">{entry.kind === "document" ? t("Dokumentti") : t("Vakiotieto")}</span>
               <span className={`knowledge-state ${entry.state}`}>{knowledgeStateLabel(entry.state)}</span>
-              <span className="date">{validityLabel(entry)} · versio {entry.version}</span>
+              <span className="date">{validityLabel(entry)}{" "}{t("· versio")}{" "}{entry.version}</span>
             </div>
             <h2>{entry.title}</h2>
             {entry.tags && (
@@ -199,24 +199,24 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
               </DownloadLink>
             )}
             <p>
-              {entry.content || "Ei luettua tekstiä."}
+              {entry.content || t("Ei luettua tekstiä.")}
               {entry.content_length > entry.content.length ? "…" : ""}
             </p>
             <div className="knowledge-entry-actions" onClick={event => event.stopPropagation()}>
-              {isManager() && <button onClick={() => setForm({ mode: "validity", entry })}>Voimassaoloaika</button>}
-              {isManager() && <button onClick={() => setForm({ mode: entry.kind, replaces: entry })}>Korvaa</button>}
+              {isManager() && <button onClick={() => setForm({ mode: "validity", entry })}>{t("Voimassaoloaika")}</button>}
+              {isManager() && <button onClick={() => setForm({ mode: entry.kind, replaces: entry })}>{t("Korvaa")}</button>}
               <button onClick={() => toggleHistory(entry)}>
-                {historyFor === entry.id ? "Piilota historia" : "Historia"}
+                {historyFor === entry.id ? t("Piilota historia") : t("Historia")}
               </button>
-              {isManager() && <button className="danger" onClick={() => removeEntry(entry)}>Poista</button>}
+              {isManager() && <button className="danger" onClick={() => removeEntry(entry)}>{t("Poista")}</button>}
             </div>
             {historyFor === entry.id && (
               <div className="knowledge-history" onClick={event => event.stopPropagation()}>
                 {history.map(version => (
                   <div className="audit" key={version.id}>
-                    <strong>Versio {version.version}: {version.title}</strong>
+                    <strong>{t("Versio")}{" "}{version.version}: {version.title}</strong>
                     <span>
-                      {version.id === entry.id ? "Nykyinen" : knowledgeStateLabel(version.state)} · {formatDate(version.created_at)}
+                      {version.id === entry.id ? t("Nykyinen") : knowledgeStateLabel(version.state)} · {formatDate(version.created_at)}
                     </span>
                   </div>
                 ))}
@@ -288,36 +288,36 @@ function KnowledgeDetailDrawer({
     <div className="overlay" onClick={onClose}>
       <aside className="drawer" onClick={event => event.stopPropagation()}>
         <button className="close" onClick={onClose}>×</button>
-        {failed ? <p className="send-error">Tietojen lataus epäonnistui.</p>
-          : !detail ? <p className="muted">Ladataan…</p> : (
+        {failed ? <p className="send-error">{t("Tietojen lataus epäonnistui.")}</p>
+          : !detail ? <p className="muted">{t("Ladataan…")}</p> : (
           <>
-            <span className="type">{detail.kind === "document" ? "Dokumentti" : "Vakiotieto"}</span>
+            <span className="type">{detail.kind === "document" ? t("Dokumentti") : t("Vakiotieto")}</span>
             <h2>{detail.title}</h2>
 
             <dl className="ticket-facts">
               <div>
-                <dt>Taloyhtiö</dt>
+                <dt>{t("Taloyhtiö")}</dt>
                 <dd>{detail.company_name || "-"}</dd>
               </div>
               <div>
-                <dt>Tila</dt>
+                <dt>{t("Tila")}</dt>
                 <dd><span className={`knowledge-state ${detail.state}`}>{knowledgeStateLabel(detail.state)}</span></dd>
               </div>
               <div>
-                <dt>Voimassaolo</dt>
+                <dt>{t("Voimassaolo")}</dt>
                 <dd>{validityLabel(detail)}</dd>
               </div>
               <div>
-                <dt>Versio</dt>
+                <dt>{t("Versio")}</dt>
                 <dd>{detail.version} / {detail.versions.length}</dd>
               </div>
               <div>
-                <dt>Lisätty</dt>
+                <dt>{t("Lisätty")}</dt>
                 <dd>{formatDate(detail.created_at)}</dd>
               </div>
               {detail.kind === "document" && (
                 <div>
-                  <dt>Tiedosto</dt>
+                  <dt>{t("Tiedosto")}</dt>
                   <dd>
                     {detail.file_name ? (
                       <DownloadLink className="knowledge-file" path={`/knowledge/${detail.id}/file`} filename={detail.file_name}>
@@ -329,36 +329,36 @@ function KnowledgeDetailDrawer({
               )}
               {detail.kind === "document" && (
                 <div>
-                  <dt>Luettu teksti</dt>
-                  <dd>{detail.content_length.toLocaleString("fi-FI")} merkkiä</dd>
+                  <dt>{t("Luettu teksti")}</dt>
+                  <dd>{detail.content_length.toLocaleString(locale)}{" "}{t("merkkiä")}</dd>
                 </div>
               )}
             </dl>
 
             {isCurrent && isManager() && (
               <div className="knowledge-entry-actions">
-                <button onClick={() => onEdit("validity", detail)}>Voimassaoloaika</button>
-                <button onClick={() => onEdit("replace", detail)}>Korvaa</button>
-                <button className="danger" onClick={() => onRemove(detail)}>Poista</button>
+                <button onClick={() => onEdit("validity", detail)}>{t("Voimassaoloaika")}</button>
+                <button onClick={() => onEdit("replace", detail)}>{t("Korvaa")}</button>
+                <button className="danger" onClick={() => onRemove(detail)}>{t("Poista")}</button>
               </div>
             )}
 
             <section className="drawer-section">
-              <h3>{detail.kind === "document" ? "Dokumentista luettu teksti" : "Vastaus"}</h3>
+              <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>
               <p className="knowledge-content">
-                {detail.content || "Tekstiä ei saatu luettua, joten AI ei voi käyttää tätä dokumenttia."}
+                {detail.content || t("Tekstiä ei saatu luettua, joten AI ei voi käyttää tätä dokumenttia.")}
               </p>
             </section>
 
             <section className="drawer-section">
-              <h3>Versiohistoria</h3>
+              <h3>{t("Versiohistoria")}</h3>
               {detail.versions.map(version => (
                 <div className="audit" key={version.id}>
                   {version.id === detail.id
-                    ? <strong>Versio {version.version}: {version.title} (tämä)</strong>
+                    ? <strong>{t("Versio")}{" "}{version.version}: {version.title}{" "}{t("(tämä)")}</strong>
                     : (
                       <button className="back-link" onClick={() => onOpenVersion(version.id)}>
-                        Versio {version.version}: {version.title}
+                        {t("Versio")}{" "}{version.version}: {version.title}
                       </button>
                     )}
                   <span>{knowledgeStateLabel(version.state)} · {formatDate(version.created_at)}</span>
@@ -392,9 +392,9 @@ function KnowledgeFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const heading = form.mode === "validity" ? "Merkitse voimassaoloaika"
-    : form.mode === "document" ? (form.replaces ? "Korvaa dokumentti" : "Lataa dokumentti")
-    : (form.replaces ? "Korvaa vakiotieto" : "Lisää vakiotieto");
+  const heading = form.mode === "validity" ? t("Merkitse voimassaoloaika")
+    : form.mode === "document" ? (form.replaces ? t("Korvaa dokumentti") : t("Lataa dokumentti"))
+    : (form.replaces ? t("Korvaa vakiotieto") : t("Lisää vakiotieto"));
 
   const canSubmit = form.mode === "validity" ? true
     : form.mode === "document" ? Boolean(file)
@@ -435,10 +435,10 @@ function KnowledgeFormModal({
         const result = await response.json() as { extractionOk: boolean };
         await onDone(result.extractionOk
           ? ""
-          : `Dokumentti "${file.name}" tallennettiin, mutta sen tekstiä ei saatu luettua. Se ei ole AI:n käytössä.`);
+          : t("Dokumentti \"{0}\" tallennettiin, mutta sen tekstiä ei saatu luettua. Se ei ole AI:n käytössä.", file.name));
       }
     } catch (caught) {
-      setError(errorMessage(caught, "Tallennus epäonnistui."));
+      setError(errorMessage(caught, t("Tallennus epäonnistui.")));
     } finally {
       setSubmitting(false);
     }
@@ -451,19 +451,19 @@ function KnowledgeFormModal({
         <h2>{heading}</h2>
         <p className="muted">
           {form.mode === "validity"
-            ? `${form.entry.title}. Vanhentunut tietue poistuu AI:n käytöstä.`
+            ? t("{0}. Vanhentunut tietue poistuu AI:n käytöstä.", form.entry.title)
             : form.replaces
-            ? "Uusi versio korvaa vanhan. Vanha versio säilyy historiassa."
+            ? t("Uusi versio korvaa vanhan. Vanha versio säilyy historiassa.")
             : form.mode === "document"
-            ? "PDF, Word (.docx) tai kuva. Teksti luetaan automaattisesti."
-            : "Lyhyt kysymys–vastaus-pari, esim. ”saunavuorot varataan huoltoyhtiöltä”."}
+            ? t("PDF, Word (.docx) tai kuva. Teksti luetaan automaattisesti.")
+            : t("Lyhyt kysymys–vastaus-pari, esim. ”saunavuorot varataan huoltoyhtiöltä”.")}
         </p>
 
         <form className="ticket-form" onSubmit={handleSubmit}>
           {form.mode === "document" && (
             <>
               <label>
-                <span>Tiedosto</span>
+                <span>{t("Tiedosto")}</span>
                 <input
                   type="file"
                   accept=".pdf,.docx,.txt,image/*"
@@ -471,8 +471,8 @@ function KnowledgeFormModal({
                 />
               </label>
               <label>
-                <span>Otsikko</span>
-                <input value={title} onChange={event => setTitle(event.target.value)} placeholder="Esim. Järjestyssäännöt (oletuksena tiedoston nimi)" />
+                <span>{t("Otsikko")}</span>
+                <input value={title} onChange={event => setTitle(event.target.value)} placeholder={t("Esim. Järjestyssäännöt (oletuksena tiedoston nimi)")} />
               </label>
             </>
           )}
@@ -480,34 +480,34 @@ function KnowledgeFormModal({
           {form.mode === "fact" && (
             <>
               <label>
-                <span>Kysymys tai aihe</span>
-                <input value={title} onChange={event => setTitle(event.target.value)} placeholder="Esim. Miten saunavuoro varataan?" />
+                <span>{t("Kysymys tai aihe")}</span>
+                <input value={title} onChange={event => setTitle(event.target.value)} placeholder={t("Esim. Miten saunavuoro varataan?")} />
               </label>
               <label>
-                <span>Vastaus</span>
-                <textarea value={answer} onChange={event => setAnswer(event.target.value)} rows={5} placeholder="Esim. Saunavuorot varataan huoltoyhtiöltä." />
+                <span>{t("Vastaus")}</span>
+                <textarea value={answer} onChange={event => setAnswer(event.target.value)} rows={5} placeholder={t("Esim. Saunavuorot varataan huoltoyhtiöltä.")} />
               </label>
             </>
           )}
 
           <div className="form-columns">
             <label>
-              <span>Voimassa alkaen</span>
+              <span>{t("Voimassa alkaen")}</span>
               <input type="date" value={validFrom} onChange={event => setValidFrom(event.target.value)} />
             </label>
             <label>
-              <span>Voimassa asti</span>
+              <span>{t("Voimassa asti")}</span>
               <input type="date" value={validUntil} onChange={event => setValidUntil(event.target.value)} />
             </label>
           </div>
-          <p className="reply-hint">Jätä tyhjäksi, jos tieto on voimassa toistaiseksi.</p>
+          <p className="reply-hint">{t("Jätä tyhjäksi, jos tieto on voimassa toistaiseksi.")}</p>
 
           {error && <p className="send-error">{error}</p>}
 
           <div className="drawer-actions compact-actions">
-            <button type="button" onClick={onClose}>Peruuta</button>
+            <button type="button" onClick={onClose}>{t("Peruuta")}</button>
             <button className="primary" type="submit" disabled={submitting || !canSubmit}>
-              {submitting ? (form.mode === "document" ? "Luetaan tekstiä…" : "Tallennetaan…") : "Tallenna"}
+              {submitting ? (form.mode === "document" ? t("Luetaan tekstiä…") : t("Tallennetaan…")) : t("Tallenna")}
             </button>
           </div>
         </form>

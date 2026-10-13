@@ -1,14 +1,13 @@
-
-
+import { locale, t } from "./i18n";
 export const ticketPriorities = ["emergency", "urgent", "normal", "low"];
 export const ticketTypeOptions = ["Kysymys", "Ilmoitus", "Pyyntö", "Toimenpide", "Vikailmoitus", "Muutto", "Muu"];
 
 export function priorityLabel(priority: string) {
   return {
-    emergency: "Hätä",
-    urgent: "Kiireellinen",
-    normal: "Normaali",
-    low: "Matala"
+    emergency: t("Hätä"),
+    urgent: t("Kiireellinen"),
+    normal: t("Normaali"),
+    low: t("Matala")
   }[priority] || priority;
 }
 
@@ -16,63 +15,63 @@ export const ticketStatuses = ["open", "waiting_manager", "waiting_third_party",
 
 export function statusLabel(status: string) {
   return {
-    open: "Avoin",
-    waiting_manager: "Odottaa isännöitsijää",
-    waiting_third_party: "Odottaa kolmatta osapuolta",
-    closed: "Suljettu"
+    open: t("Avoin"),
+    waiting_manager: t("Odottaa isännöitsijää"),
+    waiting_third_party: t("Odottaa kolmatta osapuolta"),
+    closed: t("Suljettu")
   }[status] || status;
 }
 
 export function channelLabel(channel?: string) {
-  if (!channel) return "Tuntematon kanava";
+  if (!channel) return t("Tuntematon kanava");
   return {
-    email: "Sähköposti",
-    portal: "Portaali",
-    quick_note: "Pikamuistio",
-    contractor: "Huoltoyhtiö",
-    manual: "Manuaalinen"
+    email: t("Sähköposti"),
+    portal: t("Portaali"),
+    quick_note: t("Pikamuistio"),
+    contractor: t("Huoltoyhtiö"),
+    manual: t("Manuaalinen")
   }[channel] || channel;
 }
 
 export function actionLabel(action: string) {
   return {
-    ticket_created: "Tehtävä luotu",
-    ticket_created_manual: "Tehtävä luotu käsin",
-    ticket_created_portal: "Asukas loi tehtävän portaalissa",
-    ticket_assigned: "Tehtävän käsittelijä vaihdettu",
-    work_order_created: "Työtilaus tehty huoltoyhtiölle",
-    work_order_done: "Työtilaus kuitattu tehdyksi",
-    work_order_message: "Viesti lähetetty huoltoyhtiölle",
-    attachment_added: "Liite lisätty tehtävälle",
-    triaged: "AI luokitteli tehtävän",
-    emergency_routed: "Ohjattu hätätapauksena",
-    emergency_alert_sent: "Hätätapauksesta lähetetty sähköposti vastuuisännöitsijälle",
-    emergency_alert_failed: "Hätätapauksen sähköposti vastuuisännöitsijälle ei lähtenyt",
-    decision_ai: "Päätös: AI hoitaa",
-    decision_human: "Päätös: Osoitettu minulle",
-    decision_skip: "Tehtävä suljettu",
-    draft_saved: "Luonnos tallennettu",
-    ticket_updated: "Tehtävän tietoja muutettu",
-    ai_suggested: "AI laati vastausehdotuksen",
-    message_created: "Viesti lisätty",
-    reply_sent: "Vastaus lähetetty",
-    reply_received: "Asukas vastasi sähköpostiin",
-    reply_received_reopened: "Asukas vastasi, tehtävä avattu uudelleen",
-    portal_message: "Asukas lähetti viestin portaalissa",
-    ticket_reopened: "Tehtävä avattu uudelleen",
-    user_deleted: "Käyttäjä poistettu",
-    resident_erased: "Asukkaan henkilötiedot poistettu",
-    retention_purge: "Säilytysajan ylittäneet tiedot poistettu",
-    reporter_linked: "Asukas linkitetty tehtävään",
-    reporter_unlinked: "Asukkaan linkitys poistettu"
+    ticket_created: t("Tehtävä luotu"),
+    ticket_created_manual: t("Tehtävä luotu käsin"),
+    ticket_created_portal: t("Asukas loi tehtävän portaalissa"),
+    ticket_assigned: t("Tehtävän käsittelijä vaihdettu"),
+    work_order_created: t("Työtilaus tehty huoltoyhtiölle"),
+    work_order_done: t("Työtilaus kuitattu tehdyksi"),
+    work_order_message: t("Viesti lähetetty huoltoyhtiölle"),
+    attachment_added: t("Liite lisätty tehtävälle"),
+    triaged: t("AI luokitteli tehtävän"),
+    emergency_routed: t("Ohjattu hätätapauksena"),
+    emergency_alert_sent: t("Hätätapauksesta lähetetty sähköposti vastuuisännöitsijälle"),
+    emergency_alert_failed: t("Hätätapauksen sähköposti vastuuisännöitsijälle ei lähtenyt"),
+    decision_ai: t("Päätös: AI hoitaa"),
+    decision_human: t("Päätös: Osoitettu minulle"),
+    decision_skip: t("Tehtävä suljettu"),
+    draft_saved: t("Luonnos tallennettu"),
+    ticket_updated: t("Tehtävän tietoja muutettu"),
+    ai_suggested: t("AI laati vastausehdotuksen"),
+    message_created: t("Viesti lisätty"),
+    reply_sent: t("Vastaus lähetetty"),
+    reply_received: t("Asukas vastasi sähköpostiin"),
+    reply_received_reopened: t("Asukas vastasi, tehtävä avattu uudelleen"),
+    portal_message: t("Asukas lähetti viestin portaalissa"),
+    ticket_reopened: t("Tehtävä avattu uudelleen"),
+    user_deleted: t("Käyttäjä poistettu"),
+    resident_erased: t("Asukkaan henkilötiedot poistettu"),
+    retention_purge: t("Säilytysajan ylittäneet tiedot poistettu"),
+    reporter_linked: t("Asukas linkitetty tehtävään"),
+    reporter_unlinked: t("Asukkaan linkitys poistettu")
   }[action] || action;
 }
 
 export function actorLabel(actor: string) {
   return {
     ai: "AI",
-    system: "Järjestelmä",
-    isannoitsija: "Isännöitsijä"
+    system: t("Järjestelmä"),
+    isannoitsija: t("Isännöitsijä")
   }[actor] || actor;
 }
 
@@ -90,14 +89,14 @@ export function fileToBase64(file: File): Promise<string> {
 }
 
 export function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} t`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kt`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mt`;
+  if (bytes < 1024) return t("{0} t", bytes);
+  if (bytes < 1024 * 1024) return t("{0} kt", Math.round(bytes / 1024));
+  return t("{0} Mt", (bytes / (1024 * 1024)).toFixed(1));
 }
 
 export function formatDate(value?: string) {
   if (!value) return "-";
-  return new Date(value).toLocaleString("fi-FI", {
+  return new Date(value).toLocaleString(locale, {
     day: "numeric",
     month: "numeric",
     year: "numeric",
@@ -116,22 +115,22 @@ export function ticketAge(createdAt: string, currentTime: number) {
   const ageMinutes = Math.max(0, Math.floor((currentTime - createdAtTime) / 60_000));
   if (ageMinutes < 60) return `${ageMinutes} min`;
   const hours = Math.floor(ageMinutes / 60);
-  if (hours < 24) return `${hours} h ${ageMinutes % 60} min`;
+  if (hours < 24) return t("{0} h {1} min", hours, ageMinutes % 60);
   const days = Math.floor(hours / 24);
-  return `${days} pv ${hours % 24} h`;
+  return t("{0} pv {1} h", days, hours % 24);
 }
 
 export function formatEuros(amount: number) {
-  return amount.toLocaleString("fi-FI", { style: "currency", currency: "EUR" });
+  return amount.toLocaleString(locale, { style: "currency", currency: "EUR" });
 }
 
 // Keston esitys: alle vuorokausi tunteina, muuten päivinä ja tunteina.
 export function formatDuration(milliseconds: number) {
   const hours = Math.max(0, Math.round(milliseconds / 3_600_000));
-  if (hours < 1) return "alle 1 h";
+  if (hours < 1) return t("alle 1 h");
   if (hours < 24) return `${hours} h`;
   const days = Math.floor(hours / 24);
-  return hours % 24 === 0 ? `${days} pv` : `${days} pv ${hours % 24} h`;
+  return hours % 24 === 0 ? t("{0} pv", days) : t("{0} pv {1} h", days, hours % 24);
 }
 
 export function formatDay(value?: string | null) {

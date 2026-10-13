@@ -7,6 +7,7 @@ import {
 import { api, errorMessage, type OfficeUser, session } from "../session";
 import type { Ticket, TicketDetail } from "../types";
 import { isManagerRole, isOverdue } from "./ticket-utils";
+import { t } from "../i18n";
 
 // "Anna toiselle" -nappi: avaa listan toimiston isännöitsijöistä ja vaihtaa tehtävän käsittelijän.
 export function AssignPicker({
@@ -44,15 +45,15 @@ export function AssignPicker({
       }}
     >
       <button type="button" aria-haspopup="listbox" aria-expanded={open} disabled={saving} onClick={() => setOpen(!open)}>
-        {saving ? "Siirretään…" : "Anna toiselle"}
+        {saving ? t("Siirretään…") : t("Anna toiselle")}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
       {open && (
-        <div className="assign-menu" role="listbox" aria-label="Valitse isännöitsijä">
-          <small>Valitse isännöitsijä</small>
-          {managers.length === 0 && <p>Ei isännöitsijöitä.</p>}
+        <div className="assign-menu" role="listbox" aria-label={t("Valitse isännöitsijä")}>
+          <small>{t("Valitse isännöitsijä")}</small>
+          {managers.length === 0 && <p>{t("Ei isännöitsijöitä.")}</p>}
           {managers.map(user => (
             <button
               type="button"
@@ -64,8 +65,8 @@ export function AssignPicker({
             >
               <span className="user-avatar">{user.name.split(" ").map(part => part[0]).join("").slice(0, 2)}</span>
               <span className="assign-name">
-                <strong>{user.name}{session?.user.id === user.id ? " (sinä)" : ""}</strong>
-                <em>{user.id === assigneeId ? "Nykyinen käsittelijä" : user.role}</em>
+                <strong>{user.name}{session?.user.id === user.id ? t(" (sinä)") : ""}</strong>
+                <em>{user.id === assigneeId ? t("Nykyinen käsittelijä") : t(user.role)}</em>
               </span>
               {user.id === assigneeId && (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -98,7 +99,7 @@ export function AttachmentsMenu({
   async function upload(files: File[]) {
     if (files.length === 0) return;
     if (files.reduce((total, file) => total + file.size, 0) > MAX_REPLY_ATTACHMENT_BYTES) {
-      setError("Liitteiden yhteiskoko saa olla enintään 15 Mt.");
+      setError(t("Liitteiden yhteiskoko saa olla enintään 15 Mt."));
       return;
     }
     setUploading(true);
@@ -116,7 +117,7 @@ export function AttachmentsMenu({
       });
       await onChanged();
     } catch (uploadError) {
-      setError(errorMessage(uploadError, "Liitteen lisääminen epäonnistui."));
+      setError(errorMessage(uploadError, t("Liitteen lisääminen epäonnistui.")));
     } finally {
       setUploading(false);
     }
@@ -136,7 +137,7 @@ export function AttachmentsMenu({
         <svg className="clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M21 11.500l-8.600 8.600a5.500 5.500 0 0 1-7.800-7.800l8.600-8.600a3.700 3.700 0 0 1 5.200 5.200l-8.500 8.500a1.800 1.800 0 0 1-2.600-2.600l7.800-7.800" />
         </svg>
-        Liitteet
+        {t("Liitteet")}
         <b>{attachments.length}</b>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
@@ -144,23 +145,23 @@ export function AttachmentsMenu({
       </button>
       {open && (
         <div className="assign-menu">
-          <small>Tehtävän liitteet</small>
-          {attachments.length === 0 && <p>Ei liitteitä.</p>}
+          <small>{t("Tehtävän liitteet")}</small>
+          {attachments.length === 0 && <p>{t("Ei liitteitä.")}</p>}
           {attachments.map(attachment => (
             <DownloadLink
               key={attachment.id}
               path={`/attachments/${attachment.id}`}
               filename={attachment.filename}
-              title={`Lataa ${attachment.filename}`}
+              title={t("Lataa {0}", attachment.filename)}
             >
               <strong>{attachment.filename}</strong>
               <em>
-                {attachment.direction === "outbound" ? "Lähetetty" : attachment.direction === "internal" ? "Lisätty" : attachment.direction === "portal" ? "Asukkaalta" : "Saapunut"} · {formatFileSize(attachment.size)} · {formatDate(attachment.created_at)}
+                {attachment.direction === "outbound" ? t("Lähetetty") : attachment.direction === "internal" ? t("Lisätty") : attachment.direction === "portal" ? t("Asukkaalta") : t("Saapunut")} · {formatFileSize(attachment.size)} · {formatDate(attachment.created_at)}
               </em>
             </DownloadLink>
           ))}
           <label className="attachments-add">
-            {uploading ? "Lisätään…" : "+ Lisää liite"}
+            {uploading ? t("Lisätään…") : t("+ Lisää liite")}
             <input
               type="file"
               multiple
@@ -222,13 +223,13 @@ export function TicketCard({
         <div className="ticket-row-main">
           <strong>
             {ticket.subject}
-            {ticket.has_new_reply ? <em className="new-reply">Uusi viesti</em> : null}
-            {isOverdue(ticket) ? <em className="new-reply overdue" title={`Määräaika oli ${formatDay(ticket.due_date)}`}>Myöhässä</em> : null}
+            {ticket.has_new_reply ? <em className="new-reply">{t("Uusi viesti")}</em> : null}
+            {isOverdue(ticket) ? <em className="new-reply overdue" title={t("Määräaika oli {0}", formatDay(ticket.due_date))}>{t("Myöhässä")}</em> : null}
           </strong>
         </div>
         <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
-        <span className="type">{ticket.type}</span>
-        <span className="ticket-row-contact">{ticket.resident_name || ticket.apartment_number || "Ei yhteyshenkilöä"}</span>
+        <span className="type">{t(ticket.type)}</span>
+        <span className="ticket-row-contact">{ticket.resident_name || ticket.apartment_number || t("Ei yhteyshenkilöä")}</span>
         <span className="status-badge">{statusLabel(ticket.status)}</span>
         <time className="date">{formatDate(ticket.created_at)}</time>
         <time className="date">{formatDate(ticket.updated_at || ticket.created_at)}</time>
@@ -239,13 +240,13 @@ export function TicketCard({
   return (
     <article className={`ticket-card ${ticket.status === "waiting_manager" ? "managed" : ""} ${ticket.priority === "emergency" ? "emergency" : ""}`} onClick={onOpen}>
       <div className="ticket-top">
-        <span className="ticket-company" title="Taloyhtiö">
+        <span className="ticket-company" title={t("Taloyhtiö")}>
           <TabIcon tab="companies" />
-          {companyName ?? "Tuntematon yhtiö"}
+          {companyName ?? t("Tuntematon yhtiö")}
         </span>
         <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
         <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
-        <span className="type">{ticket.type}</span>
+        <span className="type">{t(ticket.type)}</span>
         <span className="status-badge">{statusLabel(ticket.status)}</span>
         <span className="date">{formatDate(ticket.updated_at || ticket.created_at)}</span>
       </div>
@@ -254,26 +255,26 @@ export function TicketCard({
         <div>
           <h2>{ticket.subject}</h2>
           <div className="meta">
-            <span>{ticket.apartment_number || "Asuntoa ei tunnistettu"}</span>
-            <span>{ticket.resident_name || "Asukasta ei tunnistettu"}</span>
-            <span className="assignee-pill">{assignee ? `Käsittelijä: ${assignee.name}` : "Ei käsittelijää"}</span>
-            {hasDraft && <span className="draft-pill">Luonnos tallennettu</span>}
-            {ticket.has_new_reply ? <span className="new-reply">Uusi viesti</span> : null}
+            <span>{ticket.apartment_number || t("Asuntoa ei tunnistettu")}</span>
+            <span>{ticket.resident_name || t("Asukasta ei tunnistettu")}</span>
+            <span className="assignee-pill">{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
+            {hasDraft && <span className="draft-pill">{t("Luonnos tallennettu")}</span>}
+            {ticket.has_new_reply ? <span className="new-reply">{t("Uusi viesti")}</span> : null}
             {ticket.due_date && (
               <span className={isOverdue(ticket) ? "new-reply overdue" : "assignee-pill"}>
-                {isOverdue(ticket) ? "Myöhässä" : "Määräaika"} {formatDay(ticket.due_date)}
+                {isOverdue(ticket) ? t("Myöhässä") : t("Määräaika")} {formatDay(ticket.due_date)}
               </span>
             )}
           </div>
         </div>
 
         <div className="recommendation">
-          <small>{ticket.ai_suggested ? "KOTILON EHDOTUS" : "LUONNOS"}</small>
+          <small>{ticket.ai_suggested ? t("KOTILON EHDOTUS") : t("LUONNOS")}</small>
           {/* Peruste näytetään vain, kun AI-ehdotus on pyydetty ja sille löytyi lähde dokumentaatiosta. */}
           {ticket.ai_suggested && ticket.knowledge_source_title ? <strong>{ticket.ai_reason}</strong> : null}
-          <p>{ticket.draft || "Ei tallennettua luonnosta."}</p>
+          <p>{ticket.draft || t("Ei tallennettua luonnosta.")}</p>
           {ticket.ai_suggested && ticket.knowledge_source_title ? (
-            <span className="source-pill">Lähde: {ticket.knowledge_source_title}</span>
+            <span className="source-pill">{t("Lähde:")}{" "}{ticket.knowledge_source_title}</span>
           ) : null}
         </div>
       </div>
@@ -281,8 +282,8 @@ export function TicketCard({
       {ticket.status === "open" && (
         <div className="actions" onClick={e => e.stopPropagation()}>
           {canAssign && <AssignPicker users={users} assigneeId={ticket.assignee_id ?? null} onAssign={onAssign} />}
-          <button className="primary" onClick={() => onDecision("human")}>Osoita minulle</button>
-          <button onClick={() => onDecision("skip")}>Sulje</button>
+          <button className="primary" onClick={() => onDecision("human")}>{t("Osoita minulle")}</button>
+          <button onClick={() => onDecision("skip")}>{t("Sulje")}</button>
         </div>
       )}
     </article>

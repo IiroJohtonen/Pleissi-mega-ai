@@ -7,6 +7,7 @@ import { KnowledgeBase } from "./Knowledge";
 import { ParkingSpaces } from "./Parking";
 import { Residents } from "./Residents";
 import { GmailAccountCard } from "./Settings";
+import { t } from "../i18n";
 
 export function Companies({
   companies,
@@ -51,7 +52,7 @@ export function Companies({
       setAdding(false);
       await onChanged();
     } catch (error) {
-      let message = "Taloyhtiön lisääminen epäonnistui.";
+      let message = t("Taloyhtiön lisääminen epäonnistui.");
       try {
         message = JSON.parse((error as Error).message).error || message;
       } catch {
@@ -69,26 +70,26 @@ export function Companies({
   if (openCompany) {
     return (
       <section className="content">
-        <button className="back-link" onClick={() => setOpenCompanyId(null)}>← Kaikki taloyhtiöt</button>
+        <button className="back-link" onClick={() => setOpenCompanyId(null)}>{t("← Kaikki taloyhtiöt")}</button>
 
         <CompanyCard company={openCompany} onSaved={onChanged} />
         <GmailAccountCard target={openCompany.id} />
 
         <div className="card-tabs">
           <button className={detailTab === "residents" ? "active" : ""} onClick={() => setDetailTab("residents")}>
-            Asukkaat
+            {t("Asukkaat")}
           </button>
           <button className={detailTab === "material" ? "active" : ""} onClick={() => setDetailTab("material")}>
-            Materiaalit
+            {t("Materiaalit")}
           </button>
           <button className={detailTab === "sauna" ? "active" : ""} onClick={() => setDetailTab("sauna")}>
-            Saunavuorot
+            {t("Saunavuorot")}
           </button>
           <button className={detailTab === "laundry" ? "active" : ""} onClick={() => setDetailTab("laundry")}>
-            Pyykkitupavuorot
+            {t("Pyykkitupavuorot")}
           </button>
           <button className={detailTab === "parking" ? "active" : ""} onClick={() => setDetailTab("parking")}>
-            Autopaikat
+            {t("Autopaikat")}
           </button>
         </div>
         {detailTab === "residents" ? (
@@ -118,22 +119,22 @@ export function Companies({
   return (
     <section className="content">
       <div className="residents-toolbar">
-        <span>{companies.length} taloyhtiötä</span>
-        {isManager() && <button className="secondary" onClick={() => setAdding(true)}>Lisää taloyhtiö</button>}
+        <span>{companies.length}{" "}{t("taloyhtiötä")}</span>
+        {isManager() && <button className="secondary" onClick={() => setAdding(true)}>{t("Lisää taloyhtiö")}</button>}
       </div>
 
-      {companies.length === 0 ? <div className="empty">Ei taloyhtiöitä.</div> : (
+      {companies.length === 0 ? <div className="empty">{t("Ei taloyhtiöitä.")}</div> : (
         <div className="table-card">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Nimi</th>
-                <th>Y-tunnus</th>
-                <th>Osoite</th>
-                <th>Puhelin</th>
-                <th>Sähköposti</th>
-                <th>Vastuuisännöitsijä</th>
-                <th>Asukkaita</th>
+                <th>{t("Nimi")}</th>
+                <th>{t("Y-tunnus")}</th>
+                <th>{t("Osoite")}</th>
+                <th>{t("Puhelin")}</th>
+                <th>{t("Sähköposti")}</th>
+                <th>{t("Vastuuisännöitsijä")}</th>
+                <th>{t("Asukkaita")}</th>
               </tr>
             </thead>
             <tbody>
@@ -141,7 +142,7 @@ export function Companies({
                 <tr
                   key={company.id}
                   className="clickable"
-                  title="Avaa taloyhtiön tiedot ja asukkaat"
+                  title={t("Avaa taloyhtiön tiedot ja asukkaat")}
                   onClick={() => setOpenCompanyId(company.id)}
                   onKeyDown={event => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -171,41 +172,41 @@ export function Companies({
         <div className="overlay" onClick={closeForm}>
           <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={closeForm}>×</button>
-            <h2>Lisää taloyhtiö</h2>
-            <p className="muted">Taloyhtiö tulee valittavaksi tehtävänäkymiin ja asukastietokantaan.</p>
+            <h2>{t("Lisää taloyhtiö")}</h2>
+            <p className="muted">{t("Taloyhtiö tulee valittavaksi tehtävänäkymiin ja asukastietokantaan.")}</p>
 
             <form className="ticket-form" onSubmit={handleSubmit}>
               <label>
-                <span>Nimi</span>
-                <input value={name} onChange={event => setName(event.target.value)} placeholder="Esim. As Oy Koivikko" />
+                <span>{t("Nimi")}</span>
+                <input value={name} onChange={event => setName(event.target.value)} placeholder={t("Esim. As Oy Koivikko")} />
               </label>
 
               <label>
-                <span>Y-tunnus</span>
-                <input value={businessId} onChange={event => setBusinessId(event.target.value)} placeholder="Valinnainen" />
+                <span>{t("Y-tunnus")}</span>
+                <input value={businessId} onChange={event => setBusinessId(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
 
               <label>
-                <span>Osoite</span>
-                <input value={address} onChange={event => setAddress(event.target.value)} placeholder="Valinnainen" />
+                <span>{t("Osoite")}</span>
+                <input value={address} onChange={event => setAddress(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
 
               <label>
-                <span>Puhelin</span>
-                <input value={phone} onChange={event => setPhone(event.target.value)} placeholder="Valinnainen" />
+                <span>{t("Puhelin")}</span>
+                <input value={phone} onChange={event => setPhone(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
 
               <label>
-                <span>Sähköposti, johon tehtävät saapuvat</span>
-                <input type="email" value={emailAddress} onChange={event => setEmailAddress(event.target.value)} placeholder="Valinnainen" />
+                <span>{t("Sähköposti, johon tehtävät saapuvat")}</span>
+                <input type="email" value={emailAddress} onChange={event => setEmailAddress(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
 
               {formError && <p className="send-error">{formError}</p>}
 
               <div className="drawer-actions compact-actions">
-                <button type="button" onClick={closeForm}>Peruuta</button>
+                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
                 <button className="primary" type="submit" disabled={submitting || !name.trim()}>
-                  {submitting ? "Lisätään…" : "Lisää taloyhtiö"}
+                  {submitting ? t("Lisätään…") : t("Lisää taloyhtiö")}
                 </button>
               </div>
             </form>
@@ -295,7 +296,7 @@ function CompanyCard({
       await onSaved();
       setSaved(true);
     } catch (caught) {
-      let message = "Tietojen tallennus epäonnistui.";
+      let message = t("Tietojen tallennus epäonnistui.");
       try {
         message = JSON.parse((caught as Error).message).error || message;
       } catch {
@@ -309,37 +310,37 @@ function CompanyCard({
 
   return (
     <form className="settings-card ticket-form" onSubmit={handleSubmit}>
-      <h2>Taloyhtiön tiedot</h2>
+      <h2>{t("Taloyhtiön tiedot")}</h2>
       <div className="form-columns">
         <label>
-          <span>Nimi</span>
+          <span>{t("Nimi")}</span>
           <input {...field("name")} />
         </label>
         <label>
-          <span>Y-tunnus</span>
+          <span>{t("Y-tunnus")}</span>
           <input {...field("businessId")} />
         </label>
         <label>
-          <span>Osoite</span>
+          <span>{t("Osoite")}</span>
           <input {...field("address")} />
         </label>
         <label>
-          <span>Puhelin</span>
+          <span>{t("Puhelin")}</span>
           <input {...field("phone")} />
         </label>
         <label>
-          <span>Sähköposti, johon tehtävät saapuvat</span>
+          <span>{t("Sähköposti, johon tehtävät saapuvat")}</span>
           <input type="email" {...field("emailAddress")} />
         </label>
         <label>
-          <span>Vastuuisännöitsijä</span>
+          <span>{t("Vastuuisännöitsijä")}</span>
           <select {...field("managerId")}>
-            <option value="">Ei valittu</option>
+            <option value="">{t("Ei valittu")}</option>
             {managers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
           </select>
         </label>
         <fieldset className="manager-picks">
-          <legend>Muut isännöitsijät</legend>
+          <legend>{t("Muut isännöitsijät")}</legend>
           {managers.filter(user => user.id !== values.managerId).map(user => {
             const selectedIds = values.managerIds.split(",").filter(Boolean);
             const checked = selectedIds.includes(user.id);
@@ -358,26 +359,26 @@ function CompanyCard({
               </label>
             );
           })}
-          {managers.filter(user => user.id !== values.managerId).length === 0 && <span className="muted">Ei muita isännöitsijöitä.</span>}
+          {managers.filter(user => user.id !== values.managerId).length === 0 && <span className="muted">{t("Ei muita isännöitsijöitä.")}</span>}
         </fieldset>
       </div>
 
-      <h2>Huoltoyhtiön tiedot</h2>
+      <h2>{t("Huoltoyhtiön tiedot")}</h2>
       <div className="form-columns">
         <label>
-          <span>Huoltoyhtiön nimi</span>
+          <span>{t("Huoltoyhtiön nimi")}</span>
           <input {...field("maintenanceName")} />
         </label>
         <label>
-          <span>Sähköposti</span>
+          <span>{t("Sähköposti")}</span>
           <input type="email" {...field("maintenanceEmail")} />
         </label>
         <label>
-          <span>Puhelin</span>
+          <span>{t("Puhelin")}</span>
           <input {...field("maintenancePhone")} />
         </label>
         <label>
-          <span>Päivystysnumero</span>
+          <span>{t("Päivystysnumero")}</span>
           <input {...field("maintenanceEmergencyPhone")} />
         </label>
       </div>
@@ -387,12 +388,12 @@ function CompanyCard({
       {isManager() ? (
         <div className="draft-actions">
           <button className="primary" type="submit" disabled={saving || !dirty || !values.name.trim()}>
-            {saving ? "Tallennetaan…" : "Tallenna muutokset"}
+            {saving ? t("Tallennetaan…") : t("Tallenna muutokset")}
           </button>
-          {saved && !dirty && <span className="saved-indicator">Tallennettu</span>}
+          {saved && !dirty && <span className="saved-indicator">{t("Tallennettu")}</span>}
         </div>
       ) : (
-        <p className="reply-hint">Taloyhtiön tietoja voi muuttaa isännöitsijä tai pääkäyttäjä.</p>
+        <p className="reply-hint">{t("Taloyhtiön tietoja voi muuttaa isännöitsijä tai pääkäyttäjä.")}</p>
       )}
     </form>
   );

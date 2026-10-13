@@ -3,6 +3,7 @@ import { formatDate, formatEuros } from "../format";
 import { api, errorMessage, isAdmin, isManager } from "../session";
 import { type Booking, type BookingRules, DEFAULT_BOOKING_RULES } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
+import { locale, t } from "../i18n";
 
 // Raportti laskutusta varten: valitun kuukauden saunavuorot asukkaittain. Yksittäiset vuorot
 // laskutetaan kappalehinnalla ja viikoittaiset vuorot kuukausihinnalla taloyhtiön asetuksista.
@@ -17,7 +18,7 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + monthOffset + 1, 1);
-  const monthName = monthStart.toLocaleDateString("fi-FI", { month: "long", year: "numeric" });
+  const monthName = monthStart.toLocaleDateString(locale, { month: "long", year: "numeric" });
 
   useEffect(() => {
     setFailed(false);
@@ -44,7 +45,7 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
   const byResident = new Map<string, Row>();
   for (const booking of billable) {
     const row = byResident.get(booking.resident_id!) ?? {
-      name: booking.resident_name || "Tuntematon asukas",
+      name: booking.resident_name || t("Tuntematon asukas"),
       apartment: booking.apartment_number || "–",
       singles: [],
       series: new Set<string>()
@@ -66,7 +67,7 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
     <button
       className="secondary"
       disabled={billing.busy || rows.length === 0 || kind !== "all" || !isManager()}
-      title={kind !== "all" ? "Valitse Kaikki vuorot, niin koko kuukausi merkitään laskutetuksi." : undefined}
+      title={kind !== "all" ? t("Valitse Kaikki vuorot, niin koko kuukausi merkitään laskutetuksi.") : undefined}
       onClick={() => void billing.mark({
         total: grandTotal,
         prices: { "Yksittäinen vuoro": prices.singlePrice, "Viikkovuoro / kk": prices.monthlyPrice },
@@ -75,7 +76,7 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
           apartment: row.apartment,
           detail: [
             row.singles.length > 0
-              ? `${row.singles.length} yksittäistä (${row.singles.map(shift => new Date(shift.starts_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric" })).join(", ")})`
+              ? t("{0} yksittäistä ({1})", row.singles.length, row.singles.map(shift => new Date(shift.starts_at).toLocaleDateString(locale, { day: "numeric", month: "numeric" })).join(", "))
               : "",
             row.series.size > 0 ? `${row.series.size} viikkovuoroa` : ""
           ].filter(Boolean).join(" · "),
@@ -83,22 +84,22 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
         }))
       })}
     >
-      Merkitse laskutetuksi
+      {t("Merkitse laskutetuksi")}
     </button>
   );
 
   function downloadCsv() {
     const lines = [
-      ["Asukas", "Asunto", "Yksittäisiä vuoroja", "Viikkovuoroja", "Summa (EUR)", "Yksittäisten vuorojen päivät"],
+      [t("Asukas"), t("Asunto"), t("Yksittäisiä vuoroja"), t("Viikkovuoroja"), t("Summa (EUR)"), t("Yksittäisten vuorojen päivät")],
       ...rows.map(row => [
         row.name,
         row.apartment,
         String(row.singles.length),
         String(row.series.size),
         row.total.toFixed(2).replace(".", ","),
-        row.singles.map(shift => new Date(shift.starts_at).toLocaleDateString("fi-FI")).join(", ")
+        row.singles.map(shift => new Date(shift.starts_at).toLocaleDateString(locale)).join(", ")
       ]),
-      ["Yhteensä", "", "", "", grandTotal.toFixed(2).replace(".", ","), ""]
+      [t("Yhteensä"), "", "", "", grandTotal.toFixed(2).replace(".", ","), ""]
     ];
     const csv = lines.map(cells => cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(";")).join("\r\n");
     // BOM, jotta Excel avaa ääkköset oikein.
@@ -115,7 +116,7 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
     return (
       <BilledPeriodView
         tabs={tabs}
-        title="Saunavuorojen laskutus"
+        title={t("Saunavuorojen laskutus")}
         monthName={monthName}
         monthOffset={monthOffset}
         onMonth={setMonthOffset}
@@ -133,41 +134,41 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
       {tabs}
       {billing.error && <p className="send-error">{billing.error}</p>}
       <div className="suggest-header report-ai-head">
-        <h2>Saunavuorojen laskutus</h2>
+        <h2>{t("Saunavuorojen laskutus")}</h2>
         <div className="calendar-week">
-          <button onClick={() => setMonthOffset(monthOffset - 1)} aria-label="Edellinen kuukausi">←</button>
+          <button onClick={() => setMonthOffset(monthOffset - 1)} aria-label={t("Edellinen kuukausi")}>←</button>
           <strong>{monthName}</strong>
-          <button onClick={() => setMonthOffset(monthOffset + 1)} disabled={monthOffset >= 0} aria-label="Seuraava kuukausi">→</button>
-          <button className="secondary" onClick={downloadCsv} disabled={rows.length === 0}>Lataa CSV</button>
+          <button onClick={() => setMonthOffset(monthOffset + 1)} disabled={monthOffset >= 0} aria-label={t("Seuraava kuukausi")}>→</button>
+          <button className="secondary" onClick={downloadCsv} disabled={rows.length === 0}>{t("Lataa CSV")}</button>
           {markButton}
         </div>
       </div>
       <p className="muted">
-        Yksittäinen vuoro {formatEuros(prices.singlePrice)} / vuoro, viikoittainen vuoro {formatEuros(prices.monthlyPrice)} / kk.
-        {withoutResident > 0 && ` ${withoutResident} varausta ilman asukasta (esim. huolto) on jätetty pois.`}
+        {t("Yksittäinen vuoro")}{" "}{formatEuros(prices.singlePrice)}{" "}{t("/ vuoro, viikoittainen vuoro")}{" "}{formatEuros(prices.monthlyPrice)}{" "}{t("/ kk.")}
+        {withoutResident > 0 && t(" {0} varausta ilman asukasta (esim. huolto) on jätetty pois.", withoutResident)}
       </p>
-      <div className="card-tabs billing-filter" role="group" aria-label="Näytettävät vuorot">
-        {([["all", "Kaikki vuorot"], ["single", "Yksittäiset"], ["weekly", "Viikkovuorot"]] as const).map(([key, label]) => (
+      <div className="card-tabs billing-filter" role="group" aria-label={t("Näytettävät vuorot")}>
+        {([["all", t("Kaikki vuorot")], ["single", t("Yksittäiset")], ["weekly", t("Viikkovuorot")]] as const).map(([key, label]) => (
           <button key={key} className={kind === key ? "active" : ""} aria-pressed={kind === key} onClick={() => setKind(key)}>
             {label}
           </button>
         ))}
       </div>
       {pricesMissing && (
-        <p className="send-error">Hintoja ei ole asetettu. Aseta saunavuorojen hinnat Asetuksista, niin summat lasketaan.</p>
+        <p className="send-error">{t("Hintoja ei ole asetettu. Aseta saunavuorojen hinnat Asetuksista, niin summat lasketaan.")}</p>
       )}
-      {failed ? <p className="send-error">Saunavuorojen lataus epäonnistui.</p>
-        : rows.length === 0 ? <p className="muted">Valitulla kuukaudella ei ole laskutettavia saunavuoroja.</p>
+      {failed ? <p className="send-error">{t("Saunavuorojen lataus epäonnistui.")}</p>
+        : rows.length === 0 ? <p className="muted">{t("Valitulla kuukaudella ei ole laskutettavia saunavuoroja.")}</p>
         : (
           <div className="table-card">
             <table className="data-table report-topics">
               <thead>
                 <tr>
-                  <th>Asukas</th>
-                  <th>Asunto</th>
-                  <th>Yksittäisiä vuoroja</th>
-                  <th>Viikkovuoroja</th>
-                  <th>Summa</th>
+                  <th>{t("Asukas")}</th>
+                  <th>{t("Asunto")}</th>
+                  <th>{t("Yksittäisiä vuoroja")}</th>
+                  <th>{t("Viikkovuoroja")}</th>
+                  <th>{t("Summa")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -180,7 +181,7 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
                       {row.singles.length > 0 && (
                         <span>
                           {row.singles
-                            .map(shift => new Date(shift.starts_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric" }))
+                            .map(shift => new Date(shift.starts_at).toLocaleDateString(locale, { day: "numeric", month: "numeric" }))
                             .join(", ")}
                         </span>
                       )}
@@ -190,7 +191,7 @@ function SaunaBilling({ companyId, tabs }: { companyId: string; tabs: ReactNode 
                   </tr>
                 ))}
                 <tr>
-                  <td><strong>Yhteensä</strong></td>
+                  <td><strong>{t("Yhteensä")}</strong></td>
                   <td />
                   <td><strong>{rows.reduce((sum, row) => sum + row.singles.length, 0)}</strong></td>
                   <td><strong>{rows.reduce((sum, row) => sum + row.series.size, 0)}</strong></td>
@@ -229,7 +230,7 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
   const monthKey = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}`;
-  const monthName = monthStart.toLocaleDateString("fi-FI", { month: "long", year: "numeric" });
+  const monthName = monthStart.toLocaleDateString(locale, { month: "long", year: "numeric" });
 
   useEffect(() => {
     if (!companyId) return;
@@ -252,7 +253,7 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
   const byResident = new Map<string, Row>();
   for (const space of taken) {
     const row = byResident.get(space.resident_id!) ?? {
-      name: space.resident_name || "Tuntematon asukas",
+      name: space.resident_name || t("Tuntematon asukas"),
       apartment: space.apartment_number || "–",
       spaces: [],
       total: 0
@@ -270,25 +271,25 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
     <button
       className="secondary"
       disabled={billing.busy || rows.length === 0 || typeFilter !== "all" || !isManager()}
-      title={typeFilter !== "all" ? "Valitse Kaikki tyypit, niin koko kuukausi merkitään laskutetuksi." : undefined}
+      title={typeFilter !== "all" ? t("Valitse Kaikki tyypit, niin koko kuukausi merkitään laskutetuksi.") : undefined}
       onClick={() => void billing.mark({
         total: grandTotal,
         prices: Object.fromEntries(PARKING_TYPES.map(type => [type, priceOf(type)])),
         rows: rows.map(row => ({
           name: row.name,
           apartment: row.apartment,
-          detail: row.spaces.map(space => `${space.label} (${space.type})`).join(", "),
+          detail: row.spaces.map(space => `${space.label} (${t(space.type)})`).join(", "),
           total: row.total
         }))
       })}
     >
-      Merkitse laskutetuksi
+      {t("Merkitse laskutetuksi")}
     </button>
   );
 
   function downloadCsv() {
     const lines = [
-      ["Asukas", "Asunto", "Paikka", "Tyyppi", "Hinta / kk (EUR)"],
+      [t("Asukas"), t("Asunto"), t("Paikka"), t("Tyyppi"), t("Hinta / kk (EUR)")],
       ...rows.flatMap(row => row.spaces.map(space => [
         row.name,
         row.apartment,
@@ -296,7 +297,7 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
         space.type,
         priceOf(space.type).toFixed(2).replace(".", ",")
       ])),
-      ["Yhteensä", "", "", "", grandTotal.toFixed(2).replace(".", ",")]
+      [t("Yhteensä"), "", "", "", grandTotal.toFixed(2).replace(".", ",")]
     ];
     const csv = lines.map(cells => cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(";")).join("\r\n");
     // BOM, jotta Excel avaa ääkköset oikein.
@@ -312,7 +313,7 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
     return (
       <BilledPeriodView
         tabs={tabs}
-        title="Autopaikkojen laskutus"
+        title={t("Autopaikkojen laskutus")}
         monthName={monthName}
         monthOffset={monthOffset}
         onMonth={setMonthOffset}
@@ -330,20 +331,20 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
       {tabs}
       {billing.error && <p className="send-error">{billing.error}</p>}
       <div className="suggest-header report-ai-head">
-        <h2>Autopaikkojen laskutus</h2>
+        <h2>{t("Autopaikkojen laskutus")}</h2>
         <div className="calendar-week">
-          <button onClick={() => setMonthOffset(monthOffset - 1)} aria-label="Edellinen kuukausi">←</button>
+          <button onClick={() => setMonthOffset(monthOffset - 1)} aria-label={t("Edellinen kuukausi")}>←</button>
           <strong>{monthName}</strong>
-          <button onClick={() => setMonthOffset(monthOffset + 1)} disabled={monthOffset >= 0} aria-label="Seuraava kuukausi">→</button>
-          <button className="secondary" onClick={downloadCsv} disabled={rows.length === 0}>Lataa CSV</button>
+          <button onClick={() => setMonthOffset(monthOffset + 1)} disabled={monthOffset >= 0} aria-label={t("Seuraava kuukausi")}>→</button>
+          <button className="secondary" onClick={downloadCsv} disabled={rows.length === 0}>{t("Lataa CSV")}</button>
           {markButton}
         </div>
       </div>
       <p className="muted">
-        {PARKING_TYPES.map(type => `${type} ${formatEuros(priceOf(type))} / kk`).join(", ")}.
-        {" "}Mukana ovat asukkaat, joilla paikka oli kuukauden aikana; koko kuukausi laskutetaan, vaikka paikka olisi ollut vain osan kuusta.
+        {PARKING_TYPES.map(type => `${t(type)} ${formatEuros(priceOf(type))} / ${t("kk")}`).join(", ")}.
+        {" "}{t("Mukana ovat asukkaat, joilla paikka oli kuukauden aikana; koko kuukausi laskutetaan, vaikka paikka olisi ollut vain osan kuusta.")}
       </p>
-      <div className="card-tabs billing-filter" role="group" aria-label="Näytettävät paikkatyypit">
+      <div className="card-tabs billing-filter" role="group" aria-label={t("Näytettävät paikkatyypit")}>
         {["all", ...PARKING_TYPES].map(option => (
           <button
             key={option}
@@ -351,24 +352,24 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
             aria-pressed={typeFilter === option}
             onClick={() => setTypeFilter(option)}
           >
-            {option === "all" ? "Kaikki tyypit" : option}
+            {option === "all" ? t("Kaikki tyypit") : option}
           </button>
         ))}
       </div>
       {pricesMissing && (
-        <p className="send-error">Hintoja ei ole asetettu. Aseta autopaikkojen hinnat Asetuksista, niin summat lasketaan.</p>
+        <p className="send-error">{t("Hintoja ei ole asetettu. Aseta autopaikkojen hinnat Asetuksista, niin summat lasketaan.")}</p>
       )}
-      {failed ? <p className="send-error">Autopaikkojen lataus epäonnistui.</p>
-        : rows.length === 0 ? <p className="muted">Valitulla kuukaudella ei ole laskutettavia autopaikkoja.</p>
+      {failed ? <p className="send-error">{t("Autopaikkojen lataus epäonnistui.")}</p>
+        : rows.length === 0 ? <p className="muted">{t("Valitulla kuukaudella ei ole laskutettavia autopaikkoja.")}</p>
         : (
           <div className="table-card">
             <table className="data-table report-topics">
               <thead>
                 <tr>
-                  <th>Asukas</th>
-                  <th>Asunto</th>
-                  <th>Paikat</th>
-                  <th>Summa / kk</th>
+                  <th>{t("Asukas")}</th>
+                  <th>{t("Asunto")}</th>
+                  <th>{t("Paikat")}</th>
+                  <th>{t("Summa / kk")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -378,13 +379,13 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
                     <td>{row.apartment}</td>
                     <td>
                       {row.spaces.length}
-                      <span>{row.spaces.map(space => `${space.label} (${space.type})`).join(", ")}</span>
+                      <span>{row.spaces.map(space => `${space.label} (${t(space.type)})`).join(", ")}</span>
                     </td>
                     <td><strong>{formatEuros(row.total)}</strong></td>
                   </tr>
                 ))}
                 <tr>
-                  <td><strong>Yhteensä</strong></td>
+                  <td><strong>{t("Yhteensä")}</strong></td>
                   <td />
                   <td><strong>{taken.length}</strong></td>
                   <td><strong>{formatEuros(grandTotal)}</strong></td>
@@ -444,11 +445,11 @@ function useBillingPeriod(companyId: string, kind: "sauna" | "parking", month: s
     error,
     mark: (payload: Pick<BillingPeriod, "total" | "prices" | "rows">) => run(
       () => api(base, { method: "POST", body: JSON.stringify({ kind, month, ...payload }) }),
-      "Laskutetuksi merkitseminen epäonnistui."
+      t("Laskutetuksi merkitseminen epäonnistui.")
     ),
     unmark: () => run(
       () => api(`${base}?kind=${kind}&month=${month}`, { method: "DELETE" }),
-      "Laskutusmerkinnän poistaminen epäonnistui."
+      t("Laskutusmerkinnän poistaminen epäonnistui.")
     )
   };
 }
@@ -470,9 +471,9 @@ function BilledPeriodView({
 }) {
   function downloadCsv() {
     const lines = [
-      ["Asukas", "Asunto", "Erittely", "Summa (EUR)"],
+      [t("Asukas"), t("Asunto"), t("Erittely"), t("Summa (EUR)")],
       ...period.rows.map(row => [row.name, row.apartment, row.detail, row.total.toFixed(2).replace(".", ",")]),
-      ["Yhteensä", "", "", period.total.toFixed(2).replace(".", ",")]
+      [t("Yhteensä"), "", "", period.total.toFixed(2).replace(".", ",")]
     ];
     const csv = lines.map(cells => cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(";")).join("\r\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
@@ -489,24 +490,23 @@ function BilledPeriodView({
       <div className="suggest-header report-ai-head">
         <h2>{title}</h2>
         <div className="calendar-week">
-          <button onClick={() => onMonth(monthOffset - 1)} aria-label="Edellinen kuukausi">←</button>
+          <button onClick={() => onMonth(monthOffset - 1)} aria-label={t("Edellinen kuukausi")}>←</button>
           <strong>{monthName}</strong>
-          <button onClick={() => onMonth(monthOffset + 1)} disabled={monthOffset >= 0} aria-label="Seuraava kuukausi">→</button>
-          <button className="secondary" onClick={downloadCsv}>Lataa CSV</button>
+          <button onClick={() => onMonth(monthOffset + 1)} disabled={monthOffset >= 0} aria-label={t("Seuraava kuukausi")}>→</button>
+          <button className="secondary" onClick={downloadCsv}>{t("Lataa CSV")}</button>
         </div>
       </div>
       <p className="portal-sent">
-        Laskutettu {formatDate(period.billedAt)} · {period.billedBy}. Rivit ja hinnat on lukittu merkintähetken mukaisiksi
-        ({Object.entries(period.prices).map(([name, price]) => `${name} ${formatEuros(price)}`).join(", ")}).
+        {t("Laskutettu")}{" "}{formatDate(period.billedAt)} · {period.billedBy}{t(". Rivit ja hinnat on lukittu merkintähetken mukaisiksi (")}{Object.entries(period.prices).map(([name, price]) => `${name} ${formatEuros(price)}`).join(", ")}).
       </p>
       <div className="table-card">
         <table className="data-table report-topics">
           <thead>
             <tr>
-              <th>Asukas</th>
-              <th>Asunto</th>
-              <th>Erittely</th>
-              <th>Summa</th>
+              <th>{t("Asukas")}</th>
+              <th>{t("Asunto")}</th>
+              <th>{t("Erittely")}</th>
+              <th>{t("Summa")}</th>
             </tr>
           </thead>
           <tbody>
@@ -519,7 +519,7 @@ function BilledPeriodView({
               </tr>
             ))}
             <tr>
-              <td><strong>Yhteensä</strong></td>
+              <td><strong>{t("Yhteensä")}</strong></td>
               <td />
               <td />
               <td><strong>{formatEuros(period.total)}</strong></td>
@@ -529,7 +529,7 @@ function BilledPeriodView({
       </div>
       {isAdmin() && (
         <div className="draft-actions">
-          <button className="danger" onClick={onUnmark} disabled={busy}>Poista laskutusmerkintä</button>
+          <button className="danger" onClick={onUnmark} disabled={busy}>{t("Poista laskutusmerkintä")}</button>
         </div>
       )}
       {error && <p className="send-error">{error}</p>}
@@ -542,9 +542,9 @@ export function BillingReports({ companyId }: { companyId: string }) {
   const [tab, setTab] = useState<"sauna" | "parking">("sauna");
   const tabs = (
     <div className="billing-tabs-head">
-      <h2>Laskutusraportit</h2>
+      <h2>{t("Laskutusraportit")}</h2>
       <div className="billing-tabs" role="tablist">
-        {([["sauna", "Saunavuorot"], ["parking", "Autopaikat"]] as const).map(([key, label]) => (
+        {([["sauna", t("Saunavuorot")], ["parking", t("Autopaikat")]] as const).map(([key, label]) => (
           <button
             key={key}
             type="button"

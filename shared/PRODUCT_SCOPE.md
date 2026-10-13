@@ -25,10 +25,15 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 - Tietopankki: dokumentit ja vakiotiedot, versiot ja voimassaoloajat
 - Sauna- ja pyykkitupavuorot, autopaikat, jonot, tiedotteet ja muuttoilmoitukset
 - Laskutusraportit sauna- ja autopaikkamaksuista
+- Remontti-ilmoitukset: isännöitsijä hyväksyy ehdoin tai hylkää perustellen ja merkitsee työn valmistuneeksi
+- Avainrekisteri: avainten luovutus asukkaalle tai muulle vastaanottajalle, palautuspäivä ja luovutushistoria
+- Kulutuslukemat (kylmä ja lämmin vesi, sähkö): kulutus edellisestä lukemasta ja vienti CSV-tiedostoon
 
 **Asukasportaali**
 - Kirjautuminen ja salasanan palautus
 - Tiedotteet, omat tehtävät ja viestit, vuorojen varaus, jonot ja muuttoilmoitus
+- Remontti-ilmoitus ja kulutuslukemien ilmoittaminen
+- Käyttöliittymä suomeksi ja englanniksi sekä henkilökunnalle että asukkaille
 
 **Käyttäjät ja tietosuoja**
 - Roolit pääkäyttäjä, isännöitsijä ja asiakaspalvelu; yhtiökohtainen näkyvyys palvelimella
@@ -52,10 +57,13 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 **Isännöinnin toiminnot**
 - Osakkaat ja osakeluettelo, hallitus ja yhtiökokoukset
 - Vastikkeet ja isännöitsijäntodistukset
-- Remontti-ilmoitukset, avainhallinta ja kulutuslukemat
+- Remontti-ilmoituksen liitteet (suunnitelmat) ja valvojan kirjaukset
+- Asukkaan näkymä hänelle luovutettuihin avaimiin
+- Kulutuslukemien vienti laskutukseen
 
 **Käyttöliittymä**
-- Käännökset; kielivalikko on olemassa, mutta käyttöliittymä on vain suomeksi
+- Ruotsinkielinen käyttöliittymä
+- Sähköpostit ja palvelimen tuottamat tekstit (esim. AI:n perustelut) ovat vain suomeksi
 - Mobiilisovellus
 
 **Tuotanto**

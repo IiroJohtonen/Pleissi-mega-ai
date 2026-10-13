@@ -9,6 +9,7 @@ import type { Company, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { t } from "../i18n";
 
 // Aikajanan viesti; väkäsestä viestin saa tiivistettyä yhdelle riville.
 function TimelineMessage({
@@ -30,7 +31,7 @@ function TimelineMessage({
   return (
     <div className={`message ${message.direction} ${collapsed ? "collapsed" : ""} ${replying ? "replying" : ""}`}>
       {onReply && (
-        <button className="message-reply" onClick={onReply} title="Vastaa tähän viestiin samassa sähköpostiketjussa">
+        <button className="message-reply" onClick={onReply} title={t("Vastaa tähän viestiin samassa sähköpostiketjussa")}>
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -43,16 +44,16 @@ function TimelineMessage({
             <path d="M9 14 4 9l5-5" />
             <path d="M4 9h10a6 6 0 0 1 6 6v4" />
           </svg>
-          Vastaa
+          {t("Vastaa")}
         </button>
       )}
       <button
         className="message-head"
         onClick={() => setCollapsed(!collapsed)}
         aria-expanded={!collapsed}
-        title={collapsed ? "Näytä viesti" : "Tiivistä viesti"}
+        title={collapsed ? t("Näytä viesti") : t("Tiivistä viesti")}
       >
-        <span className="message-direction">{inbound ? "Saapunut" : "Lähetetty"}</span>
+        <span className="message-direction">{inbound ? t("Saapunut") : t("Lähetetty")}</span>
         <small>{channelLabel(message.channel)} · {actorLabel(message.sender)} · {formatDate(message.created_at)}</small>
         <svg
           viewBox="0 0 24 24"
@@ -71,7 +72,7 @@ function TimelineMessage({
       {quoted && (
         <>
           <button className="message-quoted-toggle" onClick={() => setShowQuoted(!showQuoted)} aria-expanded={showQuoted}>
-            {showQuoted ? "Piilota lainattu viesti" : "Näytä lainattu viesti"}
+            {showQuoted ? t("Piilota lainattu viesti") : t("Näytä lainattu viesti")}
           </button>
           {showQuoted && <p className="message-quoted">{quoted}</p>}
         </>
@@ -96,8 +97,8 @@ export function TicketDrawer({
   onDraftSaved: (draft: string) => void;
   onChanged: () => Promise<void>;
 }) {
-  const t = detail.ticket;
-  const [draft, setDraft] = useState(t.draft || "");
+  const ticket = detail.ticket;
+  const [draft, setDraft] = useState(ticket.draft || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [sending, setSending] = useState(false);
@@ -110,13 +111,13 @@ export function TicketDrawer({
 
   useEffect(() => {
     setReplyFiles([]);
-  }, [t.id]);
+  }, [ticket.id]);
 
   // Kuvaus on tehtävän alkuperäinen viesti; käsin luodulla tehtävällä sen tiivistelmä.
   const firstInbound = detail.messages.find(m => m.direction === "inbound");
   const description = (firstInbound ? splitQuotedReply(firstInbound.body).text.trim() : "")
-    || t.summary
-    || "Ei kuvausta.";
+    || ticket.summary
+    || t("Ei kuvausta.");
   const lastInbound = [...detail.messages].reverse().find(m => m.direction === "inbound");
   // Sama järjestys kuin palvelimella: ensin alkuperäinen lähettäjä, muuten linkitetyt asukkaat.
   // Aikajanalta valittu viesti, johon vastataan; ilman valintaa vastataan viimeisimpään saapuneeseen.
@@ -126,7 +127,7 @@ export function TicketDrawer({
 
   useEffect(() => {
     setReplyTargetId(null);
-  }, [t.id]);
+  }, [ticket.id]);
 
   function startReply(message: TicketDetail["messages"][number]) {
     setReplyTargetId(message.id);
@@ -136,12 +137,12 @@ export function TicketDrawer({
 
   const recipient = (replyTarget ?? lastInbound)?.sender.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
     || detail.reporters.map(r => r.email?.trim()).filter(Boolean).join(", ");
-  const canReply = t.status === "waiting_manager" || t.status === "waiting_third_party";
+  const canReply = ticket.status === "waiting_manager" || ticket.status === "waiting_third_party";
 
   useEffect(() => {
-    setDraft(t.draft || "");
+    setDraft(ticket.draft || "");
     setSaved(false);
-  }, [t.id, t.draft]);
+  }, [ticket.id, ticket.draft]);
 
   // Viimeisin tässä istunnossa pyydetty AI-ehdotus; muuten näytetään tehtävälle tallennettu peruste ja lähde.
   const [suggestion, setSuggestion] = useState<{
@@ -155,21 +156,21 @@ export function TicketDrawer({
   useEffect(() => {
     setSuggestion(null);
     setSuggestError("");
-  }, [t.id]);
+  }, [ticket.id]);
 
   // AI-ehdotuksen voi pyytää tehtävälle vain kerran; aiempi pyyntö näkyy lokissa.
   const suggestionUsed = Boolean(suggestion) || detail.audit.some(a => a.action === "ai_suggested");
-  const aiReason = suggestion ? suggestion.reason : t.ai_reason;
+  const aiReason = suggestion ? suggestion.reason : ticket.ai_reason;
   // Dokumenttia ehdotetaan vasta, kun tehtävälle on pyydetty AI-ehdotus.
   const aiSource = suggestion
     ? suggestion.source
-    : suggestionUsed && t.knowledge_source_id && t.knowledge_source_title
-      ? { id: t.knowledge_source_id, title: t.knowledge_source_title }
+    : suggestionUsed && ticket.knowledge_source_id && ticket.knowledge_source_title
+      ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title }
       : null;
 
   async function requestSuggestion() {
-    if (draft.trim() && draft !== (t.draft || "")
-      && !window.confirm("Luonnoksessa on tallentamattomia muutoksia. Korvataanko se AI:n ehdotuksella?")) {
+    if (draft.trim() && draft !== (ticket.draft || "")
+      && !window.confirm(t("Luonnoksessa on tallentamattomia muutoksia. Korvataanko se AI:n ehdotuksella?"))) {
       return;
     }
     setSuggesting(true);
@@ -180,24 +181,24 @@ export function TicketDrawer({
         reason: string;
         source: { id: string; title: string } | null;
         usedAi: boolean;
-      }>(`/tickets/${t.id}/suggest`, { method: "POST" });
+      }>(`/tickets/${ticket.id}/suggest`, { method: "POST" });
       setSuggestion(result);
       setDraft(result.draft);
       setSaved(false);
       setSentTo("");
       // Ehdotus tallennetaan heti luonnokseksi; jos tallennus epäonnistuu, teksti jää kenttään tallentamattomana.
       try {
-        await api(`/tickets/${t.id}/draft`, {
+        await api(`/tickets/${ticket.id}/draft`, {
           method: "POST",
           body: JSON.stringify({ draft: result.draft })
         });
         onDraftSaved(result.draft);
         setSaved(true);
       } catch {
-        setSuggestError("AI-ehdotus on kentässä, mutta sen tallennus luonnokseksi epäonnistui. Paina Tallenna luonnos.");
+        setSuggestError(t("AI-ehdotus on kentässä, mutta sen tallennus luonnokseksi epäonnistui. Paina Tallenna luonnos."));
       }
     } catch (error) {
-      let message = "AI-ehdotuksen hakeminen epäonnistui. Yritä uudelleen.";
+      let message = t("AI-ehdotuksen hakeminen epäonnistui. Yritä uudelleen.");
       try {
         message = JSON.parse((error as Error).message).error || message;
       } catch {
@@ -216,7 +217,7 @@ export function TicketDrawer({
     setSentTo("");
     setSendError("");
     setNote("");
-  }, [t.id]);
+  }, [ticket.id]);
 
   // reply_sent ja message_created näkyvät aikajanalla jo itse viesteinä.
   const timeline = [
@@ -235,10 +236,10 @@ export function TicketDrawer({
   const [linking, setLinking] = useState(false);
 
   useEffect(() => {
-    api<Resident[]>(`/companies/${encodeURIComponent(t.company_id)}/residents`)
+    api<Resident[]>(`/companies/${encodeURIComponent(ticket.company_id)}/residents`)
       .then(setResidents)
       .catch(() => setResidents([]));
-  }, [t.id, t.company_id]);
+  }, [ticket.id, ticket.company_id]);
 
   // Tehtävällä on yksi ilmoittaja. Valikossa on mukana myös nykyinen ilmoittaja, vaikka asukaslista ei olisi vielä latautunut.
   const reporter = detail.reporters[0];
@@ -269,12 +270,12 @@ export function TicketDrawer({
     try {
       for (const current of detail.reporters) {
         if (current.id === residentId) continue;
-        await api(`/tickets/${t.id}/reporters/${encodeURIComponent(current.id)}?actor=${encodeURIComponent(actorName())}`, {
+        await api(`/tickets/${ticket.id}/reporters/${encodeURIComponent(current.id)}?actor=${encodeURIComponent(actorName())}`, {
           method: "DELETE"
         });
       }
       if (residentId && !detail.reporters.some(current => current.id === residentId)) {
-        await api(`/tickets/${t.id}/reporters`, {
+        await api(`/tickets/${ticket.id}/reporters`, {
           method: "POST",
           body: JSON.stringify({ residentId, actor: actorName() })
         });
@@ -296,7 +297,7 @@ export function TicketDrawer({
   async function updateFields(fields: { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null }) {
     setUpdatingFields(true);
     try {
-      await api(`/tickets/${t.id}/fields`, {
+      await api(`/tickets/${ticket.id}/fields`, {
         method: "PUT",
         body: JSON.stringify({ ...fields, actor: actorName() })
       });
@@ -311,7 +312,7 @@ export function TicketDrawer({
     if (!note.trim()) return;
     setAddingNote(true);
     try {
-      await api(`/tickets/${t.id}/notes`, {
+      await api(`/tickets/${ticket.id}/notes`, {
         method: "POST",
         body: JSON.stringify({ body: note, author: actorName() })
       });
@@ -328,7 +329,7 @@ export function TicketDrawer({
     setSendError("");
     setSentTo("");
     try {
-      const result = await api<{ ok: boolean; to: string }>(`/tickets/${t.id}/reply`, {
+      const result = await api<{ ok: boolean; to: string }>(`/tickets/${ticket.id}/reply`, {
         method: "POST",
         body: JSON.stringify({
           body: draft,
@@ -347,7 +348,7 @@ export function TicketDrawer({
       setSentTo(result.to);
       await onChanged();
     } catch (error) {
-      let message = "Lähetys epäonnistui.";
+      let message = t("Lähetys epäonnistui.");
       try {
         message = JSON.parse((error as Error).message).error || message;
       } catch {
@@ -362,7 +363,7 @@ export function TicketDrawer({
   async function saveDraft() {
     setSaving(true);
     try {
-      await api(`/tickets/${t.id}/draft`, {
+      await api(`/tickets/${ticket.id}/draft`, {
         method: "POST",
         body: JSON.stringify({ draft })
       });
@@ -380,92 +381,92 @@ export function TicketDrawer({
         <div className="drawer-main">
         {/* Yläpalkki pysyy näkyvissä, kun tehtävää vieritetään. */}
         <div className="drawer-topbar">
-          <span className="drawer-topbar-number">#{formatTicketNumber(t.ticket_number)} · {statusLabel(t.status)}</span>
+          <span className="drawer-topbar-number">#{formatTicketNumber(ticket.ticket_number)} · {statusLabel(ticket.status)}</span>
           <div className="drawer-topbar-tools">
-          <AttachmentsMenu attachments={detail.attachments} ticketId={t.id} onChanged={onChanged} />
-          {t.status === "closed" && (
+          <AttachmentsMenu attachments={detail.attachments} ticketId={ticket.id} onChanged={onChanged} />
+          {ticket.status === "closed" && (
             <div className="drawer-actions">
               <button
                 disabled={updatingFields}
                 onClick={async () => {
                   setUpdatingFields(true);
                   try {
-                    await api(`/tickets/${t.id}/reopen`, { method: "POST" });
+                    await api(`/tickets/${ticket.id}/reopen`, { method: "POST" });
                     await onChanged();
                   } finally {
                     setUpdatingFields(false);
                   }
                 }}
               >
-                Avaa uudelleen
+                {t("Avaa uudelleen")}
               </button>
             </div>
           )}
-          {t.status !== "closed" && (
+          {ticket.status !== "closed" && (
             <div className="drawer-actions">
               {canAssignTickets(company) && (
                 <AssignPicker
                   users={assignableUsers(company, officeUsers)}
-                  assigneeId={t.assignee_id ?? null}
+                  assigneeId={ticket.assignee_id ?? null}
                   onAssign={assigneeId => updateFields({ assigneeId })}
                 />
               )}
-              {t.status === "open" && (
-                <button className="primary" onClick={() => onDecision("human")}>Osoita minulle</button>
+              {ticket.status === "open" && (
+                <button className="primary" onClick={() => onDecision("human")}>{t("Osoita minulle")}</button>
               )}
-              <button onClick={() => onDecision("skip")}>Sulje</button>
+              <button onClick={() => onDecision("skip")}>{t("Sulje")}</button>
             </div>
           )}
           </div>
         </div>
-        <h2>{t.subject}</h2>
+        <h2>{ticket.subject}</h2>
 
         <dl className="ticket-facts">
           <div className="fact-number">
-            <dt>Tehtävänumero</dt>
-            <dd>#{formatTicketNumber(t.ticket_number)}</dd>
+            <dt>{t("Tehtävänumero")}</dt>
+            <dd>#{formatTicketNumber(ticket.ticket_number)}</dd>
           </div>
           <div>
-            <dt>Yhtiö</dt>
-            <dd>{t.company_name || "-"}</dd>
+            <dt>{t("Yhtiö")}</dt>
+            <dd>{ticket.company_name || "-"}</dd>
           </div>
           <div>
-            <dt>Osoite</dt>
+            <dt>{t("Osoite")}</dt>
             <dd>{[...new Set(detail.apartments.map(a => a.address).filter(Boolean))].join(", ") || "-"}</dd>
           </div>
           <div>
-            <dt>Tyyppi</dt>
+            <dt>{t("Tyyppi")}</dt>
             <dd>
               <FactDropdown
-                value={t.type}
-                options={(ticketTypeOptions.includes(t.type) ? ticketTypeOptions : [t.type, ...ticketTypeOptions])
-                  .map(type => ({ value: type, label: type }))}
+                value={ticket.type}
+                options={(ticketTypeOptions.includes(ticket.type) ? ticketTypeOptions : [ticket.type, ...ticketTypeOptions])
+                  .map(type => ({ value: type, label: t(type) }))}
                 disabled={updatingFields}
                 onChange={type => updateFields({ type })}
               />
             </dd>
           </div>
           <div>
-            <dt>{detail.apartments.length > 1 ? "Asunnot" : "Asunto"}</dt>
+            <dt>{detail.apartments.length > 1 ? t("Asunnot") : t("Asunto")}</dt>
             <dd>
               {detail.apartments.length > 0
                 ? detail.apartments.map(a => a.apartment_number).join(", ")
-                : "Yhteiset tilat"}
+                : t("Yhteiset tilat")}
             </dd>
           </div>
           <div>
-            <dt>Tila</dt>
-            <dd>{statusLabel(t.status)}</dd>
+            <dt>{t("Tila")}</dt>
+            <dd>{statusLabel(ticket.status)}</dd>
           </div>
           <div>
-            <dt>Käsittelijä</dt>
+            <dt>{t("Käsittelijä")}</dt>
             <dd>
               <FactDropdown
-                value={t.assignee_id ?? ""}
+                value={ticket.assignee_id ?? ""}
                 options={[
-                  { value: "", label: "Ei käsittelijää" },
+                  { value: "", label: t("Ei käsittelijää") },
                   ...officeUsers
-                    .filter(user => assignableUsers(company, officeUsers).includes(user) || user.id === t.assignee_id)
+                    .filter(user => assignableUsers(company, officeUsers).includes(user) || user.id === ticket.assignee_id)
                     .map(user => ({ value: user.id, label: user.name }))
                 ]}
                 disabled={updatingFields || !canAssignTickets(company)}
@@ -474,10 +475,10 @@ export function TicketDrawer({
             </dd>
           </div>
           <div>
-            <dt>Prioriteetti</dt>
+            <dt>{t("Prioriteetti")}</dt>
             <dd>
               <FactDropdown
-                value={t.priority}
+                value={ticket.priority}
                 options={ticketPriorities.map(priority => ({
                   value: priority,
                   label: priorityLabel(priority),
@@ -489,29 +490,29 @@ export function TicketDrawer({
             </dd>
           </div>
           <div>
-            <dt>Määräaika</dt>
+            <dt>{t("Määräaika")}</dt>
             <dd className="fact-due">
               <input
                 type="date"
-                value={t.due_date ?? ""}
-                disabled={updatingFields || t.status === "closed"}
-                aria-label="Määräaika"
+                value={ticket.due_date ?? ""}
+                disabled={updatingFields || ticket.status === "closed"}
+                aria-label={t("Määräaika")}
                 onChange={event => updateFields({ dueDate: event.target.value || null })}
               />
-              {isOverdue(t) && <em className="new-reply overdue">Myöhässä</em>}
+              {isOverdue(ticket) && <em className="new-reply overdue">{t("Myöhässä")}</em>}
             </dd>
           </div>
           <div>
-            <dt>Luotu</dt>
-            <dd>{formatDate(t.created_at)}</dd>
+            <dt>{t("Luotu")}</dt>
+            <dd>{formatDate(ticket.created_at)}</dd>
           </div>
           <div>
-            <dt>Ilmoittaja</dt>
+            <dt>{t("Ilmoittaja")}</dt>
             <dd className="fact-search">
               <input
                 ref={reporterInput}
                 value={reporterQuery ?? reporter?.name ?? ""}
-                placeholder="Hae asukasta nimellä…"
+                placeholder={t("Hae asukasta nimellä…")}
                 disabled={linking}
                 onFocus={event => {
                   setReporterQuery("");
@@ -531,8 +532,8 @@ export function TicketDrawer({
               <button
                 type="button"
                 className="fact-search-button"
-                title="Hae asukasta"
-                aria-label="Hae asukasta"
+                title={t("Hae asukasta")}
+                aria-label={t("Hae asukasta")}
                 disabled={linking}
                 // Kenttä pysyy kohdistettuna, jotta painallus ei sulje juuri avattua hakua.
                 onMouseDown={event => event.preventDefault()}
@@ -560,50 +561,50 @@ export function TicketDrawer({
                       <span>{[r.apartment_number, r.email].filter(Boolean).join(" · ")}</span>
                     </li>
                   ))}
-                  {reporterMatches.length === 0 && <li className="empty-option">Ei hakua vastaavia asukkaita</li>}
+                  {reporterMatches.length === 0 && <li className="empty-option">{t("Ei hakua vastaavia asukkaita")}</li>}
                   {reporter && (
-                    <li className="clear-option" onMouseDown={() => chooseReporter("")}>Poista ilmoittaja</li>
+                    <li className="clear-option" onMouseDown={() => chooseReporter("")}>{t("Poista ilmoittaja")}</li>
                   )}
                 </ul>
               )}
             </dd>
           </div>
           <div>
-            <dt>Muokattu</dt>
-            <dd>{formatDate(t.updated_at || t.created_at)}</dd>
+            <dt>{t("Muokattu")}</dt>
+            <dd>{formatDate(ticket.updated_at || ticket.created_at)}</dd>
           </div>
           <div>
-            <dt>Sähköposti</dt>
+            <dt>{t("Sähköposti")}</dt>
             <dd>
               {reporter
                 ? reporterEmail || "-"
-                : unlinkedSenders.length > 0 ? `${unlinkedSenders.join(", ")} (ei linkitetty asukkaaseen)` : "-"}
+                : unlinkedSenders.length > 0 ? t("{0} (ei linkitetty asukkaaseen)", unlinkedSenders.join(", ")) : "-"}
             </dd>
           </div>
         </dl>
 
         <div className="ticket-description">
-          <h3>Kuvaus</h3>
+          <h3>{t("Kuvaus")}</h3>
           <p>{description}</p>
         </div>
 
         <section className="drawer-section">
           <div className="suggest-header">
-            <h3>Vastaus asukkaalle</h3>
+            <h3>{t("Vastaus asukkaalle")}</h3>
             <button
               className="ai-button"
               onClick={requestSuggestion}
               disabled={suggesting || suggestionUsed}
-              title={suggestionUsed ? "AI-ehdotuksen voi pyytää tehtävälle vain kerran." : undefined}
+              title={suggestionUsed ? t("AI-ehdotuksen voi pyytää tehtävälle vain kerran.") : undefined}
             >
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2l1.900 5.600a4 4 0 0 0 2.500 2.500L22 12l-5.600 1.900a4 4 0 0 0-2.500 2.500L12 22l-1.900-5.600a4 4 0 0 0-2.500-2.500L2 12l5.600-1.900a4 4 0 0 0 2.500-2.500z" />
               </svg>
-              {suggesting ? "AI kirjoittaa…" : suggestionUsed ? "AI-ehdotus pyydetty" : "Pyydä AI-ehdotus"}
+              {suggesting ? t("AI kirjoittaa…") : suggestionUsed ? t("AI-ehdotus pyydetty") : t("Pyydä AI-ehdotus")}
             </button>
           </div>
           {suggestion?.usedAi && (
-            <p className="ai-reason created">AI on luonut ehdotuksen tälle tehtävälle. Tarkista ja muokkaa tekstiä ennen lähettämistä.</p>
+            <p className="ai-reason created">{t("AI on luonut ehdotuksen tälle tehtävälle. Tarkista ja muokkaa tekstiä ennen lähettämistä.")}</p>
           )}
           {aiSource && <p className="ai-reason found">{aiReason}</p>}
           {aiSource ? (
@@ -613,34 +614,34 @@ export function TicketDrawer({
                 href={`#/knowledge/${encodeURIComponent(aiSource.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                title="Avaa dokumentti uuteen välilehteen"
+                title={t("Avaa dokumentti uuteen välilehteen")}
               >
-                Ehdotettu dokumentti: {aiSource.title} ↗
+                {t("Ehdotettu dokumentti:")}{" "}{aiSource.title} ↗
               </a>
             </p>
           ) : null}
           {suggestion && !suggestion.usedAi && (
             <p className="reply-hint">
-              AI ei ollut käytettävissä, joten ehdotus tehtiin avainsanahaulla dokumentaatiosta.
+              {t("AI ei ollut käytettävissä, joten ehdotus tehtiin avainsanahaulla dokumentaatiosta.")}
             </p>
           )}
-          {suggestion && draft !== (t.draft || "") && (
-            <p className="reply-hint">Ehdotusta ei ole vielä tallennettu. Muokkaa tekstiä ja tallenna luonnos.</p>
+          {suggestion && draft !== (ticket.draft || "") && (
+            <p className="reply-hint">{t("Ehdotusta ei ole vielä tallennettu. Muokkaa tekstiä ja tallenna luonnos.")}</p>
           )}
           {suggestError && <p className="send-error">{suggestError}</p>}
           {replyTarget && (
             <p className="reply-target">
               <span>
-                Vastataan viestiin <strong>{replyTarget.subject}</strong> · {formatDate(replyTarget.created_at)}
+                {t("Vastataan viestiin")}{" "}<strong>{replyTarget.subject}</strong> · {formatDate(replyTarget.created_at)}
               </span>
-              <button onClick={() => setReplyTargetId(null)} title="Peru valinta" aria-label="Peru valinta">×</button>
+              <button onClick={() => setReplyTargetId(null)} title={t("Peru valinta")} aria-label={t("Peru valinta")}>×</button>
             </p>
           )}
           <textarea
             ref={draftEditor}
             className="draft-editor"
             rows={10}
-            placeholder="Kirjoita vastaus tai pyydä AI-ehdotus…"
+            placeholder={t("Kirjoita vastaus tai pyydä AI-ehdotus…")}
             value={draft}
             onChange={(event) => {
               setDraft(event.target.value);
@@ -662,7 +663,7 @@ export function TicketDrawer({
                 >
                   <path d="M21 11.500l-8.600 8.600a5.500 5.500 0 0 1-7.800-7.800l8.600-8.600a3.700 3.700 0 0 1 5.200 5.200l-8.500 8.500a1.800 1.800 0 0 1-2.600-2.600l7.800-7.800" />
                 </svg>
-                Liitä tiedosto
+                {t("Liitä tiedosto")}
                 <input
                   type="file"
                   multiple
@@ -680,35 +681,35 @@ export function TicketDrawer({
                   {file.name} <small>{formatFileSize(file.size)}</small>
                   <button
                     onClick={() => setReplyFiles(current => current.filter((_, position) => position !== index))}
-                    title="Poista liite"
-                    aria-label={`Poista liite ${file.name}`}
+                    title={t("Poista liite")}
+                    aria-label={t("Poista liite {0}", file.name)}
                   >
                     ×
                   </button>
                 </span>
               ))}
               {replyFilesTooLarge && (
-                <p className="send-error">Liitteiden yhteiskoko saa olla enintään 15 Mt (nyt {formatFileSize(replyFilesSize)}).</p>
+                <p className="send-error">{t("Liitteiden yhteiskoko saa olla enintään 15 Mt (nyt")}{" "}{formatFileSize(replyFilesSize)}).</p>
               )}
             </div>
           )}
           <div className="draft-actions">
             {canReply && (
               <button className="primary" onClick={sendReply} disabled={sending || !draft.trim() || !recipient || replyFilesTooLarge}>
-                {sending ? "Lähetetään…" : "Lähetä"}
+                {sending ? t("Lähetetään…") : t("Lähetä")}
               </button>
             )}
             <button className={canReply ? "" : "primary"} onClick={saveDraft} disabled={saving}>
-              {saving ? "Tallennetaan…" : "Tallenna luonnos"}
+              {saving ? t("Tallennetaan…") : t("Tallenna luonnos")}
             </button>
-            {saved && <span className="saved-indicator">Tallennettu</span>}
-            {sentTo && <span className="saved-indicator">Lähetetty: {sentTo}</span>}
+            {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
+            {sentTo && <span className="saved-indicator">{t("Lähetetty:")}{" "}{sentTo}</span>}
           </div>
           {canReply && (
             <p className="reply-hint">
               {recipient
-                ? `Vastaus lähetetään osoitteeseen ${recipient}`
-                : "Tehtävällä ei ole sähköpostiosoitetta, johon vastauksen voisi lähettää."}
+                ? t("Vastaus lähetetään osoitteeseen {0}", recipient)
+                : t("Tehtävällä ei ole sähköpostiosoitetta, johon vastauksen voisi lähettää.")}
             </p>
           )}
           {sendError && <p className="send-error">{sendError}</p>}
@@ -719,7 +720,7 @@ export function TicketDrawer({
         </div>
 
         <section className="drawer-timeline">
-          <h3>Aikajana</h3>
+          <h3>{t("Aikajana")}</h3>
           {timeline.map(item => item.kind === "message" ? (
             <TimelineMessage
               key={item.id}
@@ -731,7 +732,7 @@ export function TicketDrawer({
             />
           ) : item.kind === "note" ? (
             <div className="message note" key={item.id}>
-              <small>Sisäinen muistiinpano · {actorLabel(item.note.author)} · {formatDate(item.created_at)}</small>
+              <small>{t("Sisäinen muistiinpano ·")}{" "}{actorLabel(item.note.author)} · {formatDate(item.created_at)}</small>
               <p>{item.note.body}</p>
             </div>
           ) : (
@@ -740,16 +741,16 @@ export function TicketDrawer({
               <small>{actorLabel(item.event.actor)} · {formatDate(item.created_at)}</small>
             </div>
           ))}
-          {timeline.length === 0 && <p className="drawer-empty">Ei tapahtumia.</p>}
+          {timeline.length === 0 && <p className="drawer-empty">{t("Ei tapahtumia.")}</p>}
           <form className="note-form" onSubmit={addNote}>
             <textarea
               rows={2}
               value={note}
               onChange={event => setNote(event.target.value)}
-              placeholder="Lisää sisäinen muistiinpano (ei lähde asukkaalle)…"
+              placeholder={t("Lisää sisäinen muistiinpano (ei lähde asukkaalle)…")}
             />
             <button type="submit" disabled={addingNote || !note.trim()}>
-              {addingNote ? "Lisätään…" : "Lisää muistiinpano"}
+              {addingNote ? t("Lisätään…") : t("Lisää muistiinpano")}
             </button>
           </form>
         </section>

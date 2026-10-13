@@ -25,6 +25,7 @@ import { Reports } from "./Reports";
 import { Residents } from "./Residents";
 import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
+import { t } from "../i18n";
 
 export function Workspace({ user }: { user: OfficeUser }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -264,16 +265,16 @@ export function Workspace({ user }: { user: OfficeUser }) {
         clear: () => setColumnSearch(current => ({ ...current, [column.key]: "" }))
       })),
     ...(priorityFilter !== "all"
-      ? [{ key: "priority", label: "Prioriteetti", value: priorityLabel(priorityFilter), clear: () => setPriorityFilter("all") }]
+      ? [{ key: "priority", label: t("Prioriteetti"), value: priorityLabel(priorityFilter), clear: () => setPriorityFilter("all") }]
       : []),
     ...(typeFilter !== "all"
-      ? [{ key: "type", label: "Tyyppi", value: typeFilter, clear: () => setTypeFilter("all") }]
+      ? [{ key: "type", label: t("Tyyppi"), value: t(typeFilter), clear: () => setTypeFilter("all") }]
       : []),
     ...(tab === "tickets" && statusFilter !== "all"
-      ? [{ key: "status", label: "Tila", value: statusLabel(statusFilter), clear: () => setStatusFilter("all") }]
+      ? [{ key: "status", label: t("Tila"), value: statusLabel(statusFilter), clear: () => setStatusFilter("all") }]
       : []),
     ...(dueFilter !== "all"
-      ? [{ key: "due", label: "Määräaika", value: "Myöhässä", clear: () => setDueFilter("all") }]
+      ? [{ key: "due", label: t("Määräaika"), value: t("Myöhässä"), clear: () => setDueFilter("all") }]
       : [])
   ];
   const listedTickets = ticketSort && tab !== "queue"
@@ -313,110 +314,110 @@ export function Workspace({ user }: { user: OfficeUser }) {
   return (
     <div className="app">
       <aside className="sidebar">
-        <a className="brand" href="#/queue" title="Päätösjonoon">
+        <a className="brand" href="#/queue" title={t("Päätösjonoon")}>
           <img src="/kotilo-logo.svg" alt="Kotilo" />
         </a>
 
         <nav>
           <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>
             <TabIcon tab="queue" />
-            Päätösjono
+            {t("Päätösjono")}
             <b>{queueTickets.length}</b>
           </button>
           <div className="nav-group">
             <button className={tab === "tickets" ? "active" : ""} onClick={() => setTab("tickets")}>
               <TabIcon tab="tickets" />
-              Kaikki tehtävät
+              {t("Kaikki tehtävät")}
             </button>
-            <NavToggle open={myTicketsOpen} label="omat tehtävät ja AI tehtävät" onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
+            <NavToggle open={myTicketsOpen} label={t("omat tehtävät ja AI tehtävät")} onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
           </div>
           {myTicketsOpen && (
             <>
               <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => setTab("my-tickets")}>
                 <TabIcon tab="my-tickets" />
-                Omat tehtävät
+                {t("Omat tehtävät")}
                 <b>{myTickets.length}</b>
               </button>
               <button className={`nav-sub ${tab === "ai-handled" ? "active" : ""}`} onClick={() => setTab("ai-handled")}>
                 <TabIcon tab="ai-handled" />
-                AI tehtävät
+                {t("AI tehtävät")}
                 <b>{aiTickets.length}</b>
               </button>
             </>
           )}
           <button className={tab === "knowledge" ? "active" : ""} onClick={() => setTab("knowledge")}>
             <TabIcon tab="knowledge" />
-            Dokumentaatio
+            {t("Dokumentaatio")}
           </button>
           <button className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")}>
             <TabIcon tab="reports" />
-            Raportit
+            {t("Raportit")}
           </button>
           <div className="nav-group">
             <button className={tab === "companies" ? "active" : ""} onClick={() => setTab("companies")}>
               <TabIcon tab="companies" />
-              Taloyhtiöt
+              {t("Taloyhtiöt")}
             </button>
-            <NavToggle open={showResidentsLink} label="taloyhtiöiden alasivut" onToggle={() => setResidentsOpen(!showResidentsLink)} />
+            <NavToggle open={showResidentsLink} label={t("taloyhtiöiden alasivut")} onToggle={() => setResidentsOpen(!showResidentsLink)} />
           </div>
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "residents" ? "active" : ""}`} onClick={() => setTab("residents")}>
               <TabIcon tab="residents" />
-              Asukastietokanta
+              {t("Asukastietokanta")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "sauna" ? "active" : ""}`} onClick={() => setTab("sauna")}>
               <TabIcon tab="sauna" />
-              Saunavuorot
+              {t("Saunavuorot")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "laundry" ? "active" : ""}`} onClick={() => setTab("laundry")}>
               <TabIcon tab="laundry" />
-              Pyykkitupavuorot
+              {t("Pyykkitupavuorot")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "parking" ? "active" : ""}`} onClick={() => setTab("parking")}>
               <TabIcon tab="parking" />
-              Autopaikat
+              {t("Autopaikat")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "announcements" ? "active" : ""}`} onClick={() => setTab("announcements")}>
               <TabIcon tab="announcements" />
-              Tiedotteet
+              {t("Tiedotteet")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "moves" ? "active" : ""}`} onClick={() => setTab("moves")}>
               <TabIcon tab="moves" />
-              Muutot
+              {t("Muutot")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "renovations" ? "active" : ""}`} onClick={() => setTab("renovations")}>
               <TabIcon tab="renovations" />
-              Remontit
+              {t("Remontit")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "keys" ? "active" : ""}`} onClick={() => setTab("keys")}>
               <TabIcon tab="keys" />
-              Avaimet
+              {t("Avaimet")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "meters" ? "active" : ""}`} onClick={() => setTab("meters")}>
               <TabIcon tab="meters" />
-              Kulutuslukemat
+              {t("Kulutuslukemat")}
             </button>
           )}
           {showResidentsLink && (
             <button className={`nav-sub ${tab === "waitlist" ? "active" : ""}`} onClick={() => setTab("waitlist")}>
               <TabIcon tab="waitlist" />
-              Jonot
+              {t("Jonot")}
             </button>
           )}
         </nav>
@@ -425,8 +426,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
           <button
             className={`settings-button ${tab === "settings" ? "active" : ""}`}
             onClick={() => setTab("settings")}
-            title="Asetukset"
-            aria-label="Asetukset"
+            title={t("Asetukset")}
+            aria-label={t("Asetukset")}
           >
             <TabIcon tab="settings" />
           </button>
@@ -437,7 +438,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
               className="logout"
               onClick={logout}
             >
-              Kirjaudu ulos
+              {t("Kirjaudu ulos")}
             </button>
           </div>
         </div>
@@ -446,7 +447,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       <main className="main">
         <header>
           <div>
-            <p className="eyebrow">KOTILO / ISÄNNÖITSIJÄ</p>
+            <p className="eyebrow">{t("KOTILO / ISÄNNÖITSIJÄ")}</p>
             <h1>{tabTitles[tab]}</h1>
           </div>
         </header>
@@ -526,24 +527,24 @@ export function Workspace({ user }: { user: OfficeUser }) {
           ) : (
           <section className="content">
             {(tab === "my-tickets" || tab === "ai-handled") && (
-              <a className="back-link" href="#/tickets">← Kaikki tehtävät</a>
+              <a className="back-link" href="#/tickets">{t("← Kaikki tehtävät")}</a>
             )}
             {tab === "queue" && (
               <div className="queue-summary">
                 <div>
-                  <span>Jonossa</span>
+                  <span>{t("Jonossa")}</span>
                   <strong>{queueTickets.length}</strong>
-                  <small>odottavaa tehtävää</small>
+                  <small>{t("odottavaa tehtävää")}</small>
                 </div>
                 <div>
-                  <span>Vanhin odottava</span>
+                  <span>{t("Vanhin odottava")}</span>
                   <strong>{oldestQueuedTicket ? ticketAge(oldestQueuedTicket.created_at, clock) : "—"}</strong>
-                  <small>{oldestQueuedTicket ? `Tehtävä #${formatTicketNumber(oldestQueuedTicket.ticket_number)}` : "Ei odottavia tehtäviä"}</small>
+                  <small>{oldestQueuedTicket ? t("Tehtävä #{0}", formatTicketNumber(oldestQueuedTicket.ticket_number)) : t("Ei odottavia tehtäviä")}</small>
                 </div>
                 {statusCounts.map(({ status, count }) => (
                   <button
                     key={status}
-                    title="Näytä nämä tehtävät"
+                    title={t("Näytä nämä tehtävät")}
                     onClick={() => {
                       setStatusFilter(status);
                       setPriorityFilter("all");
@@ -554,12 +555,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   >
                     <span>{statusLabel(status)}</span>
                     <strong>{count}</strong>
-                    <small>{count === 1 ? "tehtävä" : "tehtävää"}</small>
+                    <small>{count === 1 ? t("tehtävä") : t("tehtävää")}</small>
                   </button>
                 ))}
                 <button
                   className={overdueCount > 0 ? "overdue" : ""}
-                  title="Näytä myöhässä olevat tehtävät"
+                  title={t("Näytä myöhässä olevat tehtävät")}
                   onClick={() => {
                     setStatusFilter("all");
                     setPriorityFilter("all");
@@ -568,17 +569,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     setTab("tickets");
                   }}
                 >
-                  <span>Myöhässä</span>
+                  <span>{t("Myöhässä")}</span>
                   <strong>{overdueCount}</strong>
-                  <small>määräaika mennyt</small>
+                  <small>{t("määräaika mennyt")}</small>
                 </button>
-                <button className="create-ticket" onClick={() => setCreating(true)}>+ Luo tehtävä</button>
+                <button className="create-ticket" onClick={() => setCreating(true)}>{t("+ Luo tehtävä")}</button>
               </div>
             )}
             {tab !== "queue" && filtersOpen && (
             <div className="ticket-filters">
               <label>
-                <span>Yhtiö</span>
+                <span>{t("Yhtiö")}</span>
                 <select
                   value={selectedCompany}
                   onChange={event => changeCompany(event.target.value)}
@@ -587,36 +588,36 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 </select>
               </label>
               <label>
-                <span>Prioriteetti</span>
+                <span>{t("Prioriteetti")}</span>
                 <select value={priorityFilter} onChange={event => setPriorityFilter(event.target.value)}>
-                  <option value="all">Kaikki</option>
-                  <option value="emergency">Hätä</option>
-                  <option value="urgent">Kiireellinen</option>
-                  <option value="normal">Normaali</option>
-                  <option value="low">Matala</option>
+                  <option value="all">{t("Kaikki")}</option>
+                  <option value="emergency">{t("Hätä")}</option>
+                  <option value="urgent">{t("Kiireellinen")}</option>
+                  <option value="normal">{t("Normaali")}</option>
+                  <option value="low">{t("Matala")}</option>
                 </select>
               </label>
               <label>
-                <span>Tyyppi</span>
+                <span>{t("Tyyppi")}</span>
                 <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)}>
-                  <option value="all">Kaikki</option>
-                  {ticketTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                  <option value="all">{t("Kaikki")}</option>
+                  {ticketTypes.map(type => <option key={type} value={type}>{t(type)}</option>)}
                 </select>
               </label>
               {tab === "tickets" && (
                 <label>
-                  <span>Tila</span>
+                  <span>{t("Tila")}</span>
                   <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
-                    <option value="all">Kaikki</option>
+                    <option value="all">{t("Kaikki")}</option>
                     {ticketStatuses.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
                   </select>
                 </label>
               )}
               <label>
-                <span>Määräaika</span>
+                <span>{t("Määräaika")}</span>
                 <select value={dueFilter} onChange={event => setDueFilter(event.target.value)}>
-                  <option value="all">Kaikki</option>
-                  <option value="overdue">Myöhässä</option>
+                  <option value="all">{t("Kaikki")}</option>
+                  <option value="overdue">{t("Myöhässä")}</option>
                 </select>
               </label>
               {filtersActive && (
@@ -625,7 +626,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   setTypeFilter("all");
                   setStatusFilter("all");
                   setDueFilter("all");
-                }}>Tyhjennä suodattimet</button>
+                }}>{t("Tyhjennä suodattimet")}</button>
               )}
             </div>
             )}
@@ -634,8 +635,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <button
                   className={`filter-toggle ${filtersOpen || filtersActive ? "active" : ""}`}
                   onClick={() => setFiltersOpen(!filtersOpen)}
-                  title={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
-                  aria-label={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
+                  title={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
+                  aria-label={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
                   aria-expanded={filtersOpen}
                 >
                   <svg
@@ -654,8 +655,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <button
                   className={`filter-toggle search-toggle ${searchOpen ? "active" : ""}`}
                   onClick={() => setSearchOpen(!searchOpen)}
-                  title={searchOpen ? "Sulje haku" : "Hae sarakkeista"}
-                  aria-label={searchOpen ? "Sulje haku" : "Hae sarakkeista"}
+                  title={searchOpen ? t("Sulje haku") : t("Hae sarakkeista")}
+                  aria-label={searchOpen ? t("Sulje haku") : t("Hae sarakkeista")}
                   aria-expanded={searchOpen}
                 >
                   <svg
@@ -676,7 +677,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   <span className="filter-chip" key={filter.key}>
                     <small>{filter.label}</small>
                     {filter.value}
-                    <button onClick={filter.clear} title="Poista suodatin" aria-label={`Poista suodatin ${filter.label}`}>×</button>
+                    <button onClick={filter.clear} title={t("Poista suodatin")} aria-label={t("Poista suodatin {0}", filter.label)}>×</button>
                   </span>
                 ))}
               </div>
@@ -690,7 +691,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                       key={column.key}
                       className={active ? "active" : ""}
                       onClick={() => sortTicketsBy(column.key)}
-                      title={`Järjestä sarakkeen ${column.label} mukaan`}
+                      title={t("Järjestä sarakkeen {0} mukaan", column.label)}
                       aria-sort={active ? (ticketSort.descending ? "descending" : "ascending") : undefined}
                     >
                       {column.label}
@@ -719,13 +720,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     key={column.key}
                     value={columnSearch[column.key] ?? ""}
                     onChange={event => setColumnSearch({ ...columnSearch, [column.key]: event.target.value })}
-                    placeholder="Hae…"
-                    aria-label={`Hae sarakkeesta ${column.label}`}
+                    placeholder={t("Hae…")}
+                    aria-label={t("Hae sarakkeesta {0}", column.label)}
                   />
                 ))}
               </div>
             )}
-            {loading ? <div className="empty">Ladataan…</div> :
+            {loading ? <div className="empty">{t("Ladataan…")}</div> :
               pagedTickets.items.map(ticket => (
                 <TicketCard
                   key={ticket.id}
@@ -744,7 +745,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
             {!loading && pagedTickets.pager}
             {!loading && visibleTickets.length === 0 && (
               <div className="empty">
-                {emptyTicketMessages[tab] ?? "Ei tehtäviä."}
+                {emptyTicketMessages[tab] ?? t("Ei tehtäviä.")}
               </div>
             )}
           </section>

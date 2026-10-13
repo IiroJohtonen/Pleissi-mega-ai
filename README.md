@@ -8,8 +8,9 @@ Tilanne ja puuttuvat osat on kuvattu tiedostossa [shared/PRODUCT_SCOPE.md](share
 
 - **Tehtävät:** sähköposti, asukasportaali ja käsin kirjatut asiat päätyvät samaan päätösjonoon. Tehtävällä on käsittelijä, prioriteetti, määräaika, viestiketju, liitteet, muistiinpanot ja loki.
 - **AI-apu:** käsittelijä voi pyytää vastausehdotuksen, joka perustuu vain kyseisen taloyhtiön tietopankkiin. Raportti toistuvista aiheista ehdottaa uusia vakiotietoja.
-- **Asukasportaali:** asukas näkee tiedotteet, tekee ilmoituksia, varaa sauna- ja pyykkitupavuoroja, jonottaa autopaikkaa ja tekee muuttoilmoituksen.
-- **Taloyhtiön hallinta:** asukkaat, autopaikat, vuorot, jonot, tiedotteet, muuttoilmoitukset, työtilaukset huoltoyhtiölle ja laskutusraportit.
+- **Asukasportaali:** asukas näkee tiedotteet, tekee ilmoituksia, varaa sauna- ja pyykkitupavuoroja, jonottaa autopaikkaa, tekee muutto- ja remontti-ilmoituksen ja ilmoittaa kulutuslukemat.
+- **Taloyhtiön hallinta:** asukkaat, autopaikat, vuorot, jonot, tiedotteet, muutto- ja remontti-ilmoitukset, avainrekisteri, kulutuslukemat, työtilaukset huoltoyhtiölle ja laskutusraportit.
+- **Kielet:** käyttöliittymä on suomeksi ja englanniksi. Kieli vaihdetaan asetuksista, kirjautumissivulta tai asukasportaalin yläpalkista.
 - **Roolit:** pääkäyttäjä, isännöitsijä ja asiakaspalvelu. Isännöitsijä näkee vain omat taloyhtiönsä.
 
 ## Rakenne
@@ -57,6 +58,12 @@ Aseta `ANTHROPIC_API_KEY` tiedostoon `server/.env`. Ilman avainta vastausehdotuk
 ### Gmail
 
 Saapuva ja lähtevä posti kulkee Gmailin kautta. Tallenna Google Cloudin OAuth-clientin tiedot tiedostoon `server/credentials.json` ja yhdistä tili sovelluksen asetuksista (Asetukset → Gmail). Taloyhtiölle voi yhdistää oman tilin; muuten käytetään toimiston tiliä. Tiedostot `credentials.json` ja `token.json` ovat salaisuuksia eivätkä kuulu repoon.
+
+## Käännökset
+
+Suomenkielinen teksti kirjoitetaan koodiin funktion `t()` sisään, ja sama teksti on käännöksen avain: `t("Tallenna")` tai muuttujien kanssa `t("Avain {0}", key.code)`. Englanninkieliset käännökset ovat tiedostossa `client/src/locales/en.ts`. Testi kaatuu, jos jollekin tekstille ei ole käännöstä tai paikkamerkit eivät täsmää.
+
+Tietokantaan tallentuvat arvot (tehtävätyypit, roolit, autopaikka- ja avaintyypit) pysyvät suomenkielisinä; ne käännetään vasta näytettäessä. Palvelimen virheilmoitukset käännetään selaimessa samasta sanastosta.
 
 ## Tarkistukset
 

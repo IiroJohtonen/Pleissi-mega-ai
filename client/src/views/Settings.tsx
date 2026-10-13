@@ -1,18 +1,13 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
+import { type Language, language, LANGUAGES, setLanguage } from "../i18n";
 import {
   api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession, USER_ROLES
 } from "../session";
 import type { Company, GmailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
-
-const LANGUAGES = [
-  { value: "fi", label: "Suomi" },
-  { value: "sv", label: "Svenska" },
-  { value: "en", label: "English" }
-];
-const LANGUAGE_KEY = "kotilo.language";
+import { t } from "../i18n";
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
 export function Settings(props: { company?: Company; onSaved: () => Promise<void> }) {
@@ -23,11 +18,11 @@ export function Settings(props: { company?: Company; onSaved: () => Promise<void
     <>
       <div className="card-tabs settings-tabs" role="tablist">
         <button role="tab" aria-selected={tab === "user"} className={tab === "user" ? "active" : ""} onClick={() => setTab("user")}>
-          Käyttäjän asetukset
+          {t("Käyttäjän asetukset")}
         </button>
         {admin && (
           <button role="tab" aria-selected={tab === "office"} className={tab === "office" ? "active" : ""} onClick={() => setTab("office")}>
-            Isännöitsijätoimiston tiedot
+            {t("Isännöitsijätoimiston tiedot")}
           </button>
         )}
       </div>
@@ -45,23 +40,6 @@ function UserSettings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [language, setLanguage] = useState(() => {
-    try {
-      return localStorage.getItem(LANGUAGE_KEY) || "fi";
-    } catch {
-      return "fi";
-    }
-  });
-
-  function changeLanguage(value: string) {
-    setLanguage(value);
-    try {
-      localStorage.setItem(LANGUAGE_KEY, value);
-    } catch {
-      // Selaimen tallennustila ei ole käytössä; valinta säilyy vain tämän käynnin ajan.
-    }
-  }
-
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!user || !session) return;
@@ -78,7 +56,7 @@ function UserSettings() {
       setPassword("");
       setSaved(true);
     } catch (submitError) {
-      setError(errorMessage(submitError, "Tietojen tallennus epäonnistui."));
+      setError(errorMessage(submitError, t("Tietojen tallennus epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -87,30 +65,30 @@ function UserSettings() {
   return (
     <section className="content settings">
       <form className="settings-card ticket-form" onSubmit={handleSubmit}>
-        <h2>Omat tiedot</h2>
-        <p className="muted">{MANAGEMENT_OFFICE.name} · {user?.role}</p>
+        <h2>{t("Omat tiedot")}</h2>
+        <p className="muted">{MANAGEMENT_OFFICE.name} · {t(user?.role ?? "")}</p>
 
         <label>
-          <span>Nimi</span>
+          <span>{t("Nimi")}</span>
           <input value={name} onChange={event => { setName(event.target.value); setSaved(false); }} />
         </label>
 
         <label>
-          <span>Sähköposti (käytetään kirjautumiseen)</span>
+          <span>{t("Sähköposti (käytetään kirjautumiseen)")}</span>
           <input type="email" value={email} onChange={event => { setEmail(event.target.value); setSaved(false); }} />
         </label>
 
         <label>
-          <span>Uusi salasana</span>
+          <span>{t("Uusi salasana")}</span>
           <input
             type="password"
             value={password}
             onChange={event => { setPassword(event.target.value); setSaved(false); }}
-            placeholder="Jätä tyhjäksi, jos salasanaa ei vaihdeta"
+            placeholder={t("Jätä tyhjäksi, jos salasanaa ei vaihdeta")}
             autoComplete="new-password"
           />
         </label>
-        <p className="reply-hint">Vähintään 8 merkkiä. Vaihto kirjaa sinut ulos muilta laitteilta.</p>
+        <p className="reply-hint">{t("Vähintään 8 merkkiä. Vaihto kirjaa sinut ulos muilta laitteilta.")}</p>
 
         {error && <p className="send-error">{error}</p>}
 
@@ -120,16 +98,16 @@ function UserSettings() {
             type="submit"
             disabled={saving || !name.trim() || !email.trim() || (password.length > 0 && password.length < 8)}
           >
-            {saving ? "Tallennetaan…" : "Tallenna tiedot"}
+            {saving ? t("Tallennetaan…") : t("Tallenna tiedot")}
           </button>
-          {saved && <span className="saved-indicator">Tallennettu</span>}
+          {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
         </div>
       </form>
 
       <div className="settings-card ticket-form">
-        <h2>Kieli</h2>
-        <Dropdown label="Käyttöliittymän kieli" value={language} options={LANGUAGES} onChange={changeLanguage} />
-        <p className="reply-hint">Kielivalinta tallentuu tähän selaimeen. Käyttöliittymä on toistaiseksi vain suomeksi.</p>
+        <h2>{t("Kieli")}</h2>
+        <Dropdown label={t("Käyttöliittymän kieli")} value={language} options={LANGUAGES} onChange={value => setLanguage(value as Language)} />
+        <p className="reply-hint">{t("Kielivalinta tallentuu tähän selaimeen. Sivu latautuu uudelleen, kun kieli vaihtuu.")}</p>
       </div>
     </section>
   );
@@ -176,21 +154,21 @@ export function GmailAccountCard({ target }: { target: string }) {
       window.open(url, "_blank", "noopener");
       setWaiting(true);
     } catch (connectError) {
-      setError(errorMessage(connectError, "Gmail-kirjautumisen aloitus epäonnistui."));
+      setError(errorMessage(connectError, t("Gmail-kirjautumisen aloitus epäonnistui.")));
     } finally {
       setBusy(false);
     }
   }
 
   async function removeOwn() {
-    if (!window.confirm("Poistetaanko taloyhtiön oma Gmail-tili? Taloyhtiön posti kulkee sen jälkeen toimiston tilin kautta.")) return;
+    if (!window.confirm(t("Poistetaanko taloyhtiön oma Gmail-tili? Taloyhtiön posti kulkee sen jälkeen toimiston tilin kautta."))) return;
     setBusy(true);
     setError("");
     try {
       await api(`/gmail/accounts/${encodeURIComponent(target)}`, { method: "DELETE" });
       await loadStatus();
     } catch (removeError) {
-      setError(errorMessage(removeError, "Tilin poistaminen epäonnistui."));
+      setError(errorMessage(removeError, t("Tilin poistaminen epäonnistui.")));
     } finally {
       setBusy(false);
     }
@@ -201,34 +179,34 @@ export function GmailAccountCard({ target }: { target: string }) {
 
   return (
     <div className="settings-card gmail-card">
-      <h2>{office ? "Toimiston Gmail-tili" : "Taloyhtiön Gmail-tili"}</h2>
-      {!status ? <p className="muted">Tarkistetaan…</p> : status.connected ? (
+      <h2>{office ? t("Toimiston Gmail-tili") : t("Taloyhtiön Gmail-tili")}</h2>
+      {!status ? <p className="muted">{t("Tarkistetaan…")}</p> : status.connected ? (
         <>
-          <p><strong>{status.emailAddress}</strong>{!own && <span className="gmail-shared"> · toimiston yhteinen tili</span>}</p>
+          <p><strong>{status.emailAddress}</strong>{!own && <span className="gmail-shared">{" "}{t("· toimiston yhteinen tili")}</span>}</p>
           <p className="muted">
             {office
-              ? "Kotilo lukee saapuvat viestit tämän tilin postilaatikosta ja lähettää vastaukset siitä. Taloyhtiö, jolla on oma tili, käyttää omaansa."
+              ? t("Kotilo lukee saapuvat viestit tämän tilin postilaatikosta ja lähettää vastaukset siitä. Taloyhtiö, jolla on oma tili, käyttää omaansa.")
               : own
-                ? "Tämän taloyhtiön viestit saapuvat tähän postilaatikkoon ja lähtevät siitä."
-                : "Taloyhtiöllä ei ole omaa tiliä, joten sen posti kulkee toimiston tilin kautta. Voit yhdistää taloyhtiölle oman Gmail-tilin."}
-            {status.canSend ? "" : " Tililtä puuttuu lähetysoikeus: yhdistä tili uudelleen."}
+                ? t("Tämän taloyhtiön viestit saapuvat tähän postilaatikkoon ja lähtevät siitä.")
+                : t("Taloyhtiöllä ei ole omaa tiliä, joten sen posti kulkee toimiston tilin kautta. Voit yhdistää taloyhtiölle oman Gmail-tilin.")}
+            {status.canSend ? "" : t(" Tililtä puuttuu lähetysoikeus: yhdistä tili uudelleen.")}
           </p>
         </>
       ) : (
-        <p className="send-error">Gmail-tiliä ei ole yhdistetty tai yhteys on katkennut. Yhdistä tili uudelleen.</p>
+        <p className="send-error">{t("Gmail-tiliä ei ole yhdistetty tai yhteys on katkennut. Yhdistä tili uudelleen.")}</p>
       )}
       {admin ? (
         <div className="draft-actions">
           <button className="secondary" onClick={() => void connect()} disabled={busy}>
-            {own && status?.connected ? "Vaihda Gmail-tili" : office ? "Yhdistä Gmail-tili" : "Yhdistä oma Gmail-tili"}
+            {own && status?.connected ? t("Vaihda Gmail-tili") : office ? t("Yhdistä Gmail-tili") : t("Yhdistä oma Gmail-tili")}
           </button>
-          {!office && status?.own && <button className="danger" onClick={() => void removeOwn()} disabled={busy}>Poista oma tili</button>}
-          {waiting && <button onClick={() => void loadStatus()}>Tarkista yhteys</button>}
+          {!office && status?.own && <button className="danger" onClick={() => void removeOwn()} disabled={busy}>{t("Poista oma tili")}</button>}
+          {waiting && <button onClick={() => void loadStatus()}>{t("Tarkista yhteys")}</button>}
         </div>
       ) : (
-        <p className="reply-hint">Vain pääkäyttäjä voi vaihtaa Gmail-tilin.</p>
+        <p className="reply-hint">{t("Vain pääkäyttäjä voi vaihtaa Gmail-tilin.")}</p>
       )}
-      {waiting && <p className="reply-hint">Kirjaudu Googlen avaamassa välilehdessä ja hyväksy oikeudet. Palaa sitten tähän välilehteen.</p>}
+      {waiting && <p className="reply-hint">{t("Kirjaudu Googlen avaamassa välilehdessä ja hyväksy oikeudet. Palaa sitten tähän välilehteen.")}</p>}
       {error && <p className="send-error">{error}</p>}
     </div>
   );
@@ -263,7 +241,7 @@ function OfficeSettings({
         setRetentionMonths(office.retentionMonths ?? 0);
         setStoredRetention(office.retentionMonths ?? 0);
       })
-      .catch(() => setError("Toimiston tietojen lataus epäonnistui."));
+      .catch(() => setError(t("Toimiston tietojen lataus epäonnistui.")));
   }, []);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -276,15 +254,15 @@ function OfficeSettings({
     setError("");
   }, [company?.id]);
 
-  if (!company) return <div className="empty">Yhtiötä ei ole valittu.</div>;
+  if (!company) return <div className="empty">{t("Yhtiötä ei ole valittu.")}</div>;
   const companyId = company.id;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const shortens = retentionMonths > 0 && (storedRetention === 0 || retentionMonths < storedRetention);
     if (shortens && !window.confirm(
-      `Säilytysajaksi tulee ${retentionMonths} kk. Tätä kauemmin suljettuna olleet tehtävät viesteineen ja liitteineen `
-      + "sekä tätä vanhemmat lokimerkinnät poistetaan pysyvästi. Jatketaanko?"
+      t("Säilytysajaksi tulee {0} kk. Tätä kauemmin suljettuna olleet tehtävät viesteineen ja liitteineen ", retentionMonths)
+      + t("sekä tätä vanhemmat lokimerkinnät poistetaan pysyvästi. Jatketaanko?")
     )) return;
     setSaving(true);
     setSaved(false);
@@ -312,7 +290,7 @@ function OfficeSettings({
       await onSaved();
       setSaved(true);
     } catch (caught) {
-      let message = "Asetusten tallennus epäonnistui.";
+      let message = t("Asetusten tallennus epäonnistui.");
       try {
         message = JSON.parse((caught as Error).message).error || message;
       } catch {
@@ -329,49 +307,49 @@ function OfficeSettings({
     <section className="settings-layout">
       <div className="content settings">
       <form className="settings-card ticket-form" onSubmit={handleSubmit}>
-        <h2>Isännöitsijätoimiston tiedot</h2>
+        <h2>{t("Isännöitsijätoimiston tiedot")}</h2>
 
         <label>
-          <span>Toimiston nimi</span>
+          <span>{t("Toimiston nimi")}</span>
           <input value={name} onChange={event => { setName(event.target.value); setSaved(false); }} />
         </label>
 
         <label>
-          <span>Y-tunnus</span>
-          <input value={businessId} onChange={event => { setBusinessId(event.target.value); setSaved(false); }} placeholder="Valinnainen" />
+          <span>{t("Y-tunnus")}</span>
+          <input value={businessId} onChange={event => { setBusinessId(event.target.value); setSaved(false); }} placeholder={t("Valinnainen")} />
         </label>
 
         <label>
-          <span>Osoite</span>
-          <input value={address} onChange={event => { setAddress(event.target.value); setSaved(false); }} placeholder="Valinnainen" />
+          <span>{t("Osoite")}</span>
+          <input value={address} onChange={event => { setAddress(event.target.value); setSaved(false); }} placeholder={t("Valinnainen")} />
         </label>
 
         <label>
-          <span>Puhelin</span>
-          <input value={phone} onChange={event => { setPhone(event.target.value); setSaved(false); }} placeholder="Valinnainen" />
+          <span>{t("Puhelin")}</span>
+          <input value={phone} onChange={event => { setPhone(event.target.value); setSaved(false); }} placeholder={t("Valinnainen")} />
         </label>
 
-        <h2>Tehtävien vastaanotto</h2>
+        <h2>{t("Tehtävien vastaanotto")}</h2>
 
         <label>
-          <span>Sähköposti, johon tehtävät saapuvat ({company.name})</span>
+          <span>{t("Sähköposti, johon tehtävät saapuvat (")}{company.name})</span>
           <input
             type="email"
             value={emailAddress}
             onChange={event => { setEmailAddress(event.target.value); setSaved(false); }}
-            placeholder="esim. asiakaspalvelu@yritys.fi"
+            placeholder={t("esim. asiakaspalvelu@yritys.fi")}
           />
         </label>
         <p className="reply-hint">
-          Tähän osoitteeseen lähetetyt viestit ohjataan tämän yhtiön tehtäviksi.
+          {t("Tähän osoitteeseen lähetetyt viestit ohjataan tämän yhtiön tehtäviksi.")}
         </p>
 
-        <h2>Muistutukset</h2>
+        <h2>{t("Muistutukset")}</h2>
 
         <label className="switch-row">
           <span>
-            <strong>Muistutus sähköpostilla</strong>
-            <small>Käsittelijä saa enintään kerran päivässä koosteen myöhässä olevista tehtävistään.</small>
+            <strong>{t("Muistutus sähköpostilla")}</strong>
+            <small>{t("Käsittelijä saa enintään kerran päivässä koosteen myöhässä olevista tehtävistään.")}</small>
           </span>
           <input
             type="checkbox"
@@ -382,40 +360,37 @@ function OfficeSettings({
           <i aria-hidden="true" />
         </label>
         <p className="reply-hint">
-          Koosteessa ovat tehtävät, joiden määräaika on mennyt tai joissa asukkaan viesti on odottanut vastausta
-          yli kaksi päivää. Viesti lähtee toimiston Gmail-tililtä käyttäjän kirjautumisosoitteeseen. Myöhässä
-          olevat tehtävät näkyvät sovelluksessa aina.
+          {t("Koosteessa ovat tehtävät, joiden määräaika on mennyt tai joissa asukkaan viesti on odottanut vastausta yli kaksi päivää. Viesti lähtee toimiston Gmail-tililtä käyttäjän kirjautumisosoitteeseen. Myöhässä olevat tehtävät näkyvät sovelluksessa aina.")}
         </p>
 
-        <h2>Tietojen säilytys</h2>
+        <h2>{t("Tietojen säilytys")}</h2>
 
         <label>
-          <span>Säilytysaika</span>
+          <span>{t("Säilytysaika")}</span>
           <select
             value={retentionMonths}
             onChange={event => { setRetentionMonths(Number(event.target.value)); setSaved(false); }}
           >
-            <option value={0}>Säilytetään toistaiseksi</option>
+            <option value={0}>{t("Säilytetään toistaiseksi")}</option>
             {[12, 24, 36, 60, 120].map(months => (
-              <option key={months} value={months}>{months / 12} {months === 12 ? "vuosi" : "vuotta"}</option>
+              <option key={months} value={months}>{months / 12} {months === 12 ? t("vuosi") : t("vuotta")}</option>
             ))}
             {retentionMonths > 0 && ![12, 24, 36, 60, 120].includes(retentionMonths) && (
-              <option value={retentionMonths}>{retentionMonths} kk</option>
+              <option value={retentionMonths}>{retentionMonths}{" "}{t("kk")}</option>
             )}
           </select>
         </label>
         <p className="reply-hint">
-          Tätä kauemmin suljettuna olleet tehtävät poistetaan pysyvästi viesteineen ja liitteineen, samoin tätä
-          vanhemmat lokimerkinnät. Poisto tehdään automaattisesti tunnin sisällä tallennuksesta eikä sitä voi perua.
+          {t("Tätä kauemmin suljettuna olleet tehtävät poistetaan pysyvästi viesteineen ja liitteineen, samoin tätä vanhemmat lokimerkinnät. Poisto tehdään automaattisesti tunnin sisällä tallennuksesta eikä sitä voi perua.")}
         </p>
 
         {error && <p className="send-error">{error}</p>}
 
         <div className="draft-actions">
           <button className="primary" type="submit" disabled={saving || !name.trim()}>
-            {saving ? "Tallennetaan…" : "Tallenna asetukset"}
+            {saving ? t("Tallennetaan…") : t("Tallenna asetukset")}
           </button>
-          {saved && <span className="saved-indicator">Tallennettu</span>}
+          {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
         </div>
       </form>
 
@@ -423,8 +398,8 @@ function OfficeSettings({
 
       <a className="settings-card settings-link" href="#/log">
         <div>
-          <h2>Loki</h2>
-          <p className="muted">Kaikki tehtäviin tehdyt muutokset, päätökset ja lähetetyt sähköpostit.</p>
+          <h2>{t("Loki")}</h2>
+          <p className="muted">{t("Kaikki tehtäviin tehdyt muutokset, päätökset ja lähetetyt sähköpostit.")}</p>
         </div>
         <span aria-hidden="true">→</span>
       </a>
@@ -458,7 +433,7 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
         setCompanies(list);
         setCompanyId(current => current || list[0]?.id || "");
       })
-      .catch(() => setError("Taloyhtiöiden lataus epäonnistui."));
+      .catch(() => setError(t("Taloyhtiöiden lataus epäonnistui.")));
   }, []);
 
   useEffect(() => {
@@ -467,10 +442,10 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
     setParkingPrices(null);
     api<BookingRules>(`/companies/${encodeURIComponent(companyId)}/booking-settings`)
       .then(setRules)
-      .catch(() => setError("Asetusten lataus epäonnistui."));
+      .catch(() => setError(t("Asetusten lataus epäonnistui.")));
     api<Record<string, number>>(`/companies/${encodeURIComponent(companyId)}/parking-prices`)
       .then(setParkingPrices)
-      .catch(() => setError("Asetusten lataus epäonnistui."));
+      .catch(() => setError(t("Asetusten lataus epäonnistui.")));
   }, [companyId]);
 
   function setParkingPrice(type: string, value: string) {
@@ -487,7 +462,7 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
         body: JSON.stringify(parkingPrices)
       }));
     } catch {
-      setError("Asetuksen tallennus epäonnistui.");
+      setError(t("Asetuksen tallennus epäonnistui."));
     }
   }
 
@@ -520,13 +495,13 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
       }));
     } catch {
       setRules(previous);
-      setError("Asetuksen tallennus epäonnistui.");
+      setError(t("Asetuksen tallennus epäonnistui."));
     }
   }
 
   const sections: { resource: "sauna" | "laundry"; title: string; shift: string }[] = [
-    { resource: "sauna", title: "Saunavuorot", shift: "saunavuoron" },
-    { resource: "laundry", title: "Pyykkitupavuorot", shift: "pyykkitupavuoron" }
+    { resource: "sauna", title: t("Saunavuorot"), shift: t("saunavuoron") },
+    { resource: "laundry", title: t("Pyykkitupavuorot"), shift: t("pyykkitupavuoron") }
   ];
 
   // Otsikko, jota painamalla osio tiivistyy tai avautuu.
@@ -540,7 +515,7 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
           className="collapse-head"
           onClick={() => toggleCollapsed(key)}
           aria-expanded={open}
-          title={open ? "Tiivistä osio" : "Näytä osio"}
+          title={open ? t("Tiivistä osio") : t("Näytä osio")}
         >
           <span>{title}</span>
           <svg
@@ -562,19 +537,19 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
   if (collapsed.includes("card")) {
     return (
       <div className="settings-card booking-settings">
-        {collapseHead("card", "Vuorovaraukset ja autopaikat", "h2")}
+        {collapseHead("card", t("Vuorovaraukset ja autopaikat"), "h2")}
       </div>
     );
   }
 
   return (
     <div className="settings-card booking-settings">
-      {collapseHead("card", "Vuorovaraukset ja autopaikat", "h2")}
-      <p className="muted">Valitse taloyhtiökohtaisesti, millaisia vuoroja saa varata ja mitä vuorot ja autopaikat maksavat. Pois kytkettyä vuorotyyppiä ei voi varata asukas eikä isännöitsijä.</p>
-      {readOnly && <p className="reply-hint">Vain pääkäyttäjä voi muuttaa näitä asetuksia.</p>}
+      {collapseHead("card", t("Vuorovaraukset ja autopaikat"), "h2")}
+      <p className="muted">{t("Valitse taloyhtiökohtaisesti, millaisia vuoroja saa varata ja mitä vuorot ja autopaikat maksavat. Pois kytkettyä vuorotyyppiä ei voi varata asukas eikä isännöitsijä.")}</p>
+      {readOnly && <p className="reply-hint">{t("Vain pääkäyttäjä voi muuttaa näitä asetuksia.")}</p>}
 
       <label className="booking-settings-company">
-        <span>Taloyhtiö</span>
+        <span>{t("Taloyhtiö")}</span>
         <select value={companyId} onChange={event => setCompanyId(event.target.value)}>
           {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
         </select>
@@ -588,9 +563,9 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
           {(["single", "weekly"] as const).map(kind => (
             <label className="switch-row" key={kind}>
               <span>
-                <strong>{kind === "single" ? "Yksittäiset vuorot" : "Viikoittaiset vuorot"}</strong>
+                <strong>{kind === "single" ? t("Yksittäiset vuorot") : t("Viikoittaiset vuorot")}</strong>
                 <small>
-                  {kind === "single" ? "Kertaluontoinen varaus yhdelle vuorolle." : "Sama vuoro joka viikko."}
+                  {kind === "single" ? t("Kertaluontoinen varaus yhdelle vuorolle.") : t("Sama vuoro joka viikko.")}
                 </small>
               </span>
               <input
@@ -605,8 +580,8 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
           ))}
           <label className="booking-settings-duration">
             <span>
-              <strong>Viikoittaisen vuoron kesto</strong>
-              <small>Kuinka pitkäksi ajaksi vuoro varataan, kun valitaan viikoittainen.</small>
+              <strong>{t("Viikoittaisen vuoron kesto")}</strong>
+              <small>{t("Kuinka pitkäksi ajaksi vuoro varataan, kun valitaan viikoittainen.")}</small>
             </span>
             <select
               value={weeklyWeeksOf(rules?.[section.resource])}
@@ -618,8 +593,8 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
           </label>
           <label className="booking-settings-duration">
             <span>
-              <strong>Yhden {section.shift} hinta</strong>
-              <small>Laskutetaan jokaisesta yksittäisestä vuorosta.</small>
+              <strong>{t("Yhden {0} hinta", section.shift)}</strong>
+              <small>{t("Laskutetaan jokaisesta yksittäisestä vuorosta.")}</small>
             </span>
             <span className="price-input">
               <input
@@ -636,8 +611,8 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
           </label>
           <label className="booking-settings-duration">
             <span>
-              <strong>Viikoittaisen {section.shift} kuukausihinta</strong>
-              <small>Laskutetaan kerran kuukaudessa jokaisesta viikkovuorosta.</small>
+              <strong>{t("Viikoittaisen {0} kuukausihinta", section.shift)}</strong>
+              <small>{t("Laskutetaan kerran kuukaudessa jokaisesta viikkovuorosta.")}</small>
             </span>
             <span className="price-input">
               <input
@@ -658,12 +633,12 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
       ))}
 
       <div className="booking-settings-section">
-        {collapseHead("parking", "Autopaikat", "h3")}
+        {collapseHead("parking", t("Autopaikat"), "h3")}
         {!collapsed.includes("parking") && PARKING_TYPES.map(type => (
           <label className="booking-settings-duration" key={type}>
             <span>
-              <strong>{type}</strong>
-              <small>Paikan hinta kuukaudessa.</small>
+              <strong>{t(type)}</strong>
+              <small>{t("Paikan hinta kuukaudessa.")}</small>
             </span>
             <span className="price-input">
               <input
@@ -675,7 +650,7 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
                 onChange={event => setParkingPrice(type, event.target.value)}
                 onBlur={() => void saveParkingPrices()}
               />
-              €/kk
+              {t("€/kk")}
             </span>
           </label>
         ))}
@@ -765,8 +740,8 @@ function OfficeUsers() {
       await loadUsers();
     } catch (error) {
       setFormError(errorMessage(error, editing
-        ? "Käyttäjän tietojen tallennus epäonnistui."
-        : "Käyttäjän lisääminen epäonnistui."));
+        ? t("Käyttäjän tietojen tallennus epäonnistui.")
+        : t("Käyttäjän lisääminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -775,8 +750,8 @@ function OfficeUsers() {
   // Poistaa käyttäjän; hänen keskeneräiset tehtävänsä siirtyvät vastuuisännöitsijälle tai poistajalle.
   async function deleteUser(user: OfficeUser) {
     if (!window.confirm(
-      `Poistetaanko käyttäjä ${user.name}?\n\n`
-      + "Hän ei voi enää kirjautua. Keskeneräiset tehtävät siirtyvät taloyhtiön vastuuisännöitsijälle tai sinulle."
+      t("Poistetaanko käyttäjä {0}?\n\n", user.name)
+      + t("Hän ei voi enää kirjautua. Keskeneräiset tehtävät siirtyvät taloyhtiön vastuuisännöitsijälle tai sinulle.")
     )) return;
     setSaving(true);
     setFormError("");
@@ -785,7 +760,7 @@ function OfficeUsers() {
       closeForm();
       await loadUsers();
     } catch (error) {
-      setFormError(errorMessage(error, "Käyttäjän poisto epäonnistui."));
+      setFormError(errorMessage(error, t("Käyttäjän poisto epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -794,19 +769,19 @@ function OfficeUsers() {
   return (
     <aside className="settings-card settings-users">
       <div className="settings-users-head">
-        <h2>Käyttäjät</h2>
-        {admin && <button className="secondary" onClick={openNewUser}>Lisää käyttäjä</button>}
+        <h2>{t("Käyttäjät")}</h2>
+        {admin && <button className="secondary" onClick={openNewUser}>{t("Lisää käyttäjä")}</button>}
       </div>
       <p className="muted">
-        {MANAGEMENT_OFFICE.name} · {users.length} käyttäjää
+        {MANAGEMENT_OFFICE.name} · {users.length}{" "}{t("käyttäjää")}
       </p>
-      {loadError && <p className="send-error">Käyttäjien lataus epäonnistui.</p>}
+      {loadError && <p className="send-error">{t("Käyttäjien lataus epäonnistui.")}</p>}
       <ul>
         {pagedUsers.items.map(user => (
           <li
             key={user.id}
             className={canEdit(user) ? "clickable" : ""}
-            title={canEdit(user) ? "Muokkaa käyttäjän tietoja" : "Vain pääkäyttäjä voi muokata muita käyttäjiä"}
+            title={canEdit(user) ? t("Muokkaa käyttäjän tietoja") : t("Vain pääkäyttäjä voi muokata muita käyttäjiä")}
             role={canEdit(user) ? "button" : undefined}
             tabIndex={canEdit(user) ? 0 : undefined}
             onClick={() => canEdit(user) && openUser(user)}
@@ -821,10 +796,10 @@ function OfficeUsers() {
               {user.name.split(" ").map(part => part[0]).join("").slice(0, 2)}
             </span>
             <div>
-              <strong>{user.name}{session?.user.id === user.id ? " (sinä)" : ""}</strong>
+              <strong>{user.name}{session?.user.id === user.id ? t(" (sinä)") : ""}</strong>
               <span>{user.email}</span>
             </div>
-            <em>{user.role}</em>
+            <em>{t(user.role)}</em>
           </li>
         ))}
       </ul>
@@ -834,43 +809,43 @@ function OfficeUsers() {
         <div className="overlay" onClick={closeForm}>
           <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={closeForm}>×</button>
-            <h2>{editing ? editing.name : "Lisää käyttäjä"}</h2>
+            <h2>{editing ? editing.name : t("Lisää käyttäjä")}</h2>
             <p className="muted">
-              {editing ? "Käyttäjän tiedot" : "Uusi käyttäjä"} · {MANAGEMENT_OFFICE.name}
+              {editing ? t("Käyttäjän tiedot") : t("Uusi käyttäjä")} · {MANAGEMENT_OFFICE.name}
             </p>
 
             <form className="ticket-form" onSubmit={handleSubmit}>
               <label>
-                <span>Nimi</span>
+                <span>{t("Nimi")}</span>
                 <input value={name} onChange={event => setName(event.target.value)} />
               </label>
 
               <label>
-                <span>Sähköposti (käytetään kirjautumiseen)</span>
+                <span>{t("Sähköposti (käytetään kirjautumiseen)")}</span>
                 <input type="email" value={email} onChange={event => setEmail(event.target.value)} />
               </label>
 
               <label>
-                <span>Rooli</span>
+                <span>{t("Rooli")}</span>
                 <select value={role} onChange={event => setRole(event.target.value)} disabled={!admin}>
-                  {USER_ROLES.map(option => <option key={option} value={option}>{option}</option>)}
+                  {USER_ROLES.map(option => <option key={option} value={option}>{t(option)}</option>)}
                 </select>
               </label>
 
               <label>
-                <span>{editing ? "Uusi salasana" : "Salasana"}</span>
+                <span>{editing ? t("Uusi salasana") : t("Salasana")}</span>
                 <input
                   type="password"
                   value={password}
                   onChange={event => setPassword(event.target.value)}
-                  placeholder={editing ? "Jätä tyhjäksi, jos salasanaa ei vaihdeta" : "Vähintään 8 merkkiä"}
+                  placeholder={editing ? t("Jätä tyhjäksi, jos salasanaa ei vaihdeta") : t("Vähintään 8 merkkiä")}
                   autoComplete="new-password"
                 />
               </label>
               <p className="reply-hint">
                 {editing
-                  ? "Vähintään 8 merkkiä. Vaihto kirjaa käyttäjän ulos muilta laitteilta."
-                  : "Käyttäjä kirjautuu tällä sähköpostilla ja salasanalla ja voi vaihtaa salasanan myöhemmin."}
+                  ? t("Vähintään 8 merkkiä. Vaihto kirjaa käyttäjän ulos muilta laitteilta.")
+                  : t("Käyttäjä kirjautuu tällä sähköpostilla ja salasanalla ja voi vaihtaa salasanan myöhemmin.")}
               </p>
 
               {formError && <p className="send-error">{formError}</p>}
@@ -878,18 +853,18 @@ function OfficeUsers() {
               <div className="drawer-actions compact-actions">
                 {editing && admin && session?.user.id !== editing.id && (
                   <button type="button" className="danger" disabled={saving} onClick={() => deleteUser(editing)}>
-                    Poista käyttäjä
+                    {t("Poista käyttäjä")}
                   </button>
                 )}
-                <button type="button" onClick={closeForm}>Peruuta</button>
+                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
                 <button
                   className="primary"
                   type="submit"
                   disabled={saving || !name.trim() || !email.trim() || (creating && password.length < 8)}
                 >
                   {editing
-                    ? saving ? "Tallennetaan…" : "Tallenna muutokset"
-                    : saving ? "Lisätään…" : "Lisää käyttäjä"}
+                    ? saving ? t("Tallennetaan…") : t("Tallenna muutokset")
+                    : saving ? t("Lisätään…") : t("Lisää käyttäjä")}
                 </button>
               </div>
             </form>

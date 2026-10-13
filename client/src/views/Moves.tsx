@@ -3,6 +3,7 @@ import { usePaged } from "../components/common";
 import { formatDate, formatDay } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company } from "../types";
+import { t } from "../i18n";
 
 export type MoveNotice = {
   id: string;
@@ -25,7 +26,7 @@ export type MoveNotice = {
 
 type MoveResult = { movedOut: number; parkingReleased: string[]; bookingsRemoved: number; added: string[]; skipped: string[] };
 
-export const moveStatusLabels: Record<MoveNotice["status"], string> = { pending: "Odottaa käsittelyä", approved: "Hyväksytty", rejected: "Hylätty" };
+export const moveStatusLabels: Record<MoveNotice["status"], string> = { pending: t("Odottaa käsittelyä"), approved: t("Hyväksytty"), rejected: t("Hylätty") };
 
 function newResidentsOf(notice: MoveNotice): { name: string; email: string }[] {
   try {
@@ -39,9 +40,9 @@ function newResidentsOf(notice: MoveNotice): { name: string; email: string }[] {
 export function moveSummary(notice: MoveNotice) {
   const incoming = newResidentsOf(notice).length;
   return [
-    notice.moves_out ? "Nykyiset asukkaat muuttavat pois" : "",
-    incoming ? `${incoming} uutta asukasta` : "",
-    notice.door_name ? `nimi oveen: ${notice.door_name}` : ""
+    notice.moves_out ? t("Nykyiset asukkaat muuttavat pois") : "",
+    incoming ? t("{0} uutta asukasta", incoming) : "",
+    notice.door_name ? t("nimi oveen: {0}", notice.door_name) : ""
   ].filter(Boolean).join(" · ");
 }
 
@@ -81,7 +82,7 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
       await api(`/moves/${encodeURIComponent(notice.id)}/${decision}`, { method: "POST" });
       await loadNotices();
     } catch (decisionError) {
-      setError(errorMessage(decisionError, "Muuttoilmoituksen käsittely epäonnistui."));
+      setError(errorMessage(decisionError, t("Muuttoilmoituksen käsittely epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -99,26 +100,26 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
 
   return (
     <section className="content">
-      <a className="back-link" href="#/companies">← Taloyhtiöt</a>
+      <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="residents-toolbar">
-        <span>{notices.length} muuttoilmoitusta · {pendingCount} odottaa käsittelyä</span>
+        <span>{notices.length}{" "}{t("muuttoilmoitusta ·")}{" "}{pendingCount}{" "}{t("odottaa käsittelyä")}</span>
       </div>
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <p className="send-error">Muuttoilmoitusten lataus epäonnistui.</p>
-        : notices.length === 0 ? <div className="empty">Ei muuttoilmoituksia. Asukas tekee ilmoituksen asukasportaalissa.</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <p className="send-error">{t("Muuttoilmoitusten lataus epäonnistui.")}</p>
+        : notices.length === 0 ? <div className="empty">{t("Ei muuttoilmoituksia. Asukas tekee ilmoituksen asukasportaalissa.")}</div>
         : (
           <div className="table-card">
             <table className="data-table report-topics">
               <thead>
                 <tr>
-                  <th>Ilmoittaja</th>
-                  <th>Taloyhtiö</th>
-                  <th>Asunto</th>
-                  <th>Muuttopäivä</th>
-                  <th>Tila</th>
-                  <th>Ilmoitettu</th>
+                  <th>{t("Ilmoittaja")}</th>
+                  <th>{t("Taloyhtiö")}</th>
+                  <th>{t("Asunto")}</th>
+                  <th>{t("Muuttopäivä")}</th>
+                  <th>{t("Tila")}</th>
+                  <th>{t("Ilmoitettu")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -128,7 +129,7 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
                     className="clickable"
                     role="button"
                     tabIndex={0}
-                    title="Avaa muuttoilmoitus"
+                    title={t("Avaa muuttoilmoitus")}
                     onClick={() => { setOpenId(notice.id); setError(""); }}
                     onKeyDown={event => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -139,7 +140,7 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
                     }}
                   >
                     <td>
-                      <strong>{notice.resident_name || "Tuntematon asukas"}</strong>
+                      <strong>{notice.resident_name || t("Tuntematon asukas")}</strong>
                       <span>{moveSummary(notice)}</span>
                     </td>
                     <td>{companyName(notice.company_id)}</td>
@@ -159,33 +160,33 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
         <div className="overlay" onClick={() => !saving && setOpenId(null)}>
           <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
-            <h2>Muuttoilmoitus</h2>
+            <h2>{t("Muuttoilmoitus")}</h2>
             <p className="muted">
-              {open.resident_name || "Tuntematon asukas"} · {companyName(open.company_id)} · {open.apartment_number || "–"}
-              {open.address ? `, ${open.address}` : ""} · ilmoitettu {formatDate(open.created_at)}
+              {open.resident_name || t("Tuntematon asukas")} · {companyName(open.company_id)} · {open.apartment_number || "–"}
+              {open.address ? `, ${open.address}` : ""}{" "}{t("· ilmoitettu")}{" "}{formatDate(open.created_at)}
             </p>
 
             <dl className="ticket-facts">
               <div>
-                <dt>Muuttopäivä</dt>
+                <dt>{t("Muuttopäivä")}</dt>
                 <dd>{formatDay(open.move_date)}</dd>
               </div>
               <div>
-                <dt>Tila</dt>
+                <dt>{t("Tila")}</dt>
                 <dd>{moveStatusLabels[open.status]}{open.decided_by ? ` · ${open.decided_by}` : ""}</dd>
               </div>
               <div>
-                <dt>Poismuutto</dt>
-                <dd>{open.moves_out ? "Asunnon nykyiset asukkaat muuttavat pois" : "Ei"}</dd>
+                <dt>{t("Poismuutto")}</dt>
+                <dd>{open.moves_out ? t("Asunnon nykyiset asukkaat muuttavat pois") : t("Ei")}</dd>
               </div>
               <div>
-                <dt>Nimi oveen</dt>
+                <dt>{t("Nimi oveen")}</dt>
                 <dd>{open.door_name || "–"}</dd>
               </div>
             </dl>
 
-            <h3>Uudet asukkaat</h3>
-            {newResidentsOf(open).length === 0 ? <p className="muted">Ei uusia asukkaita.</p> : (
+            <h3>{t("Uudet asukkaat")}</h3>
+            {newResidentsOf(open).length === 0 ? <p className="muted">{t("Ei uusia asukkaita.")}</p> : (
               <ul className="move-people">
                 {newResidentsOf(open).map((person, index) => (
                   <li key={index}><strong>{person.name}</strong>{person.email ? ` · ${person.email}` : ""}</li>
@@ -194,34 +195,33 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
             )}
             {open.note && (
               <>
-                <h3>Lisätiedot</h3>
+                <h3>{t("Lisätiedot")}</h3>
                 <p className="announcement-body">{open.note}</p>
               </>
             )}
 
             {open.status === "pending" && !isManager() && (
-              <p className="reply-hint">Muuttoilmoituksen voi hyväksyä tai hylätä isännöitsijä tai pääkäyttäjä.</p>
+              <p className="reply-hint">{t("Muuttoilmoituksen voi hyväksyä tai hylätä isännöitsijä tai pääkäyttäjä.")}</p>
             )}
             {open.status === "pending" && isManager() && (
               <>
                 <p className="reply-hint">
-                  Hyväksyntä päivittää asukastietokannan: lähtijät poistuvat asukaslistalta muuttopäivänä, heidän
-                  autopaikkansa vapautuvat ja vuoronsa poistuvat muuttopäivästä alkaen, ja uudet asukkaat lisätään asuntoon.
+                  {t("Hyväksyntä päivittää asukastietokannan: lähtijät poistuvat asukaslistalta muuttopäivänä, heidän autopaikkansa vapautuvat ja vuoronsa poistuvat muuttopäivästä alkaen, ja uudet asukkaat lisätään asuntoon.")}
                 </p>
                 <div className="draft-actions">
                   <button className="primary" onClick={() => void decide(open, "approve")} disabled={saving}>
-                    {saving ? "Käsitellään…" : "Hyväksy"}
+                    {saving ? t("Käsitellään…") : t("Hyväksy")}
                   </button>
-                  <button onClick={() => void decide(open, "reject")} disabled={saving}>Hylkää</button>
+                  <button onClick={() => void decide(open, "reject")} disabled={saving}>{t("Hylkää")}</button>
                 </div>
               </>
             )}
             {open.status === "approved" && result && (
               <p className="portal-sent">
-                Hyväksytty: {result.movedOut} asukasta merkitty muuttaneeksi, {result.added.length} lisätty
-                {result.parkingReleased.length > 0 && `, autopaikat vapautuvat: ${result.parkingReleased.join(", ")}`}
-                {result.bookingsRemoved > 0 && `, ${result.bookingsRemoved} vuoroa poistettu`}.
-                {result.skipped.length > 0 && ` Lisäämättä jäi: ${result.skipped.join(", ")}.`}
+                {t("Hyväksytty:")}{" "}{result.movedOut}{" "}{t("asukasta merkitty muuttaneeksi,")}{" "}{result.added.length}{" "}{t("lisätty")}
+                {result.parkingReleased.length > 0 && t(", autopaikat vapautuvat: {0}", result.parkingReleased.join(", "))}
+                {result.bookingsRemoved > 0 && t(", {0} vuoroa poistettu", result.bookingsRemoved)}.
+                {result.skipped.length > 0 && t(" Lisäämättä jäi: {0}.", result.skipped.join(", "))}
               </p>
             )}
             {error && <p className="send-error">{error}</p>}

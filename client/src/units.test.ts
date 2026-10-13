@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatDay, formatTicketNumber } from "./format";
+import { t } from "./i18n";
+import { en } from "./locales/en";
 import { downloadFile } from "./session";
 import { isOverdue, splitQuotedReply } from "./tickets/ticket-utils";
 import type { Ticket } from "./types";
@@ -69,5 +71,30 @@ describe("tiedoston lataus", () => {
     vi.stubGlobal("fetch", fetchMock);
     await expect(downloadFile("/attachments/a1", "ohje.pdf")).rejects.toThrow("ei oikeutta");
     expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/attachments\/a1$/);
+  });
+});
+
+describe("käännökset", () => {
+  // Kaikki lähdetiedostot tekstinä, jotta t("…")-kutsujen avaimet voidaan verrata sanastoon.
+  const sources = import.meta.glob(["./**/*.{ts,tsx}", "!./**/*.test.*", "!./locales/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+  const keys = new Set<string>();
+  for (const source of Object.values(sources)) {
+    for (const match of source.matchAll(/(?<![\w.])t\(("(?:[^"\\]|\\.)*")/g)) keys.add(JSON.parse(match[1]));
+  }
+
+  it("jokaisella käyttöliittymän tekstillä on englanninkielinen käännös", () => {
+    expect(keys.size).toBeGreaterThan(900);
+    expect([...keys].filter(key => key && !(key in en))).toEqual([]);
+  });
+
+  it("käännöksessä on samat paikkamerkit kuin suomenkielisessä tekstissä", () => {
+    const placeholders = (text: string) => (text.match(/\{\d+\}/g) ?? []).sort().join();
+    expect(Object.entries(en).filter(([key, value]) => placeholders(key) !== placeholders(value))).toEqual([]);
+  });
+
+  it("suomeksi teksti palautuu sellaisenaan ja paikkamerkit täytetään", () => {
+    expect(t("Tallenna")).toBe("Tallenna");
+    expect(t("Avain {0}", "A-101")).toBe("Avain A-101");
+    expect(t("{0} h {1} min", 2, 5)).toBe("2 h 5 min");
   });
 });

@@ -4,19 +4,20 @@ import { api, errorMessage } from "../session";
 import { WorkOrderReport } from "../tickets/TicketWorkOrders";
 import type { Company, Ticket } from "../types";
 import { BillingReports } from "./Billing";
+import { locale, t } from "../i18n";
 
 type ReportPeriod = "week" | "month" | "year";
 
 const reportPeriodLabels: Record<ReportPeriod, string> = {
-  week: "Viikko",
-  month: "Kuukausi",
-  year: "Vuosi"
+  week: t("Viikko"),
+  month: t("Kuukausi"),
+  year: t("Vuosi")
 };
 
 const reportPeriodNames: Record<ReportPeriod, string> = {
-  week: "viimeiset 7 päivää",
-  month: "viimeiset 30 päivää",
-  year: "viimeiset 12 kuukautta"
+  week: t("viimeiset 7 päivää"),
+  month: t("viimeiset 30 päivää"),
+  year: t("viimeiset 12 kuukautta")
 };
 
 type TopicReport = {
@@ -39,8 +40,8 @@ function reportBuckets(period: ReportPeriod, now: Date): ReportBucket[] {
       buckets.push({
         start: start.getTime(),
         end: end.getTime(),
-        label: start.toLocaleDateString("fi-FI", { month: "short" }),
-        title: start.toLocaleDateString("fi-FI", { month: "long", year: "numeric" }),
+        label: start.toLocaleDateString(locale, { month: "short" }),
+        title: start.toLocaleDateString(locale, { month: "long", year: "numeric" }),
         count: 0
       });
     }
@@ -54,9 +55,9 @@ function reportBuckets(period: ReportPeriod, now: Date): ReportBucket[] {
       start: start.getTime(),
       end: end.getTime(),
       label: period === "week"
-        ? start.toLocaleDateString("fi-FI", { weekday: "short" })
+        ? start.toLocaleDateString(locale, { weekday: "short" })
         : i % 5 === 0 ? `${start.getDate()}.${start.getMonth() + 1}.` : "",
-      title: start.toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric", year: "numeric" }),
+      title: start.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "numeric", year: "numeric" }),
       count: 0
     });
   }
@@ -64,7 +65,7 @@ function reportBuckets(period: ReportPeriod, now: Date): ReportBucket[] {
 }
 
 function ticketCountLabel(count: number) {
-  return count === 1 ? "1 tehtävä" : `${count} tehtävää`;
+  return count === 1 ? t("1 tehtävä") : t("{0} tehtävää", count);
 }
 
 const reportStopWords = new Set([
@@ -184,7 +185,7 @@ export function Reports({
       );
       setTopicReport(result.report);
     } catch (error) {
-      setTopicError(errorMessage(error, "AI-raportin luominen epäonnistui."));
+      setTopicError(errorMessage(error, t("AI-raportin luominen epäonnistui.")));
     } finally {
       setGenerating(false);
     }
@@ -192,9 +193,9 @@ export function Reports({
 
   const ticketTabs = (
     <div className="billing-tabs-head">
-      <h2>Tehtäväraportit</h2>
+      <h2>{t("Tehtäväraportit")}</h2>
       <div className="billing-tabs" role="tablist">
-        {([["incoming", "Saapuneet tehtävät"], ["types", "Tehtävät tyypeittäin"], ["topics", "Toistuvat aiheet"], ["orders", "Työtilaukset"]] as const).map(([key, label]) => (
+        {([["incoming", t("Saapuneet tehtävät")], ["types", t("Tehtävät tyypeittäin")], ["topics", t("Toistuvat aiheet")], ["orders", t("Työtilaukset")]] as const).map(([key, label]) => (
           <button
             key={key}
             type="button"
@@ -214,13 +215,13 @@ export function Reports({
     <section className="content">
       <div className="ticket-filters">
         <label>
-          <span>Yhtiö</span>
+          <span>{t("Yhtiö")}</span>
           <select value={companyId} onChange={event => onCompanyChange(event.target.value)}>
             {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
           </select>
         </label>
         <div className="report-period">
-          <span>Jakso</span>
+          <span>{t("Jakso")}</span>
           <div className="card-tabs">
             {(Object.keys(reportPeriodLabels) as ReportPeriod[]).map(option => (
               <button key={option} className={period === option ? "active" : ""} onClick={() => setPeriod(option)}>
@@ -231,32 +232,32 @@ export function Reports({
         </div>
       </div>
 
-      {loading ? <div className="empty">Ladataan…</div> : (
+      {loading ? <div className="empty">{t("Ladataan…")}</div> : (
         <>
           <div className="queue-summary">
             <div>
-              <span>Tehtäviä</span>
+              <span>{t("Tehtäviä")}</span>
               <strong>{total}</strong>
               <small>{reportPeriodNames[period]}</small>
             </div>
             <div>
-              <span>Muutos</span>
+              <span>{t("Muutos")}</span>
               <strong>{change > 0 ? `+${change}` : change}</strong>
-              <small>edellisellä jaksolla {ticketCountLabel(previousCount)}</small>
+              <small>{t("edellisellä jaksolla")}{" "}{ticketCountLabel(previousCount)}</small>
             </div>
             <div>
-              <span>Toistuvia aiheita</span>
+              <span>{t("Toistuvia aiheita")}</span>
               <strong>{groups.length}</strong>
-              <small>vähintään kaksi samanlaista tehtävää</small>
+              <small>{t("vähintään kaksi samanlaista tehtävää")}</small>
             </div>
           </div>
 
           {ticketTab === "incoming" && (
           <div className="report-card">
             {ticketTabs}
-            <h2>Saapuneet tehtävät</h2>
+            <h2>{t("Saapuneet tehtävät")}</h2>
             <p className="muted">
-              {period === "year" ? "Tehtäviä kuukaudessa" : "Tehtäviä päivässä"}, {reportPeriodNames[period]}.
+              {period === "year" ? t("Tehtäviä kuukaudessa") : t("Tehtäviä päivässä")}, {reportPeriodNames[period]}.
             </p>
             <div className="report-chart">
               <div className="report-axis">
@@ -284,12 +285,12 @@ export function Reports({
           {ticketTab === "types" && (
           <div className="report-card">
             {ticketTabs}
-            <h2>Tehtävät tyypeittäin</h2>
-            {types.length === 0 ? <p className="muted">Ei tehtäviä valitulla jaksolla.</p> : (
+            <h2>{t("Tehtävät tyypeittäin")}</h2>
+            {types.length === 0 ? <p className="muted">{t("Ei tehtäviä valitulla jaksolla.")}</p> : (
               <div className="report-rows">
                 {types.map(([type, count]) => (
                   <div key={type} className="report-row">
-                    <span>{type}</span>
+                    <span>{t(type)}</span>
                     <div className="report-row-track">
                       <div className="report-row-fill" style={{ width: `${(count / types[0][1]) * 100}%` }} />
                     </div>
@@ -307,19 +308,19 @@ export function Reports({
             {ticketTabs}
             <div className="suggest-header report-ai-head">
               <h2>
-                Toistuvat aiheet
-                <span className="report-tag">{topicReport ? "AI-raportti" : "Alustava"}</span>
+                {t("Toistuvat aiheet")}
+                <span className="report-tag">{topicReport ? t("AI-raportti") : t("Alustava")}</span>
               </h2>
               <button
                 className="ai-button"
                 onClick={generateTopicReport}
                 disabled={generating || !aiAvailable}
-                title={aiAvailable ? undefined : "AI ei ole käytössä palvelimella."}
+                title={aiAvailable ? undefined : t("AI ei ole käytössä palvelimella.")}
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M12 2l1.900 5.600a4 4 0 0 0 2.500 2.500L22 12l-5.600 1.900a4 4 0 0 0-2.500 2.500L12 22l-1.900-5.600a4 4 0 0 0-2.500-2.500L2 12l5.600-1.900a4 4 0 0 0 2.500-2.500z" />
                 </svg>
-                {generating ? "AI analysoi tehtäviä…" : topicReport ? "Päivitä AI:lla" : "Luo AI-raportti"}
+                {generating ? t("AI analysoi tehtäviä…") : topicReport ? t("Päivitä AI:lla") : t("Luo AI-raportti")}
               </button>
             </div>
             {topicError && <p className="send-error">{topicError}</p>}
@@ -327,21 +328,20 @@ export function Reports({
             {topicReport ? (
               <>
                 <p className="muted">
-                  AI ryhmitteli {ticketCountLabel(topicReport.ticketCount)} merkityksen perusteella · luotu{" "}
-                  {formatDate(topicReport.generatedAt)} · {topicReport.generatedBy}. Raportti ei päivity itsestään,
-                  kun uusia tehtäviä saapuu.
+                  {t("AI ryhmitteli")}{" "}{ticketCountLabel(topicReport.ticketCount)}{" "}{t("merkityksen perusteella · luotu")}{" "}
+                  {formatDate(topicReport.generatedAt)} · {topicReport.generatedBy}{t(". Raportti ei päivity itsestään, kun uusia tehtäviä saapuu.")}
                 </p>
                 {topicReport.topics.length === 0 ? (
-                  <p className="muted">AI ei löytänyt jaksolta toistuvia aiheita.</p>
+                  <p className="muted">{t("AI ei löytänyt jaksolta toistuvia aiheita.")}</p>
                 ) : (
                   <div className="table-card">
                     <table className="data-table report-topics">
                       <thead>
                         <tr>
-                          <th>Aihe</th>
-                          <th>Tehtäviä</th>
-                          <th>Osuus</th>
-                          <th>Esimerkit</th>
+                          <th>{t("Aihe")}</th>
+                          <th>{t("Tehtäviä")}</th>
+                          <th>{t("Osuus")}</th>
+                          <th>{t("Esimerkit")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -354,7 +354,7 @@ export function Reports({
                             <tr
                               key={topic.title}
                               className="clickable"
-                              title="Avaa aiheen tiedot"
+                              title={t("Avaa aiheen tiedot")}
                               role="button"
                               tabIndex={0}
                               onClick={() => setOpenTopic(topic)}
@@ -386,26 +386,25 @@ export function Reports({
             ) : (
               <>
                 <p className="muted">
-                  Samankaltaiset tehtävät ryhmiteltynä otsikon ja tiivistelmän yhteisten sanojen perusteella.
-                  Luo AI-raportti, niin aiheet ryhmitellään merkityksen perusteella ja saat ehdotukset automatisoinnista.
+                  {t("Samankaltaiset tehtävät ryhmiteltynä otsikon ja tiivistelmän yhteisten sanojen perusteella. Luo AI-raportti, niin aiheet ryhmitellään merkityksen perusteella ja saat ehdotukset automatisoinnista.")}
                 </p>
-                {groups.length === 0 ? <p className="muted">Valitulla jaksolla ei löytynyt toistuvia aiheita.</p> : (
+                {groups.length === 0 ? <p className="muted">{t("Valitulla jaksolla ei löytynyt toistuvia aiheita.")}</p> : (
                   <div className="table-card">
                     <table className="data-table">
                       <thead>
                         <tr>
-                          <th>Aihe</th>
-                          <th>Tyyppi</th>
-                          <th>Tehtäviä</th>
-                          <th>Osuus</th>
-                          <th>Esimerkit</th>
+                          <th>{t("Aihe")}</th>
+                          <th>{t("Tyyppi")}</th>
+                          <th>{t("Tehtäviä")}</th>
+                          <th>{t("Osuus")}</th>
+                          <th>{t("Esimerkit")}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {groups.map(group => (
                           <tr key={group.tickets[0].id}>
                             <td><strong>{mostCommon(group.tickets.map(ticket => ticket.subject))}</strong></td>
-                            <td>{mostCommon(group.tickets.map(ticket => ticket.type))}</td>
+                            <td>{t(mostCommon(group.tickets.map(ticket => ticket.type)))}</td>
                             <td>{group.tickets.length}</td>
                             <td>{Math.round((group.tickets.length / total) * 100)} %</td>
                             <td>
@@ -491,7 +490,7 @@ function TopicDrawer({
       setCreatedId(result.knowledgeId);
       setCreating(false);
     } catch (submitError) {
-      setError(errorMessage(submitError, "Dokumentaation luominen epäonnistui."));
+      setError(errorMessage(submitError, t("Dokumentaation luominen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -501,23 +500,23 @@ function TopicDrawer({
     <div className="overlay" onClick={onClose}>
       <aside className="drawer form-drawer resident-drawer topic-drawer" onClick={event => event.stopPropagation()}>
         <button className="close" onClick={onClose}>×</button>
-        <span className="report-tag">Toistuva aihe</span>
+        <span className="report-tag">{t("Toistuva aihe")}</span>
         <h2>{topic.title}</h2>
         <p className="muted">{topic.summary}</p>
 
         <dl className="ticket-facts">
           <div>
-            <dt>Tehtäviä</dt>
+            <dt>{t("Tehtäviä")}</dt>
             <dd>{topic.ticketIds.length}</dd>
           </div>
           <div>
-            <dt>Osuus jakson tehtävistä</dt>
+            <dt>{t("Osuus jakson tehtävistä")}</dt>
             <dd>{Math.round((topic.ticketIds.length / Math.max(1, ticketCount)) * 100)} %</dd>
           </div>
         </dl>
 
         <section className="drawer-section">
-          <h3>Aiheen tehtävät</h3>
+          <h3>{t("Aiheen tehtävät")}</h3>
           {topicTickets.map(ticket => (
             <a className="topic-ticket" key={ticket.id} href={`#/tickets/${encodeURIComponent(ticket.id)}`} target="_blank" rel="noreferrer">
               <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
@@ -527,58 +526,57 @@ function TopicDrawer({
               </span>
             </a>
           ))}
-          {topicTickets.length === 0 && <p className="drawer-empty">Aiheen tehtäviä ei löytynyt valitusta yhtiöstä.</p>}
+          {topicTickets.length === 0 && <p className="drawer-empty">{t("Aiheen tehtäviä ei löytynyt valitusta yhtiöstä.")}</p>}
         </section>
 
         <section className="drawer-section">
-          <h3>Dokumentaatio</h3>
+          <h3>{t("Dokumentaatio")}</h3>
           {createdId ? (
             <p className="ai-reason created">
-              Dokumentaatio luotu. AI käyttää sitä jatkossa samantapaisten tehtävien vastausehdotuksissa.{" "}
-              <a href={`#/knowledge/${encodeURIComponent(createdId)}`} target="_blank" rel="noreferrer">Avaa tietue ↗</a>
+              {t("Dokumentaatio luotu. AI käyttää sitä jatkossa samantapaisten tehtävien vastausehdotuksissa.")}{" "}
+              <a href={`#/knowledge/${encodeURIComponent(createdId)}`} target="_blank" rel="noreferrer">{t("Avaa tietue ↗")}</a>
             </p>
           ) : !creating ? (
             <>
               <p className="topic-text">
-                Luo aiheesta dokumentaatiotietue, niin AI osaa käyttää sitä vastausehdotuksissa, kun samasta
-                asiasta tulee uusi tehtävä.
+                {t("Luo aiheesta dokumentaatiotietue, niin AI osaa käyttää sitä vastausehdotuksissa, kun samasta asiasta tulee uusi tehtävä.")}
               </p>
-              <button className="ai-button topic-create" onClick={() => setCreating(true)}>Luo dokumentaatio</button>
+              <button className="ai-button topic-create" onClick={() => setCreating(true)}>{t("Luo dokumentaatio")}</button>
             </>
           ) : (
             <form className="ticket-form" onSubmit={handleSubmit}>
               <label>
-                <span>Taloyhtiö</span>
+                <span>{t("Taloyhtiö")}</span>
                 <select value={targetCompany} onChange={event => setTargetCompany(event.target.value)}>
                   {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
                 </select>
               </label>
 
               <label>
-                <span>Otsikko</span>
+                <span>{t("Otsikko")}</span>
                 <input value={title} onChange={event => setTitle(event.target.value)} />
               </label>
 
               <label>
-                <span>Sisältö (tieto, jonka pohjalta AI vastaa asukkaalle)</span>
+                <span>{t("Sisältö (tieto, jonka pohjalta AI vastaa asukkaalle)")}</span>
                 <textarea
                   value={content}
                   onChange={event => setContent(event.target.value)}
-                  placeholder="Kirjoita taloyhtiön ohje tai vastaus tähän aiheeseen, esim. miten asia hoidetaan ja keneen otetaan yhteyttä."
+                  placeholder={t("Kirjoita taloyhtiön ohje tai vastaus tähän aiheeseen, esim. miten asia hoidetaan ja keneen otetaan yhteyttä.")}
                 />
               </label>
               <p className="reply-hint">
                 {topic.documentation
-                  ? "AI:n luonnos tehtävien ja lähetettyjen vastausten pohjalta. Tarkista teksti ja täydennä hakasulkeissa olevat kohdat ennen luomista."
-                  : "Tälle aiheelle ei ole AI:n luonnosta. Päivitä raportti AI:lla tai kirjoita sisältö itse."}
+                  ? t("AI:n luonnos tehtävien ja lähetettyjen vastausten pohjalta. Tarkista teksti ja täydennä hakasulkeissa olevat kohdat ennen luomista.")
+                  : t("Tälle aiheelle ei ole AI:n luonnosta. Päivitä raportti AI:lla tai kirjoita sisältö itse.")}
               </p>
               {/\[[^\]]*\]/.test(content) && (
-                <p className="send-error">Sisällössä on vielä täydennettäviä kohtia hakasulkeissa.</p>
+                <p className="send-error">{t("Sisällössä on vielä täydennettäviä kohtia hakasulkeissa.")}</p>
               )}
 
               <label>
-                <span>Tagit (pilkulla erotettuna)</span>
-                <input value={tags} onChange={event => setTags(event.target.value)} placeholder="esim. sauna, varaus, yhteistilat" />
+                <span>{t("Tagit (pilkulla erotettuna)")}</span>
+                <input value={tags} onChange={event => setTags(event.target.value)} placeholder={t("esim. sauna, varaus, yhteistilat")} />
               </label>
               {tagList.length > 0 && (
                 <div className="knowledge-tags">
@@ -589,9 +587,9 @@ function TopicDrawer({
               {error && <p className="send-error">{error}</p>}
 
               <div className="drawer-actions compact-actions">
-                <button type="button" onClick={() => setCreating(false)}>Peruuta</button>
+                <button type="button" onClick={() => setCreating(false)}>{t("Peruuta")}</button>
                 <button className="primary" type="submit" disabled={saving || !title.trim() || !content.trim()}>
-                  {saving ? "Luodaan…" : "Luo dokumentaatio"}
+                  {saving ? t("Luodaan…") : t("Luo dokumentaatio")}
                 </button>
               </div>
             </form>

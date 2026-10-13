@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { usePaged } from "../components/common";
 import { actionLabel, actorLabel, formatDate, formatTicketNumber } from "../format";
 import { api } from "../session";
+import { t } from "../i18n";
 
 type AuditEntry = {
   id: string;
@@ -39,9 +40,9 @@ export function AuditLog() {
       // Vanhassa merkinnässä ei ole JSON-tietoja.
     }
     const email = entry.action === "reply_sent"
-      ? { to: details.to || "vastaanottaja ei tiedossa", subject: details.subject || "", body: entry.email_body || "" }
+      ? { to: details.to || t("vastaanottaja ei tiedossa"), subject: details.subject || "", body: entry.email_body || "" }
       : null;
-    return { entry, email, label: email ? `Sähköposti lähetetty: ${email.to}` : actionLabel(entry.action) };
+    return { entry, email, label: email ? t("Sähköposti lähetetty: {0}", email.to) : actionLabel(entry.action) };
   });
 
   const searchText = search.trim().toLowerCase();
@@ -54,7 +55,7 @@ export function AuditLog() {
 
   return (
     <section className="content">
-      <a className="back-link" href="#/settings">← Asetukset</a>
+      <a className="back-link" href="#/settings">{t("← Asetukset")}</a>
       <label className="log-search">
         <svg
           viewBox="0 0 24 24"
@@ -72,24 +73,24 @@ export function AuditLog() {
           type="search"
           value={search}
           onChange={event => setSearch(event.target.value)}
-          placeholder="Hae lokista: tapahtuma, tekijä, tehtävä tai taloyhtiö"
-          aria-label="Hae lokista"
+          placeholder={t("Hae lokista: tapahtuma, tekijä, tehtävä tai taloyhtiö")}
+          aria-label={t("Hae lokista")}
         />
       </label>
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <div className="empty">Lokin lataus epäonnistui.</div>
-        : visible.length === 0 ? <div className="empty">{entries.length === 0 ? "Ei tapahtumia." : "Ei hakua vastaavia tapahtumia."}</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <div className="empty">{t("Lokin lataus epäonnistui.")}</div>
+        : visible.length === 0 ? <div className="empty">{entries.length === 0 ? t("Ei tapahtumia.") : t("Ei hakua vastaavia tapahtumia.")}</div>
         : (
           <div className="table-card">
             <table className="data-table log-table">
               <thead>
                 <tr>
-                  <th>Aika</th>
-                  <th>Tapahtuma</th>
-                  <th>Tekijä</th>
-                  <th>Tehtävä</th>
-                  <th>Taloyhtiö</th>
+                  <th>{t("Aika")}</th>
+                  <th>{t("Tapahtuma")}</th>
+                  <th>{t("Tekijä")}</th>
+                  <th>{t("Tehtävä")}</th>
+                  <th>{t("Taloyhtiö")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,8 +101,8 @@ export function AuditLog() {
                       <strong>{label}</strong>
                       {email && (
                         <details className="audit-email">
-                          <summary>{email.subject || "Näytä viesti"}</summary>
-                          <p>{email.body || "Viestin sisältöä ei ole tallennettu."}</p>
+                          <summary>{email.subject || t("Näytä viesti")}</summary>
+                          <p>{email.body || t("Viestin sisältöä ei ole tallennettu.")}</p>
                         </details>
                       )}
                     </td>
@@ -109,7 +110,7 @@ export function AuditLog() {
                     <td>
                       {/* Käyttäjän tai asukkaan poisto ja säilytysajan poistot eivät liity tehtävään. */}
                       {entry.ticket_id ? (
-                        <a href={`#/tickets/${encodeURIComponent(entry.ticket_id)}`} title="Avaa tehtävä">
+                        <a href={`#/tickets/${encodeURIComponent(entry.ticket_id)}`} title={t("Avaa tehtävä")}>
                           #{formatTicketNumber(entry.ticket_number)} {entry.ticket_subject}
                         </a>
                       ) : "–"}

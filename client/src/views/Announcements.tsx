@@ -3,6 +3,7 @@ import { Dropdown, usePaged } from "../components/common";
 import { formatDate } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company } from "../types";
+import { t } from "../i18n";
 
 export type Announcement = {
   id: string;
@@ -38,7 +39,7 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
   const [notice, setNotice] = useState("");
 
   const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
-  const targetLabel = (item: { stairwell: string }) => item.stairwell ? `Rappu ${item.stairwell}` : "Koko taloyhtiö";
+  const targetLabel = (item: { stairwell: string }) => item.stairwell ? t("Rappu {0}", item.stairwell) : t("Koko taloyhtiö");
 
   async function loadAnnouncements() {
     try {
@@ -89,26 +90,26 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
       );
       setCreating(false);
       setNotice(result.emailFailed
-        ? `Tiedote julkaistiin portaalissa, mutta sähköpostin lähetys epäonnistui (${result.emailed} lähti).`
+        ? t("Tiedote julkaistiin portaalissa, mutta sähköpostin lähetys epäonnistui ({0} lähti).", result.emailed)
         : sendEmail
-          ? `Tiedote julkaistu ja lähetetty ${result.emailed} sähköpostiosoitteeseen.`
-          : "Tiedote julkaistu asukasportaalissa.");
+          ? t("Tiedote julkaistu ja lähetetty {0} sähköpostiosoitteeseen.", result.emailed)
+          : t("Tiedote julkaistu asukasportaalissa."));
       await loadAnnouncements();
     } catch (submitError) {
-      setFormError(errorMessage(submitError, "Tiedotteen julkaisu epäonnistui."));
+      setFormError(errorMessage(submitError, t("Tiedotteen julkaisu epäonnistui.")));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(item: Announcement) {
-    if (!window.confirm("Poistetaanko tiedote asukasportaalista? Lähetettyjä sähköposteja ei voi perua.")) return;
+    if (!window.confirm(t("Poistetaanko tiedote asukasportaalista? Lähetettyjä sähköposteja ei voi perua."))) return;
     try {
       await api(`/announcements/${encodeURIComponent(item.id)}`, { method: "DELETE" });
       setOpen(null);
       await loadAnnouncements();
     } catch {
-      setNotice("Tiedotteen poistaminen epäonnistui.");
+      setNotice(t("Tiedotteen poistaminen epäonnistui."));
     }
   }
 
@@ -116,29 +117,29 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
 
   return (
     <section className="content">
-      <a className="back-link" href="#/companies">← Taloyhtiöt</a>
+      <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="residents-toolbar">
-        <span>{announcements.length} tiedotetta</span>
-        {isManager() && <button className="secondary" onClick={openForm}>Uusi tiedote</button>}
+        <span>{announcements.length}{" "}{t("tiedotetta")}</span>
+        {isManager() && <button className="secondary" onClick={openForm}>{t("Uusi tiedote")}</button>}
       </div>
 
       {notice && <p className="portal-sent">{notice}</p>}
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <p className="send-error">Tiedotteiden lataus epäonnistui.</p>
-        : announcements.length === 0 ? <div className="empty">Ei tiedotteita.</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <p className="send-error">{t("Tiedotteiden lataus epäonnistui.")}</p>
+        : announcements.length === 0 ? <div className="empty">{t("Ei tiedotteita.")}</div>
         : (
           <div className="table-card">
             <table className="data-table report-topics">
               <thead>
                 <tr>
-                  <th>Tiedote</th>
-                  <th>Taloyhtiö</th>
-                  <th>Kohde</th>
-                  <th>Sähköposteja</th>
-                  <th>Julkaisija</th>
-                  <th>Julkaistu</th>
+                  <th>{t("Tiedote")}</th>
+                  <th>{t("Taloyhtiö")}</th>
+                  <th>{t("Kohde")}</th>
+                  <th>{t("Sähköposteja")}</th>
+                  <th>{t("Julkaisija")}</th>
+                  <th>{t("Julkaistu")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,7 +149,7 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
                     className="clickable"
                     role="button"
                     tabIndex={0}
-                    title="Avaa tiedote"
+                    title={t("Avaa tiedote")}
                     onClick={() => setOpen(item)}
                     onKeyDown={event => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -181,12 +182,12 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
             <h2>{open.title}</h2>
             <p className="muted">
               {companyName(open.company_id)} · {targetLabel(open)} · {formatDate(open.created_at)} · {open.created_by}
-              {open.emailed_count ? ` · lähetetty ${open.emailed_count} sähköpostiosoitteeseen` : " · vain asukasportaalissa"}
+              {open.emailed_count ? t(" · lähetetty {0} sähköpostiosoitteeseen", open.emailed_count) : t(" · vain asukasportaalissa")}
             </p>
             <p className="announcement-body">{open.body}</p>
             {isManager() && (
               <div className="draft-actions">
-                <button className="danger" onClick={() => void handleDelete(open)}>Poista tiedote</button>
+                <button className="danger" onClick={() => void handleDelete(open)}>{t("Poista tiedote")}</button>
               </div>
             )}
           </aside>
@@ -197,40 +198,40 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
         <div className="overlay" onClick={() => !saving && setCreating(false)}>
           <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={() => setCreating(false)} disabled={saving}>×</button>
-            <h2>Uusi tiedote</h2>
-            <p className="muted">Tiedote näkyy asukkaille asukasportaalissa ja lähtee haluttaessa sähköpostilla.</p>
+            <h2>{t("Uusi tiedote")}</h2>
+            <p className="muted">{t("Tiedote näkyy asukkaille asukasportaalissa ja lähtee haluttaessa sähköpostilla.")}</p>
 
             <form className="ticket-form" onSubmit={handleSubmit}>
               <Dropdown
-                label="Taloyhtiö"
+                label={t("Taloyhtiö")}
                 value={formCompany}
                 options={companies.map(company => ({ value: company.id, label: company.name }))}
                 onChange={setFormCompany}
               />
               <Dropdown
-                label="Kohde"
+                label={t("Kohde")}
                 value={stairwell}
                 options={[
-                  { value: "", label: "Koko taloyhtiö" },
-                  ...(audience?.stairwells ?? []).map(item => ({ value: item.stairwell, label: `Rappu ${item.stairwell}` }))
+                  { value: "", label: t("Koko taloyhtiö") },
+                  ...(audience?.stairwells ?? []).map(item => ({ value: item.stairwell, label: t("Rappu {0}", item.stairwell) }))
                 ]}
                 onChange={setStairwell}
               />
               <label>
-                <span>Otsikko</span>
-                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={150} placeholder="Esim. Vesikatko ti 20.10. klo 9–12" required />
+                <span>{t("Otsikko")}</span>
+                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={150} placeholder={t("Esim. Vesikatko ti 20.10. klo 9–12")} required />
               </label>
               <label>
-                <span>Teksti</span>
+                <span>{t("Teksti")}</span>
                 <textarea value={body} onChange={event => setBody(event.target.value)} rows={9} maxLength={8000} required />
               </label>
               <label className="switch-row">
                 <span>
-                  <strong>Lähetä myös sähköpostilla</strong>
+                  <strong>{t("Lähetä myös sähköpostilla")}</strong>
                   <small>
                     {target
-                      ? `${target.residents} asukasta, joista ${target.emails} sähköpostiosoitetta. Osoitteet ovat piilokopiona.`
-                      : "Vastaanottajien määrää ei saatu ladattua."}
+                      ? t("{0} asukasta, joista {1} sähköpostiosoitetta. Osoitteet ovat piilokopiona.", target.residents, target.emails)
+                      : t("Vastaanottajien määrää ei saatu ladattua.")}
                   </small>
                 </span>
                 <input type="checkbox" role="switch" checked={sendEmail} onChange={() => setSendEmail(!sendEmail)} />
@@ -241,9 +242,9 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
 
               <div className="draft-actions">
                 <button className="primary" type="submit" disabled={saving || title.trim().length < 3 || body.trim().length < 5}>
-                  {saving ? "Julkaistaan…" : sendEmail ? "Julkaise ja lähetä" : "Julkaise"}
+                  {saving ? t("Julkaistaan…") : sendEmail ? t("Julkaise ja lähetä") : t("Julkaise")}
                 </button>
-                <button type="button" onClick={() => setCreating(false)} disabled={saving}>Peruuta</button>
+                <button type="button" onClick={() => setCreating(false)} disabled={saving}>{t("Peruuta")}</button>
               </div>
             </form>
           </aside>

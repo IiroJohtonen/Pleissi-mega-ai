@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { formatDate, formatDuration, formatTicketNumber } from "../format";
 import { api, errorMessage } from "../session";
 import type { TicketDetail, WorkOrder } from "../types";
+import { t } from "../i18n";
 
 // Tehtävän työtilaukset: tilaus huoltoyhtiölle ja sen kuittaus tehdyksi.
 export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; onChanged: () => Promise<void> }) {
@@ -35,7 +36,7 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
       setMessageSentTo(result.to);
       await onChanged();
     } catch (sendError) {
-      setError(errorMessage(sendError, "Viestin lähetys huoltoyhtiölle epäonnistui."));
+      setError(errorMessage(sendError, t("Viestin lähetys huoltoyhtiölle epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -62,7 +63,7 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
       setOrdering(false);
       await onChanged();
     } catch (submitError) {
-      setError(errorMessage(submitError, "Työtilauksen tekeminen epäonnistui."));
+      setError(errorMessage(submitError, t("Työtilauksen tekeminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -75,7 +76,7 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
       await api(`/work-orders/${encodeURIComponent(order.id)}/done`, { method: "POST" });
       await onChanged();
     } catch (doneError) {
-      setError(errorMessage(doneError, "Kuittaus epäonnistui."));
+      setError(errorMessage(doneError, t("Kuittaus epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -84,35 +85,35 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
   return (
     <section className="drawer-section work-orders">
       <div className="suggest-header">
-        <h3>Työtilaukset</h3>
-        {!ordering && <button className="secondary" onClick={openForm}>Tilaa huolto</button>}
+        <h3>{t("Työtilaukset")}</h3>
+        {!ordering && <button className="secondary" onClick={openForm}>{t("Tilaa huolto")}</button>}
       </div>
 
-      {detail.workOrders.length === 0 && !ordering && <p className="muted">Tehtävältä ei ole tehty työtilauksia.</p>}
+      {detail.workOrders.length === 0 && !ordering && <p className="muted">{t("Tehtävältä ei ole tehty työtilauksia.")}</p>}
 
       {detail.workOrders.map(order => (
         <div className={`work-order ${order.status}`} key={order.id}>
           <div className="work-order-top">
             <strong>{order.contractor_name}</strong>
-            <span className={`work-order-status ${order.status}`}>{order.status === "done" ? "Tehty" : "Tilattu"}</span>
+            <span className={`work-order-status ${order.status}`}>{order.status === "done" ? t("Tehty") : t("Tilattu")}</span>
           </div>
           <p>{order.description}</p>
           <small>
-            Tilattu {formatDate(order.ordered_at)} · {order.ordered_by}
-            {order.email_sent ? ` · lähetetty: ${order.contractor_email}` : " · kirjattu ilman sähköpostia"}
+            {t("Tilattu")}{" "}{formatDate(order.ordered_at)} · {order.ordered_by}
+            {order.email_sent ? t(" · lähetetty: {0}", order.contractor_email) : t(" · kirjattu ilman sähköpostia")}
           </small>
           {order.status === "done" && order.done_at ? (
             <small>
-              Kuitattu tehdyksi {formatDate(order.done_at)} · {order.done_by} · kesto{" "}
+              {t("Kuitattu tehdyksi")}{" "}{formatDate(order.done_at)} · {order.done_by}{" "}{t("· kesto")}{" "}
               {formatDuration(Date.parse(order.done_at) - Date.parse(order.ordered_at))}
             </small>
           ) : (
             <div className="work-order-buttons">
-              <button className="secondary" onClick={() => void markDone(order)} disabled={saving}>Kuittaa tehdyksi</button>
+              <button className="secondary" onClick={() => void markDone(order)} disabled={saving}>{t("Kuittaa tehdyksi")}</button>
               <button
                 className="secondary"
                 disabled={saving || !(order.contractor_email || contractorEmail)}
-                title={order.contractor_email || contractorEmail ? undefined : "Huoltoyhtiöllä ei ole sähköpostiosoitetta."}
+                title={order.contractor_email || contractorEmail ? undefined : t("Huoltoyhtiöllä ei ole sähköpostiosoitetta.")}
                 onClick={() => {
                   setMessageOrderId(messageOrderId === order.id ? null : order.id);
                   setMessageBody("");
@@ -121,19 +122,19 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
                   setError("");
                 }}
               >
-                Lähetä viesti huoltoyhtiölle
+                {t("Lähetä viesti huoltoyhtiölle")}
               </button>
             </div>
           )}
           {messageOrderId === order.id && (
             <form className="ticket-form work-order-form" onSubmit={sendMessage}>
               <label>
-                <span>Viesti · {order.contractor_email || contractorEmail}</span>
+                <span>{t("Viesti ·")}{" "}{order.contractor_email || contractorEmail}</span>
                 <textarea value={messageBody} onChange={event => setMessageBody(event.target.value)} rows={4} maxLength={4000} required autoFocus />
               </label>
               {detail.attachments.length > 0 && (
                 <fieldset className="work-order-files">
-                  <legend>Mukaan lähetettävät liitteet</legend>
+                  <legend>{t("Mukaan lähetettävät liitteet")}</legend>
                   {detail.attachments.map(attachment => (
                     <label key={attachment.id}>
                       <input
@@ -150,34 +151,34 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
               )}
               <div className="draft-actions">
                 <button className="primary" type="submit" disabled={saving || !messageBody.trim()}>
-                  {saving ? "Lähetetään…" : "Lähetä"}
+                  {saving ? t("Lähetetään…") : t("Lähetä")}
                 </button>
-                <button type="button" onClick={() => setMessageOrderId(null)} disabled={saving}>Peruuta</button>
+                <button type="button" onClick={() => setMessageOrderId(null)} disabled={saving}>{t("Peruuta")}</button>
               </div>
             </form>
           )}
         </div>
       ))}
-      {messageSentTo && <p className="portal-sent">Viesti lähetetty: {messageSentTo}</p>}
+      {messageSentTo && <p className="portal-sent">{t("Viesti lähetetty:")}{" "}{messageSentTo}</p>}
 
       {ordering && (
         <form className="ticket-form work-order-form" onSubmit={handleSubmit}>
           <p className="reply-hint">
-            Huoltoyhtiö: <strong>{contractor?.name || "ei nimeä"}</strong>
-            {contractorEmail ? ` · ${contractorEmail}` : " · sähköpostia ei ole tallennettu taloyhtiön tietoihin"}
+            {t("Huoltoyhtiö:")}{" "}<strong>{contractor?.name || t("ei nimeä")}</strong>
+            {contractorEmail ? ` · ${contractorEmail}` : t(" · sähköpostia ei ole tallennettu taloyhtiön tietoihin")}
             {contractor?.phone ? ` · ${contractor.phone}` : ""}
           </p>
           <label>
-            <span>Työn kuvaus</span>
+            <span>{t("Työn kuvaus")}</span>
             <textarea value={description} onChange={event => setDescription(event.target.value)} rows={6} maxLength={4000} required />
           </label>
           <label className="switch-row">
             <span>
-              <strong>Lähetä sähköpostilla huoltoyhtiölle</strong>
+              <strong>{t("Lähetä sähköpostilla huoltoyhtiölle")}</strong>
               <small>
                 {contractorEmail
-                  ? "Viestiin lisätään taloyhtiö, osoite, asunto ja tehtävän numero."
-                  : "Ei käytettävissä: lisää huoltoyhtiön sähköposti taloyhtiön tietoihin."}
+                  ? t("Viestiin lisätään taloyhtiö, osoite, asunto ja tehtävän numero.")
+                  : t("Ei käytettävissä: lisää huoltoyhtiön sähköposti taloyhtiön tietoihin.")}
               </small>
             </span>
             <input
@@ -191,7 +192,7 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
           </label>
           {sendEmail && detail.attachments.length > 0 && (
             <fieldset className="work-order-files">
-              <legend>Mukaan lähetettävät liitteet</legend>
+              <legend>{t("Mukaan lähetettävät liitteet")}</legend>
               {detail.attachments.map(attachment => (
                 <label key={attachment.id}>
                   <input
@@ -208,9 +209,9 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
           )}
           <div className="draft-actions">
             <button className="primary" type="submit" disabled={saving || description.trim().length < 3}>
-              {saving ? "Tilataan…" : sendEmail ? "Lähetä työtilaus" : "Kirjaa työtilaus"}
+              {saving ? t("Tilataan…") : sendEmail ? t("Lähetä työtilaus") : t("Kirjaa työtilaus")}
             </button>
-            <button type="button" onClick={() => setOrdering(false)} disabled={saving}>Peruuta</button>
+            <button type="button" onClick={() => setOrdering(false)} disabled={saving}>{t("Peruuta")}</button>
           </div>
         </form>
       )}
@@ -251,22 +252,22 @@ export function WorkOrderReport({ companyId, tabs }: { companyId: string; tabs: 
   return (
     <div className="report-card">
       {tabs}
-      <h2>Työtilaukset huoltoyhtiöittäin</h2>
-      <p className="muted">Kaikki taloyhtiön työtilaukset. Läpimenoaika lasketaan tilauksesta tehdyksi kuittaukseen.</p>
-      {failed ? <p className="send-error">Työtilausten lataus epäonnistui.</p>
-        : orders.length === 0 ? <p className="muted">Taloyhtiölle ei ole tehty työtilauksia.</p>
+      <h2>{t("Työtilaukset huoltoyhtiöittäin")}</h2>
+      <p className="muted">{t("Kaikki taloyhtiön työtilaukset. Läpimenoaika lasketaan tilauksesta tehdyksi kuittaukseen.")}</p>
+      {failed ? <p className="send-error">{t("Työtilausten lataus epäonnistui.")}</p>
+        : orders.length === 0 ? <p className="muted">{t("Taloyhtiölle ei ole tehty työtilauksia.")}</p>
         : (
           <>
             <div className="table-card">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Huoltoyhtiö</th>
-                    <th>Tilauksia</th>
-                    <th>Avoinna</th>
-                    <th>Tehty</th>
-                    <th>Läpimenoaika keskimäärin</th>
-                    <th>Vanhin avoin</th>
+                    <th>{t("Huoltoyhtiö")}</th>
+                    <th>{t("Tilauksia")}</th>
+                    <th>{t("Avoinna")}</th>
+                    <th>{t("Tehty")}</th>
+                    <th>{t("Läpimenoaika keskimäärin")}</th>
+                    <th>{t("Vanhin avoin")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -284,16 +285,16 @@ export function WorkOrderReport({ companyId, tabs }: { companyId: string; tabs: 
               </table>
             </div>
 
-            <h2 className="report-subhead">Avoimet työtilaukset</h2>
-            {openOrders.length === 0 ? <p className="muted">Ei avoimia työtilauksia.</p> : (
+            <h2 className="report-subhead">{t("Avoimet työtilaukset")}</h2>
+            {openOrders.length === 0 ? <p className="muted">{t("Ei avoimia työtilauksia.")}</p> : (
               <div className="table-card">
                 <table className="data-table report-topics">
                   <thead>
                     <tr>
-                      <th>Tehtävä</th>
-                      <th>Huoltoyhtiö</th>
-                      <th>Tilattu</th>
-                      <th>Odottanut</th>
+                      <th>{t("Tehtävä")}</th>
+                      <th>{t("Huoltoyhtiö")}</th>
+                      <th>{t("Tilattu")}</th>
+                      <th>{t("Odottanut")}</th>
                     </tr>
                   </thead>
                   <tbody>

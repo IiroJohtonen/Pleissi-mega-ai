@@ -3,6 +3,7 @@ import { Dropdown, usePaged } from "../components/common";
 import { formatDate, formatDay } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company, Resident } from "../types";
+import { t } from "../i18n";
 
 export type Apartment = { id: string; apartment_number: string; address: string };
 
@@ -37,8 +38,8 @@ type KeyLoan = {
 const KEY_TYPES = ["Asunto", "Yleisavain", "Yleiset tilat", "Autotalli", "Tekninen tila", "Muu"];
 
 function keyState(key: BuildingKey) {
-  if (key.status === "lost") return "Kadonnut";
-  return key.holder_name ? "Luovutettu" : "Toimistolla";
+  if (key.status === "lost") return t("Kadonnut");
+  return key.holder_name ? t("Luovutettu") : t("Toimistolla");
 }
 
 function isLate(key: BuildingKey) {
@@ -151,7 +152,7 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
     void run(() => api(open ? `/keys/${encodeURIComponent(open.id)}` : `/companies/${encodeURIComponent(formCompany)}/keys`, {
       method: open ? "PUT" : "POST",
       body: JSON.stringify({ code, type, apartmentId: apartmentId || null, note, lost })
-    }), "Avaimen tallennus epäonnistui.", true);
+    }), t("Avaimen tallennus epäonnistui."), true);
   }
 
   function handOver(key: BuildingKey) {
@@ -164,12 +165,12 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
       setHolderName("");
       setDueDate("");
       setLoanNote("");
-    }, "Avaimen luovutus epäonnistui.");
+    }, t("Avaimen luovutus epäonnistui."));
   }
 
   function handleDelete(key: BuildingKey) {
-    if (!window.confirm(`Poistetaanko avain ${key.code} ja sen luovutushistoria?`)) return;
-    void run(() => api(`/keys/${encodeURIComponent(key.id)}`, { method: "DELETE" }), "Avaimen poistaminen epäonnistui.", true);
+    if (!window.confirm(t("Poistetaanko avain {0} ja sen luovutushistoria?", key.code))) return;
+    void run(() => api(`/keys/${encodeURIComponent(key.id)}`, { method: "DELETE" }), t("Avaimen poistaminen epäonnistui."), true);
   }
 
   const visible = keys
@@ -187,49 +188,49 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
 
   return (
     <section className="content">
-      <a className="back-link" href="#/companies">← Taloyhtiöt</a>
+      <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="ticket-filters">
         <Dropdown
-          label="Taloyhtiö"
+          label={t("Taloyhtiö")}
           value={companyFilter}
-          options={[{ value: "all", label: "Kaikki" }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
+          options={[{ value: "all", label: t("Kaikki") }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
           onChange={setCompanyFilter}
         />
         <Dropdown
-          label="Tila"
+          label={t("Tila")}
           value={stateFilter}
           options={[
-            { value: "all", label: "Kaikki" },
-            { value: "out", label: "Luovutetut" },
-            { value: "late", label: "Palautus myöhässä" },
-            { value: "office", label: "Toimistolla" },
-            { value: "lost", label: "Kadonneet" }
+            { value: "all", label: t("Kaikki") },
+            { value: "out", label: t("Luovutetut") },
+            { value: "late", label: t("Palautus myöhässä") },
+            { value: "office", label: t("Toimistolla") },
+            { value: "lost", label: t("Kadonneet") }
           ]}
           onChange={setStateFilter}
         />
       </div>
 
       <div className="residents-toolbar">
-        <span>{visible.length} avainta · {outCount} luovutettu{lateCount > 0 ? ` · ${lateCount} myöhässä` : ""}</span>
-        <button className="secondary" onClick={() => openForm(null)}>Lisää avain</button>
+        <span>{visible.length}{" "}{t("avainta ·")}{" "}{outCount}{" "}{t("luovutettu")}{lateCount > 0 ? t(" · {0} myöhässä", lateCount) : ""}</span>
+        <button className="secondary" onClick={() => openForm(null)}>{t("Lisää avain")}</button>
       </div>
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <div className="empty">Avainten lataus epäonnistui.</div>
-        : visible.length === 0 ? <div className="empty">{keys.length === 0 ? "Ei avaimia. Lisää taloyhtiön avaimet rekisteriin." : "Ei suodattimia vastaavia avaimia."}</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <div className="empty">{t("Avainten lataus epäonnistui.")}</div>
+        : visible.length === 0 ? <div className="empty">{keys.length === 0 ? t("Ei avaimia. Lisää taloyhtiön avaimet rekisteriin.") : t("Ei suodattimia vastaavia avaimia.")}</div>
         : (
           <div className="table-card">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Tunnus</th>
-                  <th>Tyyppi</th>
-                  <th>Taloyhtiö</th>
-                  <th>Asunto</th>
-                  <th>Tila</th>
-                  <th>Haltija</th>
-                  <th>Palautus</th>
+                  <th>{t("Tunnus")}</th>
+                  <th>{t("Tyyppi")}</th>
+                  <th>{t("Taloyhtiö")}</th>
+                  <th>{t("Asunto")}</th>
+                  <th>{t("Tila")}</th>
+                  <th>{t("Haltija")}</th>
+                  <th>{t("Palautus")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -237,7 +238,7 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
                   <tr
                     key={key.id}
                     className="clickable"
-                    title="Avaa avaimen tiedot"
+                    title={t("Avaa avaimen tiedot")}
                     role="button"
                     tabIndex={0}
                     onClick={() => openForm(key)}
@@ -249,12 +250,12 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
                     }}
                   >
                     <td><strong>{key.code}</strong></td>
-                    <td><span className="type">{key.type}</span></td>
+                    <td><span className="type">{t(key.type)}</span></td>
                     <td>{companyName(key.company_id)}</td>
                     <td>{key.apartment_number || "–"}</td>
                     <td><span className={`work-order-status ${key.loan_id || key.status === "lost" ? "" : "done"}`}>{keyState(key)}</span></td>
                     <td>{key.holder_name || "–"}</td>
-                    <td>{key.loan_id && key.due_date ? `${formatDay(key.due_date)}${isLate(key) ? " · myöhässä" : ""}` : "–"}</td>
+                    <td>{key.loan_id && key.due_date ? `${formatDay(key.due_date)}${isLate(key) ? t(" · myöhässä") : ""}` : "–"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -267,26 +268,26 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
         <div className="overlay" onClick={() => !saving && closeForm()}>
           <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={closeForm} disabled={saving}>×</button>
-            <h2>{open ? `Avain ${open.code}` : "Lisää avain"}</h2>
-            <p className="muted">{open ? `${companyName(open.company_id)} · ${keyState(open)}` : "Valitse taloyhtiö ja anna avaimen tiedot."}</p>
+            <h2>{open ? t("Avain {0}", open.code) : t("Lisää avain")}</h2>
+            <p className="muted">{open ? `${companyName(open.company_id)} · ${keyState(open)}` : t("Valitse taloyhtiö ja anna avaimen tiedot.")}</p>
 
             {open && open.loan_id && (
               <div className="ticket-form">
                 <dl className="ticket-facts">
                   <div>
-                    <dt>Haltija</dt>
+                    <dt>{t("Haltija")}</dt>
                     <dd>{open.holder_name}</dd>
                   </div>
                   <div>
-                    <dt>Luovutettu</dt>
+                    <dt>{t("Luovutettu")}</dt>
                     <dd>{formatDate(open.handed_at ?? undefined)}</dd>
                   </div>
                   <div>
-                    <dt>Palautus viimeistään</dt>
-                    <dd>{open.due_date ? `${formatDay(open.due_date)}${isLate(open) ? " · myöhässä" : ""}` : "Ei sovittu"}</dd>
+                    <dt>{t("Palautus viimeistään")}</dt>
+                    <dd>{open.due_date ? `${formatDay(open.due_date)}${isLate(open) ? t(" · myöhässä") : ""}` : t("Ei sovittu")}</dd>
                   </div>
                   <div>
-                    <dt>Lisätieto</dt>
+                    <dt>{t("Lisätieto")}</dt>
                     <dd>{open.loan_note || "–"}</dd>
                   </div>
                 </dl>
@@ -294,9 +295,9 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
                   <button
                     className="primary"
                     disabled={saving}
-                    onClick={() => void run(() => api(`/keys/${encodeURIComponent(open.id)}/return`, { method: "POST" }), "Palautuksen kuittaus epäonnistui.")}
+                    onClick={() => void run(() => api(`/keys/${encodeURIComponent(open.id)}/return`, { method: "POST" }), t("Palautuksen kuittaus epäonnistui."))}
                   >
-                    Kuittaa palautetuksi
+                    {t("Kuittaa palautetuksi")}
                   </button>
                 </div>
               </div>
@@ -304,12 +305,12 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
 
             {open && !open.loan_id && open.status !== "lost" && (
               <div className="ticket-form">
-                <h3>Luovuta avain</h3>
+                <h3>{t("Luovuta avain")}</h3>
                 <Dropdown
-                  label="Asukas"
+                  label={t("Asukas")}
                   value={residentId}
                   options={[
-                    { value: "", label: "Muu vastaanottaja" },
+                    { value: "", label: t("Muu vastaanottaja") },
                     ...residents.map(resident => ({
                       value: resident.id,
                       label: [resident.name, resident.apartment_number].filter(Boolean).join(" · ")
@@ -319,31 +320,31 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
                 />
                 {!residentId && (
                   <label>
-                    <span>Vastaanottajan nimi</span>
-                    <input value={holderName} onChange={event => setHolderName(event.target.value)} maxLength={120} placeholder="Esim. Putki Oy, Matti Virtanen" />
+                    <span>{t("Vastaanottajan nimi")}</span>
+                    <input value={holderName} onChange={event => setHolderName(event.target.value)} maxLength={120} placeholder={t("Esim. Putki Oy, Matti Virtanen")} />
                   </label>
                 )}
                 <label>
-                  <span>Palautus viimeistään (valinnainen)</span>
+                  <span>{t("Palautus viimeistään (valinnainen)")}</span>
                   <input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} />
                 </label>
                 <label>
-                  <span>Lisätieto (valinnainen)</span>
-                  <input value={loanNote} onChange={event => setLoanNote(event.target.value)} maxLength={300} placeholder="Esim. kylpyhuoneremontin ajaksi" />
+                  <span>{t("Lisätieto (valinnainen)")}</span>
+                  <input value={loanNote} onChange={event => setLoanNote(event.target.value)} maxLength={300} placeholder={t("Esim. kylpyhuoneremontin ajaksi")} />
                 </label>
                 <div className="draft-actions">
                   <button className="primary" disabled={saving || (!residentId && !holderName.trim())} onClick={() => handOver(open)}>
-                    Luovuta avain
+                    {t("Luovuta avain")}
                   </button>
                 </div>
               </div>
             )}
 
             <form className="ticket-form" onSubmit={handleSubmit}>
-              {open && <h3>Avaimen tiedot</h3>}
+              {open && <h3>{t("Avaimen tiedot")}</h3>}
               {!open && (
                 <Dropdown
-                  label="Taloyhtiö"
+                  label={t("Taloyhtiö")}
                   value={formCompany}
                   options={companies.map(company => ({ value: company.id, label: company.name }))}
                   onChange={value => { setFormCompany(value); setApartmentId(""); }}
@@ -351,37 +352,37 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
               )}
 
               <label>
-                <span>Avaimen tunnus</span>
-                <input value={code} onChange={event => setCode(event.target.value)} maxLength={60} placeholder="Esim. A12-1 tai Y-3" />
+                <span>{t("Avaimen tunnus")}</span>
+                <input value={code} onChange={event => setCode(event.target.value)} maxLength={60} placeholder={t("Esim. A12-1 tai Y-3")} />
               </label>
 
               <Dropdown
-                label="Tyyppi"
+                label={t("Tyyppi")}
                 value={type}
-                options={(KEY_TYPES.includes(type) ? KEY_TYPES : [type, ...KEY_TYPES]).map(option => ({ value: option, label: option }))}
+                options={(KEY_TYPES.includes(type) ? KEY_TYPES : [type, ...KEY_TYPES]).map(option => ({ value: option, label: t(option) }))}
                 onChange={setType}
               />
 
               <Dropdown
-                label="Asunto"
+                label={t("Asunto")}
                 value={apartmentId}
                 options={[
-                  { value: "", label: "Ei asuntoa" },
+                  { value: "", label: t("Ei asuntoa") },
                   ...apartments.map(apartment => ({ value: apartment.id, label: `${apartment.apartment_number} · ${apartment.address}` }))
                 ]}
                 onChange={setApartmentId}
               />
 
               <label>
-                <span>Lisätieto</span>
-                <input value={note} onChange={event => setNote(event.target.value)} maxLength={300} placeholder="Valinnainen, esim. sarjoitus tai säilytyspaikka" />
+                <span>{t("Lisätieto")}</span>
+                <input value={note} onChange={event => setNote(event.target.value)} maxLength={300} placeholder={t("Valinnainen, esim. sarjoitus tai säilytyspaikka")} />
               </label>
 
               {open && (
                 <label className="switch-row">
                   <span>
-                    <strong>Avain on kadonnut</strong>
-                    <small>Kadonnutta avainta ei voi luovuttaa.</small>
+                    <strong>{t("Avain on kadonnut")}</strong>
+                    <small>{t("Kadonnutta avainta ei voi luovuttaa.")}</small>
                   </span>
                   <input type="checkbox" role="switch" checked={lost} onChange={() => setLost(!lost)} />
                   <i aria-hidden="true" />
@@ -392,22 +393,22 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
 
               <div className="drawer-actions compact-actions">
                 {open && isManager() && (
-                  <button className="danger" type="button" onClick={() => handleDelete(open)} disabled={saving}>Poista</button>
+                  <button className="danger" type="button" onClick={() => handleDelete(open)} disabled={saving}>{t("Poista")}</button>
                 )}
-                <button type="button" onClick={closeForm}>Peruuta</button>
+                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
                 <button className="primary" type="submit" disabled={saving || !code.trim()}>
-                  {saving ? "Tallennetaan…" : open ? "Tallenna muutokset" : "Lisää avain"}
+                  {saving ? t("Tallennetaan…") : open ? t("Tallenna muutokset") : t("Lisää avain")}
                 </button>
               </div>
             </form>
 
             {open && loans.length > 0 && (
               <>
-                <h3>Luovutushistoria</h3>
+                <h3>{t("Luovutushistoria")}</h3>
                 <ul className="move-people">
                   {loans.map(loan => (
                     <li key={loan.id}>
-                      <strong>{loan.holder_name}</strong> · {formatDate(loan.handed_at)} – {loan.returned_at ? formatDate(loan.returned_at) : "ei palautettu"}
+                      <strong>{loan.holder_name}</strong> · {formatDate(loan.handed_at)} – {loan.returned_at ? formatDate(loan.returned_at) : t("ei palautettu")}
                       {loan.note ? ` · ${loan.note}` : ""}
                     </li>
                   ))}

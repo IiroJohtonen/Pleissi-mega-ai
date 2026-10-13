@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Dropdown } from "../components/common";
 import { api, errorMessage, type ResidentAccount } from "../session";
 import type { Company, Resident } from "../types";
+import { locale, t } from "../i18n";
 
 export type Booking = {
   id: string;
@@ -31,10 +32,10 @@ export const DEFAULT_BOOKING_RULES: BookingRules = {
 
 // Asetuksissa valittavat viikoittaisen vuoron kestot.
 export const WEEKLY_DURATION_OPTIONS = [
-  { weeks: 4, label: "4 viikkoa (noin 1 kk)" },
-  { weeks: 8, label: "8 viikkoa (noin 2 kk)" },
-  { weeks: 12, label: "12 viikkoa (noin 3 kk)" },
-  { weeks: 26, label: "26 viikkoa (puoli vuotta)" }
+  { weeks: 4, label: t("4 viikkoa (noin 1 kk)") },
+  { weeks: 8, label: t("8 viikkoa (noin 2 kk)") },
+  { weeks: 12, label: t("12 viikkoa (noin 3 kk)") },
+  { weeks: 26, label: t("26 viikkoa (puoli vuotta)") }
 ];
 
 // Asetuksen kesto, jos se on jokin valittavista; muuten oletus 12 viikkoa.
@@ -44,8 +45,8 @@ export function weeklyWeeksOf(rule: { weeklyWeeks?: number } | undefined) {
 
 // Tilakohtaiset asetukset: varattavat tunnit ja yhden vuoron pituus tunteina.
 const BOOKING_RESOURCES: Record<"sauna" | "laundry", { name: string; firstHour: number; lastHour: number; slotHours: number }> = {
-  sauna: { name: "Sauna", firstHour: 15, lastHour: 22, slotHours: 1 },
-  laundry: { name: "Pyykkitupa", firstHour: 7, lastHour: 21, slotHours: 1 }
+  sauna: { name: t("Sauna"), firstHour: 15, lastHour: 22, slotHours: 1 },
+  laundry: { name: t("Pyykkitupa"), firstHour: 7, lastHour: 21, slotHours: 1 }
 };
 
 function startOfWeek(date: Date) {
@@ -78,19 +79,19 @@ export function BookingCalendar({
   const residentFacts = portalResident && (
     <dl className="ticket-facts">
       <div>
-        <dt>Varaaja</dt>
+        <dt>{t("Varaaja")}</dt>
         <dd>{portalResident.name}</dd>
       </div>
       <div>
-        <dt>Asunto</dt>
+        <dt>{t("Asunto")}</dt>
         <dd>{portalResident.apartmentNumber}</dd>
       </div>
       <div>
-        <dt>Taloyhtiö</dt>
+        <dt>{t("Taloyhtiö")}</dt>
         <dd>{portalResident.companyName}</dd>
       </div>
       <div>
-        <dt>Sähköposti</dt>
+        <dt>{t("Sähköposti")}</dt>
         <dd>{portalResident.email || "–"}</dd>
       </div>
     </dl>
@@ -169,7 +170,7 @@ export function BookingCalendar({
   }
 
   const slotEnd = (start: Date) => new Date(start.getTime() + config.slotHours * 60 * 60 * 1000);
-  const timeLabel = (date: Date) => date.toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" });
+  const timeLabel = (date: Date) => date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   const now = Date.now();
   const today = new Date().toDateString();
 
@@ -201,16 +202,16 @@ export function BookingCalendar({
         }
       );
       setBookingNotice(repeat === "weekly"
-        ? `Viikoittainen varaus tehty: ${result.created} vuoroa varattu`
+        ? t("Viikoittainen varaus tehty: {0} vuoroa varattu", result.created)
           + (result.skipped.length > 0
-            ? `, ${result.skipped.length} viikkoa ohitettiin, koska vuoro oli jo varattu: `
-              + result.skipped.map(time => new Date(time).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric" })).join(", ") + "."
+            ? t(", {0} viikkoa ohitettiin, koska vuoro oli jo varattu: ", result.skipped.length)
+              + result.skipped.map(time => new Date(time).toLocaleDateString(locale, { day: "numeric", month: "numeric" })).join(", ") + "."
             : ".")
         : "");
       setSlot(null);
       await loadBookings();
     } catch (error) {
-      setFormError(errorMessage(error, "Varauksen tallennus epäonnistui."));
+      setFormError(errorMessage(error, t("Varauksen tallennus epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -229,7 +230,7 @@ export function BookingCalendar({
       setSlot(null);
       await loadBookings();
     } catch (error) {
-      setFormError(errorMessage(error, "Varauksen poistaminen epäonnistui."));
+      setFormError(errorMessage(error, t("Varauksen poistaminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -237,38 +238,38 @@ export function BookingCalendar({
 
   return (
     <section className="content">
-      {!portal && !embedded && <a className="back-link" href="#/companies">← Taloyhtiöt</a>}
+      {!portal && !embedded && <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>}
 
       {filtersOpen && (
         <div className="ticket-filters">
           {!portal && !embedded && (
             <Dropdown
-              label="Taloyhtiö"
+              label={t("Taloyhtiö")}
               value={companyId}
               options={companies.map(company => ({ value: company.id, label: company.name }))}
               onChange={onCompanyChange}
             />
           )}
           <Dropdown
-            label="Kellonaika alkaen"
+            label={t("Kellonaika alkaen")}
             value={String(fromHour)}
             options={hours.filter(hour => hour < toHour).map(hour => ({ value: String(hour), label: hourLabel(hour) }))}
             onChange={value => setFromHour(Number(value))}
           />
           <Dropdown
-            label="Kellonaika asti"
+            label={t("Kellonaika asti")}
             value={String(toHour)}
             options={hours.map(hour => hour + config.slotHours).filter(hour => hour > fromHour)
               .map(hour => ({ value: String(hour), label: hourLabel(hour) }))}
             onChange={value => setToHour(Number(value))}
           />
           <Dropdown
-            label="Näytä"
+            label={t("Näytä")}
             value={show}
             options={[
-              { value: "all", label: "Kaikki vuorot" },
-              { value: "free", label: "Vain vapaat" },
-              { value: "booked", label: "Vain varatut" }
+              { value: "all", label: t("Kaikki vuorot") },
+              { value: "free", label: t("Vain vapaat") },
+              { value: "booked", label: t("Vain varatut") }
             ]}
             onChange={value => setShow(value as typeof show)}
           />
@@ -277,7 +278,7 @@ export function BookingCalendar({
               setFromHour(config.firstHour);
               setToHour(config.lastHour);
               setShow("all");
-            }}>Tyhjennä suodattimet</button>
+            }}>{t("Tyhjennä suodattimet")}</button>
           )}
         </div>
       )}
@@ -286,8 +287,8 @@ export function BookingCalendar({
         <button
           className={`filter-toggle ${filtersOpen || calendarFiltered ? "active" : ""}`}
           onClick={() => setFiltersOpen(!filtersOpen)}
-          title={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
-          aria-label={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
+          title={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
+          aria-label={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
           aria-expanded={filtersOpen}
         >
           <svg
@@ -305,26 +306,26 @@ export function BookingCalendar({
         </button>
         {!portal && !embedded && <strong className="calendar-company">{companies.find(company => company.id === companyId)?.name}</strong>}
         <div className="calendar-week">
-          <button onClick={() => shiftWeek(-1)} aria-label="Edellinen viikko">←</button>
+          <button onClick={() => shiftWeek(-1)} aria-label={t("Edellinen viikko")}>←</button>
           <strong>
-            {days[0].toLocaleDateString("fi-FI", { day: "numeric", month: "numeric" })}–
-            {days[6].toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "numeric" })}
+            {days[0].toLocaleDateString(locale, { day: "numeric", month: "numeric" })}–
+            {days[6].toLocaleDateString(locale, { day: "numeric", month: "numeric", year: "numeric" })}
           </strong>
-          <button onClick={() => shiftWeek(1)} aria-label="Seuraava viikko">→</button>
-          <button className="calendar-today" onClick={() => setWeekStart(startOfWeek(new Date()))}>Tämä viikko</button>
+          <button onClick={() => shiftWeek(1)} aria-label={t("Seuraava viikko")}>→</button>
+          <button className="calendar-today" onClick={() => setWeekStart(startOfWeek(new Date()))}>{t("Tämä viikko")}</button>
         </div>
         <span className="calendar-count">
           {portal
-            ? `${bookings.filter(item => item.mine).length} omaa varausta tällä viikolla`
-            : `${bookings.length} varausta tällä viikolla`}
+            ? t("{0} omaa varausta tällä viikolla", bookings.filter(item => item.mine).length)
+            : t("{0} varausta tällä viikolla", bookings.length)}
         </span>
       </div>
 
-      {loadError && <div className="empty">Varausten lataus epäonnistui.</div>}
+      {loadError && <div className="empty">{t("Varausten lataus epäonnistui.")}</div>}
       {bookingNotice && <p className="ai-reason created booking-notice">{bookingNotice}</p>}
       {bookingDisabled && (
         <p className="ai-reason missing booking-notice">
-          {config.name}vuorojen varaaminen on kytketty pois tämän taloyhtiön asetuksista.
+          {t("{0}vuorojen varaaminen on kytketty pois tämän taloyhtiön asetuksista.", config.name)}
         </p>
       )}
 
@@ -332,8 +333,8 @@ export function BookingCalendar({
         <div className="calendar-corner" />
         {days.map(day => (
           <div key={day.getTime()} className={`calendar-day ${day.toDateString() === today ? "today" : ""}`}>
-            <strong>{day.toLocaleDateString("fi-FI", { weekday: "short" })}</strong>
-            <span>{day.toLocaleDateString("fi-FI", { day: "numeric", month: "numeric" })}</span>
+            <strong>{day.toLocaleDateString(locale, { weekday: "short" })}</strong>
+            <span>{day.toLocaleDateString(locale, { day: "numeric", month: "numeric" })}</span>
           </div>
         ))}
         {visibleHours.map(hour => (
@@ -358,10 +359,10 @@ export function BookingCalendar({
                   onClick={() => openSlot(start, booking)}
                   // Asukas voi avata vain oman varauksensa.
                   disabled={portal && !booking.mine}
-                  title={portal && !booking.mine ? "Vuoro on varattu" : "Avaa varaus"}
+                  title={portal && !booking.mine ? t("Vuoro on varattu") : t("Avaa varaus")}
                 >
                   <strong>
-                    {portal ? (booking.mine ? "Oma varaus" : "Varattu") : booking.resident_name || booking.note || "Varattu"}
+                    {portal ? (booking.mine ? t("Oma varaus") : t("Varattu")) : booking.resident_name || booking.note || t("Varattu")}
                   </strong>
                   {!portal && booking.apartment_number && <span>{booking.apartment_number}</span>}
                 </button>
@@ -371,9 +372,9 @@ export function BookingCalendar({
                   className="calendar-slot free"
                   onClick={() => openSlot(start, null)}
                   disabled={past || bookingDisabled}
-                  title={past ? "Aika on jo mennyt" : bookingDisabled ? "Varaaminen ei ole käytössä" : "Varaa vuoro"}
+                  title={past ? t("Aika on jo mennyt") : bookingDisabled ? t("Varaaminen ei ole käytössä") : t("Varaa vuoro")}
                 >
-                  {past || bookingDisabled ? "" : "+ Varaa"}
+                  {past || bookingDisabled ? "" : t("+ Varaa")}
                 </button>
               );
             })}
@@ -385,27 +386,27 @@ export function BookingCalendar({
         <div className="overlay" onClick={() => setSlot(null)}>
           <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={() => setSlot(null)}>×</button>
-            <h2>{slot.booking ? "Varaus" : "Uusi varaus"}</h2>
+            <h2>{slot.booking ? t("Varaus") : t("Uusi varaus")}</h2>
             <p className="muted">
               {config.name} · {portalResident?.companyName ?? companies.find(company => company.id === companyId)?.name ?? ""}{" "}·{" "}
-              {slot.start.toLocaleDateString("fi-FI", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })}{" "}
-              klo {timeLabel(slot.start)}–{timeLabel(slotEnd(slot.start))}
+              {slot.start.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })}{" "}
+              {t("klo")}{" "}{timeLabel(slot.start)}–{timeLabel(slotEnd(slot.start))}
             </p>
 
             {slot.booking && portal ? (
               <>
-                <p className="topic-text">Tämä on oma varauksesi.</p>
+                <p className="topic-text">{t("Tämä on oma varauksesi.")}</p>
                 {residentFacts}
                 {formError && <p className="send-error">{formError}</p>}
                 <div className="drawer-actions compact-actions">
-                  <button type="button" onClick={() => setSlot(null)}>Sulje</button>
+                  <button type="button" onClick={() => setSlot(null)}>{t("Sulje")}</button>
                   {slot.booking.series_id && (
                     <button className="danger" type="button" onClick={() => handleDelete(true)} disabled={saving}>
-                      Peru tämä ja tulevat viikot
+                      {t("Peru tämä ja tulevat viikot")}
                     </button>
                   )}
                   <button className="danger" type="button" onClick={() => handleDelete()} disabled={saving}>
-                    {saving ? "Perutaan…" : slot.booking.series_id ? "Peru vain tämä vuoro" : "Peru varaus"}
+                    {saving ? t("Perutaan…") : slot.booking.series_id ? t("Peru vain tämä vuoro") : t("Peru varaus")}
                   </button>
                 </div>
               </>
@@ -413,32 +414,32 @@ export function BookingCalendar({
               <>
                 <dl className="ticket-facts">
                   <div>
-                    <dt>Varaaja</dt>
+                    <dt>{t("Varaaja")}</dt>
                     <dd>{slot.booking.resident_name || "–"}</dd>
                   </div>
                   <div>
-                    <dt>Asunto</dt>
+                    <dt>{t("Asunto")}</dt>
                     <dd>{slot.booking.apartment_number || "–"}</dd>
                   </div>
                   <div>
-                    <dt>Lisätieto</dt>
+                    <dt>{t("Lisätieto")}</dt>
                     <dd>{slot.booking.note || "–"}</dd>
                   </div>
                   <div>
-                    <dt>Varauksen teki</dt>
+                    <dt>{t("Varauksen teki")}</dt>
                     <dd>{slot.booking.created_by}</dd>
                   </div>
                 </dl>
                 {formError && <p className="send-error">{formError}</p>}
                 <div className="drawer-actions compact-actions">
-                  <button type="button" onClick={() => setSlot(null)}>Sulje</button>
+                  <button type="button" onClick={() => setSlot(null)}>{t("Sulje")}</button>
                   {slot.booking.series_id && (
                     <button className="danger" type="button" onClick={() => handleDelete(true)} disabled={saving}>
-                      Poista tämä ja tulevat viikot
+                      {t("Poista tämä ja tulevat viikot")}
                     </button>
                   )}
                   <button className="danger" type="button" onClick={() => handleDelete()} disabled={saving}>
-                    {saving ? "Poistetaan…" : slot.booking.series_id ? "Poista vain tämä vuoro" : "Poista varaus"}
+                    {saving ? t("Poistetaan…") : slot.booking.series_id ? t("Poista vain tämä vuoro") : t("Poista varaus")}
                   </button>
                 </div>
               </>
@@ -446,16 +447,16 @@ export function BookingCalendar({
               <form className="ticket-form" onSubmit={handleBook}>
                 {portal && (
                   <>
-                    <p className="topic-text">Varaus tehdään alla olevilla tiedoillasi. Vahvista vuoro.</p>
+                    <p className="topic-text">{t("Varaus tehdään alla olevilla tiedoillasi. Vahvista vuoro.")}</p>
                     {residentFacts}
                   </>
                 )}
                 {!portal && (
                 <>
                 <label>
-                  <span>Asukas</span>
+                  <span>{t("Asukas")}</span>
                   <select value={residentId} onChange={event => setResidentId(event.target.value)}>
-                    <option value="">Ei asukasta (esim. huolto tai yleinen varaus)</option>
+                    <option value="">{t("Ei asukasta (esim. huolto tai yleinen varaus)")}</option>
                     {residents.map(resident => (
                       <option key={resident.id} value={resident.id}>
                         {[resident.name, resident.apartment_number].filter(Boolean).join(" · ")}
@@ -465,29 +466,29 @@ export function BookingCalendar({
                 </label>
 
                 <label>
-                  <span>Lisätieto</span>
-                  <input value={note} onChange={event => setNote(event.target.value)} placeholder="Valinnainen, esim. Huoltokatko" />
+                  <span>{t("Lisätieto")}</span>
+                  <input value={note} onChange={event => setNote(event.target.value)} placeholder={t("Valinnainen, esim. Huoltokatko")} />
                 </label>
                 </>
                 )}
 
                 <fieldset className="repeat-choice">
-                  <legend>Onko varaus kertaluontoinen vai viikoittainen?</legend>
+                  <legend>{t("Onko varaus kertaluontoinen vai viikoittainen?")}</legend>
                   <label>
                     <input type="radio" name="repeat" checked={repeat === "once"} onChange={() => setRepeat("once")} disabled={!rules.single} />
                     <span>
-                      <strong>Kertaluontoinen</strong>
-                      <small>{rules.single ? "Vain tämä vuoro." : "Ei käytössä tässä taloyhtiössä."}</small>
+                      <strong>{t("Kertaluontoinen")}</strong>
+                      <small>{rules.single ? t("Vain tämä vuoro.") : t("Ei käytössä tässä taloyhtiössä.")}</small>
                     </span>
                   </label>
                   <label>
                     <input type="radio" name="repeat" checked={repeat === "weekly"} onChange={() => setRepeat("weekly")} disabled={!rules.weekly} />
                     <span>
-                      <strong>Viikoittainen</strong>
+                      <strong>{t("Viikoittainen")}</strong>
                       <small>
                         {rules.weekly
-                          ? `Sama vuoro joka viikko, seuraavat ${weeklyWeeksOf(rules)} viikkoa.`
-                          : "Ei käytössä tässä taloyhtiössä."}
+                          ? t("Sama vuoro joka viikko, seuraavat {0} viikkoa.", weeklyWeeksOf(rules))
+                          : t("Ei käytössä tässä taloyhtiössä.")}
                       </small>
                     </span>
                   </label>
@@ -496,9 +497,9 @@ export function BookingCalendar({
                 {formError && <p className="send-error">{formError}</p>}
 
                 <div className="drawer-actions compact-actions">
-                  <button type="button" onClick={() => setSlot(null)}>Peruuta</button>
+                  <button type="button" onClick={() => setSlot(null)}>{t("Peruuta")}</button>
                   <button className="primary" type="submit" disabled={saving || (!portal && !residentId && !note.trim())}>
-                    {saving ? "Varataan…" : "Varaa vuoro"}
+                    {saving ? t("Varataan…") : t("Varaa vuoro")}
                   </button>
                 </div>
               </form>

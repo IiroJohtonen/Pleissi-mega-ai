@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from "react";
+import { LanguageToggle } from "../components/common";
 import { api, errorMessage, MANAGEMENT_OFFICE, type Session, setSession } from "../session";
+import { t } from "../i18n";
 
 // Palautuslinkin tunniste osoitteesta #/reset/<tunniste>.
 function resetTokenFromHash() {
@@ -30,10 +32,10 @@ export function Login() {
     setError("");
     try {
       await api("/auth/forgot", { method: "POST", body: JSON.stringify({ email: email.trim() }) });
-      setNotice("Jos osoitteella on tunnus, lähetimme siihen linkin salasanan vaihtoon. Linkki on voimassa tunnin.");
+      setNotice(t("Jos osoitteella on tunnus, lähetimme siihen linkin salasanan vaihtoon. Linkki on voimassa tunnin."));
       show("login");
     } catch (resetError) {
-      setError(errorMessage(resetError, "Palautuslinkin pyyntö epäonnistui. Tarkista, että palvelin on käynnissä."));
+      setError(errorMessage(resetError, t("Palautuslinkin pyyntö epäonnistui. Tarkista, että palvelin on käynnissä.")));
     } finally {
       setSubmitting(false);
     }
@@ -42,7 +44,7 @@ export function Login() {
   async function submitNewPassword(event: FormEvent) {
     event.preventDefault();
     if (password !== repeat) {
-      setError("Salasanat eivät täsmää.");
+      setError(t("Salasanat eivät täsmää."));
       return;
     }
     setSubmitting(true);
@@ -51,10 +53,10 @@ export function Login() {
       await api("/auth/reset", { method: "POST", body: JSON.stringify({ token: resetToken, password }) });
       window.history.replaceState(null, "", window.location.pathname);
       setResetToken("");
-      setNotice("Salasana on vaihdettu. Kirjaudu sisään uudella salasanalla.");
+      setNotice(t("Salasana on vaihdettu. Kirjaudu sisään uudella salasanalla."));
       show("login");
     } catch (resetError) {
-      setError(errorMessage(resetError, "Salasanan vaihto epäonnistui."));
+      setError(errorMessage(resetError, t("Salasanan vaihto epäonnistui.")));
     } finally {
       setSubmitting(false);
     }
@@ -70,7 +72,7 @@ export function Login() {
         body: JSON.stringify({ email, password })
       }));
     } catch (loginError) {
-      let message = "Kirjautuminen epäonnistui. Tarkista, että palvelin on käynnissä.";
+      let message = t("Kirjautuminen epäonnistui. Tarkista, että palvelin on käynnissä.");
       try {
         message = JSON.parse((loginError as Error).message).error || message;
       } catch {
@@ -87,17 +89,17 @@ export function Login() {
       <div className="login-page">
         <form className="login-card" onSubmit={requestReset}>
           <img src="/kotilo-logo.svg" alt="Kotilo" />
-          <h1>Unohtunut salasana</h1>
-          <p>Anna sähköpostiosoitteesi, niin lähetämme linkin, jolla voit asettaa uuden salasanan.</p>
+          <h1>{t("Unohtunut salasana")}</h1>
+          <p>{t("Anna sähköpostiosoitteesi, niin lähetämme linkin, jolla voit asettaa uuden salasanan.")}</p>
           <label>
-            <span>Sähköposti</span>
+            <span>{t("Sähköposti")}</span>
             <input type="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="username" autoFocus required />
           </label>
           {error && <p className="send-error">{error}</p>}
           <button type="submit" disabled={submitting || !email.trim()}>
-            {submitting ? "Lähetetään…" : "Lähetä palautuslinkki"}
+            {submitting ? t("Lähetetään…") : t("Lähetä palautuslinkki")}
           </button>
-          <button type="button" className="login-link" onClick={() => show("login")}>← Takaisin kirjautumiseen</button>
+          <button type="button" className="login-link" onClick={() => show("login")}>{t("← Takaisin kirjautumiseen")}</button>
         </form>
       </div>
     );
@@ -108,19 +110,19 @@ export function Login() {
       <div className="login-page">
         <form className="login-card" onSubmit={submitNewPassword}>
           <img src="/kotilo-logo.svg" alt="Kotilo" />
-          <h1>Aseta uusi salasana</h1>
-          <p>Salasanassa pitää olla vähintään 8 merkkiä.</p>
+          <h1>{t("Aseta uusi salasana")}</h1>
+          <p>{t("Salasanassa pitää olla vähintään 8 merkkiä.")}</p>
           <label>
-            <span>Uusi salasana</span>
+            <span>{t("Uusi salasana")}</span>
             <input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" autoFocus required />
           </label>
           <label>
-            <span>Uusi salasana uudelleen</span>
+            <span>{t("Uusi salasana uudelleen")}</span>
             <input type="password" value={repeat} onChange={event => setRepeat(event.target.value)} autoComplete="new-password" required />
           </label>
           {error && <p className="send-error">{error}</p>}
           <button type="submit" disabled={submitting || password.length < 8 || !repeat}>
-            {submitting ? "Tallennetaan…" : "Vaihda salasana"}
+            {submitting ? t("Tallennetaan…") : t("Vaihda salasana")}
           </button>
           <button
             type="button"
@@ -131,7 +133,7 @@ export function Login() {
               show("login");
             }}
           >
-            ← Takaisin kirjautumiseen
+            {t("← Takaisin kirjautumiseen")}
           </button>
         </form>
       </div>
@@ -142,11 +144,11 @@ export function Login() {
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
         <img src="/kotilo-logo.svg" alt="Kotilo" />
-        <h1>Kirjaudu sisään</h1>
-        <p>{MANAGEMENT_OFFICE.name} · henkilökunta ja asukkaat</p>
+        <h1>{t("Kirjaudu sisään")}</h1>
+        <p>{MANAGEMENT_OFFICE.name}{" "}{t("· henkilökunta ja asukkaat")}</p>
 
         <label>
-          <span>Sähköposti</span>
+          <span>{t("Sähköposti")}</span>
           <input
             type="email"
             value={email}
@@ -158,7 +160,7 @@ export function Login() {
         </label>
 
         <label>
-          <span>Salasana</span>
+          <span>{t("Salasana")}</span>
           <input
             type="password"
             value={password}
@@ -173,9 +175,10 @@ export function Login() {
         {notice && <p className="login-notice">{notice}</p>}
 
         <button type="submit" disabled={submitting || !email.trim() || !password}>
-          {submitting ? "Kirjaudutaan…" : "Kirjaudu"}
+          {submitting ? t("Kirjaudutaan…") : t("Kirjaudu")}
         </button>
-        <button type="button" className="login-link" onClick={() => { setNotice(""); show("forgot"); }}>Unohditko salasanan?</button>
+        <button type="button" className="login-link" onClick={() => { setNotice(""); show("forgot"); }}>{t("Unohditko salasanan?")}</button>
+        <LanguageToggle className="login-link" />
       </form>
     </div>
   );

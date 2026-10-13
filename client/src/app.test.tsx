@@ -29,9 +29,10 @@ function mockApi() {
 }
 
 // Istunto luetaan selaimen tallennuksesta moduulin latautuessa, joten sovellus ladataan vasta sen jälkeen.
-async function renderApp(session: unknown, hash = "") {
+async function renderApp(session: unknown, hash = "", language = "") {
   localStorage.clear();
   if (session) localStorage.setItem("kotilo.session", JSON.stringify(session));
+  if (language) localStorage.setItem("kotilo.language", language);
   window.location.hash = hash;
   vi.resetModules();
   const { default: App } = await import("./App");
@@ -89,6 +90,43 @@ describe("sovellus", () => {
     expect(await screen.findByText("Liisa Mallikas")).toBeTruthy();
     expect(screen.getByText("Muuttoilmoitus")).toBeTruthy();
     expect(screen.queryByText("Päätösjono")).toBeNull();
+  });
+
+  it("näyttää uudet näkymät henkilökunnalle", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/keys");
+    expect(await screen.findByText("Lisää avain")).toBeTruthy();
+    cleanup();
+    await renderApp(staff("Isännöitsijä"), "#/meters");
+    expect(await screen.findByText("Lisää lukema")).toBeTruthy();
+    cleanup();
+    await renderApp(staff("Isännöitsijä"), "#/renovations");
+    expect(await screen.findByText(/Ei remontti-ilmoituksia/)).toBeTruthy();
+  });
+
+  it("näyttää asukkaalle remontti-ilmoituksen ja kulutuslukemat", async () => {
+    const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };
+    await renderApp({ token: "asukastunniste", kind: "resident", user: { id: resident.id, name: resident.name, email: resident.email, role: "Asukas" }, resident });
+    expect(await screen.findByText("Remontti-ilmoitus")).toBeTruthy();
+    expect(screen.getByText("Kulutuslukemat")).toBeTruthy();
+  });
+
+  it("näyttää käyttöliittymän englanniksi, kun kieli on valittu", async () => {
+    await renderApp(staff("Asiakaspalvelu"), "", "en");
+    expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
+    expect(screen.getByText("Sign out")).toBeTruthy();
+    expect(screen.getAllByText("Decision queue").length).toBeGreaterThan(0);
+    expect(screen.getByText("Overdue 1.1.2026")).toBeTruthy();
+    expect(screen.queryByText("Kirjaudu ulos")).toBeNull();
+    expect(document.documentElement.lang).toBe("en");
+  });
+
+  it("näyttää kirjautumissivulla kielenvaihdon", async () => {
+    await renderApp(null);
+    expect(screen.getByText("In English")).toBeTruthy();
+    cleanup();
+    await renderApp(null, "", "en");
+    expect(screen.getByText("Suomeksi")).toBeTruthy();
+    expect(screen.getAllByText("Sign in").length).toBeGreaterThan(0);
   });
 
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {

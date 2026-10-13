@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { API, downloadFile } from "../session";
 import type { TicketTab } from "../types";
+import { language, setLanguage } from "../i18n";
+import { t } from "../i18n";
 
 // Linkki, joka lataa rajapinnasta tiedoston (liite tai tietopankin dokumentti).
 export function DownloadLink({ path, filename, className, title, children }: {
@@ -15,7 +17,7 @@ export function DownloadLink({ path, filename, className, title, children }: {
     <a
       className={className}
       href={`${API}${path}`}
-      title={failed ? "Lataus epäonnistui. Yritä uudelleen." : title}
+      title={failed ? t("Lataus epäonnistui. Yritä uudelleen.") : title}
       onClick={event => {
         event.preventDefault();
         event.stopPropagation();
@@ -121,8 +123,17 @@ export function TabIcon({ tab }: { tab: TicketTab }) {
   );
 }
 
+// Vaihtaa käyttöliittymän kielen; painikkeessa lukee toisen kielen nimi sillä kielellä.
+export function LanguageToggle({ className }: { className?: string }) {
+  return (
+    <button type="button" className={className} lang={language === "en" ? "fi" : "en"} onClick={() => setLanguage(language === "en" ? "fi" : "en")}>
+      {language === "en" ? "Suomeksi" : "In English"}
+    </button>
+  );
+}
+
 export function NavToggle({ open, label, onToggle }: { open: boolean; label: string; onToggle: () => void }) {
-  const title = `${open ? "Piilota" : "Näytä"} ${label}`;
+  const title = `${open ? t("Piilota") : t("Näytä")} ${label}`;
   return (
     <button
       className={`nav-toggle ${open ? "open" : ""}`}
@@ -171,12 +182,12 @@ export function usePaged<T>(items: T[], resetKey: string) {
   return {
     items: items.slice(first, first + PAGE_SIZE),
     pager: pageCount > 1 ? (
-      <nav className="pager" aria-label="Sivutus">
-        <button onClick={() => goTo(current - 1)} disabled={current === 1}>← Edellinen</button>
+      <nav className="pager" aria-label={t("Sivutus")}>
+        <button onClick={() => goTo(current - 1)} disabled={current === 1}>{t("← Edellinen")}</button>
         <span>
-          Sivu {current} / {pageCount} · {first + 1}–{Math.min(first + PAGE_SIZE, items.length)} / {items.length}
+          {t("Sivu")}{" "}{current} / {pageCount} · {first + 1}–{Math.min(first + PAGE_SIZE, items.length)} / {items.length}
         </span>
-        <button onClick={() => goTo(current + 1)} disabled={current === pageCount}>Seuraava →</button>
+        <button onClick={() => goTo(current + 1)} disabled={current === pageCount}>{t("Seuraava →")}</button>
       </nav>
     ) : null
   };

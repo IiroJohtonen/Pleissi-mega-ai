@@ -1,6 +1,7 @@
 import { formatDate, formatTicketNumber, priorityLabel, statusLabel } from "../format";
 import { api, isAdmin, type OfficeUser, session } from "../session";
 import type { Company, Ticket, TicketDetail } from "../types";
+import { t } from "../i18n";
 
 export async function fetchTicketDetail(id: string): Promise<TicketDetail> {
   const detail = await api<Partial<TicketDetail> & Pick<TicketDetail, "ticket">>(`/tickets/${id}`);
@@ -22,14 +23,14 @@ export type TicketSort = { key: TicketSortKey; descending: boolean };
 
 // Tehtävälistan sarakkeet samassa järjestyksessä kuin rivin kentät.
 export const ticketColumns: { key: TicketSortKey; label: string }[] = [
-  { key: "number", label: "Numero" },
-  { key: "subject", label: "Aihe" },
-  { key: "priority", label: "Prioriteetti" },
-  { key: "type", label: "Tyyppi" },
-  { key: "contact", label: "Yhteyshenkilö" },
-  { key: "status", label: "Tila" },
-  { key: "created", label: "Luotu" },
-  { key: "updated", label: "Muokattu" }
+  { key: "number", label: t("Numero") },
+  { key: "subject", label: t("Aihe") },
+  { key: "priority", label: t("Prioriteetti") },
+  { key: "type", label: t("Tyyppi") },
+  { key: "contact", label: t("Yhteyshenkilö") },
+  { key: "status", label: t("Tila") },
+  { key: "created", label: t("Luotu") },
+  { key: "updated", label: t("Muokattu") }
 ];
 
 const priorityRank: Record<string, number> = { emergency: 0, urgent: 1, normal: 2, low: 3 };
@@ -62,7 +63,7 @@ export function ticketColumnText(ticket: Ticket, key: TicketSortKey) {
     case "subject": return `${ticket.subject} ${ticket.summary}`;
     case "priority": return priorityLabel(ticket.priority);
     case "type": return ticket.type;
-    case "contact": return ticket.resident_name || ticket.apartment_number || "Ei yhteyshenkilöä";
+    case "contact": return ticket.resident_name || ticket.apartment_number || t("Ei yhteyshenkilöä");
     case "status": return statusLabel(ticket.status);
     case "created": return formatDate(ticket.created_at);
     case "updated": return formatDate(ticket.updated_at || ticket.created_at);

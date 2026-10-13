@@ -1,5 +1,4 @@
-
-
+import { t } from "./i18n";
 // Rajapinnan osoite: kehityksessä paikallinen palvelin, tuotannossa sama osoite kuin käyttöliittymällä.
 // VITE_API_URL ohittaa oletuksen.
 export const API: string = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:4000/api" : "/api");
@@ -124,7 +123,9 @@ export function logout() {
 
 export function errorMessage(error: unknown, fallback: string) {
   try {
-    return JSON.parse((error as Error).message).error || fallback;
+    // Palvelimen virheteksti on suomeksi; se käännetään, jos sille on käännös.
+    const message = JSON.parse((error as Error).message).error;
+    return message ? t(String(message)) : fallback;
   } catch {
     return fallback;
   }

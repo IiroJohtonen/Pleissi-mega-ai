@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { usePaged } from "../components/common";
 import { api, errorMessage, isAdmin, isManager } from "../session";
 import type { Company, Resident } from "../types";
+import { t } from "../i18n";
 
 export function Residents({
   companyId,
@@ -17,7 +18,7 @@ export function Residents({
   onChanged: () => Promise<void>;
 }) {
   const allCompanies = Boolean(onCompanyChange);
-  const companyName = companies.find(company => company.id === companyId)?.name ?? "Taloyhtiö";
+  const companyName = companies.find(company => company.id === companyId)?.name ?? t("Taloyhtiö");
   const [residents, setResidents] = useState<Resident[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [companyFilter, setCompanyFilter] = useState("all");
@@ -85,11 +86,11 @@ export function Residents({
     : residents;
   // Sarakeotsikot; taloyhtiösarake on mukana vain koko asukastietokannassa.
   const residentColumns: { key: ResidentSortKey; label: string }[] = [
-    { key: "name", label: "Nimi" },
-    { key: "email", label: "Sähköposti" },
-    ...(allCompanies ? [{ key: "company" as const, label: "Taloyhtiö" }] : []),
-    { key: "address", label: "Osoite" },
-    { key: "apartment", label: "Asunto" }
+    { key: "name", label: t("Nimi") },
+    { key: "email", label: t("Sähköposti") },
+    ...(allCompanies ? [{ key: "company" as const, label: t("Taloyhtiö") }] : []),
+    { key: "address", label: t("Osoite") },
+    { key: "apartment", label: t("Asunto") }
   ];
   const [residentSort, setResidentSort] = useState<{ key: ResidentSortKey; descending: boolean } | null>(null);
   const residentSortValue = (resident: Resident, key: ResidentSortKey) => ({
@@ -112,7 +113,7 @@ export function Residents({
     ...(companyFilter !== "all"
       ? [{
           key: "company",
-          label: "Taloyhtiö",
+          label: t("Taloyhtiö"),
           value: companies.find(company => company.id === companyFilter)?.name ?? "",
           clear: () => setCompanyFilter("all")
         }]
@@ -120,12 +121,12 @@ export function Residents({
     ...(emailFilter !== "all"
       ? [{
           key: "email",
-          label: "Sähköposti",
-          value: emailFilter === "with" ? "On sähköposti" : "Ei sähköpostia",
+          label: t("Sähköposti"),
+          value: emailFilter === "with" ? t("On sähköposti") : t("Ei sähköpostia"),
           clear: () => setEmailFilter("all")
         }]
       : []),
-    ...(searchText ? [{ key: "search", label: "Haku", value: search.trim(), clear: () => setSearch("") }] : [])
+    ...(searchText ? [{ key: "search", label: t("Haku"), value: search.trim(), clear: () => setSearch("") }] : [])
   ];
 
   function closeForm() {
@@ -152,7 +153,7 @@ export function Residents({
       await loadResidents();
       await onChanged();
     } catch (error) {
-      let message = editing ? "Asukkaan tietojen tallennus epäonnistui." : "Asukkaan lisääminen epäonnistui.";
+      let message = editing ? t("Asukkaan tietojen tallennus epäonnistui.") : t("Asukkaan lisääminen epäonnistui.");
       try {
         message = JSON.parse((error as Error).message).error || message;
       } catch {
@@ -176,16 +177,16 @@ export function Residents({
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setFormError(errorMessage(error, "Tietojen vienti epäonnistui."));
+      setFormError(errorMessage(error, t("Tietojen vienti epäonnistui.")));
     }
   }
 
   // Poistaa asukkaan henkilötiedot pysyvästi; tehtävät jäävät historiaan ilman nimeä ja viestejä.
   async function eraseResident(resident: Resident) {
     if (!window.confirm(
-      `Poistetaanko asukkaan ${resident.name} henkilötiedot pysyvästi?\n\n`
-      + "Nimi, sähköposti, kirjautumistunnus, viestit, liitteet, tulevat vuorot, jonotukset ja muuttoilmoitukset poistetaan. "
-      + "Tehtävät jäävät historiaan ilman nimeä. Poistoa ei voi perua."
+      t("Poistetaanko asukkaan {0} henkilötiedot pysyvästi?\n\n", resident.name)
+      + t("Nimi, sähköposti, kirjautumistunnus, viestit, liitteet, tulevat vuorot, jonotukset ja muuttoilmoitukset poistetaan. ")
+      + t("Tehtävät jäävät historiaan ilman nimeä. Poistoa ei voi perua.")
     )) return;
     setSubmitting(true);
     setFormError("");
@@ -195,7 +196,7 @@ export function Residents({
       await loadResidents();
       await onChanged();
     } catch (error) {
-      setFormError(errorMessage(error, "Asukkaan tietojen poisto epäonnistui."));
+      setFormError(errorMessage(error, t("Asukkaan tietojen poisto epäonnistui.")));
     } finally {
       setSubmitting(false);
     }
@@ -203,31 +204,31 @@ export function Residents({
 
   return (
     <section className="content">
-      {allCompanies && <a className="back-link" href="#/companies">← Taloyhtiöt</a>}
+      {allCompanies && <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>}
 
       {allCompanies && filtersOpen && (
         <div className="ticket-filters">
           <label>
-            <span>Taloyhtiö</span>
+            <span>{t("Taloyhtiö")}</span>
             <select value={companyFilter} onChange={event => setCompanyFilter(event.target.value)}>
-              <option value="all">Kaikki</option>
+              <option value="all">{t("Kaikki")}</option>
               {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
             </select>
           </label>
           <label>
-            <span>Sähköposti</span>
+            <span>{t("Sähköposti")}</span>
             <select value={emailFilter} onChange={event => setEmailFilter(event.target.value)}>
-              <option value="all">Kaikki</option>
-              <option value="with">On sähköposti</option>
-              <option value="without">Ei sähköpostia</option>
+              <option value="all">{t("Kaikki")}</option>
+              <option value="with">{t("On sähköposti")}</option>
+              <option value="without">{t("Ei sähköpostia")}</option>
             </select>
           </label>
           <label>
-            <span>Haku</span>
+            <span>{t("Haku")}</span>
             <input
               value={search}
               onChange={event => setSearch(event.target.value)}
-              placeholder="Nimi, sähköposti, osoite tai asunto"
+              placeholder={t("Nimi, sähköposti, osoite tai asunto")}
             />
           </label>
           {residentFilters.length > 0 && (
@@ -235,7 +236,7 @@ export function Residents({
               setCompanyFilter("all");
               setEmailFilter("all");
               setSearch("");
-            }}>Tyhjennä suodattimet</button>
+            }}>{t("Tyhjennä suodattimet")}</button>
           )}
         </div>
       )}
@@ -246,8 +247,8 @@ export function Residents({
             <button
               className={`filter-toggle ${filtersOpen || residentFilters.length > 0 ? "active" : ""}`}
               onClick={() => setFiltersOpen(!filtersOpen)}
-              title={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
-              aria-label={filtersOpen ? "Piilota suodattimet" : "Näytä suodattimet"}
+              title={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
+              aria-label={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
               aria-expanded={filtersOpen}
             >
               <svg
@@ -266,22 +267,22 @@ export function Residents({
           )}
           <span>
             {allCompanies
-              ? `Kaikki taloyhtiöt · ${visibleResidents.length === residents.length
+              ? t("Kaikki taloyhtiöt · {0}", visibleResidents.length === residents.length
                 ? `${residents.length} asukasta`
-                : `${visibleResidents.length} / ${residents.length} asukasta`}`
-              : `${companyName} · ${residents.length} asukasta`}
+                : `${visibleResidents.length} / ${residents.length} asukasta`)
+              : t("{0} · {1} asukasta", companyName, residents.length)}
           </span>
           {residentFilters.map(filter => (
             <span className="filter-chip" key={filter.key}>
               <small>{filter.label}</small>
               {filter.value}
-              <button onClick={filter.clear} title="Poista suodatin" aria-label={`Poista suodatin ${filter.label}`}>×</button>
+              <button onClick={filter.clear} title={t("Poista suodatin")} aria-label={t("Poista suodatin {0}", filter.label)}>×</button>
             </span>
           ))}
         </div>
         <div className="toolbar-actions">
-          <button className="secondary" onClick={() => setImporting(true)}>Tuo asukkaita</button>
-          <button className="secondary" onClick={() => openForm(null)}>Lisää asukas</button>
+          <button className="secondary" onClick={() => setImporting(true)}>{t("Tuo asukkaita")}</button>
+          <button className="secondary" onClick={() => openForm(null)}>{t("Lisää asukas")}</button>
         </div>
       </div>
 
@@ -296,7 +297,7 @@ export function Residents({
                 onClick={() => setResidentSort(current => current?.key === column.key
                   ? { key: column.key, descending: !current.descending }
                   : { key: column.key, descending: false })}
-                title={`Järjestä sarakkeen ${column.label} mukaan`}
+                title={t("Järjestä sarakkeen {0} mukaan", column.label)}
                 aria-sort={active ? (residentSort.descending ? "descending" : "ascending") : undefined}
               >
                 {column.label}
@@ -318,15 +319,15 @@ export function Residents({
         </div>
       )}
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <div className="empty">Asukkaiden lataus epäonnistui. Tarkista, että palvelin on käynnistetty uudelleen.</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <div className="empty">{t("Asukkaiden lataus epäonnistui. Tarkista, että palvelin on käynnistetty uudelleen.")}</div>
         : visibleResidents.length === 0
-          ? <div className="empty">{residents.length === 0 ? "Ei asukkaita." : "Ei suodattimia vastaavia asukkaita."}</div>
+          ? <div className="empty">{residents.length === 0 ? t("Ei asukkaita.") : t("Ei suodattimia vastaavia asukkaita.")}</div>
         : pagedResidents.items.map(resident => (
           <article
             className={`resident-row clickable ${allCompanies ? "with-company" : ""}`}
             key={resident.id}
-            title="Avaa asukkaan tiedot"
+            title={t("Avaa asukkaan tiedot")}
             role="button"
             tabIndex={0}
             onClick={() => openForm(resident)}
@@ -338,7 +339,7 @@ export function Residents({
             }}
           >
             <strong>{resident.name}</strong>
-            <span>{resident.email || "Ei sähköpostia"}</span>
+            <span>{resident.email || t("Ei sähköpostia")}</span>
             {allCompanies && <span>{resident.company_name}</span>}
             <span>{resident.address}</span>
             <span className="type">{resident.apartment_number}</span>
@@ -364,17 +365,17 @@ export function Residents({
         <div className="overlay" onClick={closeForm}>
           <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
             <button className="close" onClick={closeForm}>×</button>
-            <h2>{editing ? editing.name : "Lisää asukas"}</h2>
+            <h2>{editing ? editing.name : t("Lisää asukas")}</h2>
             <p className="muted">
               {editing
-                ? `Asukkaan tiedot · ${editing.company_name ?? companyName}`
-                : allCompanies ? "Valitse taloyhtiö, johon asukas lisätään." : `Asukas lisätään taloyhtiöön ${companyName}.`}
+                ? t("Asukkaan tiedot · {0}", editing.company_name ?? companyName)
+                : allCompanies ? t("Valitse taloyhtiö, johon asukas lisätään.") : t("Asukas lisätään taloyhtiöön {0}.", companyName)}
             </p>
 
             <form className="ticket-form" onSubmit={handleSubmit}>
               {allCompanies && !editing && (
                 <label>
-                  <span>Taloyhtiö</span>
+                  <span>{t("Taloyhtiö")}</span>
                   <select value={formCompanyId} onChange={event => setFormCompanyId(event.target.value)}>
                     {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
                   </select>
@@ -382,69 +383,69 @@ export function Residents({
               )}
 
               <label>
-                <span>Nimi</span>
-                <input value={name} onChange={event => setName(event.target.value)} placeholder="Esim. Matti Meikäläinen" />
+                <span>{t("Nimi")}</span>
+                <input value={name} onChange={event => setName(event.target.value)} placeholder={t("Esim. Matti Meikäläinen")} />
               </label>
 
               <label>
-                <span>Sähköposti</span>
-                <input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="Valinnainen" />
+                <span>{t("Sähköposti")}</span>
+                <input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
 
               <label>
-                <span>Osoite</span>
-                <input value={address} onChange={event => setAddress(event.target.value)} placeholder="Esim. Koivikkotie 10" />
+                <span>{t("Osoite")}</span>
+                <input value={address} onChange={event => setAddress(event.target.value)} placeholder={t("Esim. Koivikkotie 10")} />
               </label>
 
               <label>
-                <span>Asunto</span>
-                <input value={apartmentNumber} onChange={event => setApartmentNumber(event.target.value)} placeholder="Esim. A 12" />
+                <span>{t("Asunto")}</span>
+                <input value={apartmentNumber} onChange={event => setApartmentNumber(event.target.value)} placeholder={t("Esim. A 12")} />
               </label>
 
               {isAdmin() && (
                 <label>
-                  <span>{editing?.has_password ? "Uusi salasana" : "Salasana"}</span>
+                  <span>{editing?.has_password ? t("Uusi salasana") : t("Salasana")}</span>
                   <input
                     type="password"
                     value={residentPassword}
                     onChange={event => setResidentPassword(event.target.value)}
-                    placeholder={editing?.has_password ? "Jätä tyhjäksi, jos salasanaa ei vaihdeta" : "Valinnainen, vähintään 8 merkkiä"}
+                    placeholder={editing?.has_password ? t("Jätä tyhjäksi, jos salasanaa ei vaihdeta") : t("Valinnainen, vähintään 8 merkkiä")}
                     autoComplete="new-password"
                   />
                 </label>
               )}
               <p className="reply-hint">
                 {editing?.has_password
-                  ? "Asukkaalla on salasana, ja hän voi kirjautua sähköpostillaan asukasportaaliin."
-                  : "Salasanan asettamisen jälkeen asukas voi kirjautua sähköpostillaan ja nähdä omat yhteydenottonsa ja vuoronsa."}
-                {!isAdmin() && " Salasanan voi asettaa tai vaihtaa vain pääkäyttäjä."}
+                  ? t("Asukkaalla on salasana, ja hän voi kirjautua sähköpostillaan asukasportaaliin.")
+                  : t("Salasanan asettamisen jälkeen asukas voi kirjautua sähköpostillaan ja nähdä omat yhteydenottonsa ja vuoronsa.")}
+                {!isAdmin() && t(" Salasanan voi asettaa tai vaihtaa vain pääkäyttäjä.")}
               </p>
 
               {formError && <p className="send-error">{formError}</p>}
 
               <div className="drawer-actions compact-actions">
-                <button type="button" onClick={closeForm}>Peruuta</button>
+                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
                 <button
                   className="primary"
                   type="submit"
                   disabled={submitting || !name.trim() || !address.trim() || !apartmentNumber.trim()}
                 >
                   {editing
-                    ? submitting ? "Tallennetaan…" : "Tallenna muutokset"
-                    : submitting ? "Lisätään…" : "Lisää asukas"}
+                    ? submitting ? t("Tallennetaan…") : t("Tallenna muutokset")
+                    : submitting ? t("Lisätään…") : t("Lisää asukas")}
                 </button>
               </div>
 
               {editing && isManager() && (
                 <div className="privacy-actions">
-                  <h3>Tietosuoja</h3>
+                  <h3>{t("Tietosuoja")}</h3>
                   <p className="reply-hint">
-                    Vie asukkaasta tallennetut tiedot tiedostona tai poista henkilötiedot pysyvästi asukkaan pyynnöstä.
+                    {t("Vie asukkaasta tallennetut tiedot tiedostona tai poista henkilötiedot pysyvästi asukkaan pyynnöstä.")}
                   </p>
                   <div className="drawer-actions compact-actions">
-                    <button type="button" disabled={submitting} onClick={() => exportResident(editing)}>Vie tiedot</button>
+                    <button type="button" disabled={submitting} onClick={() => exportResident(editing)}>{t("Vie tiedot")}</button>
                     <button type="button" className="danger" disabled={submitting} onClick={() => eraseResident(editing)}>
-                      Poista henkilötiedot
+                      {t("Poista henkilötiedot")}
                     </button>
                   </div>
                 </div>
@@ -580,7 +581,7 @@ function ResidentImport({
           .map(cells => cells.map(cell => cell == null ? "" : String(cell)))
           .filter(cells => cells.some(cell => cell.trim()));
       } catch {
-        setError("Excel-tiedoston lukeminen epäonnistui. Tiedoston pitää olla .xlsx-muodossa.");
+        setError(t("Excel-tiedoston lukeminen epäonnistui. Tiedoston pitää olla .xlsx-muodossa."));
         return;
       }
     } else {
@@ -593,9 +594,9 @@ function ResidentImport({
 
     const parsed = tableToResidents(table);
     if (parsed.missing.length > 0) {
-      setError(`Tiedostosta puuttuu sarake: ${parsed.missing.join(", ")}. Tarkista otsikkorivi.`);
+      setError(t("Tiedostosta puuttuu sarake: {0}. Tarkista otsikkorivi.", parsed.missing.join(", ")));
     } else if (parsed.rows.length === 0) {
-      setError("Tiedostossa ei ole otsikkorivin lisäksi yhtään riviä.");
+      setError(t("Tiedostossa ei ole otsikkorivin lisäksi yhtään riviä."));
     } else {
       setRows(parsed.rows);
     }
@@ -613,7 +614,7 @@ function ResidentImport({
       setRows([]);
       if (imported.added > 0) await onImported();
     } catch (importError) {
-      setError(errorMessage(importError, "Asukkaiden tuonti epäonnistui."));
+      setError(errorMessage(importError, t("Asukkaiden tuonti epäonnistui.")));
     } finally {
       setSubmitting(false);
     }
@@ -623,7 +624,7 @@ function ResidentImport({
     <div className="overlay" onClick={onClose}>
       <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
         <button className="close" onClick={onClose}>×</button>
-        <h2>Tuo asukkaita</h2>
+        <h2>{t("Tuo asukkaita")}</h2>
         <div className="card-tabs import-format">
           {(["csv", "excel"] as const).map(option => (
             <button
@@ -637,27 +638,27 @@ function ResidentImport({
                 setFileName("");
               }}
             >
-              {option === "csv" ? "CSV" : "Excel"}
+              {option === "csv" ? t("CSV") : t("Excel")}
             </button>
           ))}
         </div>
         <p className="muted">
-          Ensimmäisen rivin pitää olla otsikkorivi, jossa on sarakkeet <strong>nimi</strong>, <strong>osoite</strong> ja{" "}
-          <strong>asunto</strong>. Sarake <strong>sähköposti</strong> on valinnainen.{" "}
+          {t("Ensimmäisen rivin pitää olla otsikkorivi, jossa on sarakkeet")}{" "}<strong>{t("nimi")}</strong>, <strong>{t("osoite")}</strong>{" "}{t("ja")}{" "}
+          <strong>{t("asunto")}</strong>{t(". Sarake")}{" "}<strong>{t("sähköposti")}</strong>{" "}{t("on valinnainen.")}{" "}
           {format === "csv"
-            ? "Erottimena käy puolipiste tai pilkku."
-            : "Tiedoston pitää olla .xlsx-muodossa, ja asukkaat luetaan ensimmäiseltä välilehdeltä."}
+            ? t("Erottimena käy puolipiste tai pilkku.")
+            : t("Tiedoston pitää olla .xlsx-muodossa, ja asukkaat luetaan ensimmäiseltä välilehdeltä.")}
         </p>
         {format === "csv" ? (
-          <pre className="csv-example">nimi;sähköposti;osoite;asunto{"\n"}Matti Meikäläinen;matti@example.com;Koivikkotie 10;A 12</pre>
+          <pre className="csv-example">{t("nimi;sähköposti;osoite;asunto")}{"\n"}{t("Matti Meikäläinen;matti@example.com;Koivikkotie 10;A 12")}</pre>
         ) : (
           <div className="table-card import-example">
             <table className="data-table">
               <thead>
-                <tr><th>nimi</th><th>sähköposti</th><th>osoite</th><th>asunto</th></tr>
+                <tr><th>{t("nimi")}</th><th>{t("sähköposti")}</th><th>{t("osoite")}</th><th>{t("asunto")}</th></tr>
               </thead>
               <tbody>
-                <tr><td>Matti Meikäläinen</td><td>matti@example.com</td><td>Koivikkotie 10</td><td>A 12</td></tr>
+                <tr><td>{t("Matti Meikäläinen")}</td><td>{t("matti@example.com")}</td><td>{t("Koivikkotie 10")}</td><td>{t("A 12")}</td></tr>
               </tbody>
             </table>
           </div>
@@ -666,7 +667,7 @@ function ResidentImport({
         <div className="ticket-form">
           {!lockedCompanyId && (
             <label>
-              <span>Taloyhtiö, johon asukkaat tuodaan</span>
+              <span>{t("Taloyhtiö, johon asukkaat tuodaan")}</span>
               <select value={targetCompany} onChange={event => setTargetCompany(event.target.value)}>
                 {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
               </select>
@@ -674,7 +675,7 @@ function ResidentImport({
           )}
 
           <label>
-            <span>{format === "csv" ? "CSV-tiedosto" : "Excel-tiedosto (.xlsx)"}</span>
+            <span>{format === "csv" ? t("CSV-tiedosto") : t("Excel-tiedosto (.xlsx)")}</span>
             <input
               // Muodon vaihto tyhjentää valitun tiedoston.
               key={format}
@@ -688,15 +689,15 @@ function ResidentImport({
 
           {rows.length > 0 && (
             <>
-              <p className="reply-hint">{fileName}: {rows.length} riviä. Esikatselu ensimmäisistä riveistä:</p>
+              <p className="reply-hint">{fileName}: {rows.length}{" "}{t("riviä. Esikatselu ensimmäisistä riveistä:")}</p>
               <div className="table-card">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Nimi</th>
-                      <th>Sähköposti</th>
-                      <th>Osoite</th>
-                      <th>Asunto</th>
+                      <th>{t("Nimi")}</th>
+                      <th>{t("Sähköposti")}</th>
+                      <th>{t("Osoite")}</th>
+                      <th>{t("Asunto")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -716,14 +717,14 @@ function ResidentImport({
 
           {result && (
             <div className={`ai-reason ${result.skipped.length === 0 ? "created" : "found"}`}>
-              Lisätty {result.added} asukasta{result.skipped.length > 0 ? `, ohitettu ${result.skipped.length} riviä.` : "."}
+              {t("Lisätty")}{" "}{result.added}{" "}{t("asukasta")}{result.skipped.length > 0 ? t(", ohitettu {0} riviä.", result.skipped.length) : "."}
             </div>
           )}
           {result && result.skipped.length > 0 && (
             <ul className="import-skipped">
               {result.skipped.map(skip => (
                 <li key={skip.line}>
-                  <strong>Rivi {skip.line}{skip.name ? ` (${skip.name})` : ""}:</strong> {skip.reason}
+                  <strong>{t("Rivi")}{" "}{skip.line}{skip.name ? ` (${skip.name})` : ""}:</strong> {skip.reason}
                 </li>
               ))}
             </ul>
@@ -732,10 +733,10 @@ function ResidentImport({
           {error && <p className="send-error">{error}</p>}
 
           <div className="drawer-actions compact-actions">
-            <button type="button" onClick={onClose}>{result ? "Sulje" : "Peruuta"}</button>
+            <button type="button" onClick={onClose}>{result ? t("Sulje") : t("Peruuta")}</button>
             {!result && (
               <button className="primary" type="button" onClick={handleImport} disabled={submitting || rows.length === 0}>
-                {submitting ? "Tuodaan…" : rows.length > 0 ? `Tuo ${rows.length} asukasta` : "Tuo asukkaat"}
+                {submitting ? t("Tuodaan…") : rows.length > 0 ? t("Tuo {0} asukasta", rows.length) : t("Tuo asukkaat")}
               </button>
             )}
           </div>

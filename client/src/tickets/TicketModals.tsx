@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import type { Company } from "../types";
+import { t } from "../i18n";
 
 export function SkipTicketModal({
   onClose,
@@ -26,22 +27,22 @@ export function SkipTicketModal({
     <div className="overlay skip-overlay" onClick={onClose}>
       <aside className="drawer skip-drawer" onClick={event => event.stopPropagation()}>
         <button className="close" onClick={onClose}>×</button>
-        <h2>Sulje tehtävä</h2>
-        <p className="muted">Tehtävä suljetaan ilman muita toimenpiteitä. Valitse sulkemisen syy.</p>
+        <h2>{t("Sulje tehtävä")}</h2>
+        <p className="muted">{t("Tehtävä suljetaan ilman muita toimenpiteitä. Valitse sulkemisen syy.")}</p>
         <form className="ticket-form" onSubmit={handleSubmit}>
           <label>
-            <span>Syy <em className="required-label">Pakollinen</em></span>
+            <span>{t("Syy")}{" "}<em className="required-label">{t("Pakollinen")}</em></span>
             <select required value={reason} onChange={event => setReason(event.target.value)}>
-              <option value="">Valitse syy</option>
-              <option value="already_handled">Jo hoidettu</option>
-              <option value="no_action_required">Ei vaadi toimia</option>
-              <option value="spam">Roskaposti</option>
+              <option value="">{t("Valitse syy")}</option>
+              <option value="already_handled">{t("Jo hoidettu")}</option>
+              <option value="no_action_required">{t("Ei vaadi toimia")}</option>
+              <option value="spam">{t("Roskaposti")}</option>
             </select>
           </label>
           <div className="drawer-actions compact-actions">
-            <button type="button" onClick={onClose}>Peruuta</button>
+            <button type="button" onClick={onClose}>{t("Peruuta")}</button>
             <button className="primary" type="submit" disabled={!reason || submitting}>
-              {submitting ? "Suljetaan…" : "Sulje tehtävä"}
+              {submitting ? t("Suljetaan…") : t("Sulje tehtävä")}
             </button>
           </div>
         </form>
@@ -102,61 +103,61 @@ export function TicketCreateModal({
     <div className="overlay" onClick={onClose}>
       <aside className="drawer form-drawer" onClick={e => e.stopPropagation()}>
         <button className="close" onClick={onClose}>×</button>
-        <h2>Luo uusi tehtävä</h2>
-        <p className="muted">Lisää manuaalinen tehtävä omiin tehtäviin.</p>
+        <h2>{t("Luo uusi tehtävä")}</h2>
+        <p className="muted">{t("Lisää manuaalinen tehtävä omiin tehtäviin.")}</p>
 
         <form className="ticket-form" onSubmit={handleSubmit}>
           <label>
-            <span>Taloyhtiö</span>
+            <span>{t("Taloyhtiö")}</span>
             <select value={companyId} onChange={e => setCompanyId(e.target.value)}>
               {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
             </select>
           </label>
 
           <label>
-            <span>Aihe</span>
-            <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Esim. Käytävävalot" />
+            <span>{t("Aihe")}</span>
+            <input value={subject} onChange={e => setSubject(e.target.value)} placeholder={t("Esim. Käytävävalot")} />
           </label>
 
           <label>
-            <span>Luokka</span>
+            <span>{t("Luokka")}</span>
             <select value={type} onChange={e => setType(e.target.value)}>
-              <option>Ilmoitus</option>
-              <option>Kysymys</option>
-              <option>Pyyntö</option>
-              <option>Toimenpide</option>
+              <option value="Ilmoitus">{t("Ilmoitus")}</option>
+              <option value="Kysymys">{t("Kysymys")}</option>
+              <option value="Pyyntö">{t("Pyyntö")}</option>
+              <option value="Toimenpide">{t("Toimenpide")}</option>
             </select>
           </label>
 
           <label>
-            <span>Prioriteetti</span>
+            <span>{t("Prioriteetti")}</span>
             <select value={priority} onChange={e => setPriority(e.target.value)}>
-              <option value="normal">Normaali</option>
-              <option value="urgent">Kiireellinen</option>
-              <option value="low">Matala</option>
-              <option value="emergency">Hätä</option>
+              <option value="normal">{t("Normaali")}</option>
+              <option value="urgent">{t("Kiireellinen")}</option>
+              <option value="low">{t("Matala")}</option>
+              <option value="emergency">{t("Hätä")}</option>
             </select>
           </label>
 
           <label>
-            <span>Asukkaan nimi</span>
-            <input value={residentName} onChange={e => setResidentName(e.target.value)} placeholder="Valinnainen" />
+            <span>{t("Asukkaan nimi")}</span>
+            <input value={residentName} onChange={e => setResidentName(e.target.value)} placeholder={t("Valinnainen")} />
           </label>
 
           <label>
-            <span>Asunto</span>
-            <input value={apartmentNumber} onChange={e => setApartmentNumber(e.target.value)} placeholder="Valinnainen, esim. A 12" />
+            <span>{t("Asunto")}</span>
+            <input value={apartmentNumber} onChange={e => setApartmentNumber(e.target.value)} placeholder={t("Valinnainen, esim. A 12")} />
           </label>
 
           <label>
-            <span>Kuvaus</span>
-            <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={6} placeholder="Kerro tehtävän sisältö..." />
+            <span>{t("Kuvaus")}</span>
+            <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={6} placeholder={t("Kerro tehtävän sisältö...")} />
           </label>
 
           <div className="drawer-actions compact-actions">
-            <button type="button" onClick={onClose}>Peruuta</button>
+            <button type="button" onClick={onClose}>{t("Peruuta")}</button>
             <button className="primary" type="submit" disabled={submitting || !subject.trim() || !summary.trim()}>
-              {submitting ? "Luodaan…" : "Luo tehtävä"}
+              {submitting ? t("Luodaan…") : t("Luo tehtävä")}
             </button>
           </div>
         </form>

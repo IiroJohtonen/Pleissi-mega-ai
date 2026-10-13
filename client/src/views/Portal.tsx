@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { DownloadLink } from "../components/common";
+import { DownloadLink, LanguageToggle } from "../components/common";
 import { fileToBase64, formatDate, formatDay, formatFileSize, formatTicketNumber } from "../format";
 import { api, errorMessage, logout, type ResidentAccount } from "../session";
 import { splitQuotedReply } from "../tickets/ticket-utils";
@@ -10,6 +10,7 @@ import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
 import { PARKING_TYPES } from "./Parking";
 import { RENOVATION_WORK_TYPES, type RenovationNotice, renovationPeriod, renovationStatusLabels } from "./Renovations";
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
+import { t } from "../i18n";
 
 // Asukasportaali: asukas näkee vain oman taloyhtiönsä sauna- ja pyykkitupavuorot.
 export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
@@ -20,14 +21,14 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
       <header className="portal-header">
         <img src="/kotilo-logo.svg" alt="Kotilo" />
         <nav>
-          <button className={view === "announcements" ? "active" : ""} onClick={() => setView("announcements")}>Tiedotteet</button>
-          <button className={view === "sauna" ? "active" : ""} onClick={() => setView("sauna")}>Saunavuorot</button>
-          <button className={view === "laundry" ? "active" : ""} onClick={() => setView("laundry")}>Pyykkitupavuorot</button>
-          <button className={view === "tickets" ? "active" : ""} onClick={() => setView("tickets")}>Tehtävät</button>
-          <button className={view === "waitlist" ? "active" : ""} onClick={() => setView("waitlist")}>Jonot</button>
-          <button className={view === "moves" ? "active" : ""} onClick={() => setView("moves")}>Muuttoilmoitus</button>
-          <button className={view === "renovations" ? "active" : ""} onClick={() => setView("renovations")}>Remontti-ilmoitus</button>
-          <button className={view === "meters" ? "active" : ""} onClick={() => setView("meters")}>Kulutuslukemat</button>
+          <button className={view === "announcements" ? "active" : ""} onClick={() => setView("announcements")}>{t("Tiedotteet")}</button>
+          <button className={view === "sauna" ? "active" : ""} onClick={() => setView("sauna")}>{t("Saunavuorot")}</button>
+          <button className={view === "laundry" ? "active" : ""} onClick={() => setView("laundry")}>{t("Pyykkitupavuorot")}</button>
+          <button className={view === "tickets" ? "active" : ""} onClick={() => setView("tickets")}>{t("Tehtävät")}</button>
+          <button className={view === "waitlist" ? "active" : ""} onClick={() => setView("waitlist")}>{t("Jonot")}</button>
+          <button className={view === "moves" ? "active" : ""} onClick={() => setView("moves")}>{t("Muuttoilmoitus")}</button>
+          <button className={view === "renovations" ? "active" : ""} onClick={() => setView("renovations")}>{t("Remontti-ilmoitus")}</button>
+          <button className={view === "meters" ? "active" : ""} onClick={() => setView("meters")}>{t("Kulutuslukemat")}</button>
         </nav>
         <div className="portal-user">
           <strong>{resident.name}</strong>
@@ -35,14 +36,15 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           <button
             onClick={logout}
           >
-            Kirjaudu ulos
+            {t("Kirjaudu ulos")}
           </button>
+          <LanguageToggle />
         </div>
       </header>
 
       <main className="portal-main">
         <div>
-          <h1>{view === "announcements" ? "Tiedotteet" : view === "sauna" ? "Saunavuorot" : view === "laundry" ? "Pyykkitupavuorot" : view === "waitlist" ? "Jonot" : view === "moves" ? "Muuttoilmoitus" : view === "renovations" ? "Remontti-ilmoitus" : view === "meters" ? "Kulutuslukemat" : "Tehtävät"}</h1>
+          <h1>{view === "announcements" ? t("Tiedotteet") : view === "sauna" ? t("Saunavuorot") : view === "laundry" ? t("Pyykkitupavuorot") : view === "waitlist" ? t("Jonot") : view === "moves" ? t("Muuttoilmoitus") : view === "renovations" ? t("Remontti-ilmoitus") : view === "meters" ? t("Kulutuslukemat") : t("Tehtävät")}</h1>
           <p className="muted">{resident.companyName}</p>
         </div>
         {view === "announcements" ? <PortalAnnouncements />
@@ -84,7 +86,7 @@ function PortalFilePicker({ files, onChange }: { files: File[]; onChange: (files
   return (
     <div className="reply-attachments">
       <label className="attach-button">
-        Liitä kuva
+        {t("Liitä kuva")}
         <input
           type="file"
           multiple
@@ -99,7 +101,7 @@ function PortalFilePicker({ files, onChange }: { files: File[]; onChange: (files
       {files.map((file, index) => (
         <span className="reply-file" key={`${file.name}-${index}`}>
           {file.name} <small>{formatFileSize(file.size)}</small>
-          <button type="button" onClick={() => onChange(files.filter((_, position) => position !== index))} aria-label={`Poista liite ${file.name}`}>×</button>
+          <button type="button" onClick={() => onChange(files.filter((_, position) => position !== index))} aria-label={t("Poista liite {0}", file.name)}>×</button>
         </span>
       ))}
     </div>
@@ -151,42 +153,42 @@ function PortalTicketThread({ ticketId, onBack }: { ticketId: string; onBack: ()
       setFiles([]);
       await loadThread();
     } catch (sendError) {
-      setError(errorMessage(sendError, "Viestin lähetys epäonnistui. Yritä uudelleen."));
+      setError(errorMessage(sendError, t("Viestin lähetys epäonnistui. Yritä uudelleen.")));
     } finally {
       setSending(false);
     }
   }
 
-  if (failed) return <p className="send-error">Tehtävän lataus epäonnistui.</p>;
-  if (!thread) return <div className="empty">Ladataan…</div>;
+  if (failed) return <p className="send-error">{t("Tehtävän lataus epäonnistui.")}</p>;
+  if (!thread) return <div className="empty">{t("Ladataan…")}</div>;
   const closed = thread.ticket.status === "closed";
 
   return (
     <div className="portal-thread">
-      <button className="back-link" onClick={onBack}>← Kaikki tehtävät</button>
+      <button className="back-link" onClick={onBack}>{t("← Kaikki tehtävät")}</button>
       <div className="portal-thread-head">
         <h2>{thread.ticket.subject}</h2>
         <p className="muted">
-          #{formatTicketNumber(thread.ticket.ticket_number)} · {thread.ticket.type} · {closed ? "Suljettu" : "Käsittelyssä"} · luotu {formatDate(thread.ticket.created_at)}
+          #{formatTicketNumber(thread.ticket.ticket_number)} · {t(thread.ticket.type)} · {closed ? t("Suljettu") : t("Käsittelyssä")}{" "}{t("· luotu")}{" "}{formatDate(thread.ticket.created_at)}
         </p>
       </div>
 
       <div className="portal-messages">
         {thread.messages.map(message => (
           <div key={message.id} className={`portal-message ${message.direction === "inbound" ? "mine" : "theirs"}`}>
-            <small>{message.direction === "inbound" ? "Sinä" : "Isännöitsijä"} · {formatDate(message.created_at)}</small>
+            <small>{message.direction === "inbound" ? t("Sinä") : t("Isännöitsijä")} · {formatDate(message.created_at)}</small>
             <p>{message.direction === "inbound" ? splitQuotedReply(message.body).text : message.body}</p>
           </div>
         ))}
-        {thread.messages.length === 0 && <p className="muted">Ei viestejä.</p>}
+        {thread.messages.length === 0 && <p className="muted">{t("Ei viestejä.")}</p>}
       </div>
 
       {thread.attachments.length > 0 && (
         <div className="portal-thread-files">
-          <strong>Liitteet</strong>
+          <strong>{t("Liitteet")}</strong>
           {thread.attachments.map(attachment => (
             <DownloadLink key={attachment.id} path={`/portal/attachments/${attachment.id}`} filename={attachment.filename}>
-              {attachment.filename} <small>{attachment.direction === "portal" ? "sinulta" : "isännöitsijältä"} · {formatFileSize(attachment.size)}</small>
+              {attachment.filename} <small>{attachment.direction === "portal" ? t("sinulta") : t("isännöitsijältä")} · {formatFileSize(attachment.size)}</small>
             </DownloadLink>
           ))}
         </div>
@@ -194,13 +196,13 @@ function PortalTicketThread({ ticketId, onBack }: { ticketId: string; onBack: ()
 
       <form className="ticket-form portal-ticket-form" onSubmit={send}>
         <label>
-          <span>{closed ? "Uusi viesti (avaa tehtävän uudelleen)" : "Uusi viesti isännöitsijälle"}</span>
+          <span>{closed ? t("Uusi viesti (avaa tehtävän uudelleen)") : t("Uusi viesti isännöitsijälle")}</span>
           <textarea value={body} onChange={event => setBody(event.target.value)} rows={4} maxLength={5000} required />
         </label>
         <PortalFilePicker files={files} onChange={setFiles} />
         {error && <p className="send-error">{error}</p>}
         <div className="portal-ticket-actions">
-          <button type="submit" className="portal-new" disabled={sending || !body.trim()}>{sending ? "Lähetetään…" : "Lähetä viesti"}</button>
+          <button type="submit" className="portal-new" disabled={sending || !body.trim()}>{sending ? t("Lähetetään…") : t("Lähetä viesti")}</button>
         </div>
       </form>
     </div>
@@ -240,7 +242,7 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (subject.trim().length < 3 || description.trim().length < 5) {
-      setFormError("Kirjoita otsikko ja kuvaus.");
+      setFormError(t("Kirjoita otsikko ja kuvaus."));
       return;
     }
     setSaving(true);
@@ -250,7 +252,7 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
         method: "POST",
         body: JSON.stringify({ subject: subject.trim(), description: description.trim(), type, attachments: await portalAttachments(files) })
       });
-      if (created.attachmentError) setFormError(`Tehtävä lähetettiin, mutta liitteitä ei tallennettu: ${created.attachmentError}`);
+      if (created.attachmentError) setFormError(t("Tehtävä lähetettiin, mutta liitteitä ei tallennettu: {0}", created.attachmentError));
       setFiles([]);
       setSubject("");
       setDescription("");
@@ -259,7 +261,7 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
       setSent(true);
       await loadTickets();
     } catch {
-      setFormError("Tehtävän lähetys epäonnistui. Yritä uudelleen.");
+      setFormError(t("Tehtävän lähetys epäonnistui. Yritä uudelleen."));
     } finally {
       setSaving(false);
     }
@@ -273,56 +275,56 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
     <>
       <div className="portal-tickets-head">
         <p className="muted">
-          Vikailmoitukset, kysymykset ja pyynnöt isännöitsijälle. Kiireellisessä hätätilanteessa soita huoltoyhtiön päivystykseen.
+          {t("Vikailmoitukset, kysymykset ja pyynnöt isännöitsijälle. Kiireellisessä hätätilanteessa soita huoltoyhtiön päivystykseen.")}
         </p>
         {!creating && (
-          <button className="portal-new" onClick={() => { setCreating(true); setSent(false); }}>Luo tehtävä</button>
+          <button className="portal-new" onClick={() => { setCreating(true); setSent(false); }}>{t("Luo tehtävä")}</button>
         )}
       </div>
 
-      {sent && !creating && <p className="portal-sent">Tehtävä on lähetetty isännöitsijälle.</p>}
+      {sent && !creating && <p className="portal-sent">{t("Tehtävä on lähetetty isännöitsijälle.")}</p>}
       {formError && !creating && <p className="send-error">{formError}</p>}
 
       {creating && (
         <form className="ticket-form portal-ticket-form" onSubmit={handleSubmit}>
           <dl className="ticket-facts">
             <div>
-              <dt>Ilmoittaja</dt>
+              <dt>{t("Ilmoittaja")}</dt>
               <dd>{resident.name}</dd>
             </div>
             <div>
-              <dt>Asunto</dt>
+              <dt>{t("Asunto")}</dt>
               <dd>{resident.apartmentNumber || "–"}</dd>
             </div>
           </dl>
 
           <label>
-            <span>Tyyppi</span>
+            <span>{t("Tyyppi")}</span>
             <select value={type} onChange={event => setType(event.target.value)}>
-              {PORTAL_TICKET_TYPES.map(option => <option key={option} value={option}>{option}</option>)}
+              {PORTAL_TICKET_TYPES.map(option => <option key={option} value={option}>{t(option)}</option>)}
             </select>
           </label>
 
           <label>
-            <span>Otsikko</span>
+            <span>{t("Otsikko")}</span>
             <input
               value={subject}
               onChange={event => setSubject(event.target.value)}
               maxLength={150}
-              placeholder="Esim. Keittiön hana vuotaa"
+              placeholder={t("Esim. Keittiön hana vuotaa")}
               required
               autoFocus
             />
           </label>
 
           <label>
-            <span>Kuvaus</span>
+            <span>{t("Kuvaus")}</span>
             <textarea
               value={description}
               onChange={event => setDescription(event.target.value)}
               maxLength={5000}
               rows={6}
-              placeholder="Kerro, mitä on tapahtunut ja missä."
+              placeholder={t("Kerro, mitä on tapahtunut ja missä.")}
               required
             />
           </label>
@@ -332,25 +334,25 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
           {formError && <p className="send-error">{formError}</p>}
 
           <div className="portal-ticket-actions">
-            <button type="button" className="secondary" onClick={() => setCreating(false)} disabled={saving}>Peruuta</button>
-            <button type="submit" className="portal-new" disabled={saving}>{saving ? "Lähetetään…" : "Lähetä tehtävä"}</button>
+            <button type="button" className="secondary" onClick={() => setCreating(false)} disabled={saving}>{t("Peruuta")}</button>
+            <button type="submit" className="portal-new" disabled={saving}>{saving ? t("Lähetetään…") : t("Lähetä tehtävä")}</button>
           </div>
         </form>
       )}
 
-      {loading ? <div className="empty">Ladataan…</div>
-        : loadError ? <p className="send-error">Tehtävien lataus epäonnistui.</p>
-        : tickets.length === 0 ? <div className="empty">Et ole vielä luonut tehtäviä.</div>
+      {loading ? <div className="empty">{t("Ladataan…")}</div>
+        : loadError ? <p className="send-error">{t("Tehtävien lataus epäonnistui.")}</p>
+        : tickets.length === 0 ? <div className="empty">{t("Et ole vielä luonut tehtäviä.")}</div>
         : (
           <div className="table-card">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Numero</th>
-                  <th>Otsikko</th>
-                  <th>Tyyppi</th>
-                  <th>Tila</th>
-                  <th>Luotu</th>
+                  <th>{t("Numero")}</th>
+                  <th>{t("Otsikko")}</th>
+                  <th>{t("Tyyppi")}</th>
+                  <th>{t("Tila")}</th>
+                  <th>{t("Luotu")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -360,7 +362,7 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
                     className="clickable"
                     role="button"
                     tabIndex={0}
-                    title="Avaa viestiketju"
+                    title={t("Avaa viestiketju")}
                     onClick={() => setOpenId(ticket.id)}
                     onKeyDown={event => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -371,8 +373,8 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
                   >
                     <td>#{formatTicketNumber(ticket.ticket_number)}</td>
                     <td><strong>{ticket.subject}</strong></td>
-                    <td>{ticket.type}</td>
-                    <td>{ticket.status === "closed" ? "Suljettu" : "Käsittelyssä"}</td>
+                    <td>{t(ticket.type)}</td>
+                    <td>{ticket.status === "closed" ? t("Suljettu") : t("Käsittelyssä")}</td>
                     <td>{formatDate(ticket.created_at)}</td>
                   </tr>
                 ))}
@@ -397,14 +399,14 @@ function PortalAnnouncements() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="empty">Ladataan…</div>;
-  if (failed) return <p className="send-error">Tiedotteiden lataus epäonnistui.</p>;
-  if (items.length === 0) return <div className="empty">Ei tiedotteita.</div>;
+  if (loading) return <div className="empty">{t("Ladataan…")}</div>;
+  if (failed) return <p className="send-error">{t("Tiedotteiden lataus epäonnistui.")}</p>;
+  if (items.length === 0) return <div className="empty">{t("Ei tiedotteita.")}</div>;
   return (
     <div className="portal-announcements">
       {items.map(item => (
         <article key={item.id}>
-          <small>{formatDate(item.created_at)}{item.stairwell ? ` · Rappu ${item.stairwell}` : ""}</small>
+          <small>{formatDate(item.created_at)}{item.stairwell ? t(" · Rappu {0}", item.stairwell) : ""}</small>
           <h2>{item.title}</h2>
           <p>{item.body}</p>
         </article>
@@ -426,7 +428,7 @@ function PortalWaitlist() {
     try {
       setEntries(await api<WaitlistEntry[]>("/portal/waitlist"));
     } catch {
-      setError("Jonotietojen lataus epäonnistui.");
+      setError(t("Jonotietojen lataus epäonnistui."));
     } finally {
       setLoading(false);
     }
@@ -447,7 +449,7 @@ function PortalWaitlist() {
       setNotes(current => ({ ...current, [resource]: "" }));
       await loadEntries();
     } catch (joinError) {
-      setError(errorMessage(joinError, "Jonoon ilmoittautuminen epäonnistui."));
+      setError(errorMessage(joinError, t("Jonoon ilmoittautuminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -460,17 +462,17 @@ function PortalWaitlist() {
       await api(`/portal/waitlist/${encodeURIComponent(entry.id)}`, { method: "DELETE" });
       await loadEntries();
     } catch {
-      setError("Jonosta poistuminen epäonnistui.");
+      setError(t("Jonosta poistuminen epäonnistui."));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div className="empty">Ladataan…</div>;
+  if (loading) return <div className="empty">{t("Ladataan…")}</div>;
 
   const queues: { resource: "parking" | "sauna"; title: string; hint: string }[] = [
-    { resource: "parking", title: "Autopaikkajono", hint: "Vapautuva autopaikka tarjotaan jonossa ensimmäisenä olevalle." },
-    { resource: "sauna", title: "Saunavuorojono", hint: "Vapautuva vakiovuoro tarjotaan jonossa ensimmäisenä olevalle." }
+    { resource: "parking", title: t("Autopaikkajono"), hint: t("Vapautuva autopaikka tarjotaan jonossa ensimmäisenä olevalle.") },
+    { resource: "sauna", title: t("Saunavuorojono"), hint: t("Vapautuva vakiovuoro tarjotaan jonossa ensimmäisenä olevalle.") }
   ];
 
   return (
@@ -484,36 +486,36 @@ function PortalWaitlist() {
             {entry ? (
               <>
                 <p className="portal-queue-position">
-                  Olet jonossa sijalla <strong>{entry.position}</strong>
-                  {entry.status === "offered" && " · isännöitsijä on tarjonnut sinulle paikkaa"}
+                  {t("Olet jonossa sijalla")}{" "}<strong>{entry.position}</strong>
+                  {entry.status === "offered" && t(" · isännöitsijä on tarjonnut sinulle paikkaa")}
                 </p>
                 <p className="muted">
-                  {waitlistLabel(entry)} · ilmoittauduttu {formatDate(entry.created_at)}{entry.note ? ` · ${entry.note}` : ""}
+                  {waitlistLabel(entry)}{" "}{t("· ilmoittauduttu")}{" "}{formatDate(entry.created_at)}{entry.note ? ` · ${entry.note}` : ""}
                 </p>
-                <button className="secondary" onClick={() => void leave(entry)} disabled={saving}>Poistu jonosta</button>
+                <button className="secondary" onClick={() => void leave(entry)} disabled={saving}>{t("Poistu jonosta")}</button>
               </>
             ) : (
               <div className="ticket-form">
                 {queue.resource === "parking" && (
                   <label>
-                    <span>Toivottu paikkatyyppi</span>
+                    <span>{t("Toivottu paikkatyyppi")}</span>
                     <select value={parkingType} onChange={event => setParkingType(event.target.value)}>
-                      <option value="">Mikä tahansa</option>
-                      {PARKING_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                      <option value="">{t("Mikä tahansa")}</option>
+                      {PARKING_TYPES.map(type => <option key={type} value={type}>{t(type)}</option>)}
                     </select>
                   </label>
                 )}
                 <label>
-                  <span>Toive (valinnainen)</span>
+                  <span>{t("Toive (valinnainen)")}</span>
                   <input
                     value={notes[queue.resource]}
                     onChange={event => setNotes(current => ({ ...current, [queue.resource]: event.target.value }))}
                     maxLength={300}
-                    placeholder={queue.resource === "parking" ? "Esim. sähköauton latausmahdollisuus" : "Esim. perjantai-ilta"}
+                    placeholder={queue.resource === "parking" ? t("Esim. sähköauton latausmahdollisuus") : t("Esim. perjantai-ilta")}
                   />
                 </label>
                 <div className="portal-ticket-actions">
-                  <button className="portal-new" onClick={() => void join(queue.resource)} disabled={saving}>Ilmoittaudu jonoon</button>
+                  <button className="portal-new" onClick={() => void join(queue.resource)} disabled={saving}>{t("Ilmoittaudu jonoon")}</button>
                 </div>
               </div>
             )}
@@ -542,7 +544,7 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
     try {
       setNotices(await api<MoveNotice[]>("/portal/moves"));
     } catch {
-      setError("Muuttoilmoitusten lataus epäonnistui.");
+      setError(t("Muuttoilmoitusten lataus epäonnistui."));
     } finally {
       setLoading(false);
     }
@@ -558,7 +560,7 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!movesOut && filledPeople.length === 0 && !doorName.trim()) {
-      setError("Ilmoita poismuutto, uudet asukkaat tai oveen tuleva nimi.");
+      setError(t("Ilmoita poismuutto, uudet asukkaat tai oveen tuleva nimi."));
       return;
     }
     setSaving(true);
@@ -582,89 +584,89 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
       setSent(true);
       await loadNotices();
     } catch (submitError) {
-      setError(errorMessage(submitError, "Muuttoilmoituksen lähetys epäonnistui."));
+      setError(errorMessage(submitError, t("Muuttoilmoituksen lähetys epäonnistui.")));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div className="empty">Ladataan…</div>;
+  if (loading) return <div className="empty">{t("Ladataan…")}</div>;
 
   return (
     <>
-      {sent && <p className="portal-sent">Muuttoilmoitus on lähetetty isännöitsijälle.</p>}
+      {sent && <p className="portal-sent">{t("Muuttoilmoitus on lähetetty isännöitsijälle.")}</p>}
 
       {pending ? (
-        <p className="muted">Sinulla on käsittelyä odottava muuttoilmoitus. Uuden voi tehdä, kun se on käsitelty.</p>
+        <p className="muted">{t("Sinulla on käsittelyä odottava muuttoilmoitus. Uuden voi tehdä, kun se on käsitelty.")}</p>
       ) : (
         <form className="ticket-form portal-ticket-form" onSubmit={handleSubmit}>
           <dl className="ticket-facts">
             <div>
-              <dt>Ilmoittaja</dt>
+              <dt>{t("Ilmoittaja")}</dt>
               <dd>{resident.name}</dd>
             </div>
             <div>
-              <dt>Asunto</dt>
+              <dt>{t("Asunto")}</dt>
               <dd>{resident.apartmentNumber || "–"}</dd>
             </div>
           </dl>
 
           <label>
-            <span>Muuttopäivä</span>
+            <span>{t("Muuttopäivä")}</span>
             <input type="date" value={moveDate} onChange={event => setMoveDate(event.target.value)} required />
           </label>
 
           <label className="switch-row">
             <span>
-              <strong>Asunnon nykyiset asukkaat muuttavat pois</strong>
-              <small>Autopaikka ja varatut vuorot päättyvät muuttopäivänä.</small>
+              <strong>{t("Asunnon nykyiset asukkaat muuttavat pois")}</strong>
+              <small>{t("Autopaikka ja varatut vuorot päättyvät muuttopäivänä.")}</small>
             </span>
             <input type="checkbox" role="switch" checked={movesOut} onChange={() => setMovesOut(!movesOut)} />
             <i aria-hidden="true" />
           </label>
 
           <fieldset className="move-new-residents">
-            <legend>Asuntoon muuttavat uudet asukkaat</legend>
+            <legend>{t("Asuntoon muuttavat uudet asukkaat")}</legend>
             {people.map((person, index) => (
               <div className="move-person" key={index}>
                 <input
                   value={person.name}
                   onChange={event => setPeople(current => current.map((item, position) => position === index ? { ...item, name: event.target.value } : item))}
-                  placeholder="Nimi"
+                  placeholder={t("Nimi")}
                   maxLength={100}
-                  aria-label={`Uuden asukkaan ${index + 1} nimi`}
+                  aria-label={t("Uuden asukkaan {0} nimi", index + 1)}
                 />
                 <input
                   type="email"
                   value={person.email}
                   onChange={event => setPeople(current => current.map((item, position) => position === index ? { ...item, email: event.target.value } : item))}
-                  placeholder="Sähköposti (valinnainen)"
-                  aria-label={`Uuden asukkaan ${index + 1} sähköposti`}
+                  placeholder={t("Sähköposti (valinnainen)")}
+                  aria-label={t("Uuden asukkaan {0} sähköposti", index + 1)}
                 />
-                <button type="button" onClick={() => setPeople(current => current.filter((_, position) => position !== index))} aria-label="Poista asukas">×</button>
+                <button type="button" onClick={() => setPeople(current => current.filter((_, position) => position !== index))} aria-label={t("Poista asukas")}>×</button>
               </div>
             ))}
             {people.length < 8 && (
               <button type="button" className="secondary" onClick={() => setPeople(current => [...current, { name: "", email: "" }])}>
-                Lisää asukas
+                {t("Lisää asukas")}
               </button>
             )}
           </fieldset>
 
           <label>
-            <span>Nimi oveen (valinnainen)</span>
-            <input value={doorName} onChange={event => setDoorName(event.target.value)} maxLength={60} placeholder="Esim. Virtanen" />
+            <span>{t("Nimi oveen (valinnainen)")}</span>
+            <input value={doorName} onChange={event => setDoorName(event.target.value)} maxLength={60} placeholder={t("Esim. Virtanen")} />
           </label>
 
           <label>
-            <span>Lisätiedot (valinnainen)</span>
+            <span>{t("Lisätiedot (valinnainen)")}</span>
             <textarea value={note} onChange={event => setNote(event.target.value)} rows={3} maxLength={1000} />
           </label>
 
           {error && <p className="send-error">{error}</p>}
 
           <div className="portal-ticket-actions">
-            <button type="submit" className="portal-new" disabled={saving || !moveDate}>{saving ? "Lähetetään…" : "Lähetä muuttoilmoitus"}</button>
+            <button type="submit" className="portal-new" disabled={saving || !moveDate}>{saving ? t("Lähetetään…") : t("Lähetä muuttoilmoitus")}</button>
           </div>
         </form>
       )}
@@ -674,10 +676,10 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
           <table className="data-table report-topics">
             <thead>
               <tr>
-                <th>Muuttopäivä</th>
-                <th>Sisältö</th>
-                <th>Tila</th>
-                <th>Ilmoitettu</th>
+                <th>{t("Muuttopäivä")}</th>
+                <th>{t("Sisältö")}</th>
+                <th>{t("Tila")}</th>
+                <th>{t("Ilmoitettu")}</th>
               </tr>
             </thead>
             <tbody>
@@ -716,7 +718,7 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
     try {
       setNotices(await api<RenovationNotice[]>("/portal/renovations"));
     } catch {
-      setError("Remontti-ilmoitusten lataus epäonnistui.");
+      setError(t("Remontti-ilmoitusten lataus epäonnistui."));
     } finally {
       setLoading(false);
     }
@@ -729,11 +731,11 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (description.trim().length < 10) {
-      setError("Kuvaa työ vähintään parilla lauseella.");
+      setError(t("Kuvaa työ vähintään parilla lauseella."));
       return;
     }
     if (endDate < startDate) {
-      setError("Päättymispäivä ei voi olla ennen alkamispäivää.");
+      setError(t("Päättymispäivä ei voi olla ennen alkamispäivää."));
       return;
     }
     setSaving(true);
@@ -752,100 +754,100 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
       setSent(true);
       await loadNotices();
     } catch (submitError) {
-      setError(errorMessage(submitError, "Remontti-ilmoituksen lähetys epäonnistui."));
+      setError(errorMessage(submitError, t("Remontti-ilmoituksen lähetys epäonnistui.")));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div className="empty">Ladataan…</div>;
+  if (loading) return <div className="empty">{t("Ladataan…")}</div>;
 
   return (
     <>
       <div className="portal-tickets-head">
         <p className="muted">
-          Ilmoita remontista ennen työn aloittamista. Työn saa aloittaa vasta, kun isännöitsijä on hyväksynyt ilmoituksen.
+          {t("Ilmoita remontista ennen työn aloittamista. Työn saa aloittaa vasta, kun isännöitsijä on hyväksynyt ilmoituksen.")}
         </p>
         {!creating && (
-          <button className="portal-new" onClick={() => { setCreating(true); setSent(false); setError(""); }}>Tee remontti-ilmoitus</button>
+          <button className="portal-new" onClick={() => { setCreating(true); setSent(false); setError(""); }}>{t("Tee remontti-ilmoitus")}</button>
         )}
       </div>
 
-      {sent && !creating && <p className="portal-sent">Remontti-ilmoitus on lähetetty isännöitsijälle.</p>}
+      {sent && !creating && <p className="portal-sent">{t("Remontti-ilmoitus on lähetetty isännöitsijälle.")}</p>}
       {error && !creating && <p className="send-error">{error}</p>}
 
       {creating && (
         <form className="ticket-form portal-ticket-form" onSubmit={handleSubmit}>
           <dl className="ticket-facts">
             <div>
-              <dt>Ilmoittaja</dt>
+              <dt>{t("Ilmoittaja")}</dt>
               <dd>{resident.name}</dd>
             </div>
             <div>
-              <dt>Asunto</dt>
+              <dt>{t("Asunto")}</dt>
               <dd>{resident.apartmentNumber || "–"}</dd>
             </div>
           </dl>
 
           <label>
-            <span>Työn tyyppi</span>
+            <span>{t("Työn tyyppi")}</span>
             <select value={workType} onChange={event => setWorkType(event.target.value)}>
-              {RENOVATION_WORK_TYPES.map(option => <option key={option} value={option}>{option}</option>)}
+              {RENOVATION_WORK_TYPES.map(option => <option key={option} value={option}>{t(option)}</option>)}
             </select>
           </label>
 
           <label>
-            <span>Työn kuvaus</span>
+            <span>{t("Työn kuvaus")}</span>
             <textarea
               value={description}
               onChange={event => setDescription(event.target.value)}
               maxLength={5000}
               rows={6}
-              placeholder="Kerro, mitä tehdään ja mihin rakenteisiin tai putkiin työ vaikuttaa."
+              placeholder={t("Kerro, mitä tehdään ja mihin rakenteisiin tai putkiin työ vaikuttaa.")}
               required
             />
           </label>
 
           <label>
-            <span>Työ alkaa</span>
+            <span>{t("Työ alkaa")}</span>
             <input type="date" value={startDate} onChange={event => setStartDate(event.target.value)} required />
           </label>
 
           <label>
-            <span>Työ päättyy</span>
+            <span>{t("Työ päättyy")}</span>
             <input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} required />
           </label>
 
           <label>
-            <span>Urakoitsija ja yhteystiedot (valinnainen)</span>
-            <input value={contractor} onChange={event => setContractor(event.target.value)} maxLength={300} placeholder="Esim. Remontti Oy, 040 123 4567" />
+            <span>{t("Urakoitsija ja yhteystiedot (valinnainen)")}</span>
+            <input value={contractor} onChange={event => setContractor(event.target.value)} maxLength={300} placeholder={t("Esim. Remontti Oy, 040 123 4567")} />
           </label>
 
           {error && <p className="send-error">{error}</p>}
 
           <div className="portal-ticket-actions">
-            <button type="button" className="secondary" onClick={() => setCreating(false)} disabled={saving}>Peruuta</button>
-            <button type="submit" className="portal-new" disabled={saving || !startDate || !endDate}>{saving ? "Lähetetään…" : "Lähetä remontti-ilmoitus"}</button>
+            <button type="button" className="secondary" onClick={() => setCreating(false)} disabled={saving}>{t("Peruuta")}</button>
+            <button type="submit" className="portal-new" disabled={saving || !startDate || !endDate}>{saving ? t("Lähetetään…") : t("Lähetä remontti-ilmoitus")}</button>
           </div>
         </form>
       )}
 
-      {notices.length === 0 ? <div className="empty">Et ole vielä tehnyt remontti-ilmoituksia.</div> : (
+      {notices.length === 0 ? <div className="empty">{t("Et ole vielä tehnyt remontti-ilmoituksia.")}</div> : (
         <div className="table-card">
           <table className="data-table report-topics">
             <thead>
               <tr>
-                <th>Työ</th>
-                <th>Ajankohta</th>
-                <th>Tila</th>
-                <th>Ilmoitettu</th>
+                <th>{t("Työ")}</th>
+                <th>{t("Ajankohta")}</th>
+                <th>{t("Tila")}</th>
+                <th>{t("Ilmoitettu")}</th>
               </tr>
             </thead>
             <tbody>
               {notices.map(notice => (
                 <tr key={notice.id}>
                   <td>
-                    <strong>{notice.work_type}</strong>
+                    <strong>{t(notice.work_type)}</strong>
                     <span>{notice.description}</span>
                   </td>
                   <td>{renovationPeriod(notice)}</td>
@@ -878,7 +880,7 @@ function PortalMeters({ resident }: { resident: ResidentAccount }) {
     try {
       setReadings(await api<MeterReading[]>("/portal/meter-readings"));
     } catch {
-      setError("Lukemien lataus epäonnistui.");
+      setError(t("Lukemien lataus epäonnistui."));
     } finally {
       setLoading(false);
     }
@@ -892,7 +894,7 @@ function PortalMeters({ resident }: { resident: ResidentAccount }) {
     event.preventDefault();
     const value = parseReading(valueText);
     if (value === null) {
-      setError("Anna lukema numerona, esim. 123,45.");
+      setError(t("Anna lukema numerona, esim. 123,45."));
       return;
     }
     setSaving(true);
@@ -904,45 +906,45 @@ function PortalMeters({ resident }: { resident: ResidentAccount }) {
       setSent(true);
       await loadReadings();
     } catch (submitError) {
-      setError(errorMessage(submitError, "Lukeman lähetys epäonnistui."));
+      setError(errorMessage(submitError, t("Lukeman lähetys epäonnistui.")));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div className="empty">Ladataan…</div>;
+  if (loading) return <div className="empty">{t("Ladataan…")}</div>;
 
   return (
     <>
       <form className="ticket-form portal-ticket-form" onSubmit={handleSubmit}>
         <dl className="ticket-facts">
           <div>
-            <dt>Ilmoittaja</dt>
+            <dt>{t("Ilmoittaja")}</dt>
             <dd>{resident.name}</dd>
           </div>
           <div>
-            <dt>Asunto</dt>
+            <dt>{t("Asunto")}</dt>
             <dd>{resident.apartmentNumber || "–"}</dd>
           </div>
         </dl>
 
         <label>
-          <span>Mittari</span>
+          <span>{t("Mittari")}</span>
           <select value={meterType} onChange={event => setMeterType(event.target.value)}>
             {METER_TYPES.map(option => <option key={option} value={option}>{meterLabel(option)}</option>)}
           </select>
         </label>
 
         <label>
-          <span>Mittarin lukema tänään ({meterUnit(meterType)})</span>
-          <input value={valueText} onChange={event => setValueText(event.target.value)} inputMode="decimal" placeholder="Esim. 123,45" required />
+          <span>{t("Mittarin lukema tänään (")}{meterUnit(meterType)})</span>
+          <input value={valueText} onChange={event => setValueText(event.target.value)} inputMode="decimal" placeholder={t("Esim. 123,45")} required />
         </label>
 
-        {sent && <p className="portal-sent">Lukema on tallennettu.</p>}
+        {sent && <p className="portal-sent">{t("Lukema on tallennettu.")}</p>}
         {error && <p className="send-error">{error}</p>}
 
         <div className="portal-ticket-actions">
-          <button type="submit" className="portal-new" disabled={saving || !valueText.trim()}>{saving ? "Lähetetään…" : "Lähetä lukema"}</button>
+          <button type="submit" className="portal-new" disabled={saving || !valueText.trim()}>{saving ? t("Lähetetään…") : t("Lähetä lukema")}</button>
         </div>
       </form>
 
@@ -951,9 +953,9 @@ function PortalMeters({ resident }: { resident: ResidentAccount }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Lukupäivä</th>
-                <th>Mittari</th>
-                <th>Lukema</th>
+                <th>{t("Lukupäivä")}</th>
+                <th>{t("Mittari")}</th>
+                <th>{t("Lukema")}</th>
               </tr>
             </thead>
             <tbody>
