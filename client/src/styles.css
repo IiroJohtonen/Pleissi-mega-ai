@@ -288,8 +288,11 @@ nav button.nav-toggle.open .tab-icon { transform: rotate(180deg); }
 /* Taloyhtiöt-valikon alasivut: tiiviit rivit ryhmiteltyinä väliotsikoilla. */
 .nav-subs { display: grid; gap: 1px; }
 
-.nav-label {
-  margin: 8px 0 2px 25px;
+nav button.nav-label {
+  margin: 6px 0 0 14px;
+  padding: 4px 11px;
+  gap: 6px;
+  border-radius: 8px;
   color: #747a80;
   font-size: 10px;
   font-weight: 700;
@@ -297,7 +300,12 @@ nav button.nav-toggle.open .tab-icon { transform: rotate(180deg); }
   text-transform: uppercase;
 }
 
-.nav-label:first-child { margin-top: 0; }
+nav button.nav-label:first-child { margin-top: 0; }
+nav button.nav-label:hover { transform: none; color: #b8bdc2; }
+nav button.nav-label .tab-icon { width: 12px; height: 12px; margin-left: auto; transition: transform .15s ease; }
+nav button.nav-label.open .tab-icon { transform: rotate(180deg); }
+nav button.nav-label b { min-width: 18px; padding: 0 5px; letter-spacing: 0; }
+nav button.nav-label b + .tab-icon { margin-left: 0; }
 
 nav button.nav-sub {
   margin-left: 14px;
@@ -1862,6 +1870,9 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   nav { grid-template-columns: repeat(3, 1fr); }
   nav button { text-align: center; }
   nav button.nav-sub { margin-left: 0; }
+  /* Kapealla näytöllä alavalikko vie koko rivin eikä jää yhteen sarakkeeseen. */
+  .nav-subs { grid-column: 1 / -1; }
+  nav button.nav-label { margin-left: 0; }
   .queue-summary { display: grid; grid-template-columns: 1fr 1fr; }
   .queue-summary > div { min-width: 0; }
   .ticket-filters { align-items: stretch; }

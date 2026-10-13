@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const company = { id: "demo-company", name: "As Oy Koivikko", email_address: "", manager_id: null, manager_ids: [] };
@@ -145,6 +145,18 @@ describe("sovellus", () => {
     } finally {
       delete responses["/companies/demo-company/moves"];
     }
+  });
+
+  it("sulkee ja avaa alavalikon ryhmän ja muistaa valinnan", async () => {
+    // Alavalikko on auki, kun ollaan jollakin sen sivuista.
+    await renderApp(staff("Isännöitsijä"), "#/waitlist");
+    expect(await screen.findByText("Pyykkitupa")).toBeTruthy();
+    fireEvent.click(screen.getByTitle("Piilota Tilat"));
+    expect(screen.queryByText("Pyykkitupa")).toBeNull();
+    expect(screen.getByText("Tiedotteet")).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem("kotilo.closedNavGroups") ?? "[]")).toEqual(["facilities"]);
+    fireEvent.click(screen.getByTitle("Näytä Tilat"));
+    expect(screen.getByText("Pyykkitupa")).toBeTruthy();
   });
 
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {

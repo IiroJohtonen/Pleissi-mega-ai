@@ -28,11 +28,12 @@ import { Waitlists } from "./Waitlists";
 import { t } from "../i18n";
 
 // Taloyhtiöt-valikon alasivut ryhmiteltyinä.
-const navGroups: { label: string; tabs: TicketTab[] }[] = [
-  { label: t("Asukkaat"), tabs: ["residents", "moves", "waitlist"] },
-  { label: t("Tilat"), tabs: ["sauna", "laundry", "parking", "keys"] },
-  { label: t("Ilmoitukset"), tabs: ["announcements", "renovations", "meters"] }
+const navGroups: { key: string; label: string; tabs: TicketTab[] }[] = [
+  { key: "residents", label: t("Asukkaat"), tabs: ["residents", "moves", "waitlist"] },
+  { key: "facilities", label: t("Tilat"), tabs: ["sauna", "laundry", "parking", "keys"] },
+  { key: "notices", label: t("Ilmoitukset"), tabs: ["announcements", "renovations", "meters"] }
 ];
+const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 const subTabs = navGroups.flatMap(group => group.tabs);
 
 // Mitä alasivun laskuri tarkoittaa.
@@ -94,11 +95,33 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [residentsOpen, setResidentsOpen] = useState(subTabs.includes(tab));
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
   const [navCounts, setNavCounts] = useState<Partial<Record<TicketTab, number>>>({});
+  // Suljetut alavalikon ryhmät; valinta säilyy selaimessa.
+  const [closedGroups, setClosedGroups] = useState<string[]>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(NAV_GROUPS_KEY) || "[]");
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return [];
+    }
+  });
+
+  function toggleGroup(key: string) {
+    const next = closedGroups.includes(key) ? closedGroups.filter(item => item !== key) : [...closedGroups, key];
+    setClosedGroups(next);
+    try {
+      localStorage.setItem(NAV_GROUPS_KEY, JSON.stringify(next));
+    } catch {
+      // Selaimen tallennustila ei ole käytössä; valinta säilyy vain tämän käynnin ajan.
+    }
+  }
 
   // Alavalikko aukeaa itsestään, kun sen näkymään siirrytään muuta kautta (esim. päätöksen jälkeen).
   useEffect(() => {
     if (tab === "my-tickets" || tab === "ai-handled") setMyTicketsOpen(true);
     if (subTabs.includes(tab)) setResidentsOpen(true);
+    // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään.
+    const group = navGroups.find(item => item.tabs.includes(tab));
+    if (group) setClosedGroups(current => current.filter(key => key !== group.key));
   }, [tab]);
 
   // Alavalikon laskurit: käsittelyä odottavat muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
@@ -400,10 +423,34 @@ export function Workspace({ user }: { user: OfficeUser }) {
           </div>
           {showResidentsLink && (
             <div className="nav-subs">
-              {navGroups.map(group => (
-                <Fragment key={group.label}>
-                  <span className="nav-label">{group.label}</span>
-                  {group.tabs.map(item => (
+              {navGroups.map(group => {
+                const open = !closedGroups.includes(group.key);
+                // Suljetun ryhmän otsikossa näkyy sen laskurien summa, jotta odottavat asiat eivät jää piiloon.
+                const hiddenCount = open ? 0 : group.tabs.reduce((sum, item) => sum + (navCounts[item] ?? 0), 0);
+                return (
+                <Fragment key={group.key}>
+                  <button
+                    className={`nav-label ${open ? "open" : ""}`}
+                    onClick={() => toggleGroup(group.key)}
+                    aria-expanded={open}
+                    title={`${open ? t("Piilota") : t("Näytä")} ${group.label}`}
+                  >
+                    {group.label}
+                    {hiddenCount > 0 && <b>{hiddenCount}</b>}
+                    <svg
+                      className="tab-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  {open && group.tabs.map(item => (
                     <button key={item} className={`nav-sub ${tab === item ? "active" : ""}`} onClick={() => setTab(item)}>
                       <TabIcon tab={item} />
                       {tabTitles[item]}
@@ -411,7 +458,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     </button>
                   ))}
                 </Fragment>
-              ))}
+                );
+              })}
             </div>
           )}
         </nav>
