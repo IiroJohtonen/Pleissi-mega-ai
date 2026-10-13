@@ -202,6 +202,10 @@ describe("sovellus", () => {
       await renderApp(staff("Asiakaspalvelu"), "#/tickets/ticket-1");
       const save = await screen.findByRole("button", { name: "Tallenna" }) as HTMLButtonElement;
       expect(save.disabled).toBe(true);
+      // Tehtävä on oma sivunsa: navigaatio pysyy näkyvissä ja takaisin-linkki vie listaan.
+      expect(screen.getByText("Päätösjono")).toBeTruthy();
+      expect(screen.getByText("← Kaikki tehtävät")).toBeTruthy();
+      expect(document.querySelector(".overlay")).toBeNull();
       // Asiakaspalvelu ei voi poistaa tehtävää.
       expect(screen.queryByRole("button", { name: "Poista" })).toBeNull();
 

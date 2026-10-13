@@ -74,7 +74,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [selectedCompany, setSelectedCompany] = useState("demo-company");
   const [selected, setSelected] = useState<TicketDetail | null>(null);
   const { tab, param: routeParam } = useRoute();
-  const setTab = (next: TicketTab) => navigate(next);
+  // Avatun tehtävän tallentamattomat muutokset: navigointi varmistaa poistumisen.
+  const ticketDirty = useRef(false);
+  const setTab = (next: TicketTab) => {
+    if (ticketDirty.current && !window.confirm(t("Tallentamattomat muutokset menetetään. Suljetaanko tehtävä?"))) return;
+    ticketDirty.current = false;
+    navigate(next);
+  };
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [skipTicketId, setSkipTicketId] = useState<string | null>(null);
@@ -504,14 +510,35 @@ export function Workspace({ user }: { user: OfficeUser }) {
       </aside>
 
       <main className="main">
+        {/* Avattu tehtävä näytetään omana sivunaan listan tilalla; navigaatio pysyy vieressä käytössä. */}
+        {openTicketId && (selected ? (
+          <TicketDrawer
+            detail={selected}
+            backLabel={`← ${tabTitles[tab]}`}
+            onClose={closeTicket}
+            onDecision={(d) => requestDecision(selected.ticket.id, d)}
+            company={companies.find(company => company.id === selected.ticket.company_id)}
+            onDraftSaved={(draft) => updateTicketDraft(selected.ticket.id, draft)}
+            onChanged={() => load()}
+            onDirtyChange={dirty => { ticketDirty.current = dirty; }}
+            onDeleted={async () => {
+              closeTicket();
+              setSelected(null);
+              await load();
+            }}
+          />
+        ) : <div className="empty">{t("Ladataan…")}</div>)}
+
+        {!openTicketId && (
         <header>
           <div>
             <p className="eyebrow">{t("KOTILO / ISÄNNÖITSIJÄ")}</p>
             <h1>{tabTitles[tab]}</h1>
           </div>
         </header>
+        )}
 
-        {tab === "knowledge" || tab === "knowledge-ai" || tab === "knowledge-internal" ? (
+        {openTicketId ? null : tab === "knowledge" || tab === "knowledge-ai" || tab === "knowledge-internal" ? (
           <Knowledge
             // Avain vaihtaa suodattimien ja haun tilan, kun siirrytään alasivulta toiselle.
             key={tab}
@@ -832,21 +859,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
         />
       )}
 
-      {selected && (
-        <TicketDrawer
-          detail={selected}
-          onClose={closeTicket}
-          onDecision={(d) => requestDecision(selected.ticket.id, d)}
-          company={companies.find(company => company.id === selected.ticket.company_id)}
-          onDraftSaved={(draft) => updateTicketDraft(selected.ticket.id, draft)}
-          onChanged={() => load()}
-          onDeleted={async () => {
-            closeTicket();
-            setSelected(null);
-            await load();
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -88,6 +88,8 @@ export function TicketDrawer({
   onDraftSaved,
   onChanged,
   onDeleted,
+  onDirtyChange,
+  backLabel,
   company
 }: {
   detail: TicketDetail;
@@ -99,6 +101,10 @@ export function TicketDrawer({
   onChanged: () => Promise<void>;
   // Tehtävä on poistettu: näkymä suljetaan ja listat ladataan uudelleen.
   onDeleted: () => Promise<void>;
+  // Kertoo, onko tiedoissa tallentamattomia muutoksia, jotta navigointi voi varmistaa poistumisen.
+  onDirtyChange: (dirty: boolean) => void;
+  // Takaisin-linkin teksti: näkymä, josta tehtävä avattiin.
+  backLabel: string;
 }) {
   const ticket = detail.ticket;
   const [draft, setDraft] = useState(ticket.draft || "");
@@ -288,6 +294,11 @@ export function TicketDrawer({
     });
   }
 
+  useEffect(() => {
+    onDirtyChange(dirty);
+    return () => onDirtyChange(false);
+  }, [dirty]);
+
   // Sulkeminen varmistetaan, jos muutoksia on tallentamatta.
   function requestClose() {
     if (dirty && !window.confirm(t("Tallentamattomat muutokset menetetään. Suljetaanko tehtävä?"))) return;
@@ -457,9 +468,9 @@ export function TicketDrawer({
   }
 
   return (
-    <div className="overlay" onClick={requestClose}>
-      <aside className="drawer drawer-split" onClick={e => e.stopPropagation()}>
-        <button className="close" onClick={requestClose}>×</button>
+    <section className="ticket-page">
+      <button className="back-link" onClick={requestClose}>{backLabel}</button>
+      <div className="drawer drawer-split">
         <div className="drawer-main">
         {/* Yläpalkki pysyy näkyvissä, kun tehtävää vieritetään. */}
         <div className="drawer-topbar">
@@ -850,10 +861,10 @@ export function TicketDrawer({
             </button>
           </form>
         </section>
-      </aside>
+      </div>
 
       {confirmDelete && (
-        <div className="overlay skip-overlay" onClick={event => { event.stopPropagation(); if (!deleting) setConfirmDelete(false); }}>
+        <div className="overlay skip-overlay" onClick={() => { if (!deleting) setConfirmDelete(false); }}>
           <aside className="drawer skip-drawer" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onClick={event => event.stopPropagation()}>
             <h2 id="delete-title">{t("Poistetaanko tehtävä #{0}?", formatTicketNumber(ticket.ticket_number))}</h2>
             <p className="delete-warning">
@@ -870,6 +881,6 @@ export function TicketDrawer({
           </aside>
         </div>
       )}
-    </div>
+    </section>
   );
 }

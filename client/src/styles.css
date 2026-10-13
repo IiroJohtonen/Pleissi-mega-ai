@@ -2949,3 +2949,38 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .drawer-actions button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
 .drawer-actions button.danger-fill { background: #b3402f; border-color: #b3402f; color: #fff; }
 .delete-warning { margin: 10px 0 8px; padding: 11px 13px; border-radius: 10px; background: #fbeae6; color: #9c2b1f; font-size: 13px; font-weight: 600; line-height: 1.5; }
+
+/* Tehtävä omana sivunaan: sama sisältö kuin aiemmassa sivupaneelissa, mutta sivun leveydellä ja
+   sivun omalla vierityksellä. Yläpalkki pysyy näkyvissä vieritettäessä. */
+.ticket-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.ticket-page > .back-link { justify-self: start; cursor: pointer; }
+
+.ticket-page > .drawer.drawer-split {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  border: 1px solid #dfe3e7;
+  border-radius: 14px;
+  box-shadow: none;
+  align-items: stretch;
+}
+
+.ticket-page .drawer-main { overflow: visible; border-radius: 14px 0 0 14px; }
+.ticket-page .drawer-timeline { overflow: visible; border-radius: 0 14px 14px 0; }
+.ticket-page .drawer-topbar { top: 0; border-radius: 14px 0 0 0; }
+
+/* Yläpalkin painikkeet rivittyvät, kun tila loppuu, eivätkä työnny näkymän ulkopuolelle. */
+.drawer-topbar { flex-wrap: wrap; }
+.drawer-topbar-number { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.drawer-topbar-number .unsaved-mark { margin-left: 0; }
+.drawer-topbar-tools { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+.drawer-topbar-tools button { white-space: nowrap; }
+
+/* Kun sivu kapenee, aikajana siirtyy tietojen alle eikä valu reunan yli. */
+@media (max-width: 1250px) {
+  .ticket-page > .drawer.drawer-split { display: block; }
+  .ticket-page .drawer-timeline { border-left: 0; border-top: 1px solid #dfe3e7; }
+  .ticket-page .drawer-main,
+  .ticket-page .drawer-timeline,
+  .ticket-page .drawer-topbar { border-radius: 0; }
+}
