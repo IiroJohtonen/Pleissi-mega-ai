@@ -1,5 +1,7 @@
 # Kotilon julkaisu osoitteeseen kotilo.io
 
+> **Palvelimelle (suositus):** jos käytössä on palvelin, esimerkiksi UpCloud, seuraa ohjetta [server/README.md](server/README.md). Tämä tiedosto kuvaa vaihtoehdon, jossa alusta pyörii omalla koneella.
+
 Rakenne on kaksiosainen, jotta esittelysivua ja alustaa voi kehittää erikseen:
 
 | Osoite | Sisältö | Missä pyörii |

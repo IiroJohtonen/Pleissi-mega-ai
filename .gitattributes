@@ -1,2 +1,8 @@
 # Rivinvaihdot pysyvät LF-muodossa myös Windowsissa.
 * text=auto eol=lf
+
+# Palvelimella ajettavat tiedostot säilyttävät LF-rivinvaihdot.
+*.sh text eol=lf
+deploy/server/Caddyfile text eol=lf
+deploy/server/*.yml text eol=lf
+deploy/server/*.example text eol=lf

@@ -1,0 +1,16 @@
+# Esittelysivu: staattiset tiedostot repon kansiosta site.
+kotilo.io {
+	root * /srv/site
+	encode zstd gzip
+	file_server
+}
+
+www.kotilo.io {
+	redir https://kotilo.io{uri} permanent
+}
+
+# Alusta: Kotilon palvelin tarjoaa rajapinnan ja käyttöliittymän samasta osoitteesta.
+app.kotilo.io {
+	encode zstd gzip
+	reverse_proxy kotilo:4000
+}
