@@ -424,7 +424,9 @@ for (const [column, definition] of [
   ["extraction_ok", "INTEGER NOT NULL DEFAULT 1"],
   ["created_at", "TEXT"],
   // Pilkuilla erotetut avainsanat, joiden avulla tietue löytyy samantapaisille tehtäville.
-  ["tags", "TEXT NOT NULL DEFAULT ''"]
+  ["tags", "TEXT NOT NULL DEFAULT ''"],
+  // Kenelle tietue on: 'ai' = AI käyttää sitä vastausehdotuksissa, 'internal' = vain henkilökunnan luettavaksi.
+  ["audience", "TEXT NOT NULL DEFAULT 'ai'"]
 ]) {
   if (!knowledgeColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE knowledge ADD COLUMN ${column} ${definition}`);

@@ -159,6 +159,33 @@ describe("sovellus", () => {
     expect(screen.getByText("Pyykkitupa")).toBeTruthy();
   });
 
+  it("näyttää dokumentaation listana ja rajaa alasivut AI:n ja sisäisen mukaan", async () => {
+    const entry = (id: string, title: string, audience: string) => ({
+      id, title, content: "Sisältö", content_length: 7, kind: "fact", audience, valid_from: null, valid_until: null,
+      file_name: null, version: 1, state: audience === "internal" ? "internal" : "in_use", created_at: "2026-10-01T08:00:00.000Z"
+    });
+    responses["/companies/demo-company/knowledge"] = [entry("k1", "Saunavuorot", "ai"), entry("k2", "Vara-avaimen säilytys", "internal")];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/knowledge");
+      expect(await screen.findByText("Saunavuorot")).toBeTruthy();
+      expect(screen.getByText("Vara-avaimen säilytys")).toBeTruthy();
+      expect(screen.getByTitle("Järjestä sarakkeen Käyttö mukaan")).toBeTruthy();
+      cleanup();
+
+      await renderApp(staff("Isännöitsijä"), "#/knowledge-internal");
+      expect(await screen.findByText("Vara-avaimen säilytys")).toBeTruthy();
+      expect(screen.queryByText("Saunavuorot")).toBeNull();
+      expect(screen.queryByText("Testaa AI:n vastaus")).toBeNull();
+      cleanup();
+
+      await renderApp(staff("Isännöitsijä"), "#/knowledge-ai");
+      expect(await screen.findByText("Saunavuorot")).toBeTruthy();
+      expect(screen.queryByText("Vara-avaimen säilytys")).toBeNull();
+    } finally {
+      delete responses["/companies/demo-company/knowledge"];
+    }
+  });
+
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {
     const calls = mockApi();
     await renderApp(staff("Pääkäyttäjä"));

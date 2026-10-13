@@ -7,7 +7,7 @@ Tilanne ja puuttuvat osat on kuvattu tiedostossa [shared/PRODUCT_SCOPE.md](share
 ## Mitä Kotilo tekee
 
 - **Tehtävät:** sähköposti, asukasportaali ja käsin kirjatut asiat päätyvät samaan päätösjonoon. Tehtävällä on käsittelijä, prioriteetti, määräaika, viestiketju, liitteet, muistiinpanot ja loki.
-- **AI-apu:** käsittelijä voi pyytää vastausehdotuksen, joka perustuu vain kyseisen taloyhtiön tietopankkiin. Raportti toistuvista aiheista ehdottaa uusia vakiotietoja.
+- **AI-apu:** käsittelijä voi pyytää vastausehdotuksen, joka perustuu vain kyseisen taloyhtiön AI-dokumentaatioon. Sisäinen dokumentaatio on henkilökunnan omia ohjeita, joita AI ei näe. Raportti toistuvista aiheista ehdottaa uusia vakiotietoja.
 - **Asukasportaali:** asukas näkee tiedotteet, tekee ilmoituksia, varaa sauna- ja pyykkitupavuoroja, jonottaa autopaikkaa, tekee muutto- ja remontti-ilmoituksen ja ilmoittaa kulutuslukemat.
 - **Taloyhtiön hallinta:** asukkaat, autopaikat, vuorot, jonot, tiedotteet, muutto- ja remontti-ilmoitukset, avainrekisteri, kulutuslukemat, työtilaukset huoltoyhtiölle ja laskutusraportit.
 - **Kielet:** käyttöliittymä on suomeksi ja englanniksi. Kieli vaihdetaan asetuksista, kirjautumissivulta tai asukasportaalin yläpalkista.

@@ -94,6 +94,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [clock, setClock] = useState(Date.now());
   const [residentsOpen, setResidentsOpen] = useState(subTabs.includes(tab));
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(true);
   const [navCounts, setNavCounts] = useState<Partial<Record<TicketTab, number>>>({});
   // Suljetut alavalikon ryhmät; valinta säilyy selaimessa.
   const [closedGroups, setClosedGroups] = useState<string[]>(() => {
@@ -118,6 +119,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   // Alavalikko aukeaa itsestään, kun sen näkymään siirrytään muuta kautta (esim. päätöksen jälkeen).
   useEffect(() => {
     if (tab === "my-tickets" || tab === "ai-handled") setMyTicketsOpen(true);
+    if (tab === "knowledge-ai" || tab === "knowledge-internal") setKnowledgeOpen(true);
     if (subTabs.includes(tab)) setResidentsOpen(true);
     // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään.
     const group = navGroups.find(item => item.tabs.includes(tab));
@@ -406,10 +408,25 @@ export function Workspace({ user }: { user: OfficeUser }) {
               </button>
             </>
           )}
-          <button className={tab === "knowledge" ? "active" : ""} onClick={() => setTab("knowledge")}>
-            <TabIcon tab="knowledge" />
-            {t("Dokumentaatio")}
-          </button>
+          <div className="nav-group">
+            <button className={tab === "knowledge" ? "active" : ""} onClick={() => setTab("knowledge")}>
+              <TabIcon tab="knowledge" />
+              {t("Dokumentaatio")}
+            </button>
+            <NavToggle open={knowledgeOpen} label={t("AI dokumentaatio ja sisäinen dokumentaatio")} onToggle={() => setKnowledgeOpen(!knowledgeOpen)} />
+          </div>
+          {knowledgeOpen && (
+            <>
+              <button className={`nav-sub ${tab === "knowledge-ai" ? "active" : ""}`} onClick={() => setTab("knowledge-ai")}>
+                <TabIcon tab="knowledge-ai" />
+                {t("AI dokumentaatio")}
+              </button>
+              <button className={`nav-sub ${tab === "knowledge-internal" ? "active" : ""}`} onClick={() => setTab("knowledge-internal")}>
+                <TabIcon tab="knowledge-internal" />
+                {t("Sisäinen dokumentaatio")}
+              </button>
+            </>
+          )}
           <button className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")}>
             <TabIcon tab="reports" />
             {t("Raportit")}
@@ -494,8 +511,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
           </div>
         </header>
 
-        {tab === "knowledge" ? (
+        {tab === "knowledge" || tab === "knowledge-ai" || tab === "knowledge-internal" ? (
           <Knowledge
+            // Avain vaihtaa suodattimien ja haun tilan, kun siirrytään alasivulta toiselle.
+            key={tab}
+            audience={tab === "knowledge-ai" ? "ai" : tab === "knowledge-internal" ? "internal" : undefined}
             companyId={selectedCompany}
             companies={companies}
             initialEntryId={routeParam}

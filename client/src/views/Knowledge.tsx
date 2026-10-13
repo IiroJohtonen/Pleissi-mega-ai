@@ -1,13 +1,17 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { DownloadLink, usePaged } from "../components/common";
-import { formatDate, formatDay } from "../format";
+import { formatDate, formatDateOnly, formatDay } from "../format";
 import { api, API, errorMessage, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
 import { locale, t } from "../i18n";
 
+// Kenelle tietue on: AI-dokumentaatiota AI käyttää vastausehdotuksissa, sisäinen on vain henkilökunnalle.
+export type KnowledgeAudience = "ai" | "internal";
+
 function knowledgeStateLabel(state: string) {
   return {
     in_use: t("AI:n käytössä"),
+    internal: t("Sisäinen – vain henkilökunnalle"),
     expired: t("Vanhentunut – ei AI:n käytössä"),
     upcoming: t("Ei vielä voimassa – ei AI:n käytössä"),
     unreadable: t("Tekstiä ei saatu luettua – ei AI:n käytössä"),
@@ -16,58 +20,137 @@ function knowledgeStateLabel(state: string) {
   }[state] || state;
 }
 
+// Tilan lyhyt nimi listan sarakkeeseen.
+function knowledgeStateShort(state: string) {
+  return {
+    in_use: t("AI:n käytössä"),
+    internal: t("Sisäinen käyttö"),
+    expired: t("Vanhentunut"),
+    upcoming: t("Ei vielä voimassa"),
+    unreadable: t("Teksti lukematta")
+  }[state] || knowledgeStateLabel(state);
+}
+
+const kindLabel = (kind: string) => kind === "document" ? t("Dokumentti") : t("Vakiotieto");
+const audienceLabel = (audience: string) => audience === "internal" ? t("Sisäinen") : t("AI");
+
 function validityLabel(entry: KnowledgeEntry) {
-  if (entry.valid_from && entry.valid_until) return `Voimassa ${formatDay(entry.valid_from)}–${formatDay(entry.valid_until)}`;
+  if (entry.valid_from && entry.valid_until) return t("Voimassa {0}–{1}", formatDay(entry.valid_from), formatDay(entry.valid_until));
   if (entry.valid_from) return t("Voimassa {0} alkaen", formatDay(entry.valid_from));
   if (entry.valid_until) return t("Voimassa {0} asti", formatDay(entry.valid_until));
   return t("Voimassa toistaiseksi");
+}
+
+// Voimassaolo listan sarakkeessa ilman sanaa "Voimassa".
+function validityShort(entry: KnowledgeEntry) {
+  if (entry.valid_from && entry.valid_until) return `${formatDay(entry.valid_from)}–${formatDay(entry.valid_until)}`;
+  if (entry.valid_from) return t("{0} alkaen", formatDay(entry.valid_from));
+  if (entry.valid_until) return t("{0} asti", formatDay(entry.valid_until));
+  return t("Toistaiseksi");
+}
+
+type KnowledgeSortKey = "title" | "kind" | "audience" | "state" | "validity" | "created";
+type KnowledgeSort = { key: KnowledgeSortKey; descending: boolean };
+
+// Listan sarakkeet samassa järjestyksessä kuin rivin kentät.
+const knowledgeColumns: { key: KnowledgeSortKey; label: string }[] = [
+  { key: "title", label: t("Otsikko") },
+  { key: "kind", label: t("Tyyppi") },
+  { key: "audience", label: t("Käyttö") },
+  { key: "state", label: t("Tila") },
+  { key: "validity", label: t("Voimassa") },
+  { key: "created", label: t("Lisätty") }
+];
+
+// Sarakkeessa näkyvä teksti, josta sarakekohtainen haku etsii.
+function knowledgeColumnText(entry: KnowledgeEntry, key: KnowledgeSortKey) {
+  switch (key) {
+    case "title": return `${entry.title} ${entry.tags ?? ""} ${entry.content}`;
+    case "kind": return kindLabel(entry.kind);
+    case "audience": return audienceLabel(entry.audience);
+    case "state": return knowledgeStateShort(entry.state);
+    case "validity": return validityShort(entry);
+    case "created": return formatDateOnly(entry.created_at);
+  }
+}
+
+function compareKnowledge(a: KnowledgeEntry, b: KnowledgeEntry, key: KnowledgeSortKey) {
+  switch (key) {
+    case "title": return a.title.localeCompare(b.title, "fi", { numeric: true });
+    // Päättymätön voimassaolo järjestyy viimeiseksi.
+    case "validity": return (a.valid_until ?? "9999").localeCompare(b.valid_until ?? "9999");
+    case "created": return a.created_at.localeCompare(b.created_at);
+    default: return knowledgeColumnText(a, key).localeCompare(knowledgeColumnText(b, key), "fi");
+  }
 }
 
 type KnowledgeFormState =
   | { mode: "fact" | "document"; replaces?: KnowledgeEntry }
   | { mode: "validity"; entry: KnowledgeEntry };
 
+// Dokumentaatio: audience rajaa näkymän AI-dokumentaatioon tai sisäiseen; ilman sitä näytetään kaikki.
 export function Knowledge({
   companyId,
   companies,
   initialEntryId,
+  audience,
   onCompanyChange
 }: {
   companyId: string;
   companies: Company[];
   initialEntryId: string | null;
+  audience?: KnowledgeAudience;
   onCompanyChange: (companyId: string) => void;
 }) {
   return (
     <section className="content">
-      <div className="ticket-filters">
-        <label>
-          <span>{t("Taloyhtiö")}</span>
-          <select value={companyId} onChange={event => onCompanyChange(event.target.value)}>
-            {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-          </select>
-        </label>
-      </div>
-      <KnowledgeBase companyId={companyId} initialEntryId={initialEntryId} />
+      {audience && <a className="back-link" href="#/knowledge">{t("← Dokumentaatio")}</a>}
+      <KnowledgeBase
+        companyId={companyId}
+        initialEntryId={initialEntryId}
+        audience={audience}
+        companies={companies}
+        onCompanyChange={onCompanyChange}
+      />
     </section>
   );
 }
 
-export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId: string; initialEntryId?: string | null }) {
+export function KnowledgeBase({
+  companyId,
+  initialEntryId = null,
+  audience,
+  companies,
+  onCompanyChange
+}: {
+  companyId: string;
+  initialEntryId?: string | null;
+  audience?: KnowledgeAudience;
+  // Taloyhtiön valinta suodattimissa; puuttuu, kun näkymä on taloyhtiön omalla sivulla.
+  companies?: Company[];
+  onCompanyChange?: (companyId: string) => void;
+}) {
   const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [form, setForm] = useState<KnowledgeFormState | null>(null);
   const [openEntryId, setOpenEntryId] = useState<string | null>(initialEntryId);
-  const pagedEntries = usePaged(entries, companyId);
   const [notice, setNotice] = useState("");
-  const [historyFor, setHistoryFor] = useState<string | null>(null);
-  const [history, setHistory] = useState<KnowledgeEntry[]>([]);
   const [question, setQuestion] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
     { found: boolean; answer?: string; source?: { id: string; title: string } } | null
   >(null);
+  // Suodattimet, sarakekohtainen haku ja järjestys toimivat kuten tehtävälistassa.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // AI:n testaus avataan työkalurivin painikkeesta, jotta lista on heti näkyvissä.
+  const [testOpen, setTestOpen] = useState(false);
+  const [kindFilter, setKindFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [audienceFilter, setAudienceFilter] = useState("all");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [columnSearch, setColumnSearch] = useState<Partial<Record<KnowledgeSortKey, string>>>({});
+  const [sort, setSort] = useState<KnowledgeSort>({ key: "title", descending: false });
 
   async function loadEntries() {
     try {
@@ -82,24 +165,17 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
 
   useEffect(() => {
     setLoading(true);
-    setHistoryFor(null);
     setTestResult(null);
     setQuestion("");
     setNotice("");
     void loadEntries();
   }, [companyId]);
 
-  async function toggleHistory(entry: KnowledgeEntry) {
-    if (historyFor === entry.id) {
-      setHistoryFor(null);
-      return;
-    }
-    setHistory(await api<KnowledgeEntry[]>(`/knowledge/${entry.id}/history`));
-    setHistoryFor(entry.id);
-  }
-
   async function removeEntry(entry: KnowledgeEntry) {
-    if (!window.confirm(t("Poistetaanko \"{0}\"? Se poistuu AI:n käytöstä.", entry.title))) return;
+    const question = entry.audience === "internal"
+      ? t("Poistetaanko \"{0}\"?", entry.title)
+      : t("Poistetaanko \"{0}\"? Se poistuu AI:n käytöstä.", entry.title);
+    if (!window.confirm(question)) return;
     await api(`/knowledge/${entry.id}`, { method: "DELETE" });
     setNotice("");
     await loadEntries();
@@ -121,60 +197,243 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
     }
   }
 
+  function sortBy(key: KnowledgeSortKey) {
+    setSort(current => current.key === key ? { key, descending: !current.descending } : { key, descending: false });
+  }
+
+  // Rajatussa näkymässä Käyttö-saraketta ei tarvita, koska kaikki rivit ovat samaa.
+  const columns = knowledgeColumns.filter(column => !audience || column.key !== "audience");
+  const colsClass = `knowledge-cols ${audience ? "" : "with-audience"}`;
+  const inAudience = entries.filter(entry => !audience || entry.audience === audience);
+  const searches = Object.entries(columnSearch).filter(([, value]) => value?.trim()) as [KnowledgeSortKey, string][];
+  const visible = inAudience
+    .filter(entry => (kindFilter === "all" || entry.kind === kindFilter)
+      && (stateFilter === "all" || entry.state === stateFilter)
+      && (audience || audienceFilter === "all" || entry.audience === audienceFilter)
+      && searches.every(([key, value]) => knowledgeColumnText(entry, key).toLowerCase().includes(value.trim().toLowerCase())))
+    .sort((a, b) => compareKnowledge(a, b, sort.key) * (sort.descending ? -1 : 1));
+  const paged = usePaged(visible, `${companyId}|${audience}|${kindFilter}|${stateFilter}|${audienceFilter}|${sort.key}|${sort.descending}|${JSON.stringify(columnSearch)}`);
+
+  const states = [...new Set(inAudience.map(entry => entry.state))];
+  const activeFilters: { key: string; label: string; value: string; clear: () => void }[] = [
+    ...(kindFilter !== "all" ? [{ key: "kind", label: t("Tyyppi"), value: kindLabel(kindFilter), clear: () => setKindFilter("all") }] : []),
+    ...(!audience && audienceFilter !== "all"
+      ? [{ key: "audience", label: t("Käyttö"), value: audienceLabel(audienceFilter), clear: () => setAudienceFilter("all") }]
+      : []),
+    ...(stateFilter !== "all" ? [{ key: "state", label: t("Tila"), value: knowledgeStateShort(stateFilter), clear: () => setStateFilter("all") }] : [])
+  ];
+  const filtersActive = activeFilters.length > 0;
+
   return (
     <div className="knowledge-base">
       <p className="muted knowledge-intro">
-        {t("Yhtiön dokumentit ja vakiotiedot, joiden pohjalta AI tekee luonnokset. AI ei käytä muita lähteitä yhtiön tiedoista, eikä näitä tietoja käytetä muiden yhtiöiden luonnoksissa.")}
+        {audience === "ai"
+          ? t("Yhtiön dokumentit ja vakiotiedot, joiden pohjalta AI tekee luonnokset. AI ei käytä muita lähteitä yhtiön tiedoista, eikä näitä tietoja käytetä muiden yhtiöiden luonnoksissa.")
+          : audience === "internal"
+          ? t("Henkilökunnan omat ohjeet ja muistiot. AI ei käytä sisäistä dokumentaatiota, eikä sitä näytetä asukkaille.")
+          : t("Yhtiön dokumentit ja vakiotiedot. AI tekee luonnokset vain AI-dokumentaation pohjalta; sisäinen dokumentaatio on vain henkilökunnan luettavaksi.")}
       </p>
 
-      <div className="residents-toolbar">
-        <span>{entries.length}{" "}{t("tietuetta")}</span>
-        {isManager() && (
-          <div className="toolbar-actions">
-            <button className="secondary" onClick={() => setForm({ mode: "document" })}>{t("Lataa dokumentti")}</button>
-            <button className="secondary" onClick={() => setForm({ mode: "fact" })}>{t("Lisää vakiotieto")}</button>
+      {audience !== "internal" && testOpen && (
+        <form className="settings-card knowledge-test" onSubmit={runTest}>
+          <h2>{t("Testaa")}</h2>
+          <p className="muted">{t("Kysy kysymys ja näe, minkä vastauksen ja lähteen AI käyttäisi.")}</p>
+          <div className="reporter-link">
+            <input
+              value={question}
+              onChange={event => { setQuestion(event.target.value); setTestResult(null); }}
+              placeholder={t("Esim. Miten saunavuoro varataan?")}
+            />
+            <button type="submit" disabled={testing || !question.trim()}>
+              {testing ? t("Haetaan…") : t("Testaa")}
+            </button>
           </div>
-        )}
-      </div>
-
-      <form className="settings-card knowledge-test" onSubmit={runTest}>
-        <h2>{t("Testaa")}</h2>
-        <p className="muted">{t("Kysy kysymys ja näe, minkä vastauksen ja lähteen AI käyttäisi.")}</p>
-        <div className="reporter-link">
-          <input
-            value={question}
-            onChange={event => { setQuestion(event.target.value); setTestResult(null); }}
-            placeholder={t("Esim. Miten saunavuoro varataan?")}
-          />
-          <button type="submit" disabled={testing || !question.trim()}>
-            {testing ? t("Haetaan…") : t("Testaa")}
-          </button>
-        </div>
-        {testResult && (testResult.found ? (
-          <div className="test-result">
-            <p>{testResult.answer}</p>
-            <span className="source-pill">{t("Lähde:")}{" "}{testResult.source?.title}</span>
-          </div>
-        ) : (
-          <p className="test-result muted">
-            {t("AI ei löytänyt vastausta tämän yhtiön tiedoista. Asia siirtyisi isännöitsijälle.")}
-          </p>
-        ))}
-      </form>
+          {testResult && (testResult.found ? (
+            <div className="test-result">
+              <p>{testResult.answer}</p>
+              <span className="source-pill">{t("Lähde:")}{" "}{testResult.source?.title}</span>
+            </div>
+          ) : (
+            <p className="test-result muted">
+              {t("AI ei löytänyt vastausta tämän yhtiön tiedoista. Asia siirtyisi isännöitsijälle.")}
+            </p>
+          ))}
+        </form>
+      )}
 
       {notice && <p className="send-error">{notice}</p>}
 
+      {filtersOpen && (
+        <div className="ticket-filters">
+          {companies && onCompanyChange && (
+            <label>
+              <span>{t("Taloyhtiö")}</span>
+              <select value={companyId} onChange={event => onCompanyChange(event.target.value)}>
+                {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+              </select>
+            </label>
+          )}
+          <label>
+            <span>{t("Tyyppi")}</span>
+            <select value={kindFilter} onChange={event => setKindFilter(event.target.value)}>
+              <option value="all">{t("Kaikki")}</option>
+              <option value="document">{t("Dokumentti")}</option>
+              <option value="fact">{t("Vakiotieto")}</option>
+            </select>
+          </label>
+          {!audience && (
+            <label>
+              <span>{t("Käyttö")}</span>
+              <select value={audienceFilter} onChange={event => setAudienceFilter(event.target.value)}>
+                <option value="all">{t("Kaikki")}</option>
+                <option value="ai">{t("AI")}</option>
+                <option value="internal">{t("Sisäinen")}</option>
+              </select>
+            </label>
+          )}
+          <label>
+            <span>{t("Tila")}</span>
+            <select value={stateFilter} onChange={event => setStateFilter(event.target.value)}>
+              <option value="all">{t("Kaikki")}</option>
+              {(states.includes(stateFilter) || stateFilter === "all" ? states : [stateFilter, ...states])
+                .map(state => <option key={state} value={state}>{knowledgeStateShort(state)}</option>)}
+            </select>
+          </label>
+          {filtersActive && (
+            <button className="clear-filters" onClick={() => {
+              setKindFilter("all");
+              setAudienceFilter("all");
+              setStateFilter("all");
+            }}>{t("Tyhjennä suodattimet")}</button>
+          )}
+        </div>
+      )}
+
+      <div className="residents-toolbar">
+        <div className="filter-chips">
+          <button
+            className={`filter-toggle ${filtersOpen || filtersActive ? "active" : ""}`}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            title={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
+            aria-label={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
+            aria-expanded={filtersOpen}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.200"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 5h18l-7 8.500V19l-4 2v-7.500z" />
+            </svg>
+            {filtersActive && <i />}
+          </button>
+          <button
+            className={`filter-toggle search-toggle ${searchOpen ? "active" : ""}`}
+            onClick={() => setSearchOpen(!searchOpen)}
+            title={searchOpen ? t("Sulje haku") : t("Hae sarakkeista")}
+            aria-label={searchOpen ? t("Sulje haku") : t("Hae sarakkeista")}
+            aria-expanded={searchOpen}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.200"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0" />
+              <path d="M21 21l-4.300-4.300" />
+            </svg>
+            {searches.length > 0 && <i />}
+          </button>
+          <span>{t("{0} tietuetta", visible.length)}</span>
+          {activeFilters.map(filter => (
+            <span className="filter-chip" key={filter.key}>
+              <small>{filter.label}</small>
+              {filter.value}
+              <button onClick={filter.clear} title={t("Poista suodatin")} aria-label={t("Poista suodatin {0}", filter.label)}>×</button>
+            </span>
+          ))}
+        </div>
+        <div className="toolbar-actions">
+          {audience !== "internal" && (
+            <button className="secondary" aria-expanded={testOpen} onClick={() => setTestOpen(!testOpen)}>
+              {testOpen ? t("Sulje testi") : t("Testaa AI:n vastaus")}
+            </button>
+          )}
+          {isManager() && <button className="secondary" onClick={() => setForm({ mode: "document" })}>{t("Lataa dokumentti")}</button>}
+          {isManager() && <button className="secondary" onClick={() => setForm({ mode: "fact" })}>{t("Lisää vakiotieto")}</button>}
+        </div>
+      </div>
+
+      {!loading && !loadError && inAudience.length > 0 && (
+        <div className={`ticket-row-header ${colsClass}`}>
+          {columns.map(column => {
+            const active = sort.key === column.key;
+            return (
+              <button
+                key={column.key}
+                className={active ? "active" : ""}
+                onClick={() => sortBy(column.key)}
+                title={t("Järjestä sarakkeen {0} mukaan", column.label)}
+                aria-sort={active ? (sort.descending ? "descending" : "ascending") : undefined}
+              >
+                {column.label}
+                <svg
+                  className={active && !sort.descending ? "up" : ""}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.500"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!loading && !loadError && inAudience.length > 0 && searchOpen && (
+        <div className={`ticket-row-search ${colsClass}`}>
+          {columns.map(column => (
+            <input
+              key={column.key}
+              value={columnSearch[column.key] ?? ""}
+              onChange={event => setColumnSearch({ ...columnSearch, [column.key]: event.target.value })}
+              placeholder={t("Hae…")}
+              aria-label={t("Hae sarakkeesta {0}", column.label)}
+            />
+          ))}
+        </div>
+      )}
+
       {loading ? <div className="empty">{t("Ladataan…")}</div>
         : loadError ? <div className="empty">{t("Tietojen lataus epäonnistui.")}</div>
-        : entries.length === 0 ? <div className="empty">{t("Tällä taloyhtiöllä ei ole vielä dokumentteja tai vakiotietoja.")}</div>
-        : pagedEntries.items.map(entry => (
+        : inAudience.length === 0 ? (
+          <div className="empty">
+            {audience === "internal" ? t("Tällä taloyhtiöllä ei ole vielä sisäistä dokumentaatiota.")
+              : audience === "ai" ? t("Tällä taloyhtiöllä ei ole vielä AI-dokumentaatiota.")
+              : t("Tällä taloyhtiöllä ei ole vielä dokumentteja tai vakiotietoja.")}
+          </div>
+        )
+        : visible.length === 0 ? <div className="empty">{t("Ei suodattimia vastaavia tietueita.")}</div>
+        : paged.items.map(entry => (
           <article
-            className="knowledge-entry clickable"
+            className={`ticket-row ${colsClass}`}
             key={entry.id}
             title={t("Avaa tietokortti")}
             onClick={() => setOpenEntryId(entry.id)}
             onKeyDown={event => {
-              if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+              if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 setOpenEntryId(entry.id);
               }
@@ -182,50 +441,19 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
             role="button"
             tabIndex={0}
           >
-            <div className="knowledge-entry-top">
-              <span className="type">{entry.kind === "document" ? t("Dokumentti") : t("Vakiotieto")}</span>
-              <span className={`knowledge-state ${entry.state}`}>{knowledgeStateLabel(entry.state)}</span>
-              <span className="date">{validityLabel(entry)}{" "}{t("· versio")}{" "}{entry.version}</span>
+            <div className="ticket-row-main">
+              <strong>{entry.title}</strong>
+              <span>{entry.kind === "document" && entry.file_name ? `${entry.file_name} · ` : ""}{entry.content || t("Ei luettua tekstiä.")}</span>
             </div>
-            <h2>{entry.title}</h2>
-            {entry.tags && (
-              <div className="knowledge-tags">
-                {entry.tags.split(",").map(tag => tag.trim()).filter(Boolean).map(tag => <span key={tag}>{tag}</span>)}
-              </div>
-            )}
-            {entry.kind === "document" && entry.file_name && (
-              <DownloadLink className="knowledge-file" path={`/knowledge/${entry.id}/file`} filename={entry.file_name}>
-                {entry.file_name}
-              </DownloadLink>
-            )}
-            <p>
-              {entry.content || t("Ei luettua tekstiä.")}
-              {entry.content_length > entry.content.length ? "…" : ""}
-            </p>
-            <div className="knowledge-entry-actions" onClick={event => event.stopPropagation()}>
-              {isManager() && <button onClick={() => setForm({ mode: "validity", entry })}>{t("Voimassaoloaika")}</button>}
-              {isManager() && <button onClick={() => setForm({ mode: entry.kind, replaces: entry })}>{t("Korvaa")}</button>}
-              <button onClick={() => toggleHistory(entry)}>
-                {historyFor === entry.id ? t("Piilota historia") : t("Historia")}
-              </button>
-              {isManager() && <button className="danger" onClick={() => removeEntry(entry)}>{t("Poista")}</button>}
-            </div>
-            {historyFor === entry.id && (
-              <div className="knowledge-history" onClick={event => event.stopPropagation()}>
-                {history.map(version => (
-                  <div className="audit" key={version.id}>
-                    <strong>{t("Versio")}{" "}{version.version}: {version.title}</strong>
-                    <span>
-                      {version.id === entry.id ? t("Nykyinen") : knowledgeStateLabel(version.state)} · {formatDate(version.created_at)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <span className="type">{kindLabel(entry.kind)}</span>
+            {!audience && <span className={`knowledge-audience ${entry.audience}`}>{audienceLabel(entry.audience)}</span>}
+            <span className={`knowledge-state ${entry.state}`}>{knowledgeStateShort(entry.state)}</span>
+            <span className="ticket-row-contact">{validityShort(entry)}</span>
+            <time className="date">{formatDateOnly(entry.created_at)}</time>
           </article>
         ))}
 
-      {!loading && !loadError && pagedEntries.pager}
+      {!loading && !loadError && paged.pager}
 
       {openEntryId && !form && (
         <KnowledgeDetailDrawer
@@ -237,6 +465,7 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
             await removeEntry(entry);
             setOpenEntryId(null);
           }}
+          onChanged={loadEntries}
         />
       )}
 
@@ -244,11 +473,11 @@ export function KnowledgeBase({ companyId, initialEntryId = null }: { companyId:
         <KnowledgeFormModal
           companyId={companyId}
           form={form}
+          audience={audience}
           onClose={() => setForm(null)}
           onDone={async message => {
             setForm(null);
             setOpenEntryId(null);
-            setHistoryFor(null);
             setNotice(message);
             await loadEntries();
           }}
@@ -263,24 +492,44 @@ function KnowledgeDetailDrawer({
   onOpenVersion,
   onClose,
   onEdit,
-  onRemove
+  onRemove,
+  onChanged
 }: {
   entryId: string;
   onOpenVersion: (entryId: string) => void;
   onClose: () => void;
   onEdit: (mode: "validity" | "replace", entry: KnowledgeEntry) => void;
   onRemove: (entry: KnowledgeEntry) => Promise<void>;
+  onChanged: () => Promise<void>;
 }) {
   const [detail, setDetail] = useState<KnowledgeDetail | null>(null);
   const [failed, setFailed] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [moveError, setMoveError] = useState("");
 
   useEffect(() => {
     setDetail(null);
     setFailed(false);
+    setMoveError("");
     api<KnowledgeDetail>(`/knowledge/${entryId}`)
       .then(setDetail)
       .catch(() => setFailed(true));
   }, [entryId]);
+
+  // Siirtää tietueen AI-dokumentaation ja sisäisen dokumentaation välillä.
+  async function moveTo(audience: KnowledgeAudience) {
+    setMoving(true);
+    setMoveError("");
+    try {
+      await api(`/knowledge/${entryId}/audience`, { method: "PUT", body: JSON.stringify({ audience }) });
+      setDetail(await api<KnowledgeDetail>(`/knowledge/${entryId}`));
+      await onChanged();
+    } catch (error) {
+      setMoveError(errorMessage(error, t("Siirto epäonnistui.")));
+    } finally {
+      setMoving(false);
+    }
+  }
 
   const isCurrent = detail?.status === "active";
 
@@ -302,6 +551,10 @@ function KnowledgeDetailDrawer({
               <div>
                 <dt>{t("Tila")}</dt>
                 <dd><span className={`knowledge-state ${detail.state}`}>{knowledgeStateLabel(detail.state)}</span></dd>
+              </div>
+              <div>
+                <dt>{t("Käyttö")}</dt>
+                <dd>{detail.audience === "internal" ? t("Sisäinen dokumentaatio") : t("AI dokumentaatio")}</dd>
               </div>
               <div>
                 <dt>{t("Voimassaolo")}</dt>
@@ -339,9 +592,13 @@ function KnowledgeDetailDrawer({
               <div className="knowledge-entry-actions">
                 <button onClick={() => onEdit("validity", detail)}>{t("Voimassaoloaika")}</button>
                 <button onClick={() => onEdit("replace", detail)}>{t("Korvaa")}</button>
+                <button onClick={() => void moveTo(detail.audience === "internal" ? "ai" : "internal")} disabled={moving}>
+                  {detail.audience === "internal" ? t("Siirrä AI:n käyttöön") : t("Siirrä sisäiseksi")}
+                </button>
                 <button className="danger" onClick={() => onRemove(detail)}>{t("Poista")}</button>
               </div>
             )}
+            {moveError && <p className="send-error">{moveError}</p>}
 
             <section className="drawer-section">
               <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>
@@ -375,11 +632,14 @@ function KnowledgeDetailDrawer({
 function KnowledgeFormModal({
   companyId,
   form,
+  audience,
   onClose,
   onDone
 }: {
   companyId: string;
   form: KnowledgeFormState;
+  // Näkymän rajaus: uusi tietue menee suoraan siihen. Ilman rajausta kohde valitaan lomakkeella.
+  audience?: KnowledgeAudience;
   onClose: () => void;
   onDone: (notice: string) => Promise<void>;
 }) {
@@ -389,6 +649,9 @@ function KnowledgeFormModal({
   const [file, setFile] = useState<File | null>(null);
   const [validFrom, setValidFrom] = useState(current?.valid_from ?? "");
   const [validUntil, setValidUntil] = useState(current?.valid_until ?? "");
+  const [target, setTarget] = useState<KnowledgeAudience>(audience ?? "ai");
+  // Uusi versio perii korvattavan tietueen kohteen, joten kohde valitaan vain uudelle tietueelle.
+  const isNew = form.mode !== "validity" && !form.replaces;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -414,12 +677,15 @@ function KnowledgeFormModal({
       } else if (form.mode === "fact") {
         await api(`/companies/${encodeURIComponent(companyId)}/knowledge/facts`, {
           method: "POST",
-          body: JSON.stringify({ question: title, answer, validFrom, validUntil, replaces: form.replaces?.id })
+          body: JSON.stringify({
+            question: title, answer, validFrom, validUntil, replaces: form.replaces?.id, audience: isNew ? target : undefined
+          })
         });
         await onDone("");
       } else if (file) {
         const params = new URLSearchParams({ fileName: file.name, mimeType: file.type, title, validFrom, validUntil });
         if (form.replaces) params.set("replaces", form.replaces.id);
+        else params.set("audience", target);
         const response = await fetch(
           `${API}/companies/${encodeURIComponent(companyId)}/knowledge/documents?${params}`,
           {
@@ -460,6 +726,15 @@ function KnowledgeFormModal({
         </p>
 
         <form className="ticket-form" onSubmit={handleSubmit}>
+          {isNew && !audience && (
+            <label>
+              <span>{t("Käyttö")}</span>
+              <select value={target} onChange={event => setTarget(event.target.value as KnowledgeAudience)}>
+                <option value="ai">{t("AI dokumentaatio – AI käyttää vastausehdotuksissa")}</option>
+                <option value="internal">{t("Sisäinen dokumentaatio – vain henkilökunnalle")}</option>
+              </select>
+            </label>
+          )}
           {form.mode === "document" && (
             <>
               <label>

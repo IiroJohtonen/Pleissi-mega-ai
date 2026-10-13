@@ -2893,3 +2893,21 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Ilmoitustaulut (muutot, remontit, tiedotteet): viimeinen sarake on päivämäärä eikä tarvitse leveyttä. */
 .notice-table td:last-child { min-width: 0; white-space: nowrap; }
 .notice-table td span.late-note { color: #9c2b1f; font-weight: 600; }
+
+/* Dokumentaatiolista: samat rivit ja sarakeotsikot kuin tehtävälistassa, omat sarakeleveydet. */
+.knowledge-cols { grid-template-columns: minmax(220px, 1.5fr) 104px 150px minmax(130px, .7fr) 96px; }
+.knowledge-cols.with-audience { grid-template-columns: minmax(220px, 1.5fr) 104px 84px 150px minmax(130px, .7fr) 96px; }
+.ticket-row-header.knowledge-cols > button:nth-last-child(2) { justify-self: start; }
+.ticket-row.knowledge-cols > .knowledge-state,
+.ticket-row.knowledge-cols > .knowledge-audience { justify-self: start; font-size: 11px; white-space: nowrap; }
+.knowledge-state.internal { background: #eceef0; color: #4b535d; }
+.knowledge-audience { border-radius: 99px; padding: 3px 9px; font-weight: 700; background: #e6f1fb; color: #24527f; }
+.knowledge-audience.internal { background: #eceef0; color: #4b535d; }
+
+@media (max-width: 1000px) {
+  .knowledge-cols,
+  .knowledge-cols.with-audience { grid-template-columns: minmax(0, 1fr) auto; }
+  .ticket-row.knowledge-cols > :not(.ticket-row-main):not(.knowledge-state) { display: none; }
+  .ticket-row-header.knowledge-cols,
+  .ticket-row-search.knowledge-cols { display: none; }
+}

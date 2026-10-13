@@ -56,6 +56,8 @@ export type KnowledgeEntry = {
   content: string;
   content_length: number;
   kind: "fact" | "document";
+  // ai = AI käyttää vastausehdotuksissa, internal = vain henkilökunnalle.
+  audience: "ai" | "internal";
   valid_from: string | null;
   valid_until: string | null;
   file_name: string | null;
@@ -105,7 +107,7 @@ export type TicketDetail = {
   attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string }[];
 };
 
-export type TicketTab = "queue" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log";
+export type TicketTab = "queue" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log";
 
 export type Resident = {
   id: string;

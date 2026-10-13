@@ -11,7 +11,10 @@ import { id, now, today, unsafeFileMessage } from "../util.js";
 
 export const knowledgeRouter: Router = express.Router();
 
-// AI:n käytössä ovat vain yhtiön omat, voimassa olevat tietueet, joiden teksti on saatu luettua.
+export const KNOWLEDGE_AUDIENCES = ["ai", "internal"] as const;
+
+// AI:n käytössä ovat vain yhtiön omat, voimassa olevat AI-dokumentaation tietueet, joiden teksti on
+// saatu luettua. Sisäinen dokumentaatio on vain henkilökunnan luettavaksi, eikä AI näe sitä koskaan.
 export function getKnowledge(companyId: string) {
   const date = today();
   return db.prepare(`
@@ -19,6 +22,7 @@ export function getKnowledge(companyId: string) {
     FROM knowledge
     WHERE company_id = ?
       AND status = 'active'
+      AND audience = 'ai'
       AND extraction_ok = 1
       AND (valid_from IS NULL OR valid_from <= ?)
       AND (valid_until IS NULL OR valid_until >= ?)
@@ -40,6 +44,7 @@ type KnowledgeRow = {
   status: string;
   extraction_ok: number;
   created_at: string;
+  audience: string;
 };
 
 function knowledgeState(row: KnowledgeRow) {
@@ -48,7 +53,7 @@ function knowledgeState(row: KnowledgeRow) {
   if (!row.extraction_ok) return "unreadable";
   if (row.valid_until && row.valid_until < date) return "expired";
   if (row.valid_from && row.valid_from > date) return "upcoming";
-  return "in_use";
+  return row.audience === "internal" ? "internal" : "in_use";
 }
 
 function serializeKnowledge(row: KnowledgeRow) {
@@ -82,6 +87,8 @@ function saveKnowledge(input: {
   mimeType?: string;
   extractionOk?: boolean;
   tags?: string[];
+  // Puuttuessaan uusi versio perii korvattavan tietueen kohteen; uusi tietue on AI-dokumentaatiota.
+  audience?: (typeof KNOWLEDGE_AUDIENCES)[number];
 }) {
   const replaced = input.replaces
     ? db.prepare(
@@ -98,8 +105,8 @@ function saveKnowledge(input: {
     db.prepare(`
       INSERT INTO knowledge
       (id, company_id, title, content, kind, valid_from, valid_until, file_name, mime_type,
-       version, group_id, status, extraction_ok, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+       version, group_id, status, extraction_ok, created_at, audience)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
     `).run(
       knowledgeId,
       input.companyId,
@@ -113,7 +120,8 @@ function saveKnowledge(input: {
       replaced ? replaced.version + 1 : 1,
       replaced ? replaced.group_id : knowledgeId,
       input.extractionOk === false ? 0 : 1,
-      now()
+      now(),
+      input.audience ?? replaced?.audience ?? "ai"
     );
     // Uusi versio perii aiemman version avainsanat, ellei uusia anneta.
     const tags = input.tags ? input.tags.join(", ") : replaced ? (replaced as KnowledgeRow & { tags?: string }).tags ?? "" : "";
@@ -143,7 +151,8 @@ knowledgeRouter.post("/companies/:companyId/knowledge/facts", requireManager, (r
     validFrom: validityDate,
     validUntil: validityDate,
     replaces: z.string().optional(),
-    tags: z.array(z.string().trim().min(1).max(40)).max(12).optional()
+    tags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+    audience: z.enum(KNOWLEDGE_AUDIENCES).optional()
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -158,7 +167,8 @@ knowledgeRouter.post("/companies/:companyId/knowledge/facts", requireManager, (r
     validFrom: parsed.data.validFrom,
     validUntil: parsed.data.validUntil,
     replaces: parsed.data.replaces,
-    tags: parsed.data.tags
+    tags: parsed.data.tags,
+    audience: parsed.data.audience
   });
   if (!knowledgeId) return res.status(404).json({ error: "Korvattavaa tietuetta ei löytynyt." });
 
@@ -179,7 +189,8 @@ knowledgeRouter.post(
       title: z.string().trim().default(""),
       validFrom: validityDate,
       validUntil: validityDate,
-      replaces: z.string().optional()
+      replaces: z.string().optional(),
+      audience: z.enum(KNOWLEDGE_AUDIENCES).optional()
     });
     const parsed = schema.safeParse(req.query);
     if (!parsed.success || !Buffer.isBuffer(req.body) || req.body.length === 0) {
@@ -212,7 +223,8 @@ knowledgeRouter.post(
       replaces: parsed.data.replaces,
       fileName,
       mimeType: parsed.data.mimeType || "application/octet-stream",
-      extractionOk
+      extractionOk,
+      audience: parsed.data.audience
     });
     if (!knowledgeId) return res.status(404).json({ error: "Korvattavaa tietuetta ei löytynyt." });
 
@@ -250,6 +262,18 @@ knowledgeRouter.put("/knowledge/:id/validity", requireManager, (req, res) => {
     parsed.data.validUntil || null,
     row.id
   );
+  res.json({ ok: true });
+});
+
+// Siirtää tietueen AI-dokumentaation ja sisäisen dokumentaation välillä.
+knowledgeRouter.put("/knowledge/:id/audience", requireManager, (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row || row.status !== "active") return res.status(404).json({ error: "Knowledge not found" });
+
+  const parsed = z.object({ audience: z.enum(KNOWLEDGE_AUDIENCES) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse, onko tietue AI:n vai vain henkilökunnan käytössä." });
+
+  db.prepare("UPDATE knowledge SET audience = ? WHERE id = ?").run(parsed.data.audience, row.id);
   res.json({ ok: true });
 });
 
