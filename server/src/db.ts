@@ -542,6 +542,11 @@ for (const column of ["reminder_emails", "retention_months", "ai_priority", "ai_
   }
 }
 
+// Toistuvien aiheiden raportti: aiheet, jotka jätettiin pois, koska niistä on jo dokumentaatio.
+if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]).some(column => column.name === "covered")) {
+  db.exec("ALTER TABLE topic_reports ADD COLUMN covered TEXT NOT NULL DEFAULT '[]'");
+}
+
 db.exec(`
 -- Käyttäjälle lähetetty muistutuskooste: enintään yksi päivässä.
 CREATE TABLE IF NOT EXISTS reminder_log (

@@ -27,6 +27,20 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
           return;
         }
         const message = JSON.stringify(body.messages);
+        if (String(body.system).includes("recurring")) {
+          // Raporttipyyntö: yksi uusi aihe ja yksi, johon dokumentaatio jo vastaa.
+          const report = {
+            topics: [{ title: "Pyöräkellarin lukko", summary: "Lukko on jäykkä.", documentation: "Ilmoita huoltoyhtiölle.", tickets: [1, 2] }],
+            covered: [{ title: "Saunavuoron varaus", knowledgeId: "knowledge-1" }, { title: "Keksitty", knowledgeId: "ei-ole" }]
+          };
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            id: "msg_test", type: "message", role: "assistant", model: body.model,
+            content: [{ type: "text", text: JSON.stringify(report) }],
+            stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 }
+          }));
+          return;
+        }
         const assessment = message.includes("jäykkä") ? { priority: "normal", reason: "Jäykkä lukko ei vaadi välittömiä toimia." }
           : message.includes("tippuu") ? { priority: "emergency", reason: "Katosta tuleva vesi vahingoittaa rakenteita." }
           : { priority: "low", reason: "Viesti on palautetta." };
@@ -149,6 +163,26 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     const note = await inbound("Tarjous", "Tarjous huoltoyhtiöltä kirjattu puhelusta.", "quick_note");
     assert.equal(note.filtered, false);
     assert.equal(note.ticket.status, "open");
+  });
+
+  it("toistuvien aiheiden raportti saa dokumentaation mukaansa ja jättää jo dokumentoidut aiheet pois", async () => {
+    const created = await call(server, admin, "POST", "/companies/demo-company/reports/topics", {
+      period: "month", since: new Date(Date.now() - 30 * 86_400_000).toISOString()
+    });
+    assert.equal(created.status, 200);
+    assert.deepEqual(created.data.report.topics.map((topic: any) => topic.title), ["Pyöräkellarin lukko"]);
+    // Tuntemattomaan tietueeseen viittaava merkintä pudotetaan pois.
+    assert.equal(created.data.report.covered.length, 1);
+    assert.equal(created.data.report.covered[0].title, "Saunavuoron varaus");
+    assert.equal(created.data.report.covered[0].knowledgeId, "knowledge-1");
+    assert.ok(created.data.report.covered[0].knowledgeTitle);
+
+    const request = requests.at(-1);
+    assert.match(JSON.stringify(request.body.messages), /Existing documentation/);
+    assert.match(JSON.stringify(request.body.messages), /\[knowledge-1\]/);
+
+    const stored = (await call(server, admin, "GET", "/companies/demo-company/reports/topics?period=month")).data.report;
+    assert.equal(stored.covered.length, 1);
   });
 
   it("AI:n virhe ei estä tehtävän syntymistä, vaan prioriteetti tulee avainsanoista", async () => {

@@ -1172,5 +1172,7 @@ export const en: Record<string, string> = {
   "AI suodatti viestin: ei koske taloyhtiön asioita": "AI filtered the message: not about the housing company",
   "AI suodatti": "Filtered by AI",
   "AI suodatti tämän viestin pois päätösjonosta.": "AI kept this message out of the decision queue.",
-  "Jos viesti kuuluu toimistolle, avaa tehtävä uudelleen.": "If the message belongs to the office, reopen the ticket."
+  "Jos viesti kuuluu toimistolle, avaa tehtävä uudelleen.": "If the message belongs to the office, reopen the ticket.",
+  "Jätetty pois, koska aiheesta on jo dokumentaatio:": "Left out because the topic already has documentation:",
+  "Kaikista jakson toistuvista aiheista on jo dokumentaatio.": "All recurring topics in the period already have documentation."
 };

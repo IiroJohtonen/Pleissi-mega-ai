@@ -26,6 +26,8 @@ type TopicReport = {
   ticketCount: number;
   // documentation = AI:n luonnos dokumentaatiotietueen sisällöksi (puuttuu ennen tätä muutosta luoduista raporteista).
   topics: { title: string; summary: string; documentation?: string; ticketIds: string[] }[];
+  // Aiheet, jotka AI jätti pois, koska niistä on jo dokumentaatio (puuttuu vanhoista raporteista).
+  covered?: { title: string; knowledgeId: string; knowledgeTitle: string }[];
 };
 
 type ReportBucket = { start: number; end: number; label: string; title: string; count: number };
@@ -331,8 +333,24 @@ export function Reports({
                   {t("AI ryhmitteli")}{" "}{ticketCountLabel(topicReport.ticketCount)}{" "}{t("merkityksen perusteella · luotu")}{" "}
                   {formatDate(topicReport.generatedAt)} · {topicReport.generatedBy}{t(". Raportti ei päivity itsestään, kun uusia tehtäviä saapuu.")}
                 </p>
+                {(topicReport.covered ?? []).length > 0 && (
+                  <p className="covered-topics">
+                    <strong>{t("Jätetty pois, koska aiheesta on jo dokumentaatio:")}</strong>{" "}
+                    {(topicReport.covered ?? []).map((item, index) => (
+                      <span key={`${item.knowledgeId}-${index}`}>
+                        {index > 0 && ", "}
+                        {item.title}{" "}
+                        (<a href={`#/knowledge/${encodeURIComponent(item.knowledgeId)}`} title={t("Avaa dokumentti uuteen välilehteen")} target="_blank" rel="noreferrer">{item.knowledgeTitle}</a>)
+                      </span>
+                    ))}
+                  </p>
+                )}
                 {topicReport.topics.length === 0 ? (
-                  <p className="muted">{t("AI ei löytänyt jaksolta toistuvia aiheita.")}</p>
+                  <p className="muted">
+                    {(topicReport.covered ?? []).length > 0
+                      ? t("Kaikista jakson toistuvista aiheista on jo dokumentaatio.")
+                      : t("AI ei löytänyt jaksolta toistuvia aiheita.")}
+                  </p>
                 ) : (
                   <div className="table-card">
                     <table className="data-table report-topics">

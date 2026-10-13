@@ -2998,3 +2998,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* AI:n suodattama viesti: merkki listassa ja selitys tehtäväsivulla. */
 .new-reply.filtered { background: #eceef0; color: #4b535d; }
 .filtered-notice { margin: 12px 0 0; padding: 11px 13px; border-radius: 10px; background: #eceef0; color: #37475a; font-size: 13px; line-height: 1.5; }
+
+/* Raportti: aiheet, jotka AI jätti pois, koska niistä on jo dokumentaatio. */
+.covered-topics { margin: 0 0 12px; padding: 10px 13px; border-radius: 10px; background: #eef1f5; color: #4b535d; font-size: 13px; line-height: 1.5; }
+.covered-topics strong { color: #1d2329; }
+.covered-topics a { color: #2f6ba8; font-weight: 600; }

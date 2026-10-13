@@ -260,12 +260,23 @@ export type RecurringTopic = {
   ticketIds: string[];
 };
 
+// Toistuva aihe, joka jätettiin raportista pois, koska siitä on jo AI:n käytössä oleva dokumentaatio.
+export type CoveredTopic = {
+  title: string;
+  knowledgeId: string;
+  knowledgeTitle: string;
+};
+
 const TopicsSchema = z.object({
   topics: z.array(z.object({
     title: z.string(),
     summary: z.string(),
     documentation: z.string(),
     tickets: z.array(z.number())
+  })),
+  covered: z.array(z.object({
+    title: z.string(),
+    knowledgeId: z.string()
   }))
 });
 
@@ -273,8 +284,13 @@ export function aiAvailable(): boolean {
   return claudeClient() !== null;
 }
 
-// Ryhmittelee tehtävät toistuviksi aiheiksi merkityksen perusteella. Heittää virheen, jos AI ei vastaa.
-export async function analyzeRecurringTopics(tickets: TopicTicket[]): Promise<RecurringTopic[]> {
+// Ryhmittelee tehtävät toistuviksi aiheiksi merkityksen perusteella. Aiheet, joihin AI:n käytössä oleva
+// dokumentaatio (knowledge) jo vastaa, palautetaan erikseen (covered) eikä niitä ehdoteta uudelleen
+// dokumentoitaviksi. Heittää virheen, jos AI ei vastaa.
+export async function analyzeRecurringTopics(
+  tickets: TopicTicket[],
+  knowledge: KnowledgeItem[] = []
+): Promise<{ topics: RecurringTopic[]; covered: CoveredTopic[] }> {
   const ai = claudeClient();
   if (!ai) throw new Error("AI ei ole käytössä");
 
@@ -301,6 +317,17 @@ in, for example "[täydennä: huoltoyhtiön puhelinnumero]".
 tickets: the list numbers (the number before the colon) of the tickets in the topic.
 
 Order the topics from most to fewest tickets.
+
+Existing documentation: the office has already saved the knowledge-base entries listed before the
+tickets, and the AI assistant already uses them when it drafts replies. The point of this report is
+to find what still needs documenting, so a recurring topic that an existing entry already answers
+must not appear in topics: the office would only be asked to document the same thing again. Put it
+in covered instead, with your short Finnish title for the topic and the id of the entry that
+answers it (the id in square brackets). A topic counts as covered only when the entry actually
+gives the office's answer to what the residents ask. An entry that merely mentions the same
+subject, or answers a different question about it, does not cover the topic: keep that topic in
+topics, and write its documentation draft so that it adds what the existing entry lacks instead of
+repeating it. If there is no existing documentation, covered is an empty list.
 `;
 
   const user = tickets
@@ -315,14 +342,20 @@ Order the topics from most to fewest tickets.
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     system,
-    messages: [{ role: "user", content: `Tickets:\n${user}` }],
+    messages: [{ role: "user", content: `Existing documentation:\n${knowledgePrompt(knowledge) || "(none)"}\n\nTickets:\n${user}` }],
     output_config: { format: betaZodOutputFormat(TopicsSchema) }
   });
   if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
   if (!response.parsed_output) throw new Error("AI:n vastausta ei voitu lukea");
 
+  // Vain olemassa olevaan tietueeseen viittaavat merkinnät, kukin tietue enintään kerran aihetta kohden.
+  const covered = response.parsed_output.covered.flatMap(item => {
+    const entry = knowledge.find(candidate => candidate.id === item.knowledgeId);
+    return entry && item.title.trim() ? [{ title: item.title.trim(), knowledgeId: entry.id, knowledgeTitle: entry.title }] : [];
+  });
+
   const used = new Set<number>();
-  return response.parsed_output.topics
+  const topics = response.parsed_output.topics
     .map(topic => {
       // Vain olemassa olevat tehtävät, kukin enintään yhdessä aiheessa.
       const indexes = [...new Set(topic.tickets)]
@@ -337,6 +370,7 @@ Order the topics from most to fewest tickets.
     })
     .filter(topic => topic.title && topic.ticketIds.length >= 2)
     .sort((a, b) => b.ticketIds.length - a.ticketIds.length);
+  return { topics, covered };
 }
 
 const AssessmentSchema = z.object({

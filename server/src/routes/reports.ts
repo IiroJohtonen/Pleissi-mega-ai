@@ -1,9 +1,10 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
-import { aiAvailable, analyzeRecurringTopics, type RecurringTopic, type TopicTicket } from "../ai.js";
+import { aiAvailable, analyzeRecurringTopics, type CoveredTopic, type RecurringTopic, type TopicTicket } from "../ai.js";
 import { db } from "../db.js";
 import { now } from "../util.js";
+import { getKnowledge } from "./knowledge.js";
 
 export const reportsRouter: Router = express.Router();
 
@@ -12,16 +13,17 @@ const MAX_TOPIC_TICKETS = 400;
 
 function storedTopicReport(companyId: string, period: string) {
   const row = db.prepare(
-    "SELECT generated_at, generated_by, ticket_count, topics FROM topic_reports WHERE company_id = ? AND period = ?"
+    "SELECT generated_at, generated_by, ticket_count, topics, covered FROM topic_reports WHERE company_id = ? AND period = ?"
   ).get(companyId, period) as
-    | { generated_at: string; generated_by: string; ticket_count: number; topics: string }
+    | { generated_at: string; generated_by: string; ticket_count: number; topics: string; covered: string }
     | undefined;
   return row
     ? {
         generatedAt: row.generated_at,
         generatedBy: row.generated_by,
         ticketCount: row.ticket_count,
-        topics: JSON.parse(row.topics)
+        topics: JSON.parse(row.topics),
+        covered: JSON.parse(row.covered || "[]")
       }
     : null;
 }
@@ -64,9 +66,11 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
   `).all(companyId, parsed.data.since, MAX_TOPIC_TICKETS) as TopicTicket[];
 
   let topics: RecurringTopic[] = [];
+  let covered: CoveredTopic[] = [];
   if (tickets.length >= 2) {
     try {
-      topics = await analyzeRecurringTopics(tickets);
+      // Mukaan annetaan AI:n käytössä oleva dokumentaatio, jotta jo dokumentoituja aiheita ei ehdoteta uudelleen.
+      ({ topics, covered } = await analyzeRecurringTopics(tickets, getKnowledge(companyId)));
     } catch (error) {
       console.error("Toistuvien aiheiden analyysi epäonnistui:", error);
       return res.status(502).json({ error: "AI-analyysi epäonnistui. Yritä uudelleen." });
@@ -75,9 +79,12 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
 
   db.prepare(`
     INSERT OR REPLACE INTO topic_reports
-      (company_id, period, generated_at, generated_by, ticket_count, topics)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(companyId, parsed.data.period, now(), res.locals.user?.name ?? "Tuntematon", tickets.length, JSON.stringify(topics));
+      (company_id, period, generated_at, generated_by, ticket_count, topics, covered)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    companyId, parsed.data.period, now(), res.locals.user?.name ?? "Tuntematon", tickets.length,
+    JSON.stringify(topics), JSON.stringify(covered)
+  );
 
   res.json({ report: storedTopicReport(companyId, parsed.data.period), aiAvailable: true });
 });
