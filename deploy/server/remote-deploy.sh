@@ -46,6 +46,9 @@ fi
 
 echo "Käännetään ja käynnistetään Kotilo. Ensimmäinen kerta kestää muutaman minuutin."
 docker compose -p kotilo -f "$COMPOSE" up -d --build --remove-orphans
+# Päivitys vaihtaa sovelluskansion uuteen, joten Caddy käynnistetään uudelleen, jotta se lukee
+# uuden Caddyfilen ja kotisivun tiedostot eikä jää vanhan kansion varaan.
+docker compose -p kotilo -f "$COMPOSE" restart caddy
 docker image prune -f >/dev/null
 
 echo
