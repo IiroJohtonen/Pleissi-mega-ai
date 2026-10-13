@@ -7,14 +7,15 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
 COPY client/ ./
-RUN npm run build
+# Käännös tarvitsee enemmän muistia kuin Noden oletusraja pienellä palvelimella sallii.
+RUN NODE_OPTIONS=--max-old-space-size=2048 npm run build
 
 FROM node:22-slim AS server
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci
 COPY server/ ./
-RUN npm run build && npm prune --omit=dev
+RUN NODE_OPTIONS=--max-old-space-size=2048 npm run build && npm prune --omit=dev
 
 FROM node:22-slim
 ENV NODE_ENV=production \

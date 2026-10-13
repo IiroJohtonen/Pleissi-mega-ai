@@ -24,6 +24,16 @@ if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq unattended-upgrades >/dev/null || true
 fi
 
+# Sivutusmuisti: sovelluksen kääntäminen vie hetkellisesti enemmän muistia kuin pienessä palvelimessa on.
+if ! swapon --show | grep -q .; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null
+  swapon /swapfile
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  echo "Lisättiin 2 Gt sivutusmuistia."
+fi
+
 # Sovellus ajetaan kontissa käyttäjänä node (uid 1000), joka kirjoittaa varmuuskopiot tähän kansioon.
 mkdir -p "$BASE/varmuuskopiot" "$BASE/config"
 chown 1000:1000 "$BASE/varmuuskopiot"

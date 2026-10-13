@@ -25,7 +25,7 @@ Kopioi tulostunut rivi (alkaa `ssh-ed25519`). Se on julkinen avain, jonka saa an
 UpCloudin hallintapaneelissa **Servers → Deploy server**:
 
 - **Location:** Helsinki (FI-HEL1 tai FI-HEL2)
-- **Plan:** vähintään 2 Gt muistia. Sovellus käännetään palvelimella, ja 1 Gt ei riitä siihen.
+- **Plan:** vähintään 2 Gt muistia. Sovellus käännetään palvelimella; asennus lisää käännöstä varten 2 Gt sivutusmuistia.
 - **Operating system:** Ubuntu Server 24.04 LTS
 - **Login method:** SSH keys, ja liitä kohdan 1 julkinen avain
 - **Backups:** ota päälle (päivittäinen riittää)
