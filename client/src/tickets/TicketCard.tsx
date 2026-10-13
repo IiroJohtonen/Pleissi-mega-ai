@@ -229,10 +229,13 @@ export function TicketCard({
               : null}
             {isOverdue(ticket) ? <em className="new-reply overdue" title={t("Määräaika oli {0}", formatDay(ticket.due_date))}>{t("Myöhässä")}</em> : null}
           </strong>
+          {/* Kapealla näytöllä käsittelijä näkyy otsikon alla, koska sarake ei mahdu. */}
+          <span className="ticket-row-assignee-line">{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
         </div>
         <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
         <span className="type">{t(ticket.type)}</span>
         <span className="ticket-row-contact">{ticket.resident_name || ticket.apartment_number || t("Ei yhteyshenkilöä")}</span>
+        <span className={`ticket-row-assignee ${assignee ? "" : "none"}`}>{assignee ? assignee.name : t("Ei käsittelijää")}</span>
         <span className="status-badge">{statusLabel(ticket.status)}</span>
         <time className="date">{formatDate(ticket.created_at)}</time>
         <time className="date">{formatDate(ticket.updated_at || ticket.created_at)}</time>

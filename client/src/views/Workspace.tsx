@@ -101,6 +101,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [residentsOpen, setResidentsOpen] = useState(subTabs.includes(tab));
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
   const [knowledgeOpen, setKnowledgeOpen] = useState(true);
+  // Puhelimella navigaatio on sivusta avautuva valikko; se sulkeutuu, kun näkymä vaihtuu.
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    setNavOpen(false);
+  }, [tab, routeParam]);
   const [navCounts, setNavCounts] = useState<Partial<Record<TicketTab, number>>>({});
   // Suljetut alavalikon ryhmät; valinta säilyy selaimessa.
   const [closedGroups, setClosedGroups] = useState<string[]>(() => {
@@ -267,7 +273,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
       body: JSON.stringify({ decision, actor: actorName(), reason, comment })
     });
     if (decision === "human") {
+      const companyId = allCompanyTickets.find(ticket => ticket.id === id)?.company_id
+        ?? (selected?.ticket.id === id ? selected.ticket.company_id : undefined);
       setTab("my-tickets");
+      if (companyId && companyId !== selectedCompany) {
+        setSelectedCompany(companyId);
+        await load(companyId);
+        return;
+      }
     }
     await load();
   }
@@ -381,8 +394,21 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const showResidentsLink = residentsOpen;
 
   return (
-    <div className="app">
+    <div className={`app ${navOpen ? "nav-open" : ""}`}>
+      <div className="mobile-bar">
+        <button className="mobile-menu" onClick={() => setNavOpen(true)} aria-label={t("Avaa valikko")} aria-expanded={navOpen}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 6h16" />
+            <path d="M4 12h16" />
+            <path d="M4 18h16" />
+          </svg>
+        </button>
+        <img src="/kotilo-logo.svg" alt="Kotilo" />
+        <strong>{tabTitles[tab]}</strong>
+      </div>
+      {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
       <aside className="sidebar">
+        <button className="mobile-nav-close" onClick={() => setNavOpen(false)} aria-label={t("Sulje valikko")}>×</button>
         <a className="brand" href="#/queue" title={t("Päätösjonoon")}>
           <img src="/kotilo-logo.svg" alt="Kotilo" />
         </a>

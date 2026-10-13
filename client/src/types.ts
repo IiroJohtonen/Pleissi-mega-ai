@@ -6,6 +6,8 @@ export type Ticket = {
   company_id: string;
   // Käsittelijä: toimiston käyttäjän tunniste.
   assignee_id?: string | null;
+  // Käsittelijän nimi tehtävälistoissa.
+  assignee_name?: string | null;
   apartment_number?: string;
   resident_name?: string;
   type: string;

@@ -18,7 +18,7 @@ export async function fetchTicketDetail(id: string): Promise<TicketDetail> {
   };
 }
 
-export type TicketSortKey = "number" | "subject" | "priority" | "type" | "contact" | "status" | "created" | "updated";
+export type TicketSortKey = "number" | "subject" | "priority" | "type" | "contact" | "assignee" | "status" | "created" | "updated";
 export type TicketSort = { key: TicketSortKey; descending: boolean };
 
 // Tehtävälistan sarakkeet samassa järjestyksessä kuin rivin kentät.
@@ -28,6 +28,7 @@ export const ticketColumns: { key: TicketSortKey; label: string }[] = [
   { key: "priority", label: t("Prioriteetti") },
   { key: "type", label: t("Tyyppi") },
   { key: "contact", label: t("Yhteyshenkilö") },
+  { key: "assignee", label: t("Käsittelijä") },
   { key: "status", label: t("Tila") },
   { key: "created", label: t("Luotu") },
   { key: "updated", label: t("Muokattu") }
@@ -49,6 +50,8 @@ export function compareTickets(a: Ticket, b: Ticket, key: TicketSortKey) {
     case "type": return a.type.localeCompare(b.type, "fi");
     case "contact":
       return (a.resident_name || a.apartment_number || "").localeCompare(b.resident_name || b.apartment_number || "", "fi");
+    // Tehtävät ilman käsittelijää järjestyvät viimeisiksi.
+    case "assignee": return (a.assignee_name || "\uffff").localeCompare(b.assignee_name || "\uffff", "fi");
     case "status": return statusLabel(a.status).localeCompare(statusLabel(b.status), "fi");
     case "created": return Date.parse(a.created_at) - Date.parse(b.created_at);
     case "updated":
@@ -64,6 +67,7 @@ export function ticketColumnText(ticket: Ticket, key: TicketSortKey) {
     case "priority": return priorityLabel(ticket.priority);
     case "type": return ticket.type;
     case "contact": return ticket.resident_name || ticket.apartment_number || t("Ei yhteyshenkilöä");
+    case "assignee": return ticket.assignee_name || t("Ei käsittelijää");
     case "status": return statusLabel(ticket.status);
     case "created": return formatDate(ticket.created_at);
     case "updated": return formatDate(ticket.updated_at || ticket.created_at);

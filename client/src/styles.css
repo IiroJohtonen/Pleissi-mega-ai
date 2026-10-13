@@ -594,7 +594,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .ticket-row {
   display: grid;
-  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) 150px 118px 118px;
+  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) minmax(104px, .55fr) 150px 118px 118px;
   align-items: center;
   gap: 12px;
   min-height: 58px;
@@ -613,7 +613,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Sarakeotsikot käyttävät samaa ruudukkoa kuin rivit, jotta ne osuvat kenttien kohdalle. */
 .ticket-row-header {
   display: grid;
-  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) 150px 118px 118px;
+  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) minmax(104px, .55fr) 150px 118px 118px;
   gap: 12px;
   padding: 4px 14px 0;
 }
@@ -697,7 +697,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Sarakekohtaiset hakukentät samassa ruudukossa kuin otsikot ja rivit. */
 .ticket-row-search {
   display: grid;
-  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) 150px 118px 118px;
+  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) minmax(104px, .55fr) 150px 118px 118px;
   gap: 12px;
   padding: 0 14px;
 }
@@ -1894,15 +1894,6 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 
 @media (max-width: 650px) {
-  .app { display: block; }
-  .sidebar { width: auto; }
-  .company { display: none; }
-  nav { grid-template-columns: repeat(3, 1fr); }
-  nav button { text-align: center; }
-  nav button.nav-sub { margin-left: 0; }
-  /* Kapealla näytöllä alavalikko vie koko rivin eikä jää yhteen sarakkeeseen. */
-  .nav-subs { grid-column: 1 / -1; }
-  nav button.nav-label { margin-left: 0; }
   .queue-summary { display: grid; grid-template-columns: 1fr 1fr; }
   .queue-summary > div { min-width: 0; }
   .ticket-filters { align-items: stretch; }
@@ -3008,3 +2999,176 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .collapse-row { display: flex; align-items: center; gap: 12px; }
 .collapse-row .collapse-heading { flex: 1; min-width: 0; }
 .collapse-row > button { flex: none; }
+
+/* Sivupalkki: logo ja alaosa pysyvät paikallaan, ja navigaatio vierii niiden välissä, kun kaikki
+   kohdat eivät mahdu näytölle. */
+.sidebar { overflow: hidden; }
+.sidebar > nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-right: -10px;
+  padding-right: 10px;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: #3a434d transparent;
+}
+.sidebar > nav::-webkit-scrollbar { width: 6px; }
+.sidebar > nav::-webkit-scrollbar-thumb { background: #3a434d; border-radius: 99px; }
+.sidebar > .brand, .sidebar > .sidebar-footer { flex: none; }
+.sidebar > .sidebar-footer { margin-top: 12px; }
+
+.mobile-bar, .nav-backdrop, .mobile-nav-close { display: none; }
+
+/* Puhelin ja kapea ikkuna: navigaatio on yläpalkin painikkeesta avautuva valikko, ja sisältö käyttää
+   koko leveyden. */
+@media (max-width: 760px) {
+  .app { display: block; }
+
+  .mobile-bar {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    padding: 0 12px;
+    background: #171c22;
+    color: #fff;
+  }
+  .mobile-bar img { height: 26px; }
+  .mobile-bar strong { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #b8bdc2; font-size: 13px; }
+  .mobile-menu { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: #242c35; color: #fff; }
+  .mobile-menu svg { width: 20px; height: 20px; }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(300px, 86vw);
+    height: 100dvh;
+    padding: 18px 14px;
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+  }
+  .app.nav-open .sidebar { transform: none; box-shadow: 20px 0 50px rgba(0, 0, 0, .3); }
+  .nav-backdrop { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(13, 16, 20, .5); }
+  .mobile-nav-close { display: block; position: absolute; top: 14px; right: 12px; z-index: 1; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: #b8bdc2; font-size: 28px; line-height: 1; }
+  .brand { margin-bottom: 20px; }
+  .brand img { height: 36px; }
+
+  .main { padding: 18px 14px 48px; overflow-x: hidden; }
+  .content, .ticket-page, .knowledge-base { grid-template-columns: minmax(0, 1fr); }
+
+  /* Päätösjonon yhteenveto ja tehtäväkortit */
+  .queue-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .queue-summary > div, .queue-summary > button { min-width: 0; padding: 11px 13px; }
+  .queue-summary strong { font-size: 22px; overflow: hidden; text-overflow: ellipsis; }
+  .queue-summary > .create-ticket { grid-column: 1 / -1; }
+  .ticket-main { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ticket-card .actions { flex-wrap: wrap; justify-content: flex-start; }
+  .suggest-header { flex-wrap: wrap; }
+  textarea { max-width: 100%; }
+
+  /* Vuorokalenteri vierii sivusuunnassa, jotta viikon seitsemän päivää pysyvät luettavina. */
+  .calendar { overflow-x: auto; grid-template-columns: 46px repeat(7, minmax(84px, 1fr)); padding: 10px; }
+  .calendar-scroll, .calendar-toolbar { max-width: 100%; }
+  .calendar-toolbar select { min-width: 0; width: 100%; }
+  .calendar-count { margin-left: 0; }
+  header { margin-bottom: 14px; }
+  h1 { font-size: 25px; }
+  .eyebrow { display: none; }
+
+  /* Kentät ovat vähintään 16 px, jotta puhelin ei lähennä sivua kenttään napautettaessa. */
+  input, select, textarea { font-size: 16px; }
+  nav button { padding: 11px; }
+  nav button.nav-sub { padding: 9px 11px; }
+
+  .residents-toolbar { flex-wrap: wrap; gap: 8px; }
+  .ticket-filters .dropdown, .ticket-filters .dropdown-trigger { width: 100%; min-width: 0; }
+  .toolbar-actions, .draft-actions, .drawer-actions, .card-tabs, .filter-chips { flex-wrap: wrap; }
+  .back-link { padding: 6px 0; }
+  .form-columns { grid-template-columns: minmax(0, 1fr); }
+  .move-person { grid-template-columns: minmax(0, 1fr) auto; }
+  .move-person input[type="email"] { grid-column: 1 / -1; grid-row: 2; }
+
+  /* Taulukot vierivät sivusuunnassa omassa kortissaan, jolloin sarakkeet pysyvät luettavina. */
+  .table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-card > table { min-width: 560px; }
+  .data-table th { padding: 10px 12px; }
+  .data-table td { padding: 11px 12px; }
+
+  /* Sivusta avautuvat paneelit ja ikkunat täyttävät näytön. */
+  .overlay > .drawer { width: 100vw; padding: 22px 16px 32px; }
+  .overlay > .drawer.skip-drawer { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); margin: 12px; padding: 20px 16px; overflow-y: auto; }
+  .drawer h2 { font-size: 22px; padding-right: 36px; }
+  .ticket-facts { grid-template-columns: minmax(0, 1fr); }
+
+  /* Tehtäväsivu */
+  .ticket-page .drawer-main, .ticket-page .drawer-timeline { padding: 18px 14px; }
+  /* Puhelimella painikerivit veisivät kiinnitettynä liikaa näytöstä, joten yläpalkki vierii sisällön mukana. */
+  .ticket-page .drawer-topbar { position: static; margin: -18px -14px 6px; padding: 10px 14px; }
+  .ticket-page > .drawer.drawer-split { border-radius: 12px; }
+  .drawer-topbar-tools { justify-content: flex-start; margin-left: 0; }
+  .ticket-section-tabs button { padding: 8px 10px; font-size: 13px; }
+
+  .settings-card { padding: 16px; }
+  .queue-summary > button, .queue-summary > div { min-width: 0; }
+  .knowledge-base .residents-toolbar .toolbar-actions { width: 100%; }
+
+  /* Asukasportaali: välilehdet vierivät sivusuunnassa yhdellä rivillä. */
+  .portal-header { padding: 10px 14px; gap: 8px 12px; }
+  .portal-header img { height: 30px; }
+  .portal-header nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; scrollbar-width: none; }
+  .portal-header nav::-webkit-scrollbar { display: none; }
+  .portal-header nav button { flex: none; white-space: nowrap; }
+  .portal-main { padding: 18px 14px 40px; }
+  .portal-main h1 { font-size: 23px; }
+  .portal-tickets-head { flex-direction: column; align-items: stretch; }
+  .portal-message { max-width: 92%; }
+  .portal-ticket-actions { flex-wrap: wrap; }
+
+  .login-card { width: min(420px, calc(100vw - 28px)); }
+}
+
+/* Tehtävälistan Käsittelijä-sarake. Kapealla näytöllä sarake piilotetaan ja nimi näkyy otsikon alla. */
+.ticket-row-assignee { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #232a31; font-size: 11px; font-weight: 600; }
+.ticket-row-assignee.none { color: #9aa0a6; font-weight: 500; }
+.ticket-row-assignee-line { display: none; }
+/* Dokumentaatiolista käyttää samoja rivejä omilla sarakkeillaan, joten nämä säännöt eivät koske sitä. */
+/* Tavallisella kannettavan näytöllä yhdeksän saraketta ei mahdu, joten Muokattu jää ensin pois. */
+@media (max-width: 1500px) {
+  .ticket-row:not(.knowledge-cols),
+  .ticket-row-header:not(.knowledge-cols),
+  .ticket-row-search:not(.knowledge-cols) { grid-template-columns: 60px minmax(150px, 1fr) 92px 100px minmax(90px, .6fr) minmax(100px, .55fr) 146px 114px; }
+  .ticket-row:not(.knowledge-cols) > .date:last-child,
+  .ticket-row-header:not(.knowledge-cols) > button:last-child,
+  .ticket-row-search:not(.knowledge-cols) > input:last-child { display: none; }
+}
+
+@media (max-width: 1150px) {
+  .ticket-row:not(.knowledge-cols),
+  .ticket-row-header:not(.knowledge-cols),
+  .ticket-row-search:not(.knowledge-cols) { grid-template-columns: 56px minmax(160px, 1fr) 96px 104px minmax(104px, .5fr) 150px; }
+  .ticket-row:not(.knowledge-cols) > .ticket-row-contact,
+  .ticket-row:not(.knowledge-cols) > .date,
+  .ticket-row-header:not(.knowledge-cols) > button:nth-child(5),
+  .ticket-row-header:not(.knowledge-cols) > button:nth-last-child(-n+2),
+  .ticket-row-search:not(.knowledge-cols) > input:nth-child(5),
+  .ticket-row-search:not(.knowledge-cols) > input:nth-last-child(-n+2) { display: none; }
+}
+
+@media (max-width: 900px) {
+  .ticket-row:not(.knowledge-cols) { grid-template-columns: 56px minmax(0, 1fr) auto auto; }
+  .ticket-row:not(.knowledge-cols) > .ticket-row-assignee,
+  .ticket-row:not(.knowledge-cols) > .type { display: none; }
+  .ticket-row-header:not(.knowledge-cols), .ticket-row-search:not(.knowledge-cols) { display: none; }
+  .ticket-row-assignee-line { display: block; }
+}
+
+@media (max-width: 650px) {
+  .ticket-row:not(.knowledge-cols) { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .ticket-row:not(.knowledge-cols) > .status-badge { display: none; }
+}

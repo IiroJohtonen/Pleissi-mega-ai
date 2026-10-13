@@ -118,6 +118,31 @@ describe("tehtävät ja määräajat", () => {
     assert.ok(audit.some(row => row.action === "ticket_deleted" && !row.ticket_id));
   });
 
+  it("toiselle annettu avoin tehtävä poistuu päätösjonosta tämän omiin tehtäviin ja näkyy kaikissa tehtävissä", async () => {
+    const created = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", senderName: "Tuntematon", subject: "Annettava", body: "Tämä annetaan toiselle."
+    });
+    const id = created.data.ticketId as string;
+    const queue = async () => ((await call(server, admin, "GET", "/decision-queue?companyId=demo-company")).data as any[]).map(row => row.id);
+    assert.ok((await queue()).includes(id));
+
+    const users = (await call(server, admin, "GET", "/users")).data as any[];
+    const serviceUser = users.find(user => user.email === SERVICE_EMAIL);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${id}/fields`, { assigneeId: serviceUser.id })).status, 200);
+
+    assert.ok(!(await queue()).includes(id));
+    const mine = (await call(server, service, "GET", "/my-tickets?companyId=demo-company")).data as any[];
+    assert.ok(mine.some(row => row.id === id));
+    const all = (await call(server, admin, "GET", "/tickets?companyId=demo-company")).data as any[];
+    const row = all.find(item => item.id === id);
+    assert.equal(row.status, "waiting_manager");
+    assert.equal(row.assignee_name, serviceUser.name);
+
+    // Käsittelijän poistaminen ei palauta tehtävää jonoon.
+    await call(server, admin, "PUT", `/tickets/${id}/fields`, { assigneeId: null });
+    assert.equal((await ticket(id)).ticket.status, "waiting_manager");
+  });
+
   it("tuntemattoman yhtiön tehtäviä ei palauteta", async () => {
     assert.equal((await call(server, admin, "GET", "/tickets?companyId=ei-ole")).status, 403);
     assert.equal((await call(server, admin, "GET", "/tickets/ei-ole")).status, 404);

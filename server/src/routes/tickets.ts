@@ -47,10 +47,11 @@ ticketsRouter.get("/tickets", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
+    LEFT JOIN users u ON u.id = t.assignee_id
     WHERE t.company_id = ?
     ORDER BY
       CASE t.priority
@@ -136,10 +137,11 @@ ticketsRouter.get("/my-tickets", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
+    LEFT JOIN users u ON u.id = t.assignee_id
     WHERE t.company_id = ?
       -- Myös kolmatta osapuolta (esim. huoltoyhtiötä) odottava tehtävä pysyy käsittelijänsä omissa.
       AND t.status IN ('waiting_manager', 'waiting_third_party')
@@ -153,10 +155,11 @@ ticketsRouter.get("/decision-queue", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
+    LEFT JOIN users u ON u.id = t.assignee_id
     WHERE t.company_id = ?
       AND t.status = 'open'
     ORDER BY t.priority = 'emergency' DESC, t.created_at DESC
@@ -257,9 +260,12 @@ ticketsRouter.put("/tickets/:id/fields", (req, res) => {
       return res.status(403).json({ error: "Vain taloyhtiön vastuuisännöitsijä voi antaa tehtävän toiselle." });
     }
     const assignedAt = now();
-    // Käsittelijän vaihto ei muuta tilaa: avoin tehtävä pysyy päätösjonossa uuden käsittelijän nimissä.
-    db.prepare("UPDATE tickets SET assignee_id = ?, updated_at = ? WHERE id = ?").run(
-      assignee?.id ?? null, assignedAt, req.params.id
+    // Kun avoin tehtävä annetaan jollekulle, se poistuu päätösjonosta ja siirtyy tämän omiin tehtäviin.
+    // Kaikissa tehtävissä se näkyy edelleen kaikille, myös vastuuisännöitsijälle. Käsittelijän
+    // poistaminen ei muuta tilaa.
+    const status = assignee && ticket.status === "open" ? "waiting_manager" : ticket.status;
+    db.prepare("UPDATE tickets SET assignee_id = ?, status = ?, updated_at = ? WHERE id = ?").run(
+      assignee?.id ?? null, status, assignedAt, req.params.id
     );
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
       id("audit"), req.params.id, res.locals.user?.name ?? parsed.data.actor, "ticket_assigned",
