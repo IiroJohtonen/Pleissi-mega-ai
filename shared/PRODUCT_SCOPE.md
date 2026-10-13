@@ -12,6 +12,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 - Viestiketju, vastaus sähköpostilla liitteineen, sisäiset muistiinpanot ja loki
 - Työtilaukset huoltoyhtiölle ja niiden kuittaus
 - Muistutuskooste käsittelijälle sähköpostilla (kytketään asetuksista)
+- Hätätapauksesta lähtee heti sähköposti taloyhtiön vastuuisännöitsijälle; tulos näkyy tehtävän lokissa
 
 **AI**
 - Vastausehdotus taloyhtiön tietopankin pohjalta, pyydettäessä
@@ -38,7 +39,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 ## Ei vielä toteutettu
 
 **Tehtävien käsittely**
-- Hätätapauksesta ei hälytetä päivystystä tai isännöitsijää; se vain nostetaan jonon kärkeen
+- Hätätapauksesta ei hälytetä huoltoyhtiön päivystystä, eikä hälytys kulje tekstiviestillä tai puhelulla
 - Saapuvan viestin luokittelu on avainsanahaku, ei AI
 - "AI hoitaa" -päätös ei lähetä vastausta automaattisesti
 

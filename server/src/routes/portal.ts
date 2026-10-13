@@ -5,6 +5,7 @@ import { z } from "zod";
 import { triage } from "../ai.js";
 import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
+import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
 import { id, now, unsafeFileMessage } from "../util.js";
 import {
@@ -91,6 +92,8 @@ portalRouter.post("/portal/tickets", async (req, res) => {
     JSON.stringify({ subject: parsed.data.subject, source_channel: "portal" }),
     timestamp
   );
+
+  if (result.emergency) void alertEmergency(ticketId);
 
   const attachmentError = await savePortalAttachments(ticketId, parsed.data.attachments, timestamp);
   res.status(201).json({ ok: true, ticketId, attachmentError });

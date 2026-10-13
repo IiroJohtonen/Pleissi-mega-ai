@@ -4,6 +4,7 @@ import { z } from "zod";
 import { companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket } from "../access.js";
 import { isAdmin } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
+import { alertEmergency } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now } from "../util.js";
 
 export const ticketsRouter: Router = express.Router();
@@ -98,6 +99,8 @@ ticketsRouter.post("/tickets", (req, res) => {
     JSON.stringify({ subject: parsed.data.subject, source_channel: parsed.data.sourceChannel }),
     timestamp
   );
+
+  if (parsed.data.priority === "emergency") void alertEmergency(ticketId, res.locals.user?.id);
 
   res.status(201).json({ ok: true, ticketId, status: "waiting_manager" });
 });
@@ -260,6 +263,9 @@ ticketsRouter.put("/tickets/:id/fields", (req, res) => {
     }),
     timestamp
   );
+
+  // Hälytys lähtee myös, kun olemassa oleva tehtävä nostetaan hätätapaukseksi.
+  if (priority === "emergency" && ticket.priority !== "emergency") void alertEmergency(req.params.id, res.locals.user?.id);
 
   res.json({ ok: true });
 });

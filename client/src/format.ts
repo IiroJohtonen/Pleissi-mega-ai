@@ -46,6 +46,8 @@ export function actionLabel(action: string) {
     attachment_added: "Liite lisätty tehtävälle",
     triaged: "AI luokitteli tehtävän",
     emergency_routed: "Ohjattu hätätapauksena",
+    emergency_alert_sent: "Hätätapauksesta lähetetty sähköposti vastuuisännöitsijälle",
+    emergency_alert_failed: "Hätätapauksen sähköposti vastuuisännöitsijälle ei lähtenyt",
     decision_ai: "Päätös: AI hoitaa",
     decision_human: "Päätös: Osoitettu minulle",
     decision_skip: "Tehtävä suljettu",

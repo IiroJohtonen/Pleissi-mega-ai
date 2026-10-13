@@ -326,6 +326,7 @@ const LOOKBACK_MS = 6 * 60 * 60 * 1000;
 
 // Viestit, joita ei tuoda (tyhjä sisältö tai pysyvä virhe); ei yritetä uudelleen joka kierroksella.
 const skippedMessageIds = new Set<string>();
+const NOTIFICATION_HEADER = "X-Kotilo-Notification";
 
 async function pollGmail(): Promise<void> {
   if (isRunning) return;
@@ -434,6 +435,13 @@ async function pollAccount(accountId: string): Promise<void> {
 
       if (!message.id || receivedAt < lowerBoundMs) {
         skippedMessageIds.add(listedMessage.id);
+        continue;
+      }
+
+      // Kotilon oma hälytys voi päätyä takaisin tähän postilaatikkoon. Sitä ei tuoda tehtäväksi,
+      // koska hälytyksen teksti tunnistettaisiin uudeksi hätätapaukseksi.
+      if (getHeader(message, NOTIFICATION_HEADER)) {
+        skippedMessageIds.add(message.id);
         continue;
       }
 
@@ -584,6 +592,8 @@ export async function sendGmailReply(input: {
   attachments?: OutgoingAttachment[];
   // Taloyhtiö, jonka nimissä viesti lähtee: käytetään sen omaa Gmail-tiliä, jos sellainen on.
   companyId?: string;
+  // Kotilon oma ilmoitus toimiston käyttäjälle: merkitään otsakkeella, jotta sitä ei tuoda tehtäväksi.
+  notification?: boolean;
 }): Promise<{ id: string }> {
   const auth = await getGmailClient(await gmailAccountFor(input.companyId));
 
@@ -618,6 +628,7 @@ export async function sendGmailReply(input: {
     ...(input.bcc ? [`Bcc: ${input.bcc}`] : []),
     `Subject: ${encodeHeaderValue(input.subject)}`,
     "MIME-Version: 1.0",
+    ...(input.notification ? [`${NOTIFICATION_HEADER}: 1`, "Auto-Submitted: auto-generated"] : []),
     ...(attachments.length > 0
       ? [`Content-Type: multipart/mixed; boundary="${boundary}"`]
       : ['Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: base64"])

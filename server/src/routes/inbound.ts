@@ -3,6 +3,7 @@ import { z } from "zod";
 import { companyIdForRecipients, companyIdFromContext, getAuthorizedTicket } from "../access.js";
 import { triage } from "../ai.js";
 import { db } from "../db.js";
+import { alertEmergency } from "../notify.js";
 import { id, now } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
 import { findResident } from "./residents.js";
@@ -189,6 +190,8 @@ if (input.sourceMessageId) {
     VALUES (?, ?, ?)
   `).run(input.sourceMessageId, ticketId, timestamp);
 }
+
+  if (result.emergency) void alertEmergency(ticketId);
 
   res.status(201).json({
     ticketId,
