@@ -85,13 +85,11 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
 .glow i:nth-child(2) { right: -10%; bottom: -18%; width: 46%; height: 60%; background: #3f9bd0; opacity: .55; }
 .glow i:nth-child(3) { right: 6%; top: -22%; width: 44%; height: 58%; background: #0b1622; opacity: .9; }
 
-/* Yläosa täyttää koko näytön: valikko ylhäällä, otsikko alhaalla vasemmalla. */
+/* Yläosa on sisältönsä korkuinen: valikko ylhäällä ja otsikko heti sen alla. */
 .hero {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100svh;
   padding-bottom: 28px;
   background: #0d2233;
   color: #fff;
@@ -103,7 +101,7 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
 .links a:hover { color: var(--sky); }
 .bar .pill { margin-left: auto; }
 
-.hero-text { position: relative; margin-top: auto; padding-block: 48px 72px; }
+.hero-text { position: relative; padding-block: 88px 72px; }
 .hero h1 { max-width: 15em; font-size: clamp(38px, 5.6vw, 76px); line-height: 1.04; font-weight: 700; letter-spacing: -.04em; }
 .hero-text .pill { margin-top: 30px; }
 .tagline { margin-top: 34px; font-family: Georgia, "Times New Roman", serif; font-size: 19px; }
@@ -171,7 +169,7 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
   .section { padding-block: 64px; }
   .sheet { padding-bottom: 64px; }
   .links { display: none; }
-  .hero-text { padding-block: 32px 48px; }
+  .hero-text { padding-block: 48px 48px; }
   .tagline { font-size: 17px; }
   .intro, .split { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .intro { margin-bottom: 36px; }
