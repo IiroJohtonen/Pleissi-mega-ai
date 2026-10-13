@@ -2984,3 +2984,13 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .ticket-page .drawer-timeline,
   .ticket-page .drawer-topbar { border-radius: 0; }
 }
+
+/* Tehtäväsivun välilehdet: vastaus asukkaalle ja työtilaukset. Välilehden nimi korvaa osion otsikon. */
+.ticket-sections { margin-top: 25px; }
+.ticket-section-tabs { border-bottom: 1px solid #d9dde2; }
+.ticket-section-tabs button { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700; color: #747a80; cursor: pointer; }
+.ticket-section-tabs button b { min-width: 20px; padding: 1px 6px; border-radius: 99px; background: #dfe3e7; color: #4b535d; font-size: 11px; text-align: center; }
+.ticket-section-tabs button.active b { background: #e6f1fb; color: #24527f; }
+.ticket-sections .drawer-section { margin-top: 0; padding-top: 16px; border-top: 0; }
+.ticket-sections .suggest-header { justify-content: flex-end; }
+.ticket-sections .suggest-header > h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

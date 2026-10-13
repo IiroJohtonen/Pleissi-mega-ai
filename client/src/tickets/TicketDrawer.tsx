@@ -221,6 +221,12 @@ export function TicketDrawer({
 
   const [note, setNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  // Näkyvä välilehti: vastaus asukkaalle tai työtilaukset.
+  const [section, setSection] = useState<"reply" | "orders">("reply");
+
+  useEffect(() => {
+    setSection("reply");
+  }, [ticket.id]);
 
   useEffect(() => {
     setSentTo("");
@@ -695,6 +701,20 @@ export function TicketDrawer({
           <p>{description}</p>
         </div>
 
+        {/* Vastaus ja työtilaukset ovat välilehtinä. Piilotettu välilehti pysyy sivulla, jotta keskeneräinen
+            vastaus tai työtilaus ei katoa välilehteä vaihdettaessa. */}
+        <div className="ticket-sections">
+        <div className="billing-tabs ticket-section-tabs" role="tablist">
+          <button role="tab" aria-selected={section === "reply"} className={section === "reply" ? "active" : ""} onClick={() => setSection("reply")}>
+            {t("Vastaus asukkaalle")}
+          </button>
+          <button role="tab" aria-selected={section === "orders"} className={section === "orders" ? "active" : ""} onClick={() => setSection("orders")}>
+            {t("Työtilaukset")}
+            <b>{detail.workOrders.length}</b>
+          </button>
+        </div>
+
+        <div role="tabpanel" hidden={section !== "reply"}>
         <section className="drawer-section">
           <div className="suggest-header">
             <h3>{t("Vastaus asukkaalle")}</h3>
@@ -821,8 +841,12 @@ export function TicketDrawer({
           )}
           {sendError && <p className="send-error">{sendError}</p>}
         </section>
+        </div>
 
-        <TicketWorkOrders detail={detail} onChanged={onChanged} />
+        <div role="tabpanel" hidden={section !== "orders"}>
+          <TicketWorkOrders detail={detail} onChanged={onChanged} />
+        </div>
+        </div>
 
         </div>
 

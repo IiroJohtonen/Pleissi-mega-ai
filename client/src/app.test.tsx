@@ -206,6 +206,12 @@ describe("sovellus", () => {
       expect(screen.getByText("Päätösjono")).toBeTruthy();
       expect(screen.getByText("← Kaikki tehtävät")).toBeTruthy();
       expect(document.querySelector(".overlay")).toBeNull();
+      // Työtilaukset ovat välilehtenä vastauksen vieressä.
+      const ordersTab = screen.getByRole("tab", { name: /Työtilaukset/ });
+      expect(ordersTab.getAttribute("aria-selected")).toBe("false");
+      fireEvent.click(ordersTab);
+      expect(ordersTab.getAttribute("aria-selected")).toBe("true");
+      expect(screen.getByRole("tab", { name: "Vastaus asukkaalle" }).getAttribute("aria-selected")).toBe("false");
       // Asiakaspalvelu ei voi poistaa tehtävää.
       expect(screen.queryByRole("button", { name: "Poista" })).toBeNull();
 
