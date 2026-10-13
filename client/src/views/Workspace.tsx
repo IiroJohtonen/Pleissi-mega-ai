@@ -255,10 +255,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
     navigate(tab, id);
   }
 
-  async function decide(id: string, decision: "ai" | "human" | "skip", reason?: string) {
+  async function decide(id: string, decision: "ai" | "human" | "skip", reason?: string, comment?: string) {
     await api(`/tickets/${id}/decision`, {
       method: "POST",
-      body: JSON.stringify({ decision, actor: actorName(), reason })
+      body: JSON.stringify({ decision, actor: actorName(), reason, comment })
     });
     if (decision === "human") {
       setTab("my-tickets");
@@ -274,9 +274,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
     void decide(id, decision);
   }
 
-  async function confirmSkip(reason: string) {
+  async function confirmSkip(reason: string, comment: string) {
     if (!skipTicketId) return;
-    await decide(skipTicketId, "skip", reason);
+    await decide(skipTicketId, "skip", reason, comment);
     setSkipTicketId(null);
   }
 

@@ -81,6 +81,22 @@ describe("tehtävät ja määräajat", () => {
     assert.equal((await call(server, service, "POST", `/tickets/${id}/reopen`)).status, 200);
   });
 
+  it("sulkemisen kommentti tallentuu sisäiseksi muistiinpanoksi ja lokiin", async () => {
+    const id = await createTicket("normal");
+    const closed = await call(server, service, "POST", `/tickets/${id}/decision`, {
+      decision: "skip", reason: "already_handled", comment: "  Hoidettu puhelimitse.  "
+    });
+    assert.equal(closed.data.status, "closed");
+    const detail = await ticket(id);
+    assert.deepEqual(detail.notes.map((note: any) => note.body), ["Hoidettu puhelimitse."]);
+    assert.equal(JSON.parse(detail.audit.find((row: any) => row.action === "decision_skip").details).comment, "Hoidettu puhelimitse.");
+
+    // Ilman kommenttia muistiinpanoa ei synny.
+    const other = await createTicket("normal");
+    await call(server, service, "POST", `/tickets/${other}/decision`, { decision: "skip", reason: "spam" });
+    assert.equal((await ticket(other)).notes.length, 0);
+  });
+
   it("tuntemattoman yhtiön tehtäviä ei palauteta", async () => {
     assert.equal((await call(server, admin, "GET", "/tickets?companyId=ei-ole")).status, 403);
     assert.equal((await call(server, admin, "GET", "/tickets/ei-ole")).status, 404);

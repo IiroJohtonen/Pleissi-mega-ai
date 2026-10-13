@@ -178,10 +178,6 @@ export const en: Record<string, string> = {
   "Lisää sisäinen muistiinpano (ei lähde asukkaalle)…": "Add an internal note (not sent to the resident)…",
   "Lisää muistiinpano": "Add note",
   "Sulje tehtävä": "Close ticket",
-  "Tehtävä suljetaan ilman muita toimenpiteitä. Valitse sulkemisen syy.": "The ticket is closed without further action. Choose the reason for closing.",
-  "Syy": "Reason",
-  "Pakollinen": "Required",
-  "Valitse syy": "Choose a reason",
   "Jo hoidettu": "Already handled",
   "Ei vaadi toimia": "No action needed",
   "Roskaposti": "Spam",
@@ -1151,5 +1147,14 @@ export const en: Record<string, string> = {
   "AI arvioi saapuvan tehtävän prioriteetin": "AI assesses the priority of incoming tickets",
   "Pois päältä prioriteetti päätellään viestin avainsanoista.": "When off, the priority is inferred from keywords in the message.",
   "AI lukee sähköpostilla tai asukasportaalista saapuvan viestin ja valitsee prioriteetin, joka määrää tehtävän määräajan. Hätätapaukseksi arvioitu tehtävä hälyttää vastuuisännöitsijän. Käsittelijä voi aina vaihtaa prioriteetin, ja jos AI ei vastaa, käytetään avainsanoja.": "AI reads a message arriving by email or from the resident portal and chooses the priority, which sets the ticket's due date. A ticket assessed as an emergency alerts the responsible manager. The assignee can always change the priority, and if AI does not respond, keywords are used.",
-  "AI ei ole käytössä palvelimella, joten prioriteetti päätellään toistaiseksi avainsanoista.": "AI is not enabled on the server, so for now the priority is inferred from keywords."
+  "AI ei ole käytössä palvelimella, joten prioriteetti päätellään toistaiseksi avainsanoista.": "AI is not enabled on the server, so for now the priority is inferred from keywords.",
+  "Asia on kunnossa. Asukkaalle ilmoitetaan sulkemisesta.": "The matter is resolved. The resident is notified of the closing.",
+  "Viesti oli tiedoksi tai ei kuulu toimistolle. Asukkaalle ilmoitetaan sulkemisesta.": "The message was for information or is not the office's matter. The resident is notified of the closing.",
+  "Mainos tai asiaton viesti. Lähettäjälle ei ilmoiteta mitään.": "Advertising or an inappropriate message. The sender is not notified.",
+  "Tehtävän sulkeminen epäonnistui. Yritä uudelleen.": "Closing the ticket failed. Try again.",
+  "Tehtävä suljetaan ilman muita toimenpiteitä.": "The ticket is closed without further action.",
+  "Sulkemisen syy": "Reason for closing",
+  "Kommentti (valinnainen)": "Comment (optional)",
+  "Esim. sovittu puhelimessa, huolto käy torstaina.": "E.g. agreed by phone, maintenance visits on Thursday.",
+  "Kommentti tallentuu tehtävän sisäiseksi muistiinpanoksi. Asukas ei näe sitä.": "The comment is saved as an internal note on the ticket. The resident does not see it."
 };

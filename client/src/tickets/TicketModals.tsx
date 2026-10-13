@@ -2,45 +2,81 @@ import { type FormEvent, useState } from "react";
 import type { Company } from "../types";
 import { t } from "../i18n";
 
+// Sulkemisen syyt ja se, mitä kukin tarkoittaa asukkaan kannalta.
+const SKIP_REASONS = [
+  { value: "already_handled", label: t("Jo hoidettu"), hint: t("Asia on kunnossa. Asukkaalle ilmoitetaan sulkemisesta.") },
+  { value: "no_action_required", label: t("Ei vaadi toimia"), hint: t("Viesti oli tiedoksi tai ei kuulu toimistolle. Asukkaalle ilmoitetaan sulkemisesta.") },
+  { value: "spam", label: t("Roskaposti"), hint: t("Mainos tai asiaton viesti. Lähettäjälle ei ilmoiteta mitään.") }
+];
+
 export function SkipTicketModal({
   onClose,
   onSubmit
 }: {
   onClose: () => void;
-  onSubmit: (reason: string) => Promise<void>;
+  onSubmit: (reason: string, comment: string) => Promise<void>;
 }) {
   const [reason, setReason] = useState("");
+  const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!reason) return;
     setSubmitting(true);
+    setError("");
     try {
-      await onSubmit(reason);
+      await onSubmit(reason, comment.trim());
+    } catch {
+      setError(t("Tehtävän sulkeminen epäonnistui. Yritä uudelleen."));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="overlay skip-overlay" onClick={onClose}>
-      <aside className="drawer skip-drawer" onClick={event => event.stopPropagation()}>
-        <button className="close" onClick={onClose}>×</button>
-        <h2>{t("Sulje tehtävä")}</h2>
-        <p className="muted">{t("Tehtävä suljetaan ilman muita toimenpiteitä. Valitse sulkemisen syy.")}</p>
+    <div className="overlay skip-overlay" onClick={() => !submitting && onClose()}>
+      <aside className="drawer skip-drawer" role="dialog" aria-modal="true" aria-labelledby="skip-title" onClick={event => event.stopPropagation()}>
+        <button className="close" onClick={onClose} disabled={submitting}>×</button>
+        <h2 id="skip-title">{t("Sulje tehtävä")}</h2>
+        <p className="muted">{t("Tehtävä suljetaan ilman muita toimenpiteitä.")}</p>
         <form className="ticket-form" onSubmit={handleSubmit}>
+          <fieldset className="reason-options">
+            <legend>{t("Sulkemisen syy")}</legend>
+            {SKIP_REASONS.map(option => (
+              <label key={option.value} className={`reason-option ${reason === option.value ? "selected" : ""}`}>
+                <input
+                  type="radio"
+                  name="skip-reason"
+                  value={option.value}
+                  checked={reason === option.value}
+                  onChange={() => setReason(option.value)}
+                />
+                <span>
+                  <strong>{option.label}</strong>
+                  <small>{option.hint}</small>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+
           <label>
-            <span>{t("Syy")}{" "}<em className="required-label">{t("Pakollinen")}</em></span>
-            <select required value={reason} onChange={event => setReason(event.target.value)}>
-              <option value="">{t("Valitse syy")}</option>
-              <option value="already_handled">{t("Jo hoidettu")}</option>
-              <option value="no_action_required">{t("Ei vaadi toimia")}</option>
-              <option value="spam">{t("Roskaposti")}</option>
-            </select>
+            <span>{t("Kommentti (valinnainen)")}</span>
+            <textarea
+              value={comment}
+              onChange={event => setComment(event.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder={t("Esim. sovittu puhelimessa, huolto käy torstaina.")}
+            />
           </label>
+          <p className="reply-hint">{t("Kommentti tallentuu tehtävän sisäiseksi muistiinpanoksi. Asukas ei näe sitä.")}</p>
+
+          {error && <p className="send-error">{error}</p>}
+
           <div className="drawer-actions compact-actions">
-            <button type="button" onClick={onClose}>{t("Peruuta")}</button>
+            <button type="button" onClick={onClose} disabled={submitting}>{t("Peruuta")}</button>
             <button className="primary" type="submit" disabled={!reason || submitting}>
               {submitting ? t("Suljetaan…") : t("Sulje tehtävä")}
             </button>

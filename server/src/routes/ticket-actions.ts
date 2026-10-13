@@ -17,6 +17,8 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
     z.object({
       decision: z.literal("skip"),
       reason: z.enum(["already_handled", "no_action_required", "spam"]),
+      // Vapaa kommentti sulkemisesta; tallentuu tehtävän sisäiseksi muistiinpanoksi.
+      comment: z.string().trim().max(2000).default(""),
       actor: z.string().default("isannoitsija")
     }),
     z.object({
@@ -57,10 +59,17 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
     `decision_${parsed.data.decision}`,
     JSON.stringify({
       decision: parsed.data.decision,
-      ...(parsed.data.decision === "skip" ? { reason: parsed.data.reason } : {})
+      ...(parsed.data.decision === "skip" ? { reason: parsed.data.reason, comment: parsed.data.comment || undefined } : {})
     }),
     timestamp
   );
+
+  // Sulkemisen kommentti näkyy aikajanalla sisäisenä muistiinpanona; asukas ei näe sitä.
+  if (parsed.data.decision === "skip" && parsed.data.comment) {
+    db.prepare("INSERT INTO ticket_notes VALUES (?, ?, ?, ?, ?)").run(
+      id("note"), req.params.id, res.locals.user?.name ?? parsed.data.actor, parsed.data.comment, timestamp
+    );
+  }
 
   // Sulkemisesta ilmoitetaan tehtävän ilmoittajille (ei roskapostiksi merkityistä).
   if (parsed.data.decision === "skip" && parsed.data.reason !== "spam" && ticket.status !== "closed") {

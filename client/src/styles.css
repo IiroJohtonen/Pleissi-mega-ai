@@ -983,19 +983,49 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .resident-row.clickable { cursor: pointer; }
 .resident-row.clickable:hover, .resident-row.clickable:focus-visible { background: #f3f6f9; }
 
-.skip-overlay {
+.overlay.skip-overlay {
   z-index: 2;
   justify-content: center;
   align-items: center;
 }
 
-.skip-drawer {
-  width: min(460px, 90vw);
+/* Sulkemisikkuna on sisältönsä kokoinen ja keskellä näyttöä. */
+.drawer.skip-drawer {
+  width: min(520px, 92vw);
   height: auto;
-  min-height: 260px;
-  margin: 24px auto;
+  max-height: calc(100vh - 48px);
+  margin: 24px;
+  padding: 28px;
   border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(13, 16, 20, .22);
 }
+
+.skip-drawer > .muted { margin: 4px 0 18px; }
+.skip-drawer .ticket-form textarea { min-height: 76px; }
+.skip-drawer .reply-hint { margin: -6px 0 0; }
+
+/* Syy valitaan korteista, joissa kerrotaan myös, mitä valinnasta seuraa. */
+.reason-options { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.reason-options legend { padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: #4b535d; }
+
+.ticket-form label.reason-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid #dfe3e7;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.ticket-form label.reason-option:hover { border-color: #babfc4; }
+.ticket-form label.reason-option.selected { border-color: #3f7fbf; background: #f3f6f9; box-shadow: inset 0 0 0 1px #3f7fbf; }
+.ticket-form label.reason-option input { width: 16px; height: 16px; margin: 2px 0 0; padding: 0; flex: none; accent-color: #28548f; }
+.reason-option span { display: grid; gap: 2px; min-width: 0; }
+.reason-option strong { color: #1d2329; font-size: 13px; }
+.reason-option small { color: #747a80; font-size: 12px; font-weight: 500; line-height: 1.45; }
 
 .empty {
   padding: 50px 32px;
