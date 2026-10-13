@@ -15,9 +15,12 @@ import { Announcements } from "./Announcements";
 import { AuditLog } from "./AuditLog";
 import { BookingCalendar } from "./Bookings";
 import { Companies } from "./Companies";
+import { KeyRegister } from "./Keys";
 import { Knowledge } from "./Knowledge";
+import { MeterReadings } from "./Meters";
 import { MoveNotices } from "./Moves";
 import { ParkingSpaces } from "./Parking";
+import { RenovationNotices } from "./Renovations";
 import { Reports } from "./Reports";
 import { Residents } from "./Residents";
 import { type OfficeInfo, Settings } from "./Settings";
@@ -72,13 +75,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [columnSearch, setColumnSearch] = useState<Partial<Record<TicketSortKey, string>>>({});
   const [clock, setClock] = useState(Date.now());
-  const [residentsOpen, setResidentsOpen] = useState(tab === "residents" || tab === "sauna" || tab === "laundry" || tab === "parking" || tab === "announcements" || tab === "moves" || tab === "waitlist");
+  const [residentsOpen, setResidentsOpen] = useState(tab === "residents" || tab === "sauna" || tab === "laundry" || tab === "parking" || tab === "announcements" || tab === "moves" || tab === "renovations" || tab === "keys" || tab === "meters" || tab === "waitlist");
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
 
   // Alavalikko aukeaa itsestään, kun sen näkymään siirrytään muuta kautta (esim. päätöksen jälkeen).
   useEffect(() => {
     if (tab === "my-tickets" || tab === "ai-handled") setMyTicketsOpen(true);
-    if (tab === "residents" || tab === "sauna" || tab === "laundry" || tab === "parking" || tab === "announcements" || tab === "moves" || tab === "waitlist") setResidentsOpen(true);
+    if (tab === "residents" || tab === "sauna" || tab === "laundry" || tab === "parking" || tab === "announcements" || tab === "moves" || tab === "renovations" || tab === "keys" || tab === "meters" || tab === "waitlist") setResidentsOpen(true);
   }, [tab]);
 
   // silent = taustapäivitys: listaa ei vaihdeta hetkeksi "Ladataan…"-tilaan.
@@ -393,6 +396,24 @@ export function Workspace({ user }: { user: OfficeUser }) {
             </button>
           )}
           {showResidentsLink && (
+            <button className={`nav-sub ${tab === "renovations" ? "active" : ""}`} onClick={() => setTab("renovations")}>
+              <TabIcon tab="renovations" />
+              Remontit
+            </button>
+          )}
+          {showResidentsLink && (
+            <button className={`nav-sub ${tab === "keys" ? "active" : ""}`} onClick={() => setTab("keys")}>
+              <TabIcon tab="keys" />
+              Avaimet
+            </button>
+          )}
+          {showResidentsLink && (
+            <button className={`nav-sub ${tab === "meters" ? "active" : ""}`} onClick={() => setTab("meters")}>
+              <TabIcon tab="meters" />
+              Kulutuslukemat
+            </button>
+          )}
+          {showResidentsLink && (
             <button className={`nav-sub ${tab === "waitlist" ? "active" : ""}`} onClick={() => setTab("waitlist")}>
               <TabIcon tab="waitlist" />
               Jonot
@@ -449,6 +470,15 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "moves" ? (
             <MoveNotices companies={companies} />
+          )
+          : tab === "renovations" ? (
+            <RenovationNotices companies={companies} />
+          )
+          : tab === "keys" ? (
+            <KeyRegister companies={companies} defaultCompanyId={selectedCompany} />
+          )
+          : tab === "meters" ? (
+            <MeterReadings companies={companies} defaultCompanyId={selectedCompany} />
           )
           : tab === "waitlist" ? (
             <Waitlists companies={companies} />

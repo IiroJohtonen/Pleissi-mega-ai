@@ -220,6 +220,68 @@ CREATE TABLE IF NOT EXISTS move_notices (
 );
 
 -- Jonotuslista autopaikalle tai saunavuorolle. status: 'waiting', 'offered', 'done' tai 'cancelled'.
+-- Remontti-ilmoitukset: asukas ilmoittaa portaalissa, isännöitsijä hyväksyy (ehdoin) tai hylkää.
+-- status: pending, approved, rejected, completed.
+CREATE TABLE IF NOT EXISTS renovation_notices (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  apartment_id TEXT NOT NULL,
+  resident_id TEXT NOT NULL,
+  work_type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  contractor TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  decision_note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  decided_by TEXT,
+  decided_at TEXT,
+  completed_at TEXT
+);
+
+-- Avainrekisteri: taloyhtiön avaimet ja niiden luovutukset. Avain on luovutettu, kun sillä on
+-- luovutusrivi ilman palautusaikaa. status: active tai lost.
+CREATE TABLE IF NOT EXISTS building_keys (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  code TEXT NOT NULL,
+  type TEXT NOT NULL,
+  apartment_id TEXT,
+  note TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS key_loans (
+  id TEXT PRIMARY KEY,
+  key_id TEXT NOT NULL,
+  resident_id TEXT,
+  holder_name TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  due_date TEXT,
+  handed_at TEXT NOT NULL,
+  handed_by TEXT NOT NULL,
+  returned_at TEXT,
+  received_by TEXT
+);
+
+-- Kulutuslukemat asunnoittain. meter_type: cold_water, hot_water tai electricity.
+-- source: portal (asukas ilmoitti) tai office (toimisto kirjasi).
+CREATE TABLE IF NOT EXISTS meter_readings (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  apartment_id TEXT NOT NULL,
+  resident_id TEXT,
+  meter_type TEXT NOT NULL,
+  reading_date TEXT NOT NULL,
+  value REAL NOT NULL,
+  source TEXT NOT NULL,
+  recorded_by TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS waitlist (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL,

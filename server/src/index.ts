@@ -19,12 +19,15 @@ import { bookingsRouter } from "./routes/bookings.js";
 import { companiesRouter } from "./routes/companies.js";
 import { gmailRouter } from "./routes/gmail.js";
 import { inboundRouter } from "./routes/inbound.js";
+import { keysRouter } from "./routes/keys.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
+import { metersRouter } from "./routes/meters.js";
 import { movesRouter } from "./routes/moves.js";
 import { officeRouter } from "./routes/office.js";
 import { parkingRouter } from "./routes/parking.js";
 import { passwordResetRouter } from "./routes/password-reset.js";
 import { portalRouter } from "./routes/portal.js";
+import { renovationsRouter } from "./routes/renovations.js";
 import { reportsRouter } from "./routes/reports.js";
 import { residentsRouter } from "./routes/residents.js";
 import { ticketActionsRouter } from "./routes/ticket-actions.js";
@@ -90,7 +93,8 @@ app.get("/api/health", (_req, res) => {
 for (const router of [
   authRouter, passwordResetRouter, officeRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, billingRouter, portalRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
-  workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter
+  workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
+  metersRouter
 ]) {
   app.use("/api", router);
 }

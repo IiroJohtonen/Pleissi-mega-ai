@@ -38,6 +38,8 @@ describe("reitit vastaavat", () => {
       "/companies/demo-company/work-orders",
       "/companies/demo-company/announcements", "/companies/demo-company/announcement-audience",
       "/companies/demo-company/moves", "/companies/demo-company/waitlist",
+      "/companies/demo-company/renovations", "/companies/demo-company/keys", "/companies/demo-company/apartments",
+      "/companies/demo-company/meter-readings",
       "/companies/demo-company/reports/topics?period=month"
     ];
     for (const route of routes) {
@@ -48,6 +50,7 @@ describe("reitit vastaavat", () => {
   it("asukasportaalin lukureitit", async () => {
     const routes = [
       "/portal/me", "/portal/tickets", "/portal/booking-settings", "/portal/announcements", "/portal/moves", "/portal/waitlist",
+      "/portal/renovations", "/portal/meter-readings",
       `/portal/bookings?resource=sauna&from=${from}&to=${to}`
     ];
     for (const route of routes) {

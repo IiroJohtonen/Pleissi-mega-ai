@@ -282,6 +282,17 @@ residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) 
     move_notices: db.prepare(`
       SELECT move_date, moves_out, new_residents, door_name, note, status, created_at
       FROM move_notices WHERE resident_id = ? ORDER BY created_at
+    `).all(resident.id),
+    renovation_notices: db.prepare(`
+      SELECT work_type, description, start_date, end_date, contractor, status, decision_note, created_at
+      FROM renovation_notices WHERE resident_id = ? ORDER BY created_at
+    `).all(resident.id),
+    meter_readings: db.prepare(`
+      SELECT meter_type, reading_date, value, note, created_at FROM meter_readings WHERE resident_id = ? ORDER BY reading_date
+    `).all(resident.id),
+    key_loans: db.prepare(`
+      SELECT k.code, k.type, l.handed_at, l.due_date, l.returned_at
+      FROM key_loans l JOIN building_keys k ON k.id = l.key_id WHERE l.resident_id = ? ORDER BY l.handed_at
     `).all(resident.id)
   });
 });
@@ -290,8 +301,8 @@ const ERASED_NAME = "Poistettu asukas";
 const ERASED_TEXT = "[Poistettu]";
 
 // Poistaa asukkaan henkilötiedot (tietosuoja-asetuksen mukainen poistopyyntö). Asukkaan rivi ja
-// tehtävät jäävät tilastoihin ilman nimeä: viestit, liitteet, tunnukset, tulevat vuorot, jonot ja
-// muuttoilmoitukset poistetaan. Jo laskutetuksi merkityt kuukaudet ovat kirjanpitoaineistoa ja säilyvät.
+// tehtävät jäävät tilastoihin ilman nimeä: viestit, liitteet, tunnukset, tulevat vuorot, jonot sekä
+// muutto- ja remontti-ilmoitukset poistetaan. Jo laskutetuksi merkityt kuukaudet ovat kirjanpitoaineistoa ja säilyvät.
 residentsRouter.delete("/residents/:residentId", requireManager, async (req, res) => {
   const resident = getAuthorizedResident(req.params.residentId);
   if (!resident) return res.status(404).json({ error: "Asukasta ei löytynyt." });
@@ -343,6 +354,10 @@ residentsRouter.delete("/residents/:residentId", requireManager, async (req, res
     db.prepare("UPDATE bookings SET note = '' WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM waitlist WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM move_notices WHERE resident_id = ?").run(resident.id);
+    db.prepare("DELETE FROM renovation_notices WHERE resident_id = ?").run(resident.id);
+    // Lukemat ovat asunnon tietoja ja avaimen luovutus jää rekisteriin; niistä poistetaan vain yhteys asukkaaseen.
+    db.prepare("UPDATE meter_readings SET resident_id = NULL, recorded_by = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);
+    db.prepare("UPDATE key_loans SET resident_id = NULL, holder_name = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);
 
     // Autopaikka vapautuu tänään; mennyt haltijajakso jää laskutusta varten ilman nimeä.
     db.prepare("UPDATE parking_assignments SET end_date = ? WHERE resident_id = ? AND (end_date IS NULL OR end_date > ?)")

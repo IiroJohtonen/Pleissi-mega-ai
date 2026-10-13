@@ -5,13 +5,15 @@ import { api, errorMessage, logout, type ResidentAccount } from "../session";
 import { splitQuotedReply } from "../tickets/ticket-utils";
 import type { Announcement } from "./Announcements";
 import { BookingCalendar } from "./Bookings";
+import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
 import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
 import { PARKING_TYPES } from "./Parking";
+import { RENOVATION_WORK_TYPES, type RenovationNotice, renovationPeriod, renovationStatusLabels } from "./Renovations";
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
 
 // Asukasportaali: asukas näkee vain oman taloyhtiönsä sauna- ja pyykkitupavuorot.
 export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
-  const [view, setView] = useState<"announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves">("announcements");
+  const [view, setView] = useState<"announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves" | "renovations" | "meters">("announcements");
 
   return (
     <div className="portal">
@@ -24,6 +26,8 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           <button className={view === "tickets" ? "active" : ""} onClick={() => setView("tickets")}>Tehtävät</button>
           <button className={view === "waitlist" ? "active" : ""} onClick={() => setView("waitlist")}>Jonot</button>
           <button className={view === "moves" ? "active" : ""} onClick={() => setView("moves")}>Muuttoilmoitus</button>
+          <button className={view === "renovations" ? "active" : ""} onClick={() => setView("renovations")}>Remontti-ilmoitus</button>
+          <button className={view === "meters" ? "active" : ""} onClick={() => setView("meters")}>Kulutuslukemat</button>
         </nav>
         <div className="portal-user">
           <strong>{resident.name}</strong>
@@ -38,13 +42,15 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
 
       <main className="portal-main">
         <div>
-          <h1>{view === "announcements" ? "Tiedotteet" : view === "sauna" ? "Saunavuorot" : view === "laundry" ? "Pyykkitupavuorot" : view === "waitlist" ? "Jonot" : view === "moves" ? "Muuttoilmoitus" : "Tehtävät"}</h1>
+          <h1>{view === "announcements" ? "Tiedotteet" : view === "sauna" ? "Saunavuorot" : view === "laundry" ? "Pyykkitupavuorot" : view === "waitlist" ? "Jonot" : view === "moves" ? "Muuttoilmoitus" : view === "renovations" ? "Remontti-ilmoitus" : view === "meters" ? "Kulutuslukemat" : "Tehtävät"}</h1>
           <p className="muted">{resident.companyName}</p>
         </div>
         {view === "announcements" ? <PortalAnnouncements />
           : view === "tickets" ? <PortalTickets resident={resident} />
           : view === "waitlist" ? <PortalWaitlist />
           : view === "moves" ? <PortalMoves resident={resident} />
+          : view === "renovations" ? <PortalRenovations resident={resident} />
+          : view === "meters" ? <PortalMeters resident={resident} />
           : (
           <BookingCalendar
             key={view}
@@ -681,6 +687,281 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
                   <td>{moveSummary(notice) || "–"}</td>
                   <td>{moveStatusLabels[notice.status]}</td>
                   <td>{formatDate(notice.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Asukkaan remontti-ilmoitus: työn tyyppi, kuvaus, ajankohta ja urakoitsija. Isännöitsijä hyväksyy
+// ilmoituksen ennen työn aloittamista ja voi asettaa sille ehtoja.
+function PortalRenovations({ resident }: { resident: ResidentAccount }) {
+  const [notices, setNotices] = useState<RenovationNotice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [workType, setWorkType] = useState(RENOVATION_WORK_TYPES[0]);
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [contractor, setContractor] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+
+  async function loadNotices() {
+    try {
+      setNotices(await api<RenovationNotice[]>("/portal/renovations"));
+    } catch {
+      setError("Remontti-ilmoitusten lataus epäonnistui.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadNotices();
+  }, []);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (description.trim().length < 10) {
+      setError("Kuvaa työ vähintään parilla lauseella.");
+      return;
+    }
+    if (endDate < startDate) {
+      setError("Päättymispäivä ei voi olla ennen alkamispäivää.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await api("/portal/renovations", {
+        method: "POST",
+        body: JSON.stringify({ workType, description: description.trim(), startDate, endDate, contractor: contractor.trim() })
+      });
+      setWorkType(RENOVATION_WORK_TYPES[0]);
+      setDescription("");
+      setStartDate("");
+      setEndDate("");
+      setContractor("");
+      setCreating(false);
+      setSent(true);
+      await loadNotices();
+    } catch (submitError) {
+      setError(errorMessage(submitError, "Remontti-ilmoituksen lähetys epäonnistui."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <div className="empty">Ladataan…</div>;
+
+  return (
+    <>
+      <div className="portal-tickets-head">
+        <p className="muted">
+          Ilmoita remontista ennen työn aloittamista. Työn saa aloittaa vasta, kun isännöitsijä on hyväksynyt ilmoituksen.
+        </p>
+        {!creating && (
+          <button className="portal-new" onClick={() => { setCreating(true); setSent(false); setError(""); }}>Tee remontti-ilmoitus</button>
+        )}
+      </div>
+
+      {sent && !creating && <p className="portal-sent">Remontti-ilmoitus on lähetetty isännöitsijälle.</p>}
+      {error && !creating && <p className="send-error">{error}</p>}
+
+      {creating && (
+        <form className="ticket-form portal-ticket-form" onSubmit={handleSubmit}>
+          <dl className="ticket-facts">
+            <div>
+              <dt>Ilmoittaja</dt>
+              <dd>{resident.name}</dd>
+            </div>
+            <div>
+              <dt>Asunto</dt>
+              <dd>{resident.apartmentNumber || "–"}</dd>
+            </div>
+          </dl>
+
+          <label>
+            <span>Työn tyyppi</span>
+            <select value={workType} onChange={event => setWorkType(event.target.value)}>
+              {RENOVATION_WORK_TYPES.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+
+          <label>
+            <span>Työn kuvaus</span>
+            <textarea
+              value={description}
+              onChange={event => setDescription(event.target.value)}
+              maxLength={5000}
+              rows={6}
+              placeholder="Kerro, mitä tehdään ja mihin rakenteisiin tai putkiin työ vaikuttaa."
+              required
+            />
+          </label>
+
+          <label>
+            <span>Työ alkaa</span>
+            <input type="date" value={startDate} onChange={event => setStartDate(event.target.value)} required />
+          </label>
+
+          <label>
+            <span>Työ päättyy</span>
+            <input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} required />
+          </label>
+
+          <label>
+            <span>Urakoitsija ja yhteystiedot (valinnainen)</span>
+            <input value={contractor} onChange={event => setContractor(event.target.value)} maxLength={300} placeholder="Esim. Remontti Oy, 040 123 4567" />
+          </label>
+
+          {error && <p className="send-error">{error}</p>}
+
+          <div className="portal-ticket-actions">
+            <button type="button" className="secondary" onClick={() => setCreating(false)} disabled={saving}>Peruuta</button>
+            <button type="submit" className="portal-new" disabled={saving || !startDate || !endDate}>{saving ? "Lähetetään…" : "Lähetä remontti-ilmoitus"}</button>
+          </div>
+        </form>
+      )}
+
+      {notices.length === 0 ? <div className="empty">Et ole vielä tehnyt remontti-ilmoituksia.</div> : (
+        <div className="table-card">
+          <table className="data-table report-topics">
+            <thead>
+              <tr>
+                <th>Työ</th>
+                <th>Ajankohta</th>
+                <th>Tila</th>
+                <th>Ilmoitettu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {notices.map(notice => (
+                <tr key={notice.id}>
+                  <td>
+                    <strong>{notice.work_type}</strong>
+                    <span>{notice.description}</span>
+                  </td>
+                  <td>{renovationPeriod(notice)}</td>
+                  <td>
+                    <strong>{renovationStatusLabels[notice.status]}</strong>
+                    {notice.decision_note && <span>{notice.decision_note}</span>}
+                  </td>
+                  <td>{formatDate(notice.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Asukkaan kulutuslukemat: uuden lukeman ilmoitus ja aiemmin ilmoitetut lukemat.
+function PortalMeters({ resident }: { resident: ResidentAccount }) {
+  const [readings, setReadings] = useState<MeterReading[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [meterType, setMeterType] = useState<string>(METER_TYPES[0]);
+  const [valueText, setValueText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+
+  async function loadReadings() {
+    try {
+      setReadings(await api<MeterReading[]>("/portal/meter-readings"));
+    } catch {
+      setError("Lukemien lataus epäonnistui.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadReadings();
+  }, []);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    const value = parseReading(valueText);
+    if (value === null) {
+      setError("Anna lukema numerona, esim. 123,45.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setSent(false);
+    try {
+      await api("/portal/meter-readings", { method: "POST", body: JSON.stringify({ meterType, value }) });
+      setValueText("");
+      setSent(true);
+      await loadReadings();
+    } catch (submitError) {
+      setError(errorMessage(submitError, "Lukeman lähetys epäonnistui."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <div className="empty">Ladataan…</div>;
+
+  return (
+    <>
+      <form className="ticket-form portal-ticket-form" onSubmit={handleSubmit}>
+        <dl className="ticket-facts">
+          <div>
+            <dt>Ilmoittaja</dt>
+            <dd>{resident.name}</dd>
+          </div>
+          <div>
+            <dt>Asunto</dt>
+            <dd>{resident.apartmentNumber || "–"}</dd>
+          </div>
+        </dl>
+
+        <label>
+          <span>Mittari</span>
+          <select value={meterType} onChange={event => setMeterType(event.target.value)}>
+            {METER_TYPES.map(option => <option key={option} value={option}>{meterLabel(option)}</option>)}
+          </select>
+        </label>
+
+        <label>
+          <span>Mittarin lukema tänään ({meterUnit(meterType)})</span>
+          <input value={valueText} onChange={event => setValueText(event.target.value)} inputMode="decimal" placeholder="Esim. 123,45" required />
+        </label>
+
+        {sent && <p className="portal-sent">Lukema on tallennettu.</p>}
+        {error && <p className="send-error">{error}</p>}
+
+        <div className="portal-ticket-actions">
+          <button type="submit" className="portal-new" disabled={saving || !valueText.trim()}>{saving ? "Lähetetään…" : "Lähetä lukema"}</button>
+        </div>
+      </form>
+
+      {readings.length > 0 && (
+        <div className="table-card">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Lukupäivä</th>
+                <th>Mittari</th>
+                <th>Lukema</th>
+              </tr>
+            </thead>
+            <tbody>
+              {readings.map(reading => (
+                <tr key={reading.id}>
+                  <td><strong>{formatDay(reading.reading_date)}</strong></td>
+                  <td>{meterLabel(reading.meter_type)}</td>
+                  <td>{formatReading(reading.value, reading.meter_type)}</td>
                 </tr>
               ))}
             </tbody>
