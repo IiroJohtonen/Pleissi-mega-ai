@@ -3003,3 +3003,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .covered-topics { margin: 0 0 12px; padding: 10px 13px; border-radius: 10px; background: #eef1f5; color: #4b535d; font-size: 13px; line-height: 1.5; }
 .covered-topics strong { color: #1d2329; }
 .covered-topics a { color: #2f6ba8; font-weight: 600; }
+
+/* Asetusten tiivistettävät osiot: otsikko ja sen vieressä pysyvä toiminto samalla rivillä. */
+.collapse-row { display: flex; align-items: center; gap: 12px; }
+.collapse-row .collapse-heading { flex: 1; min-width: 0; }
+.collapse-row > button { flex: none; }

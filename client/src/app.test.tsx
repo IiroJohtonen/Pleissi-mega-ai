@@ -192,6 +192,14 @@ describe("sovellus", () => {
     const label = await screen.findByText("AI arvioi saapuvan tehtävän prioriteetin");
     const toggle = label.closest("label")?.querySelector("input") as HTMLInputElement;
     expect(toggle.checked).toBe(false);
+
+    // Osion saa kiinni otsikon väkäsestä, ja valinta muistetaan.
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    expect(screen.queryByText("AI arvioi saapuvan tehtävän prioriteetin")).toBeNull();
+    expect(screen.getByText("Tietojen säilytys")).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem("kotilo.settingsCollapsed") ?? "[]")).toEqual(["office-ai"]);
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    expect(screen.getByText("AI arvioi saapuvan tehtävän prioriteetin")).toBeTruthy();
   });
 
   it("tallentaa tehtävän tietojen muutokset vasta Tallenna-painikkeesta", async () => {

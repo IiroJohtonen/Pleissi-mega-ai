@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
 import { type Language, language, LANGUAGES, setLanguage } from "../i18n";
 import {
@@ -8,6 +8,72 @@ import type { Company, GmailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
 import { t } from "../i18n";
+
+const COLLAPSED_KEY = "kotilo.settingsCollapsed";
+
+function collapsedSections(): string[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || "[]");
+    return Array.isArray(stored) ? stored : [];
+  } catch {
+    return [];
+  }
+}
+
+// Tiivistettävä asetusosio: otsikon väkäsestä osio sulkeutuu ja avautuu. Valinta säilyy selaimessa.
+// Suljetun osion kentät säilyttävät arvonsa, koska ne ovat näkymän omassa tilassa.
+function CollapseSection({ id, title, action, children }: {
+  id: string;
+  title: string;
+  // Otsikon vieressä pysyvä toiminto, esim. lisäyspainike.
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(() => !collapsedSections().includes(id));
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    try {
+      const others = collapsedSections().filter(item => item !== id);
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next ? others : [...others, id]));
+    } catch {
+      // Selaimen tallennustila ei ole käytössä; valinta säilyy vain tämän käynnin ajan.
+    }
+  }
+
+  const heading = (
+    <h2 className="collapse-heading">
+      <button
+        type="button"
+        className="collapse-head"
+        onClick={toggle}
+        aria-expanded={open}
+        title={open ? t("Tiivistä osio") : t("Näytä osio")}
+      >
+        <span>{title}</span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    </h2>
+  );
+
+  return (
+    <>
+      {action ? <div className="collapse-row">{heading}{action}</div> : heading}
+      {open && children}
+    </>
+  );
+}
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
 export function Settings(props: { company?: Company; onSaved: () => Promise<void> }) {
@@ -65,7 +131,7 @@ function UserSettings() {
   return (
     <section className="content settings">
       <form className="settings-card ticket-form" onSubmit={handleSubmit}>
-        <h2>{t("Omat tiedot")}</h2>
+        <CollapseSection id="user-details" title={t("Omat tiedot")}>
         <p className="muted">{MANAGEMENT_OFFICE.name} · {t(user?.role ?? "")}</p>
 
         <label>
@@ -102,12 +168,14 @@ function UserSettings() {
           </button>
           {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
         </div>
+        </CollapseSection>
       </form>
 
       <div className="settings-card ticket-form">
-        <h2>{t("Kieli")}</h2>
+        <CollapseSection id="language" title={t("Kieli")}>
         <Dropdown label={t("Käyttöliittymän kieli")} value={language} options={LANGUAGES} onChange={value => setLanguage(value as Language)} />
         <p className="reply-hint">{t("Kielivalinta tallentuu tähän selaimeen. Sivu latautuu uudelleen, kun kieli vaihtuu.")}</p>
+        </CollapseSection>
       </div>
     </section>
   );
@@ -183,7 +251,7 @@ export function GmailAccountCard({ target }: { target: string }) {
 
   return (
     <div className="settings-card gmail-card">
-      <h2>{office ? t("Toimiston Gmail-tili") : t("Taloyhtiön Gmail-tili")}</h2>
+      <CollapseSection id={office ? "gmail-office" : "gmail-company"} title={office ? t("Toimiston Gmail-tili") : t("Taloyhtiön Gmail-tili")}>
       {!status ? <p className="muted">{t("Tarkistetaan…")}</p> : status.connected ? (
         <>
           <p><strong>{status.emailAddress}</strong>{!own && <span className="gmail-shared">{" "}{t("· toimiston yhteinen tili")}</span>}</p>
@@ -212,6 +280,7 @@ export function GmailAccountCard({ target }: { target: string }) {
       )}
       {waiting && <p className="reply-hint">{t("Kirjaudu Googlen avaamassa välilehdessä ja hyväksy oikeudet. Palaa sitten tähän välilehteen.")}</p>}
       {error && <p className="send-error">{error}</p>}
+      </CollapseSection>
     </div>
   );
 }
@@ -317,7 +386,7 @@ function OfficeSettings({
     <section className="settings-layout">
       <div className="content settings">
       <form className="settings-card ticket-form" onSubmit={handleSubmit}>
-        <h2>{t("Isännöitsijätoimiston tiedot")}</h2>
+        <CollapseSection id="office-details" title={t("Isännöitsijätoimiston tiedot")}>
 
         <label>
           <span>{t("Toimiston nimi")}</span>
@@ -339,7 +408,9 @@ function OfficeSettings({
           <input value={phone} onChange={event => { setPhone(event.target.value); setSaved(false); }} placeholder={t("Valinnainen")} />
         </label>
 
-        <h2>{t("Tehtävien vastaanotto")}</h2>
+        </CollapseSection>
+
+        <CollapseSection id="office-inbox" title={t("Tehtävien vastaanotto")}>
 
         <label>
           <span>{t("Sähköposti, johon tehtävät saapuvat (")}{company.name})</span>
@@ -354,7 +425,9 @@ function OfficeSettings({
           {t("Tähän osoitteeseen lähetetyt viestit ohjataan tämän yhtiön tehtäviksi.")}
         </p>
 
-        <h2>{t("Muistutukset")}</h2>
+        </CollapseSection>
+
+        <CollapseSection id="office-reminders" title={t("Muistutukset")}>
 
         <label className="switch-row">
           <span>
@@ -373,7 +446,9 @@ function OfficeSettings({
           {t("Koosteessa ovat tehtävät, joiden määräaika on mennyt tai joissa asukkaan viesti on odottanut vastausta yli kaksi päivää. Viesti lähtee toimiston Gmail-tililtä käyttäjän kirjautumisosoitteeseen. Myöhässä olevat tehtävät näkyvät sovelluksessa aina.")}
         </p>
 
-        <h2>{t("AI")}</h2>
+        </CollapseSection>
+
+        <CollapseSection id="office-ai" title={t("AI")}>
 
         <label className="switch-row">
           <span>
@@ -415,7 +490,9 @@ function OfficeSettings({
           <p className="send-error">{t("AI ei ole käytössä palvelimella, joten sähköposteja ei toistaiseksi suodateta.")}</p>
         )}
 
-        <h2>{t("Tietojen säilytys")}</h2>
+        </CollapseSection>
+
+        <CollapseSection id="office-retention" title={t("Tietojen säilytys")}>
 
         <label>
           <span>{t("Säilytysaika")}</span>
@@ -435,6 +512,8 @@ function OfficeSettings({
         <p className="reply-hint">
           {t("Tätä kauemmin suljettuna olleet tehtävät poistetaan pysyvästi viesteineen ja liitteineen, samoin tätä vanhemmat lokimerkinnät. Poisto tehdään automaattisesti tunnin sisällä tallennuksesta eikä sitä voi perua.")}
         </p>
+
+        </CollapseSection>
 
         {error && <p className="send-error">{error}</p>}
 
@@ -820,10 +899,11 @@ function OfficeUsers() {
 
   return (
     <aside className="settings-card settings-users">
-      <div className="settings-users-head">
-        <h2>{t("Käyttäjät")}</h2>
-        {admin && <button className="secondary" onClick={openNewUser}>{t("Lisää käyttäjä")}</button>}
-      </div>
+      <CollapseSection
+        id="users"
+        title={t("Käyttäjät")}
+        action={admin && <button className="secondary" onClick={openNewUser}>{t("Lisää käyttäjä")}</button>}
+      >
       <p className="muted">
         {MANAGEMENT_OFFICE.name} · {users.length}{" "}{t("käyttäjää")}
       </p>
@@ -856,6 +936,7 @@ function OfficeUsers() {
         ))}
       </ul>
       {pagedUsers.pager}
+      </CollapseSection>
 
       {(editing || creating) && (
         <div className="overlay" onClick={closeForm}>
