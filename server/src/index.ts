@@ -17,6 +17,7 @@ import { announcementsRouter } from "./routes/announcements.js";
 import { billingRouter } from "./routes/billing.js";
 import { bookingsRouter } from "./routes/bookings.js";
 import { companiesRouter } from "./routes/companies.js";
+import { contactRouter } from "./routes/contact.js";
 import { gmailRouter } from "./routes/gmail.js";
 import { inboundRouter } from "./routes/inbound.js";
 import { keysRouter } from "./routes/keys.js";
@@ -78,6 +79,15 @@ app.use(["/api/auth/login", "/api/auth/forgot", "/api/auth/reset"], rateLimit({
   message: tooManyRequests
 }));
 
+// Kotisivun yhteydenottolomake on avoin kaikille, joten sen lähetyksiä rajoitetaan tiukasti osoitekohtaisesti.
+app.post("/api/contact", rateLimit({
+  windowMs: 60 * 60_000,
+  limit: Number(process.env.CONTACT_RATE_LIMIT) || 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: tooManyRequests
+}));
+
 // Raja kattaa vastauksen liitteet, jotka kulkevat pyynnössä base64-muodossa.
 app.use(express.json({ limit: "30mb" }));
 app.use("/api", requireAuth);
@@ -94,7 +104,7 @@ for (const router of [
   authRouter, passwordResetRouter, officeRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, billingRouter, portalRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter
+  metersRouter, contactRouter
 ]) {
   app.use("/api", router);
 }

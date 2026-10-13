@@ -9,24 +9,34 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Alustan kirjautumisosoite on vain alapalkin linkissä: https://app.kotilo.io -->
+  <!-- Tekstit ovat suomeksi tässä tiedostossa ja englanniksi data-en-attribuuteissa; kielen vaihtaa site.js.
+       Alustan kirjautumisosoite on vain alapalkin linkissä: https://app.kotilo.io -->
   <header class="hero">
     <div class="glow" aria-hidden="true"><i></i><i></i><i></i></div>
 
     <div class="wrap bar">
-      <a class="logo" href="/" aria-label="Kotilo, etusivu"><img src="kotilo-logo.svg" alt="Kotilo" width="118" height="34"></a>
-      <nav class="links" aria-label="Sivun osiot">
-        <a href="#alusta">Alusta</a>
-        <a href="#asukkaat">Asukkaille</a>
-        <a href="#kayttoonotto">Käyttöönotto</a>
+      <a class="logo" href="/" aria-label="Kotilo"><img src="kotilo-logo.svg" alt="Kotilo" width="118" height="34"></a>
+      <nav class="links" aria-label="Sivun osiot" data-en-aria-label="Page sections">
+        <a href="#alusta" data-en="Platform">Alusta</a>
+        <a href="#asukkaat" data-en="For residents">Asukkaille</a>
+        <a href="#tiedot" data-en="Features">Ominaisuudet</a>
+        <a href="#kayttoonotto" data-en="Getting started">Käyttöönotto</a>
       </nav>
-      <a class="pill accent" href="#yhteys">Ota yhteyttä</a>
+      <div class="lang" role="group" aria-label="Kieli" data-en-aria-label="Language">
+        <button type="button" data-lang="fi" aria-pressed="true" aria-label="Suomi" title="Suomi">
+          <svg viewBox="0 0 18 11" aria-hidden="true"><rect width="18" height="11" fill="#fff"/><rect x="5" width="3" height="11" fill="#002f6c"/><rect y="4" width="18" height="3" fill="#002f6c"/></svg>
+        </button>
+        <button type="button" data-lang="en" aria-pressed="false" aria-label="English" title="English">
+          <svg viewBox="0 0 60 30" aria-hidden="true"><clipPath id="uk"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath><path d="M0,0v30h60v-30z" fill="#012169"/><path d="M0,0 60,30M60,0 0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 60,30M60,0 0,30" clip-path="url(#uk)" stroke="#c8102e" stroke-width="4"/><path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/></svg>
+        </button>
+      </div>
+      <a class="pill accent" href="#yhteys" data-en="Contact us">Ota yhteyttä</a>
     </div>
 
     <div class="wrap hero-text">
-      <h1>Jokainen asukkaan viesti päätyy oikealle ihmiselle.</h1>
-      <a class="pill more" href="#alusta">Lue lisää <span aria-hidden="true"></span></a>
-      <p class="tagline">Isännöintitoimiston työkalu asukkaiden yhteydenottoihin ja taloyhtiön arkeen.</p>
+      <h1 data-en="Every resident message reaches &lt;em&gt;the right person&lt;/em&gt;.">Jokainen asukkaan viesti päätyy <em>oikealle ihmiselle</em>.</h1>
+      <a class="pill more" href="#alusta"><span data-en="Read more">Lue lisää</span><i aria-hidden="true"></i></a>
+      <p class="tagline" data-en="A tool for property managers: resident requests and everyday housing company matters in one place.">Isännöintitoimiston työkalu asukkaiden yhteydenottoihin ja taloyhtiön arkeen.</p>
     </div>
   </header>
 
@@ -34,36 +44,36 @@
     <section class="wrap section" id="alusta">
       <div class="intro">
         <div>
-          <p class="label">Alusta</p>
-          <h2>Mitä Kotilo tekee</h2>
+          <p class="label" data-en="Platform">Alusta</p>
+          <h2 data-en="What Kotilo does">Mitä Kotilo tekee</h2>
         </div>
-        <p>Kotilo kokoaa sähköpostit ja asukasportaalin ilmoitukset tehtäviksi yhteen jonoon. Jokaisella tehtävällä on käsittelijä, määräaika ja historia, joten mikään viesti ei jää jonkun henkilökohtaiseen postilaatikkoon.</p>
+        <p data-en="Kotilo turns emails and resident portal reports into tasks in a single queue. Every task has an assignee, a deadline and a history, so no message is left in someone's personal inbox.">Kotilo kokoaa sähköpostit ja asukasportaalin ilmoitukset tehtäviksi yhteen jonoon. Jokaisella tehtävällä on käsittelijä, määräaika ja historia, joten mikään viesti ei jää jonkun henkilökohtaiseen postilaatikkoon.</p>
       </div>
 
       <ol class="cards">
-        <li>
+        <li class="tone-sky">
           <b>01</b>
-          <h3>Yhteydenotot</h3>
-          <p>Viesti muuttuu tehtäväksi, ja asukas ja asunto tunnistetaan lähettäjästä. Saman ketjun vastaukset päätyvät samalle tehtävälle.</p>
-          <p>Hätätapaus nousee jonon kärkeen, ja taloyhtiön vastuuisännöitsijä saa siitä sähköpostin heti.</p>
+          <h3 data-en="Requests">Yhteydenotot</h3>
+          <p data-en="A message becomes a task, and the resident and apartment are recognised from the sender. Replies in the same thread end up on the same task.">Viesti muuttuu tehtäväksi, ja asukas ja asunto tunnistetaan lähettäjästä. Saman ketjun vastaukset päätyvät samalle tehtävälle.</p>
+          <p data-en="An emergency goes to the top of the queue, and the housing company's responsible manager gets an email right away.">Hätätapaus nousee jonon kärkeen, ja taloyhtiön vastuuisännöitsijä saa siitä sähköpostin heti.</p>
         </li>
-        <li>
+        <li class="tone-blue">
           <b>02</b>
-          <h3>AI apuna</h3>
-          <p>Vastausehdotus perustuu vain kyseisen taloyhtiön omiin ohjeisiin. Käsittelijä tarkistaa ja lähettää vastauksen itse.</p>
-          <p>Halutessasi AI arvioi myös viestin prioriteetin ja pitää mainokset poissa jonosta.</p>
+          <h3 data-en="AI assistance">AI apuna</h3>
+          <p data-en="A suggested reply is based only on that housing company's own instructions. The handler checks it and sends the reply.">Vastausehdotus perustuu vain kyseisen taloyhtiön omiin ohjeisiin. Käsittelijä tarkistaa ja lähettää vastauksen itse.</p>
+          <p data-en="If you want, AI also assesses the priority of a message and keeps advertising out of the queue.">Halutessasi AI arvioi myös viestin prioriteetin ja pitää mainokset poissa jonosta.</p>
         </li>
-        <li>
+        <li class="tone-green">
           <b>03</b>
-          <h3>Taloyhtiön arki</h3>
-          <p>Sauna- ja pyykkitupavuorot, autopaikat ja niiden jonot, tiedotteet, muutto- ja remontti-ilmoitukset, avaimet ja kulutuslukemat.</p>
-          <p>Työtilaus lähtee huoltoyhtiölle suoraan tehtävältä kuvineen.</p>
+          <h3 data-en="Everyday housing matters">Taloyhtiön arki</h3>
+          <p data-en="Sauna and laundry slots, parking spaces and their waiting lists, announcements, move and renovation notices, keys and meter readings.">Sauna- ja pyykkitupavuorot, autopaikat ja niiden jonot, tiedotteet, muutto- ja remontti-ilmoitukset, avaimet ja kulutuslukemat.</p>
+          <p data-en="A work order goes to the maintenance company straight from the task, photos included.">Työtilaus lähtee huoltoyhtiölle suoraan tehtävältä kuvineen.</p>
         </li>
-        <li>
+        <li class="tone-amber">
           <b>04</b>
-          <h3>Raportit</h3>
-          <p>Näet, mistä asukkaat kysyvät toistuvasti, ja voit tehdä aiheesta vakio-ohjeen, jota AI käyttää jatkossa.</p>
-          <p>Laskutusraportit vuoroista ja autopaikoista saa suoraan alustasta.</p>
+          <h3 data-en="Reports">Raportit</h3>
+          <p data-en="See what residents ask about repeatedly and turn the topic into a standard instruction that AI uses from then on.">Näet, mistä asukkaat kysyvät toistuvasti, ja voit tehdä aiheesta vakio-ohjeen, jota AI käyttää jatkossa.</p>
+          <p data-en="Billing reports for slots and parking spaces come straight from the platform.">Laskutusraportit vuoroista ja autopaikoista saa suoraan alustasta.</p>
         </li>
       </ol>
     </section>
@@ -71,20 +81,20 @@
     <section class="wrap">
       <div class="showcase">
         <div class="glow" aria-hidden="true"><i></i><i></i></div>
-        <div class="queue" aria-label="Esimerkkinäkymä päätösjonosta">
-          <div class="queue-head"><strong>Päätösjono</strong><span>Esimerkkinäkymä</span></div>
+        <div class="queue" aria-label="Esimerkkinäkymä päätösjonosta" data-en-aria-label="Example view of the decision queue">
+          <div class="queue-head"><strong data-en="Decision queue">Päätösjono</strong><span data-en="Example view">Esimerkkinäkymä</span></div>
           <div class="ticket alarm">
-            <div class="ticket-row"><h3>#0142 Vesivuoto keittiössä</h3><span class="chip red">Hätätapaus</span></div>
-            <p>As Oy Koivikko · asunto B 12 · sähköposti</p>
-            <p class="sent">Sähköposti lähetetty vastuuisännöitsijälle</p>
+            <div class="ticket-row"><h3 data-en="#0142 Water leak in the kitchen">#0142 Vesivuoto keittiössä</h3><span class="chip red" data-en="Emergency">Hätätapaus</span></div>
+            <p data-en="As Oy Koivikko · apartment B 12 · email">As Oy Koivikko · asunto B 12 · sähköposti</p>
+            <p class="sent" data-en="Email sent to the responsible manager">Sähköposti lähetetty vastuuisännöitsijälle</p>
           </div>
           <div class="ticket">
-            <div class="ticket-row"><h3>#0141 Saunavuoron vaihto</h3><span class="chip">Määräaika pe</span></div>
-            <p>As Oy Koivikko · asunto A 3 · portaali</p>
+            <div class="ticket-row"><h3 data-en="#0141 Sauna slot change">#0141 Saunavuoron vaihto</h3><span class="chip amber" data-en="Due Fri">Määräaika pe</span></div>
+            <p data-en="As Oy Koivikko · apartment A 3 · portal">As Oy Koivikko · asunto A 3 · portaali</p>
           </div>
           <div class="ticket">
-            <div class="ticket-row"><h3>#0140 Mistä saan avaimen pyöräkellariin?</h3><span class="chip">AI-ehdotus</span></div>
-            <p>As Oy Rantakaari · asunto C 21 · sähköposti</p>
+            <div class="ticket-row"><h3 data-en="#0140 Where do I get a key to the bike storage?">#0140 Mistä saan avaimen pyöräkellariin?</h3><span class="chip sky" data-en="AI suggestion">AI-ehdotus</span></div>
+            <p data-en="As Oy Rantakaari · apartment C 21 · email">As Oy Rantakaari · asunto C 21 · sähköposti</p>
           </div>
         </div>
       </div>
@@ -92,40 +102,85 @@
 
     <section class="wrap section split" id="asukkaat">
       <div>
-        <p class="label">Asukkaille</p>
-        <h2>Oma portaali asukkaalle</h2>
+        <p class="label" data-en="For residents">Asukkaille</p>
+        <h2 data-en="A portal of their own">Oma portaali asukkaalle</h2>
       </div>
       <div class="prose">
-        <p>Asukas hoitaa tavallisimmat asiat itse: vikailmoitukset kuvineen, sauna- ja pyykkitupavuorot, autopaikkajonon sekä muutto- ja remontti-ilmoitukset. Toimiston ei tarvitse kirjata niitä käsin.</p>
-        <p>Asukas näkee vain omat asiansa ja oman taloyhtiönsä tiedotteet. Portaali toimii puhelimella, suomeksi ja englanniksi.</p>
-        <a class="pill more dark" href="#yhteys">Pyydä esittely <span aria-hidden="true"></span></a>
+        <p data-en="Residents handle the most common things themselves: fault reports with photos, sauna and laundry slots, the parking waiting list, and move and renovation notices. The office does not have to enter them by hand.">Asukas hoitaa tavallisimmat asiat itse: vikailmoitukset kuvineen, sauna- ja pyykkitupavuorot, autopaikkajonon sekä muutto- ja remontti-ilmoitukset. Toimiston ei tarvitse kirjata niitä käsin.</p>
+        <p data-en="A resident sees only their own matters and their own housing company's announcements. The portal works on a phone, in Finnish and English.">Asukas näkee vain omat asiansa ja oman taloyhtiönsä tiedotteet. Portaali toimii puhelimella, suomeksi ja englanniksi.</p>
+        <a class="pill more dark" href="#yhteys"><span data-en="Request a demo">Pyydä esittely</span><i aria-hidden="true"></i></a>
+      </div>
+    </section>
+
+    <section class="band" id="tiedot">
+      <div class="wrap section">
+        <div class="intro">
+          <div>
+            <p class="label" data-en="Features">Ominaisuudet</p>
+            <h2 data-en="More about the platform">Lisää alustasta</h2>
+          </div>
+          <p data-en="Everything is in the same place, so the office works in one tool instead of an inbox, spreadsheets and paper lists.">Kaikki on samassa paikassa, joten toimisto tekee työnsä yhdellä työkalulla sähköpostin, taulukoiden ja paperilistojen sijaan.</p>
+        </div>
+
+        <ul class="facts">
+          <li>
+            <span class="tag sky" data-en="Tasks">Tehtävät</span>
+            <h3 data-en="Assignee, priority and deadline">Käsittelijä, prioriteetti ja määräaika</h3>
+            <p data-en="Each task has a message thread, internal notes and a log. Overdue tasks are visible at once, and the handler gets a reminder.">Jokaisella tehtävällä on viestiketju, sisäiset muistiinpanot ja loki. Myöhässä olevat näkyvät heti, ja käsittelijä saa niistä muistutuksen.</p>
+          </li>
+          <li>
+            <span class="tag red" data-en="Emergencies">Hätätapaukset</span>
+            <h3 data-en="Straight to the responsible manager">Suoraan vastuuisännöitsijälle</h3>
+            <p data-en="A water leak or power cut is recognised from the message, goes to the top of the queue and triggers an email to the housing company's responsible manager.">Vesivuoto tai sähkökatko tunnistetaan viestistä, nousee jonon kärkeen ja lähettää sähköpostin taloyhtiön vastuuisännöitsijälle.</p>
+          </li>
+          <li>
+            <span class="tag blue" data-en="Documentation">Dokumentaatio</span>
+            <h3 data-en="Instructions for AI and for staff">Ohjeet AI:lle ja henkilökunnalle</h3>
+            <p data-en="The housing company's instructions and documents are kept in a knowledge base. Internal instructions are separate and are never used in replies to residents.">Taloyhtiön ohjeet ja dokumentit ovat tietopankissa. Sisäiset ohjeet ovat erikseen, eikä niitä käytetä asukkaille lähteviin vastauksiin.</p>
+          </li>
+          <li>
+            <span class="tag green" data-en="Bookings">Varaukset</span>
+            <h3 data-en="Slots, parking and waiting lists">Vuorot, autopaikat ja jonot</h3>
+            <p data-en="Sauna and laundry slots are booked in the portal. Parking spaces, their waiting lists and fees are in the same view.">Sauna- ja pyykkitupavuorot varataan portaalissa. Autopaikat, niiden jonot ja maksut ovat samassa näkymässä.</p>
+          </li>
+          <li>
+            <span class="tag amber" data-en="Notices">Ilmoitukset</span>
+            <h3 data-en="Renovations, moves, keys and readings">Remontit, muutot, avaimet ja lukemat</h3>
+            <p data-en="Renovation notices are approved with conditions, the key register shows who holds each key, and apartment meter readings are kept by date.">Remontti-ilmoitukset hyväksytään ehtoineen, avainrekisteristä näkee kenellä avain on, ja asuntojen kulutuslukemat säilyvät päivämäärineen.</p>
+          </li>
+          <li>
+            <span class="tag slate" data-en="Privacy">Tietosuoja</span>
+            <h3 data-en="Roles and retention periods">Roolit ja säilytysajat</h3>
+            <p data-en="A manager sees only their own housing companies. A resident's data can be exported and deleted on request, and a backup is taken every day.">Isännöitsijä näkee vain omat taloyhtiönsä. Asukkaan tiedot voi viedä ja poistaa pyynnöstä, ja varmuuskopio otetaan päivittäin.</p>
+          </li>
+        </ul>
       </div>
     </section>
 
     <section class="wrap section" id="kayttoonotto">
       <div class="intro">
         <div>
-          <p class="label">Käyttöönotto</p>
-          <h2>Kolme vaihetta alkuun</h2>
+          <p class="label" data-en="Getting started">Käyttöönotto</p>
+          <h2 data-en="Three steps to get going">Kolme vaihetta alkuun</h2>
         </div>
-        <p>Kotiloa käytetään selaimella, eikä mitään tarvitse asentaa.</p>
+        <p data-en="Kotilo is used in a browser, and nothing needs to be installed.">Kotiloa käytetään selaimella, eikä mitään tarvitse asentaa.</p>
       </div>
 
       <ol class="journey">
         <li>
           <b>01</b>
-          <h3>Asukkaat</h3>
-          <p>Asukkaat ja asunnot tuodaan CSV- tai Excel-tiedostosta taloyhtiö kerrallaan.</p>
+          <h3 data-en="Residents">Asukkaat</h3>
+          <p data-en="Residents and apartments are imported from a CSV or Excel file, one housing company at a time.">Asukkaat ja asunnot tuodaan CSV- tai Excel-tiedostosta taloyhtiö kerrallaan.</p>
         </li>
         <li>
           <b>02</b>
-          <h3>Sähköposti</h3>
-          <p>Kotilo yhdistetään toimiston Gmail- tai Google Workspace -sähköpostiin. Taloyhtiölle voi yhdistää oman osoitteen.</p>
+          <h3 data-en="Email">Sähköposti</h3>
+          <p data-en="Kotilo is connected to the office's Gmail or Google Workspace mailbox. A housing company can have its own address.">Kotilo yhdistetään toimiston Gmail- tai Google Workspace -sähköpostiin. Taloyhtiölle voi yhdistää oman osoitteen.</p>
         </li>
         <li>
           <b>03</b>
-          <h3>Ohjeet</h3>
-          <p>Taloyhtiön ohjeet ja dokumentit ladataan tietopankkiin, josta vastausehdotukset haetaan. Sisäiset ohjeet pysyvät vain henkilökunnalla.</p>
+          <h3 data-en="Instructions">Ohjeet</h3>
+          <p data-en="The housing company's instructions and documents are uploaded to the knowledge base, which the suggested replies draw on.">Taloyhtiön ohjeet ja dokumentit ladataan tietopankkiin, josta vastausehdotukset haetaan.</p>
         </li>
       </ol>
     </section>
@@ -133,8 +188,24 @@
     <section class="wrap" id="yhteys">
       <div class="cta">
         <div class="glow" aria-hidden="true"><i></i><i></i></div>
-        <h2>Haluatko nähdä Kotilon käytännössä?</h2>
-        <a class="pill more" href="mailto:hei@kotilo.io">Ota yhteyttä <span aria-hidden="true"></span></a>
+        <div class="cta-text">
+          <h2 data-en="Want to see Kotilo in practice?">Haluatko nähdä Kotilon käytännössä?</h2>
+          <p data-en="Leave your contact details and we will get back to you to arrange a demo.">Jätä yhteystietosi, niin otamme yhteyttä ja sovimme esittelystä.</p>
+        </div>
+
+        <form class="contact-form" id="contact-form" novalidate>
+          <label><span data-en="Name">Nimi</span><input name="name" autocomplete="name" required maxlength="120"></label>
+          <label><span data-en="Email">Sähköposti</span><input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          <label><span data-en="Phone (optional)">Puhelin (valinnainen)</span><input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
+          <label><span data-en="Company (optional)">Yritys (valinnainen)</span><input name="company" autocomplete="organization" maxlength="160"></label>
+          <label class="wide"><span data-en="Message (optional)">Viesti (valinnainen)</span><textarea name="message" rows="3" maxlength="2000"></textarea></label>
+          <!-- Piilotettu kenttä, jonka vain automaattinen lähettäjä täyttää. -->
+          <label class="trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+          <div class="wide form-foot">
+            <button class="pill more" type="submit"><span data-en="Send">Lähetä</span><i aria-hidden="true"></i></button>
+            <p class="form-status" id="contact-status" role="status"></p>
+          </div>
+        </form>
       </div>
     </section>
   </main>
@@ -143,22 +214,23 @@
     <div class="wrap foot-grid">
       <img src="kotilo-logo.svg" alt="Kotilo" width="104" height="30">
       <div>
-        <h3>Pikalinkit</h3>
-        <a href="#alusta">Alusta</a>
-        <a href="#asukkaat">Asukkaille</a>
-        <a href="#kayttoonotto">Käyttöönotto</a>
+        <h3 data-en="Quick links">Pikalinkit</h3>
+        <a href="#alusta" data-en="Platform">Alusta</a>
+        <a href="#asukkaat" data-en="For residents">Asukkaille</a>
+        <a href="#tiedot" data-en="Features">Ominaisuudet</a>
+        <a href="#kayttoonotto" data-en="Getting started">Käyttöönotto</a>
       </div>
       <div>
-        <h3>Sähköposti</h3>
+        <h3 data-en="Email">Sähköposti</h3>
         <a href="mailto:hei@kotilo.io">hei@kotilo.io</a>
       </div>
     </div>
     <div class="wrap foot-base">
       <span>© <span id="year">2026</span> Kotilo</span>
-      <a href="https://app.kotilo.io">Kirjaudu alustalle</a>
+      <a href="https://app.kotilo.io" data-en="Log in to the platform">Kirjaudu alustalle</a>
     </div>
   </footer>
 
-  <script>document.getElementById("year").textContent = String(new Date().getFullYear());</script>
+  <script src="site.js"></script>
 </body>
 </html>

@@ -75,8 +75,8 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
 .pill.accent:hover { background: #b6dfff; }
 .pill.more { padding: 5px 5px 5px 28px; background: #fff; color: var(--ink); }
 .pill.more.dark { background: var(--night); color: #fff; }
-.pill.more span { position: relative; width: 38px; height: 38px; border-radius: 99px; background: var(--sky); }
-.pill.more span::after { content: ""; position: absolute; left: 12px; top: 13px; width: 10px; height: 10px; border-top: 2px solid var(--ink); border-right: 2px solid var(--ink); transform: rotate(45deg); }
+.pill.more i { position: relative; flex: none; width: 38px; height: 38px; border-radius: 99px; background: var(--sky); }
+.pill.more i::after { content: ""; position: absolute; left: 12px; top: 13px; width: 10px; height: 10px; border-top: 2px solid var(--ink); border-right: 2px solid var(--ink); transform: rotate(45deg); }
 
 /* Tumma tausta, jossa on sumeita valoläikkiä. Käytetään yläosassa, esimerkkinäkymässä ja yhteysosiossa. */
 .glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
@@ -94,14 +94,23 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
   background: #0d2233;
   color: #fff;
 }
-.bar { position: relative; display: flex; align-items: center; gap: 56px; padding-block: 24px; }
+.bar { position: relative; display: flex; align-items: center; gap: 28px; padding-block: 24px; }
 .logo img { height: 34px; width: auto; }
-.links { display: flex; gap: 30px; }
+.links { display: flex; gap: 28px; margin-left: 28px; }
 .links a { color: #fff; font-size: 17px; text-decoration: none; }
 .links a:hover { color: var(--sky); }
-.bar .pill { margin-left: auto; }
+.bar .pill { flex: none; }
+
+/* Kielivalinta: liput, joista valittu on korostettu. */
+.lang { display: flex; gap: 6px; margin-left: auto; }
+.lang button { display: grid; place-items: center; padding: 3px; border: 2px solid transparent; border-radius: 8px; background: transparent; cursor: pointer; opacity: .55; transition: opacity .15s ease, border-color .15s ease; }
+.lang button:hover { opacity: 1; }
+.lang button[aria-pressed="true"] { border-color: var(--sky); opacity: 1; }
+.lang button:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.lang svg { display: block; width: 28px; height: 18px; border-radius: 3px; }
 
 .hero-text { position: relative; padding-block: 88px 72px; }
+.hero h1 em { font-style: normal; color: var(--sky); }
 .hero h1 { max-width: 15em; font-size: clamp(38px, 5.6vw, 76px); line-height: 1.04; font-weight: 700; letter-spacing: -.04em; }
 .hero-text .pill { margin-top: 30px; }
 .tagline { margin-top: 34px; font-family: Georgia, "Times New Roman", serif; font-size: 19px; }
@@ -114,8 +123,16 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
 
 /* Numeroidut kortit */
 .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.cards li { display: grid; align-content: start; gap: 12px; padding: 26px 24px 30px; border-radius: 20px; background: var(--paper); min-width: 0; }
-.cards b, .journey b { color: var(--blue); font-size: 15px; font-weight: 700; letter-spacing: .04em; }
+.cards li { display: grid; align-content: start; justify-items: start; gap: 12px; padding: 26px 24px 30px; border-radius: 20px; border-top: 4px solid var(--tone); background: var(--tone-soft); min-width: 0; }
+.cards b, .journey b { padding: 4px 12px; border-radius: 99px; background: var(--tone, var(--sky)); color: var(--tone-ink, var(--ink)); font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+
+/* Värisävyt ovat samat kuin alustan tilamerkeissä. */
+.tone-sky, .tag.sky { --tone: #9bd3ff; --tone-soft: #eef7ff; --tone-ink: #14324f; }
+.tone-blue, .tag.blue { --tone: #28548f; --tone-soft: #eef1f5; --tone-ink: #fff; }
+.tone-green, .tag.green { --tone: #2f7d52; --tone-soft: #edf6f0; --tone-ink: #fff; }
+.tone-amber, .tag.amber { --tone: #e2a13a; --tone-soft: #fdf5e7; --tone-ink: #3d2a06; }
+.tag.red { --tone: #b3402f; --tone-ink: #fff; }
+.tag.slate { --tone: #4b535d; --tone-ink: #fff; }
 .cards h3 { margin-top: 26px; font-size: 22px; line-height: 1.2; letter-spacing: -.02em; }
 .cards p { color: var(--muted); font-size: 15px; line-height: 1.55; }
 
@@ -132,6 +149,8 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
 .ticket .sent { color: var(--sky); font-weight: 600; }
 .chip { flex: none; padding: 3px 10px; border-radius: 99px; background: var(--night-line); color: var(--muted-on-night); font-size: 12px; font-weight: 700; }
 .chip.red { background: var(--alarm); color: #fff; }
+.chip.amber { background: #e2a13a; color: #3d2a06; }
+.chip.sky { background: var(--sky); color: var(--ink); }
 
 /* Asukkaille */
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
@@ -139,17 +158,40 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
 .prose p { color: var(--muted); font-size: 18px; line-height: 1.6; }
 .prose .pill { margin-top: 10px; }
 
+/* Ominaisuudet vaaleansinisellä pohjalla, joka on sama kuin alustan tehtäväsivulla. */
+.band { background: #eef1f5; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.facts li { display: grid; align-content: start; justify-items: start; gap: 10px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-width: 0; }
+.tag { padding: 4px 12px; border-radius: 99px; background: var(--tone); color: var(--tone-ink); font-size: 12px; font-weight: 700; }
+.facts h3 { margin-top: 6px; font-size: 19px; line-height: 1.25; letter-spacing: -.01em; }
+.facts p { color: var(--muted); font-size: 15px; line-height: 1.55; }
+
 /* Käyttöönoton vaiheet */
 .section + .section { padding-top: 0; }
 .journey { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
-.journey li { display: grid; align-content: start; gap: 10px; padding-top: 22px; border-top: 1px solid var(--ink); min-width: 0; }
+.journey li { display: grid; align-content: start; justify-items: start; gap: 10px; padding-top: 22px; border-top: 3px solid var(--sky); min-width: 0; }
 .journey h3 { font-size: 26px; line-height: 1.15; letter-spacing: -.02em; }
 .journey p { color: var(--muted); font-size: 16px; line-height: 1.6; }
 
 /* Yhteys */
-.cta { position: relative; overflow: hidden; display: grid; justify-items: start; gap: 30px; padding: 72px 56px; border-radius: 24px; background: #0d2233; color: #fff; scroll-margin-top: 24px; }
-.cta h2, .cta .pill { position: relative; }
-.cta h2 { max-width: 14em; }
+.cta { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 48px; align-items: start; padding: 64px 56px; border-radius: 24px; background: #0d2233; color: #fff; scroll-margin-top: 24px; }
+.cta-text, .contact-form { position: relative; }
+.cta-text p { margin-top: 16px; color: #d5dde5; font-size: 18px; line-height: 1.6; }
+
+/* Yhteydenottolomake */
+.contact-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.contact-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.contact-form .wide { grid-column: 1 / -1; }
+.contact-form input, .contact-form textarea { width: 100%; padding: 11px 13px; border: 1px solid #3a4a5a; border-radius: 10px; background: rgba(255, 255, 255, .08); color: #fff; font: inherit; font-weight: 500; }
+.contact-form textarea { resize: vertical; min-height: 84px; }
+.contact-form input:focus, .contact-form textarea:focus { outline: 2px solid var(--sky); outline-offset: 1px; border-color: var(--sky); }
+.contact-form .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; margin-top: 4px; }
+.contact-form button { border: 0; cursor: pointer; font-family: inherit; }
+.contact-form button:disabled { opacity: .6; cursor: default; }
+.form-status { font-size: 15px; font-weight: 600; }
+.form-status.ok { color: #a6e3bd; }
+.form-status.error { color: #ffb4a6; }
 
 /* Alapalkki */
 .foot { background: var(--night); color: var(--muted-on-night); font-size: 15px; }
@@ -161,7 +203,9 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
 .foot-base { display: flex; justify-content: space-between; gap: 20px; padding-block: 18px; border-top: 1px solid var(--night-line); font-size: 13px; }
 
 @media (max-width: 1000px) {
-  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cards, .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .links { display: none; }
+  .cta { grid-template-columns: minmax(0, 1fr); gap: 32px; }
 }
 
 @media (max-width: 760px) {
@@ -174,16 +218,19 @@ h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; font-weight: 700; le
   .intro, .split { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .intro { margin-bottom: 36px; }
   .intro > p, .prose p { font-size: 17px; }
-  .cards, .journey { grid-template-columns: minmax(0, 1fr); }
+  .cards, .journey, .facts, .contact-form { grid-template-columns: minmax(0, 1fr); }
   .journey { gap: 28px; }
   .cards h3 { margin-top: 8px; }
   .showcase { padding: 36px 14px; }
   .ticket-row { flex-wrap: wrap; }
-  .cta { padding: 44px 24px; }
+  .cta { padding: 40px 20px; }
+  .bar { gap: 12px; }
+  .bar .pill.accent { padding: 8px 16px; font-size: 14px; }
+  .logo img { height: 28px; }
   .foot-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 40px 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .pill { transition: none; }
+  .pill, .lang button { transition: none; }
 }

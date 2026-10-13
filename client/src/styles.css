@@ -3191,3 +3191,13 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Kortti peittää myös puhelimen yläpalkin ja valikon, jotta otsikko ja sulkupainike näkyvät. */
 .overlay { z-index: 70; }
 .overlay.skip-overlay { z-index: 75; }
+/* Asetukset: kotisivun yhteydenottopyynnöt */
+.contact-requests ul { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
+.contact-requests li { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid #dfe3e7; border-radius: 10px; background: #fff; }
+.contact-requests li > div { display: grid; gap: 3px; min-width: 0; }
+.contact-requests li strong { font-size: 14px; }
+.contact-requests li span, .contact-requests li p { margin: 0; color: #4b535d; font-size: 13px; overflow-wrap: anywhere; }
+.contact-requests li p { white-space: pre-wrap; }
+.contact-requests li small { color: #898f95; font-size: 12px; }
+.contact-requests li a { color: #28548f; }
+.contact-requests li button { flex: none; }

@@ -256,6 +256,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (req.path === "/gmail/callback") return next();
   // Salasanan palautus tehdään kirjautumatta.
   if (req.path === "/auth/forgot" || req.path === "/auth/reset") return next();
+  // Kotisivun yhteydenottolomake lähetetään kirjautumatta.
+  if (req.path === "/contact" && req.method === "POST") return next();
   if (req.path === "/inbound/messages" && req.headers["x-internal-token"] === INTERNAL_TOKEN) return next();
 
   const token = tokenFromRequest(req);

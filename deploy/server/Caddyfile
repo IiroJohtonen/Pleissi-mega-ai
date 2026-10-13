@@ -9,7 +9,13 @@ app.kotilo.io {
 # Kotisivu (repon kansio site). Toistaiseksi testiosoitteessa: kotilo.io ja www.kotilo.io
 # osoittavat vielä muualle. Kun niiden DNS-tietueet osoittavat tänne, lisää osoitteet tälle riville.
 test.kotilo.io {
-	root * /srv/site
 	encode zstd gzip
-	file_server
+	# Yhteydenottolomake lähetetään alustan rajapintaan samasta osoitteesta.
+	handle /api/contact {
+		reverse_proxy kotilo:4000
+	}
+	handle {
+		root * /srv/site
+		file_server
+	}
 }

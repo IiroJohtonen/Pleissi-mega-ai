@@ -1,5 +1,6 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
+import { formatDate } from "../format";
 import { type Language, language, LANGUAGES, setLanguage } from "../i18n";
 import {
   api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession, USER_ROLES
@@ -527,6 +528,8 @@ function OfficeSettings({
 
       <BookingSettings defaultCompanyId={company?.id ?? ""} />
 
+      <ContactRequests />
+
       <a className="settings-card settings-link" href="#/log">
         <div>
           <h2>{t("Loki")}</h2>
@@ -1005,5 +1008,64 @@ function OfficeUsers() {
         </div>
       )}
     </aside>
+  );
+}
+
+type ContactRequest = {
+  id: string; name: string; email: string; phone: string; company: string; message: string; created_at: string;
+};
+
+// Kotisivun lomakkeella jätetyt yhteystiedot. Näkymä on vain pääkäyttäjälle.
+function ContactRequests() {
+  const [requests, setRequests] = useState<ContactRequest[]>([]);
+  const [error, setError] = useState("");
+
+  async function load() {
+    try {
+      setRequests(await api<ContactRequest[]>("/contact-requests"));
+      setError("");
+    } catch (caught) {
+      setError(errorMessage(caught, t("Yhteydenottopyyntöjen haku epäonnistui.")));
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function remove(request: ContactRequest) {
+    if (!window.confirm(t("Poistetaanko yhteydenottopyyntö lähettäjältä {0}?", request.name))) return;
+    try {
+      await api(`/contact-requests/${encodeURIComponent(request.id)}`, { method: "DELETE" });
+      await load();
+    } catch (caught) {
+      setError(errorMessage(caught, t("Yhteydenottopyynnön poisto epäonnistui.")));
+    }
+  }
+
+  return (
+    <div className="settings-card contact-requests">
+      <CollapseSection id="contact-requests" title={t("Yhteydenottopyynnöt")}>
+        <p className="muted">{t("Kotisivun lomakkeella jätetyt yhteystiedot, uusin ensin.")}</p>
+        {error && <p className="send-error">{error}</p>}
+        {!error && requests.length === 0 && <p className="drawer-empty">{t("Ei yhteydenottopyyntöjä.")}</p>}
+        <ul>
+          {requests.map(request => (
+            <li key={request.id}>
+              <div>
+                <strong>{request.name}{request.company ? ` · ${request.company}` : ""}</strong>
+                <span>
+                  <a href={`mailto:${request.email}`}>{request.email}</a>
+                  {request.phone ? ` · ${request.phone}` : ""}
+                </span>
+                {request.message && <p>{request.message}</p>}
+                <small>{formatDate(request.created_at)}</small>
+              </div>
+              <button type="button" className="secondary" onClick={() => void remove(request)}>{t("Poista")}</button>
+            </li>
+          ))}
+        </ul>
+      </CollapseSection>
+    </div>
   );
 }

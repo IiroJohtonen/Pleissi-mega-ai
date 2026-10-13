@@ -1176,5 +1176,13 @@ export const en: Record<string, string> = {
   "Jätetty pois, koska aiheesta on jo dokumentaatio:": "Left out because the topic already has documentation:",
   "Kaikista jakson toistuvista aiheista on jo dokumentaatio.": "All recurring topics in the period already have documentation.",
   "Avaa valikko": "Open menu",
-  "Sulje valikko": "Close menu"
+  "Sulje valikko": "Close menu",
+  "Yhteydenottopyyntöjen haku epäonnistui.": "Could not load contact requests.",
+  "Poistetaanko yhteydenottopyyntö lähettäjältä {0}?": "Delete the contact request from {0}?",
+  "Yhteydenottopyynnön poisto epäonnistui.": "Could not delete the contact request.",
+  "Yhteydenottopyynnöt": "Contact requests",
+  "Kotisivun lomakkeella jätetyt yhteystiedot, uusin ensin.": "Contact details left through the website form, newest first.",
+  "Ei yhteydenottopyyntöjä.": "No contact requests.",
+  "Tarkista nimi ja sähköpostiosoite.": "Check the name and email address.",
+  "Yhteydenottopyyntöä ei löytynyt.": "Contact request not found."
 };
