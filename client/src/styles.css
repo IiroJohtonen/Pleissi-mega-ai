@@ -3172,3 +3172,22 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .ticket-row:not(.knowledge-cols) { grid-template-columns: 48px minmax(0, 1fr) auto; }
   .ticket-row:not(.knowledge-cols) > .status-badge { display: none; }
 }
+
+/* Avautuvat kortit täyttävät koko sivun, jotta niistä ei voi vahingossa klikata pois.
+   Sisältö pysyy keskellä luettavan levyisenä palstana. Pienet vahvistusikkunat pysyvät ikkunoina. */
+.overlay > .drawer:not(.skip-drawer) {
+  --card-column: 880px;
+  width: 100%;
+  box-shadow: none;
+  padding: 34px max(34px, calc((100vw - var(--card-column)) / 2)) 48px;
+}
+.overlay > .form-drawer:not(.skip-drawer) { --card-column: 620px; }
+.overlay > .drawer:not(.skip-drawer) > .close { right: max(22px, calc((100vw - var(--card-column)) / 2 - 8px)); }
+
+@media (max-width: 760px) {
+  .overlay > .drawer:not(.skip-drawer) { padding: 22px 16px 32px; }
+  .overlay > .drawer:not(.skip-drawer) > .close { right: 12px; }
+}
+/* Kortti peittää myös puhelimen yläpalkin ja valikon, jotta otsikko ja sulkupainike näkyvät. */
+.overlay { z-index: 70; }
+.overlay.skip-overlay { z-index: 75; }

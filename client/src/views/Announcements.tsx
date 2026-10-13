@@ -181,8 +181,8 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
       {paged.pager}
 
       {open && (
-        <div className="overlay" onClick={() => setOpen(null)}>
-          <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer">
             <button className="close" onClick={() => setOpen(null)}>×</button>
             <h2>{open.title}</h2>
             <p className="muted">
@@ -200,8 +200,8 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
       )}
 
       {creating && (
-        <div className="overlay" onClick={() => !saving && setCreating(false)}>
-          <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer">
             <button className="close" onClick={() => setCreating(false)} disabled={saving}>×</button>
             <h2>{t("Uusi tiedote")}</h2>
             <p className="muted">{t("Tiedote näkyy asukkaille asukasportaalissa ja lähtee haluttaessa sähköpostilla.")}</p>

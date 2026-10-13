@@ -939,8 +939,8 @@ function OfficeUsers() {
       </CollapseSection>
 
       {(editing || creating) && (
-        <div className="overlay" onClick={closeForm}>
-          <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer resident-drawer">
             <button className="close" onClick={closeForm}>×</button>
             <h2>{editing ? editing.name : t("Lisää käyttäjä")}</h2>
             <p className="muted">

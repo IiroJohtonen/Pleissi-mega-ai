@@ -383,8 +383,8 @@ export function BookingCalendar({
       </div>
 
       {slot && (
-        <div className="overlay" onClick={() => setSlot(null)}>
-          <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer resident-drawer">
             <button className="close" onClick={() => setSlot(null)}>×</button>
             <h2>{slot.booking ? t("Varaus") : t("Uusi varaus")}</h2>
             <p className="muted">

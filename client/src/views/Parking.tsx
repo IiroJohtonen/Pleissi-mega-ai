@@ -262,8 +262,8 @@ export function ParkingSpaces({
       {!loading && !loadError && paged.pager}
 
       {formOpen && (
-        <div className="overlay" onClick={closeForm}>
-          <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer resident-drawer">
             <button className="close" onClick={closeForm}>×</button>
             <h2>{editing ? t("Autopaikka {0}", editing.label) : t("Lisää autopaikka")}</h2>
             <p className="muted">{editing ? companyName(editing.company_id) : t("Valitse taloyhtiö ja anna paikan tiedot.")}</p>

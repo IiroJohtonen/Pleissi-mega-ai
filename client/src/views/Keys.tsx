@@ -271,8 +271,8 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
       {!loading && !loadError && paged.pager}
 
       {formOpen && (
-        <div className="overlay" onClick={() => !saving && closeForm()}>
-          <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer resident-drawer">
             <button className="close" onClick={closeForm} disabled={saving}>×</button>
             <h2>{open ? t("Avain {0}", open.code) : t("Lisää avain")}</h2>
             <p className="muted">{open ? `${companyName(open.company_id)} · ${keyState(open)}` : t("Valitse taloyhtiö ja anna avaimen tiedot.")}</p>

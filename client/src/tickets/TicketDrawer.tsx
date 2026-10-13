@@ -895,8 +895,8 @@ export function TicketDrawer({
       </div>
 
       {confirmDelete && (
-        <div className="overlay skip-overlay" onClick={() => { if (!deleting) setConfirmDelete(false); }}>
-          <aside className="drawer skip-drawer" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onClick={event => event.stopPropagation()}>
+        <div className="overlay skip-overlay">
+          <aside className="drawer skip-drawer" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
             <h2 id="delete-title">{t("Poistetaanko tehtävä #{0}?", formatTicketNumber(ticket.ticket_number))}</h2>
             <p className="delete-warning">
               {t("Tehtävä poistetaan pysyvästi viesteineen, liitteineen, muistiinpanoineen ja työtilauksineen. Poistoa ei voi perua.")}

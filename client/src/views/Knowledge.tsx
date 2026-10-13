@@ -534,8 +534,8 @@ function KnowledgeDetailDrawer({
   const isCurrent = detail?.status === "active";
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <aside className="drawer" onClick={event => event.stopPropagation()}>
+    <div className="overlay">
+      <aside className="drawer">
         <button className="close" onClick={onClose}>×</button>
         {failed ? <p className="send-error">{t("Tietojen lataus epäonnistui.")}</p>
           : !detail ? <p className="muted">{t("Ladataan…")}</p> : (
@@ -711,8 +711,8 @@ function KnowledgeFormModal({
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+    <div className="overlay">
+      <aside className="drawer form-drawer">
         <button className="close" onClick={onClose}>×</button>
         <h2>{heading}</h2>
         <p className="muted">

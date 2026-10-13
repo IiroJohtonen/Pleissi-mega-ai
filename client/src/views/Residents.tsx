@@ -362,8 +362,8 @@ export function Residents({
       )}
 
       {adding && (
-        <div className="overlay" onClick={closeForm}>
-          <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer resident-drawer">
             <button className="close" onClick={closeForm}>×</button>
             <h2>{editing ? editing.name : t("Lisää asukas")}</h2>
             <p className="muted">
@@ -621,8 +621,8 @@ function ResidentImport({
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
+    <div className="overlay">
+      <aside className="drawer form-drawer resident-drawer">
         <button className="close" onClick={onClose}>×</button>
         <h2>{t("Tuo asukkaita")}</h2>
         <div className="card-tabs import-format">

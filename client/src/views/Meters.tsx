@@ -252,8 +252,8 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
       {!loading && !loadError && paged.pager}
 
       {open && (
-        <div className="overlay" onClick={() => !saving && setOpenId(null)}>
-          <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer">
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
             <h2>{meterLabel(open.meter_type)} · {open.apartment_number || "–"}</h2>
             <p className="muted">{companyName(open.company_id)}{open.address ? ` · ${open.address}` : ""}</p>
@@ -292,8 +292,8 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
       )}
 
       {creating && (
-        <div className="overlay" onClick={() => !saving && setCreating(false)}>
-          <aside className="drawer form-drawer resident-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer resident-drawer">
             <button className="close" onClick={() => setCreating(false)} disabled={saving}>×</button>
             <h2>{t("Lisää lukema")}</h2>
             <p className="muted">{t("Kirjaa mittarin lukema asunnolle. Kulutus lasketaan edellisestä lukemasta.")}</p>

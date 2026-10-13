@@ -36,8 +36,8 @@ export function SkipTicketModal({
   }
 
   return (
-    <div className="overlay skip-overlay" onClick={() => !submitting && onClose()}>
-      <aside className="drawer skip-drawer" role="dialog" aria-modal="true" aria-labelledby="skip-title" onClick={event => event.stopPropagation()}>
+    <div className="overlay skip-overlay">
+      <aside className="drawer skip-drawer" role="dialog" aria-modal="true" aria-labelledby="skip-title">
         <button className="close" onClick={onClose} disabled={submitting}>×</button>
         <h2 id="skip-title">{t("Sulje tehtävä")}</h2>
         <p className="muted">{t("Tehtävä suljetaan ilman muita toimenpiteitä.")}</p>
@@ -136,8 +136,8 @@ export function TicketCreateModal({
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <aside className="drawer form-drawer" onClick={e => e.stopPropagation()}>
+    <div className="overlay">
+      <aside className="drawer form-drawer">
         <button className="close" onClick={onClose}>×</button>
         <h2>{t("Luo uusi tehtävä")}</h2>
         <p className="muted">{t("Lisää manuaalinen tehtävä omiin tehtäviin.")}</p>

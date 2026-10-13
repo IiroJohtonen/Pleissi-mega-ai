@@ -515,8 +515,8 @@ function TopicDrawer({
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <aside className="drawer form-drawer resident-drawer topic-drawer" onClick={event => event.stopPropagation()}>
+    <div className="overlay">
+      <aside className="drawer form-drawer resident-drawer topic-drawer">
         <button className="close" onClick={onClose}>×</button>
         <span className="report-tag">{t("Toistuva aihe")}</span>
         <h2>{topic.title}</h2>

@@ -169,8 +169,8 @@ export function Companies({
       {pagedCompanies.pager}
 
       {adding && (
-        <div className="overlay" onClick={closeForm}>
-          <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer">
             <button className="close" onClick={closeForm}>×</button>
             <h2>{t("Lisää taloyhtiö")}</h2>
             <p className="muted">{t("Taloyhtiö tulee valittavaksi tehtävänäkymiin ja asukastietokantaan.")}</p>

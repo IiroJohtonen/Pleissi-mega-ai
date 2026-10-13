@@ -178,8 +178,8 @@ export function MoveNotices({ companies, onChanged }: { companies: Company[]; on
       {paged.pager}
 
       {open && (
-        <div className="overlay" onClick={() => !saving && setOpenId(null)}>
-          <aside className="drawer form-drawer" onClick={event => event.stopPropagation()}>
+        <div className="overlay">
+          <aside className="drawer form-drawer">
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
             <h2>{t("Muuttoilmoitus")}</h2>
             <p className="muted">
