@@ -1,4 +1,4 @@
-import { locale, t } from "./i18n";
+import { language, locale, t } from "./i18n";
 export const ticketPriorities = ["emergency", "urgent", "normal", "low"];
 export const ticketTypeOptions = ["Kysymys", "Ilmoitus", "Pyyntö", "Toimenpide", "Vikailmoitus", "Muutto", "Muu"];
 
@@ -105,6 +105,17 @@ export function formatDate(value?: string) {
   });
 }
 
+// Päivä ilman kellonaikaa listoja varten.
+export function formatDateOnly(value?: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString(locale, { day: "numeric", month: "numeric", year: "numeric" });
+}
+
+// Ilmoituksen tilan väri: odottava on sininen (oletus), hyväksytty vihreä, hylätty punainen ja muut harmaita.
+export function noticeStatusClass(status: string) {
+  return status === "pending" ? "" : status === "approved" ? "approved" : status === "rejected" ? "rejected" : "done";
+}
+
 export function formatTicketNumber(value?: number | null) {
   return typeof value === "number" ? String(value).padStart(4, "0") : "----";
 }
@@ -136,5 +147,6 @@ export function formatDuration(milliseconds: number) {
 export function formatDay(value?: string | null) {
   if (!value) return "";
   const [year, month, day] = value.split("-");
-  return `${Number(day)}.${Number(month)}.${year}`;
+  // Englanniksi sama esitystapa kuin muissa päivämäärissä (pp/kk/vvvv).
+  return language === "en" ? `${Number(day)}/${Number(month)}/${year}` : `${Number(day)}.${Number(month)}.${year}`;
 }

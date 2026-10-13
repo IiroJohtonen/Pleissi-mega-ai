@@ -42,12 +42,17 @@ function keyState(key: BuildingKey) {
   return key.holder_name ? t("Luovutettu") : t("Toimistolla");
 }
 
-function isLate(key: BuildingKey) {
+// Avainhallinta: taloyhtiöiden avaimet, niiden haltijat ja luovutushistoria.
+// Avain, jonka sovittu palautuspäivä on mennyt.
+export function isKeyLate(key: { loan_id: string | null; due_date: string | null }) {
   return Boolean(key.loan_id && key.due_date && key.due_date < new Date().toLocaleDateString("sv-SE"));
 }
 
-// Avainhallinta: taloyhtiöiden avaimet, niiden haltijat ja luovutushistoria.
-export function KeyRegister({ companies, defaultCompanyId }: { companies: Company[]; defaultCompanyId: string }) {
+export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
+  companies: Company[];
+  defaultCompanyId: string;
+  onChanged?: () => void;
+}) {
   const [keys, setKeys] = useState<BuildingKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -139,6 +144,7 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
       await action();
       if (close) closeForm();
       await loadKeys();
+      onChanged?.();
       if (!close && openId) await loadLoans(openId);
     } catch (actionError) {
       setError(errorMessage(actionError, fallback));
@@ -177,14 +183,14 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
     .filter(key => (companyFilter === "all" || key.company_id === companyFilter)
       && (stateFilter === "all"
         || (stateFilter === "out" && Boolean(key.loan_id))
-        || (stateFilter === "late" && isLate(key))
+        || (stateFilter === "late" && isKeyLate(key))
         || (stateFilter === "office" && !key.loan_id && key.status !== "lost")
         || (stateFilter === "lost" && key.status === "lost")))
     .sort((a, b) => companyName(a.company_id).localeCompare(companyName(b.company_id), "fi")
       || a.code.localeCompare(b.code, "fi", { numeric: true }));
   const paged = usePaged(visible, `${companyFilter}|${stateFilter}`);
   const outCount = visible.filter(key => key.loan_id).length;
-  const lateCount = visible.filter(isLate).length;
+  const lateCount = visible.filter(isKeyLate).length;
 
   return (
     <section className="content">
@@ -253,9 +259,9 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
                     <td><span className="type">{t(key.type)}</span></td>
                     <td>{companyName(key.company_id)}</td>
                     <td>{key.apartment_number || "–"}</td>
-                    <td><span className={`work-order-status ${key.loan_id || key.status === "lost" ? "" : "done"}`}>{keyState(key)}</span></td>
+                    <td><span className={`work-order-status ${key.status === "lost" ? "rejected" : key.loan_id ? "" : "done"}`}>{keyState(key)}</span></td>
                     <td>{key.holder_name || "–"}</td>
-                    <td>{key.loan_id && key.due_date ? `${formatDay(key.due_date)}${isLate(key) ? t(" · myöhässä") : ""}` : "–"}</td>
+                    <td>{key.loan_id && key.due_date ? `${formatDay(key.due_date)}${isKeyLate(key) ? t(" · myöhässä") : ""}` : "–"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -284,7 +290,7 @@ export function KeyRegister({ companies, defaultCompanyId }: { companies: Compan
                   </div>
                   <div>
                     <dt>{t("Palautus viimeistään")}</dt>
-                    <dd>{open.due_date ? `${formatDay(open.due_date)}${isLate(open) ? t(" · myöhässä") : ""}` : t("Ei sovittu")}</dd>
+                    <dd>{open.due_date ? `${formatDay(open.due_date)}${isKeyLate(open) ? t(" · myöhässä") : ""}` : t("Ei sovittu")}</dd>
                   </div>
                   <div>
                     <dt>{t("Lisätieto")}</dt>

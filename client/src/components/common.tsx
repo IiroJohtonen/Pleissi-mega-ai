@@ -123,6 +123,39 @@ export function TabIcon({ tab }: { tab: TicketTab }) {
   );
 }
 
+// Ilmoitustaulujen suodattimet: taloyhtiö, kun yhtiöitä on useita, ja tila, kun taululla on tiloja.
+export function NoticeFilters({ companies, company, onCompany, status, onStatus, statuses }: {
+  companies: { id: string; name: string }[];
+  company: string;
+  onCompany: (value: string) => void;
+  status?: string;
+  onStatus?: (value: string) => void;
+  statuses?: { value: string; label: string }[];
+}) {
+  const showCompany = companies.length > 1;
+  if (!showCompany && !statuses) return null;
+  return (
+    <div className="ticket-filters">
+      {showCompany && (
+        <Dropdown
+          label={t("Taloyhtiö")}
+          value={company}
+          options={[{ value: "all", label: t("Kaikki") }, ...companies.map(item => ({ value: item.id, label: item.name }))]}
+          onChange={onCompany}
+        />
+      )}
+      {statuses && onStatus && (
+        <Dropdown
+          label={t("Tila")}
+          value={status ?? "all"}
+          options={[{ value: "all", label: t("Kaikki") }, ...statuses]}
+          onChange={onStatus}
+        />
+      )}
+    </div>
+  );
+}
+
 // Vaihtaa käyttöliittymän kielen; painikkeessa lukee toisen kielen nimi sillä kielellä.
 export function LanguageToggle({ className }: { className?: string }) {
   return (

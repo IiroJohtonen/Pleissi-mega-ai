@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { Dropdown, usePaged } from "../components/common";
-import { formatDate } from "../format";
+import { Dropdown, NoticeFilters, usePaged } from "../components/common";
+import { formatDate, formatDateOnly } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company } from "../types";
 import { t } from "../i18n";
@@ -27,6 +27,7 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [open, setOpen] = useState<Announcement | null>(null);
+  const [companyFilter, setCompanyFilter] = useState("all");
   const [creating, setCreating] = useState(false);
   const [formCompany, setFormCompany] = useState(defaultCompanyId);
   const [audience, setAudience] = useState<AnnouncementAudience | null>(null);
@@ -113,14 +114,18 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
     }
   }
 
-  const paged = usePaged(announcements, "");
+  const visible = announcements.filter(item => companyFilter === "all" || item.company_id === companyFilter);
+  const showCompany = companies.length > 1;
+  const paged = usePaged(visible, companyFilter);
 
   return (
     <section className="content">
       <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
+      <NoticeFilters companies={companies} company={companyFilter} onCompany={setCompanyFilter} />
+
       <div className="residents-toolbar">
-        <span>{announcements.length}{" "}{t("tiedotetta")}</span>
+        <span>{visible.length}{" "}{t("tiedotetta")}</span>
         {isManager() && <button className="secondary" onClick={openForm}>{t("Uusi tiedote")}</button>}
       </div>
 
@@ -128,16 +133,16 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
 
       {loading ? <div className="empty">{t("Ladataan…")}</div>
         : loadError ? <p className="send-error">{t("Tiedotteiden lataus epäonnistui.")}</p>
-        : announcements.length === 0 ? <div className="empty">{t("Ei tiedotteita.")}</div>
+        : visible.length === 0 ? <div className="empty">{t("Ei tiedotteita.")}</div>
         : (
           <div className="table-card">
-            <table className="data-table report-topics">
+            <table className="data-table report-topics notice-table">
               <thead>
                 <tr>
                   <th>{t("Tiedote")}</th>
-                  <th>{t("Taloyhtiö")}</th>
+                  {showCompany && <th>{t("Taloyhtiö")}</th>}
                   <th>{t("Kohde")}</th>
-                  <th>{t("Sähköposteja")}</th>
+                  <th>{t("Lähetys")}</th>
                   <th>{t("Julkaisija")}</th>
                   <th>{t("Julkaistu")}</th>
                 </tr>
@@ -162,11 +167,11 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
                       <strong>{item.title}</strong>
                       <span>{item.body.length > 110 ? `${item.body.slice(0, 110)}…` : item.body}</span>
                     </td>
-                    <td>{companyName(item.company_id)}</td>
+                    {showCompany && <td>{companyName(item.company_id)}</td>}
                     <td>{targetLabel(item)}</td>
-                    <td>{item.emailed_count || "–"}</td>
+                    <td>{item.emailed_count ? t("Portaali ja {0} sähköpostia", item.emailed_count) : t("Vain portaali")}</td>
                     <td>{item.created_by}</td>
-                    <td>{formatDate(item.created_at)}</td>
+                    <td>{formatDateOnly(item.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

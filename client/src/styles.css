@@ -56,7 +56,7 @@ button { font: inherit; cursor: pointer; }
 .brand strong { display: block; font-size: 20px; }
 .brand span { display: block; font-size: 11px; color: #aab0b6; margin-top: 2px; }
 
-nav { display: grid; gap: 6px; }
+nav { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 
 nav button {
   border: 0;
@@ -274,7 +274,7 @@ nav button.active {
   gap: 4px;
 }
 
-.nav-group > button:first-child { flex: 1; min-width: 0; white-space: nowrap; }
+.nav-group > button:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 nav button.nav-toggle {
   flex: none;
@@ -285,11 +285,27 @@ nav button.nav-toggle:hover { transform: none; }
 nav button.nav-toggle .tab-icon { transition: transform .15s ease; }
 nav button.nav-toggle.open .tab-icon { transform: rotate(180deg); }
 
+/* Taloyhtiöt-valikon alasivut: tiiviit rivit ryhmiteltyinä väliotsikoilla. */
+.nav-subs { display: grid; gap: 1px; }
+
+.nav-label {
+  margin: 8px 0 2px 25px;
+  color: #747a80;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.nav-label:first-child { margin-top: 0; }
+
 nav button.nav-sub {
   margin-left: 14px;
-  padding: 9px 11px;
+  padding: 6px 11px;
   font-size: 13px;
 }
+
+nav button.nav-sub b { min-width: 20px; padding: 1px 6px; }
 
 nav b {
   display: inline-flex;
@@ -2856,3 +2872,13 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 @media (max-width: 700px) {
   .report-row { grid-template-columns: 96px minmax(0, 1fr) 28px 40px; gap: 8px; }
 }
+
+/* Tilamerkki taulukossa: odottava sininen, hyväksytty vihreä, hylätty punainen, muut harmaita. */
+.data-table td .work-order-status { display: inline-block; margin: 0; font-size: 11px; color: #24527f; white-space: nowrap; }
+.data-table td .work-order-status.done { color: #4b535d; }
+.data-table td .work-order-status.approved { background: #e3f4e8; color: #23683a; }
+.data-table td .work-order-status.rejected { background: #fbeae6; color: #9c2b1f; }
+
+/* Ilmoitustaulut (muutot, remontit, tiedotteet): viimeinen sarake on päivämäärä eikä tarvitse leveyttä. */
+.notice-table td:last-child { min-width: 0; white-space: nowrap; }
+.notice-table td span.late-note { color: #9c2b1f; font-weight: 600; }

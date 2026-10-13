@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { usePaged } from "../components/common";
-import { formatDate, formatDay } from "../format";
+import { NoticeFilters, usePaged } from "../components/common";
+import { formatDate, formatDateOnly, formatDay, noticeStatusClass } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company } from "../types";
 import { t } from "../i18n";
@@ -47,11 +47,14 @@ export function moveSummary(notice: MoveNotice) {
 }
 
 // Toimiston näkymä: asukkaiden muuttoilmoitukset, jotka hyväksytään tai hylätään.
-export function MoveNotices({ companies }: { companies: Company[] }) {
+export function MoveNotices({ companies, onChanged }: { companies: Company[]; onChanged?: () => void }) {
   const [notices, setNotices] = useState<MoveNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [companyFilter, setCompanyFilter] = useState("all");
+  // Oletuksena näytetään vain käsittelyä odottavat.
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -81,6 +84,7 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
     try {
       await api(`/moves/${encodeURIComponent(notice.id)}/${decision}`, { method: "POST" });
       await loadNotices();
+      onChanged?.();
     } catch (decisionError) {
       setError(errorMessage(decisionError, t("Muuttoilmoituksen käsittely epäonnistui.")));
     } finally {
@@ -88,9 +92,12 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
     }
   }
 
-  const paged = usePaged(notices, "");
+  const inCompany = notices.filter(notice => companyFilter === "all" || notice.company_id === companyFilter);
+  const visible = inCompany.filter(notice => statusFilter === "all" || notice.status === statusFilter);
+  const paged = usePaged(visible, `${companyFilter}|${statusFilter}`);
+  const showCompany = companies.length > 1;
   const open = notices.find(notice => notice.id === openId) ?? null;
-  const pendingCount = notices.filter(notice => notice.status === "pending").length;
+  const pendingCount = inCompany.filter(notice => notice.status === "pending").length;
   let result: MoveResult | null;
   try {
     result = open?.result ? JSON.parse(open.result) : null;
@@ -102,20 +109,34 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
     <section className="content">
       <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
+      <NoticeFilters
+        companies={companies}
+        company={companyFilter}
+        onCompany={setCompanyFilter}
+        status={statusFilter}
+        onStatus={setStatusFilter}
+        statuses={(["pending", "approved", "rejected"] as const).map(value => ({ value, label: moveStatusLabels[value] }))}
+      />
+
       <div className="residents-toolbar">
-        <span>{notices.length}{" "}{t("muuttoilmoitusta ·")}{" "}{pendingCount}{" "}{t("odottaa käsittelyä")}</span>
+        <span>{inCompany.length}{" "}{t("muuttoilmoitusta ·")}{" "}{pendingCount}{" "}{t("odottaa käsittelyä")}</span>
       </div>
 
       {loading ? <div className="empty">{t("Ladataan…")}</div>
         : loadError ? <p className="send-error">{t("Muuttoilmoitusten lataus epäonnistui.")}</p>
         : notices.length === 0 ? <div className="empty">{t("Ei muuttoilmoituksia. Asukas tekee ilmoituksen asukasportaalissa.")}</div>
+        : visible.length === 0 ? (
+          <div className="empty">
+            {statusFilter === "pending" ? t("Ei käsittelyä odottavia muuttoilmoituksia.") : t("Ei suodattimia vastaavia muuttoilmoituksia.")}
+          </div>
+        )
         : (
           <div className="table-card">
-            <table className="data-table report-topics">
+            <table className="data-table report-topics notice-table">
               <thead>
                 <tr>
                   <th>{t("Ilmoittaja")}</th>
-                  <th>{t("Taloyhtiö")}</th>
+                  {showCompany && <th>{t("Taloyhtiö")}</th>}
                   <th>{t("Asunto")}</th>
                   <th>{t("Muuttopäivä")}</th>
                   <th>{t("Tila")}</th>
@@ -143,11 +164,11 @@ export function MoveNotices({ companies }: { companies: Company[] }) {
                       <strong>{notice.resident_name || t("Tuntematon asukas")}</strong>
                       <span>{moveSummary(notice)}</span>
                     </td>
-                    <td>{companyName(notice.company_id)}</td>
+                    {showCompany && <td>{companyName(notice.company_id)}</td>}
                     <td>{notice.apartment_number || "–"}</td>
                     <td>{formatDay(notice.move_date)}</td>
-                    <td><span className={`work-order-status ${notice.status === "pending" ? "" : "done"}`}>{moveStatusLabels[notice.status]}</span></td>
-                    <td>{formatDate(notice.created_at)}</td>
+                    <td><span className={`work-order-status ${noticeStatusClass(notice.status)}`}>{moveStatusLabels[notice.status]}</span></td>
+                    <td>{formatDateOnly(notice.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

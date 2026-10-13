@@ -115,7 +115,7 @@ describe("sovellus", () => {
     expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
     expect(screen.getByText("Sign out")).toBeTruthy();
     expect(screen.getAllByText("Decision queue").length).toBeGreaterThan(0);
-    expect(screen.getByText("Overdue 1.1.2026")).toBeTruthy();
+    expect(screen.getByText("Overdue 1/1/2026")).toBeTruthy();
     expect(screen.queryByText("Kirjaudu ulos")).toBeNull();
     expect(document.documentElement.lang).toBe("en");
   });
@@ -127,6 +127,24 @@ describe("sovellus", () => {
     await renderApp(null, "", "en");
     expect(screen.getByText("Suomeksi")).toBeTruthy();
     expect(screen.getAllByText("Sign in").length).toBeGreaterThan(0);
+  });
+
+  it("näyttää muutoissa oletuksena vain odottavat ja valikossa niiden määrän", async () => {
+    const move = (id: string, status: string, name: string) => ({
+      id, company_id: "demo-company", move_date: "2026-11-01", moves_out: 1, new_residents: "[]", door_name: "", note: "",
+      status, created_at: "2026-10-01T08:00:00.000Z", resident_name: name, apartment_number: "A 1"
+    });
+    responses["/companies/demo-company/moves"] = [move("m1", "pending", "Odottava Asukas"), move("m2", "approved", "Hyväksytty Asukas")];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/moves");
+      expect(await screen.findByText("Odottava Asukas")).toBeTruthy();
+      expect(screen.queryByText("Hyväksytty Asukas")).toBeNull();
+      expect(screen.getByTitle("Odottaa käsittelyä").textContent).toBe("1");
+      // Yhden taloyhtiön toimistolla Taloyhtiö-saraketta ei näytetä.
+      expect(screen.queryByRole("columnheader", { name: "Taloyhtiö" })).toBeNull();
+    } finally {
+      delete responses["/companies/demo-company/moves"];
+    }
   });
 
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {

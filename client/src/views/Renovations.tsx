@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { usePaged } from "../components/common";
-import { formatDate, formatDay } from "../format";
+import { NoticeFilters, usePaged } from "../components/common";
+import { formatDate, formatDateOnly, formatDay, noticeStatusClass } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company } from "../types";
 import { t } from "../i18n";
@@ -39,12 +39,20 @@ export function renovationPeriod(notice: Pick<RenovationNotice, "start_date" | "
   return `${formatDay(notice.start_date)}–${formatDay(notice.end_date)}`;
 }
 
+// Hyväksytty remontti, jonka päättymispäivä on mennyt mutta jota ei ole merkitty valmistuneeksi.
+export function isUnconfirmed(notice: Pick<RenovationNotice, "status" | "end_date">) {
+  return notice.status === "approved" && notice.end_date < new Date().toLocaleDateString("sv-SE");
+}
+
 // Toimiston näkymä: asukkaiden remontti-ilmoitukset, jotka isännöitsijä hyväksyy tai hylkää.
-export function RenovationNotices({ companies }: { companies: Company[] }) {
+export function RenovationNotices({ companies, onChanged }: { companies: Company[]; onChanged?: () => void }) {
   const [notices, setNotices] = useState<RenovationNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [companyFilter, setCompanyFilter] = useState("all");
+  // Oletuksena näytetään vain käsittelyä odottavat.
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -86,6 +94,7 @@ export function RenovationNotices({ companies }: { companies: Company[] }) {
       await api(`/renovations/${encodeURIComponent(notice.id)}/${decision}`, { method: "POST", body: JSON.stringify({ note: note.trim() }) });
       setNote("");
       await loadNotices();
+      onChanged?.();
     } catch (decisionError) {
       setError(errorMessage(decisionError, t("Remontti-ilmoituksen käsittely epäonnistui.")));
     } finally {
@@ -93,28 +102,45 @@ export function RenovationNotices({ companies }: { companies: Company[] }) {
     }
   }
 
-  const paged = usePaged(notices, "");
+  const inCompany = notices.filter(notice => companyFilter === "all" || notice.company_id === companyFilter);
+  const visible = inCompany.filter(notice => statusFilter === "all" || notice.status === statusFilter);
+  const paged = usePaged(visible, `${companyFilter}|${statusFilter}`);
+  const showCompany = companies.length > 1;
   const open = notices.find(notice => notice.id === openId) ?? null;
-  const pendingCount = notices.filter(notice => notice.status === "pending").length;
+  const pendingCount = inCompany.filter(notice => notice.status === "pending").length;
 
   return (
     <section className="content">
       <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
+      <NoticeFilters
+        companies={companies}
+        company={companyFilter}
+        onCompany={setCompanyFilter}
+        status={statusFilter}
+        onStatus={setStatusFilter}
+        statuses={(["pending", "approved", "rejected", "completed"] as const).map(value => ({ value, label: renovationStatusLabels[value] }))}
+      />
+
       <div className="residents-toolbar">
-        <span>{notices.length}{" "}{t("remontti-ilmoitusta ·")}{" "}{pendingCount}{" "}{t("odottaa käsittelyä")}</span>
+        <span>{inCompany.length}{" "}{t("remontti-ilmoitusta ·")}{" "}{pendingCount}{" "}{t("odottaa käsittelyä")}</span>
       </div>
 
       {loading ? <div className="empty">{t("Ladataan…")}</div>
         : loadError ? <p className="send-error">{t("Remontti-ilmoitusten lataus epäonnistui.")}</p>
         : notices.length === 0 ? <div className="empty">{t("Ei remontti-ilmoituksia. Asukas tekee ilmoituksen asukasportaalissa.")}</div>
+        : visible.length === 0 ? (
+          <div className="empty">
+            {statusFilter === "pending" ? t("Ei käsittelyä odottavia remontti-ilmoituksia.") : t("Ei suodattimia vastaavia remontti-ilmoituksia.")}
+          </div>
+        )
         : (
           <div className="table-card">
-            <table className="data-table report-topics">
+            <table className="data-table report-topics notice-table">
               <thead>
                 <tr>
                   <th>{t("Ilmoittaja")}</th>
-                  <th>{t("Taloyhtiö")}</th>
+                  {showCompany && <th>{t("Taloyhtiö")}</th>}
                   <th>{t("Asunto")}</th>
                   <th>{t("Työ")}</th>
                   <th>{t("Ajankohta")}</th>
@@ -138,13 +164,19 @@ export function RenovationNotices({ companies }: { companies: Company[] }) {
                       }
                     }}
                   >
-                    <td><strong>{notice.resident_name || t("Tuntematon asukas")}</strong></td>
-                    <td>{companyName(notice.company_id)}</td>
+                    <td>
+                      <strong>{notice.resident_name || t("Tuntematon asukas")}</strong>
+                      <span>{notice.description.length > 110 ? `${notice.description.slice(0, 110)}…` : notice.description}</span>
+                    </td>
+                    {showCompany && <td>{companyName(notice.company_id)}</td>}
                     <td>{notice.apartment_number || "–"}</td>
                     <td><span className="type">{t(notice.work_type)}</span></td>
-                    <td>{renovationPeriod(notice)}</td>
-                    <td><span className={`work-order-status ${notice.status === "pending" ? "" : "done"}`}>{renovationStatusLabels[notice.status]}</span></td>
-                    <td>{formatDate(notice.created_at)}</td>
+                    <td>
+                      {renovationPeriod(notice)}
+                      {isUnconfirmed(notice) && <span className="late-note">{t("Päättynyt, valmistumista ei ole kuitattu")}</span>}
+                    </td>
+                    <td><span className={`work-order-status ${noticeStatusClass(notice.status)}`}>{renovationStatusLabels[notice.status]}</span></td>
+                    <td>{formatDateOnly(notice.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

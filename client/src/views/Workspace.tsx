@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
 import { formatTicketNumber, priorityLabel, statusLabel, ticketAge, ticketStatuses } from "../format";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
@@ -15,7 +15,7 @@ import { Announcements } from "./Announcements";
 import { AuditLog } from "./AuditLog";
 import { BookingCalendar } from "./Bookings";
 import { Companies } from "./Companies";
-import { KeyRegister } from "./Keys";
+import { isKeyLate, KeyRegister } from "./Keys";
 import { Knowledge } from "./Knowledge";
 import { MeterReadings } from "./Meters";
 import { MoveNotices } from "./Moves";
@@ -26,6 +26,21 @@ import { Residents } from "./Residents";
 import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
 import { t } from "../i18n";
+
+// Taloyhtiöt-valikon alasivut ryhmiteltyinä.
+const navGroups: { label: string; tabs: TicketTab[] }[] = [
+  { label: t("Asukkaat"), tabs: ["residents", "moves", "waitlist"] },
+  { label: t("Tilat"), tabs: ["sauna", "laundry", "parking", "keys"] },
+  { label: t("Ilmoitukset"), tabs: ["announcements", "renovations", "meters"] }
+];
+const subTabs = navGroups.flatMap(group => group.tabs);
+
+// Mitä alasivun laskuri tarkoittaa.
+const navCountTitles: Partial<Record<TicketTab, string>> = {
+  moves: t("Odottaa käsittelyä"),
+  renovations: t("Odottaa käsittelyä"),
+  keys: t("Palautus myöhässä")
+};
 
 export function Workspace({ user }: { user: OfficeUser }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -76,14 +91,37 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [columnSearch, setColumnSearch] = useState<Partial<Record<TicketSortKey, string>>>({});
   const [clock, setClock] = useState(Date.now());
-  const [residentsOpen, setResidentsOpen] = useState(tab === "residents" || tab === "sauna" || tab === "laundry" || tab === "parking" || tab === "announcements" || tab === "moves" || tab === "renovations" || tab === "keys" || tab === "meters" || tab === "waitlist");
+  const [residentsOpen, setResidentsOpen] = useState(subTabs.includes(tab));
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
+  const [navCounts, setNavCounts] = useState<Partial<Record<TicketTab, number>>>({});
 
   // Alavalikko aukeaa itsestään, kun sen näkymään siirrytään muuta kautta (esim. päätöksen jälkeen).
   useEffect(() => {
     if (tab === "my-tickets" || tab === "ai-handled") setMyTicketsOpen(true);
-    if (tab === "residents" || tab === "sauna" || tab === "laundry" || tab === "parking" || tab === "announcements" || tab === "moves" || tab === "renovations" || tab === "keys" || tab === "meters" || tab === "waitlist") setResidentsOpen(true);
+    if (subTabs.includes(tab)) setResidentsOpen(true);
   }, [tab]);
+
+  // Alavalikon laskurit: käsittelyä odottavat muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
+  async function refreshNavCounts() {
+    if (companies.length === 0) return;
+    const lists = <T,>(resource: string) => Promise.all(companies.map(company =>
+      api<T[]>(`/companies/${encodeURIComponent(company.id)}/${resource}`).catch(() => [] as T[]))).then(all => all.flat());
+    const [moves, renovations, keys] = await Promise.all([
+      lists<{ status: string }>("moves"),
+      lists<{ status: string }>("renovations"),
+      lists<{ loan_id: string | null; due_date: string | null }>("keys")
+    ]);
+    setNavCounts({
+      moves: moves.filter(notice => notice.status === "pending").length,
+      renovations: renovations.filter(notice => notice.status === "pending").length,
+      keys: keys.filter(isKeyLate).length
+    });
+  }
+
+  // Laskurit päivittyvät yhtiöiden latauduttua, näkymää vaihdettaessa ja minuutin välein.
+  useEffect(() => {
+    void refreshNavCounts();
+  }, [companies.length, tab, clock]);
 
   // silent = taustapäivitys: listaa ei vaihdeta hetkeksi "Ladataan…"-tilaan.
   async function load(companyId = selectedCompany, companyList = companies, silent = false) {
@@ -361,64 +399,20 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <NavToggle open={showResidentsLink} label={t("taloyhtiöiden alasivut")} onToggle={() => setResidentsOpen(!showResidentsLink)} />
           </div>
           {showResidentsLink && (
-            <button className={`nav-sub ${tab === "residents" ? "active" : ""}`} onClick={() => setTab("residents")}>
-              <TabIcon tab="residents" />
-              {t("Asukastietokanta")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "sauna" ? "active" : ""}`} onClick={() => setTab("sauna")}>
-              <TabIcon tab="sauna" />
-              {t("Saunavuorot")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "laundry" ? "active" : ""}`} onClick={() => setTab("laundry")}>
-              <TabIcon tab="laundry" />
-              {t("Pyykkitupavuorot")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "parking" ? "active" : ""}`} onClick={() => setTab("parking")}>
-              <TabIcon tab="parking" />
-              {t("Autopaikat")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "announcements" ? "active" : ""}`} onClick={() => setTab("announcements")}>
-              <TabIcon tab="announcements" />
-              {t("Tiedotteet")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "moves" ? "active" : ""}`} onClick={() => setTab("moves")}>
-              <TabIcon tab="moves" />
-              {t("Muutot")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "renovations" ? "active" : ""}`} onClick={() => setTab("renovations")}>
-              <TabIcon tab="renovations" />
-              {t("Remontit")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "keys" ? "active" : ""}`} onClick={() => setTab("keys")}>
-              <TabIcon tab="keys" />
-              {t("Avaimet")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "meters" ? "active" : ""}`} onClick={() => setTab("meters")}>
-              <TabIcon tab="meters" />
-              {t("Kulutuslukemat")}
-            </button>
-          )}
-          {showResidentsLink && (
-            <button className={`nav-sub ${tab === "waitlist" ? "active" : ""}`} onClick={() => setTab("waitlist")}>
-              <TabIcon tab="waitlist" />
-              {t("Jonot")}
-            </button>
+            <div className="nav-subs">
+              {navGroups.map(group => (
+                <Fragment key={group.label}>
+                  <span className="nav-label">{group.label}</span>
+                  {group.tabs.map(item => (
+                    <button key={item} className={`nav-sub ${tab === item ? "active" : ""}`} onClick={() => setTab(item)}>
+                      <TabIcon tab={item} />
+                      {tabTitles[item]}
+                      {navCounts[item] ? <b title={navCountTitles[item]}>{navCounts[item]}</b> : null}
+                    </button>
+                  ))}
+                </Fragment>
+              ))}
+            </div>
           )}
         </nav>
 
@@ -470,13 +464,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <Announcements companies={companies} defaultCompanyId={selectedCompany} />
           )
           : tab === "moves" ? (
-            <MoveNotices companies={companies} />
+            <MoveNotices companies={companies} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "renovations" ? (
-            <RenovationNotices companies={companies} />
+            <RenovationNotices companies={companies} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "keys" ? (
-            <KeyRegister companies={companies} defaultCompanyId={selectedCompany} />
+            <KeyRegister companies={companies} defaultCompanyId={selectedCompany} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "meters" ? (
             <MeterReadings companies={companies} defaultCompanyId={selectedCompany} />
