@@ -33,4 +33,4 @@ $remote = "set -e; cd /opt/kotilo; rm -rf app.new; mkdir app.new; tar -xzf relea
 if ($LASTEXITCODE -ne 0) { throw "Asennus palvelimella epäonnistui. Katso virhe yltä." }
 
 Write-Host ""
-Write-Host "Valmis. Alusta: https://app.kotilo.io  Esittelysivu: https://kotilo.io"
+Write-Host "Valmis. Alusta: https://app.kotilo.io"

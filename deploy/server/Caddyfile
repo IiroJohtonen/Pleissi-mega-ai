@@ -1,16 +1,20 @@
-# Esittelysivu: staattiset tiedostot repon kansiosta site.
-kotilo.io {
-	root * /srv/site
-	encode zstd gzip
-	file_server
-}
-
-www.kotilo.io {
-	redir https://kotilo.io{uri} permanent
-}
-
 # Alusta: Kotilon palvelin tarjoaa rajapinnan ja käyttöliittymän samasta osoitteesta.
+# Caddy hakee varmenteen vain tässä tiedostossa nimetyille osoitteille, joten jokaisen osoitteen
+# DNS-tietueen pitää osoittaa tähän palvelimeen.
 app.kotilo.io {
 	encode zstd gzip
 	reverse_proxy kotilo:4000
 }
+
+# Esittelysivu (repon kansio site) ei ole vielä tällä palvelimella: kotilo.io ja www.kotilo.io
+# osoittavat toistaiseksi muualle. Kun niiden DNS-tietueet osoittavat tänne, poista kommenttimerkit.
+#
+# kotilo.io {
+# 	root * /srv/site
+# 	encode zstd gzip
+# 	file_server
+# }
+#
+# www.kotilo.io {
+# 	redir https://kotilo.io{uri} permanent
+# }

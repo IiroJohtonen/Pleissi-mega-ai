@@ -1,6 +1,6 @@
 # Kotilo palvelimella (UpCloud)
 
-Yksi palvelin tarjoaa molemmat osoitteet. Ne pysyvät silti erillisinä kokonaisuuksina:
+Palvelin tarjoaa alustan osoitteessa `app.kotilo.io`. Esittelysivu (`site/`) on valmiina repossa, mutta sitä ei vielä tarjota tältä palvelimelta, koska `kotilo.io` ja `www.kotilo.io` osoittavat toistaiseksi muualle. Kun niiden DNS-tietueet osoittavat palvelimeen, esittelysivu otetaan käyttöön poistamalla kommenttimerkit tiedostosta `Caddyfile`.
 
 | Osoite | Sisältö | Lähde repossa |
 | --- | --- | --- |
@@ -34,13 +34,13 @@ Kun palvelin on käynnissä, kopioi sen julkinen IPv4-osoite.
 
 ## 3. Domain osoittamaan palvelimeen
 
-Lisää domainin ostopaikan DNS-hallinnassa kolme A-tietuetta, jotka osoittavat palvelimen IP-osoitteeseen:
+Lisää domainin DNS-hallinnassa A-tietue, joka osoittaa palvelimen IP-osoitteeseen:
 
 | Nimi | Tyyppi | Arvo |
 | --- | --- | --- |
-| `@` (eli kotilo.io) | A | palvelimen IP |
-| `www` | A | palvelimen IP |
 | `app` | A | palvelimen IP |
+
+Esittelysivua varten tarvitaan myöhemmin samanlaiset tietueet nimille `@` (eli kotilo.io) ja `www`.
 
 Muutos tulee voimaan yleensä muutamassa minuutissa, joskus vasta tunnin kuluessa. Voit tarkistaa sen komennolla `nslookup app.kotilo.io`.
 
@@ -90,7 +90,7 @@ Kun uusi versio on commitoitu kehitysrepoon, aja sama komento kuin asennuksessa:
 powershell -ExecutionPolicy Bypass -File deploy\server\deploy.ps1 -Server root@PALVELIMEN-IP
 ```
 
-Tietokanta, liitteet ja asetukset säilyvät. Myös esittelysivun muutokset tulevat voimaan samalla komennolla.
+Tietokanta, liitteet ja asetukset säilyvät.
 
 ## Varmuuskopiot
 
