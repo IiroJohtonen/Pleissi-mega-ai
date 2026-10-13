@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, localDate, login, SERVICE_EMAIL, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, type TestServer } from "./helpers.js";
 
 describe("tehtävät ja määräajat", () => {
   let server: TestServer;
@@ -95,6 +95,27 @@ describe("tehtävät ja määräajat", () => {
     const other = await createTicket("normal");
     await call(server, service, "POST", `/tickets/${other}/decision`, { decision: "skip", reason: "spam" });
     assert.equal((await ticket(other)).notes.length, 0);
+  });
+
+  it("tehtävän poistaa vain isännöitsijä, ja poisto vie viestit ja muistiinpanot mukanaan", async () => {
+    const created = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", senderName: "Tuntematon", subject: "Poistettava", body: "Tämä tehtävä poistetaan."
+    });
+    const id = created.data.ticketId as string;
+    await call(server, service, "POST", `/tickets/${id}/notes`, { body: "Muistiinpano", author: "Testi" });
+
+    assert.equal((await call(server, service, "DELETE", `/tickets/${id}`)).status, 403);
+    assert.equal((await call(server, service, "GET", `/tickets/${id}`)).status, 200);
+
+    const manager = await login(server, MANAGER_EMAIL);
+    assert.equal((await call(server, manager, "DELETE", `/tickets/${id}`)).status, 200);
+    assert.equal((await call(server, service, "GET", `/tickets/${id}`)).status, 404);
+    assert.equal((await call(server, manager, "DELETE", `/tickets/${id}`)).status, 404);
+    const tickets = (await call(server, service, "GET", "/tickets?companyId=demo-company")).data as any[];
+    assert.ok(!tickets.some(row => row.id === id));
+
+    const audit = (await call(server, admin, "GET", "/audit")).data as any[];
+    assert.ok(audit.some(row => row.action === "ticket_deleted" && !row.ticket_id));
   });
 
   it("tuntemattoman yhtiön tehtäviä ei palauteta", async () => {

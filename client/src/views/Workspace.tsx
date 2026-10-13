@@ -840,6 +840,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
           company={companies.find(company => company.id === selected.ticket.company_id)}
           onDraftSaved={(draft) => updateTicketDraft(selected.ticket.id, draft)}
           onChanged={() => load()}
+          onDeleted={async () => {
+            closeTicket();
+            setSelected(null);
+            await load();
+          }}
         />
       )}
     </div>

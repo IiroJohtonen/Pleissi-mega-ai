@@ -1,8 +1,9 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket } from "../access.js";
-import { isAdmin } from "../auth.js";
+import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { alertEmergency } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now } from "../util.js";
@@ -15,6 +16,32 @@ export function assignToCompanyManager(ticketId: string, companyId: string) {
   db.prepare("UPDATE tickets SET assignee_id = (SELECT manager_id FROM companies WHERE id = ?) WHERE id = ?")
     .run(companyId, ticketId);
 }
+
+// Poistaa tehtävän pysyvästi viesteineen, muistiinpanoineen, työtilauksineen, liitteineen ja lokeineen.
+export async function deleteTicket(ticketId: string) {
+  const files = db.prepare("SELECT id FROM attachments WHERE ticket_id = ?").all(ticketId) as { id: string }[];
+  db.transaction(() => {
+    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log"]) {
+      db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
+    }
+    db.prepare("DELETE FROM tickets WHERE id = ?").run(ticketId);
+  })();
+  for (const file of files) await fs.rm(path.join(attachmentsDir, file.id), { force: true });
+}
+
+// Tehtävän poisto käyttöliittymästä. Poistoa ei voi perua, joten se kuuluu isännöitsijälle ja
+// pääkäyttäjälle. Lokiin jää merkintä poistajasta ja tehtävän numerosta ilman tehtävän sisältöä.
+ticketsRouter.delete("/tickets/:id", requireManager, async (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as { id: string; ticket_number: number | null; company_id: string } | undefined;
+  if (!ticket) return res.status(404).json({ error: "Tehtävää ei löytynyt." });
+
+  await deleteTicket(ticket.id);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), null, res.locals.user?.name ?? "Isännöitsijä", "ticket_deleted",
+    JSON.stringify({ ticket_number: ticket.ticket_number, company_id: ticket.company_id }), now()
+  );
+  res.json({ ok: true });
+});
 
 ticketsRouter.get("/tickets", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);

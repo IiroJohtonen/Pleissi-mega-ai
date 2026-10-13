@@ -59,6 +59,7 @@ export function actionLabel(action: string) {
     reply_received_reopened: t("Asukas vastasi, tehtävä avattu uudelleen"),
     portal_message: t("Asukas lähetti viestin portaalissa"),
     ticket_reopened: t("Tehtävä avattu uudelleen"),
+    ticket_deleted: t("Tehtävä poistettu"),
     user_deleted: t("Käyttäjä poistettu"),
     resident_erased: t("Asukkaan henkilötiedot poistettu"),
     retention_purge: t("Säilytysajan ylittäneet tiedot poistettu"),

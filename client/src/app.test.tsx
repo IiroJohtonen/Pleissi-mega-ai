@@ -18,10 +18,10 @@ const responses: Record<string, unknown> = {
 };
 
 function mockApi() {
-  const calls: { url: string; headers: Record<string, string> }[] = [];
+  const calls: { url: string; headers: Record<string, string>; method: string; body: string }[] = [];
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    calls.push({ url, headers: (init?.headers ?? {}) as Record<string, string> });
+    calls.push({ url, headers: (init?.headers ?? {}) as Record<string, string>, method: init?.method ?? "GET", body: String(init?.body ?? "") });
     const path = url.replace(/^.*\/api/, "");
     return new Response(JSON.stringify(responses[path] ?? []), { status: 200, headers: { "Content-Type": "application/json" } });
   }));
@@ -192,6 +192,50 @@ describe("sovellus", () => {
     const label = await screen.findByText("AI arvioi saapuvan tehtävän prioriteetin");
     const toggle = label.closest("label")?.querySelector("input") as HTMLInputElement;
     expect(toggle.checked).toBe(false);
+  });
+
+  it("tallentaa tehtävän tietojen muutokset vasta Tallenna-painikkeesta", async () => {
+    const detail = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
+    responses["/tickets/ticket-1"] = detail;
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Asiakaspalvelu"), "#/tickets/ticket-1");
+      const save = await screen.findByRole("button", { name: "Tallenna" }) as HTMLButtonElement;
+      expect(save.disabled).toBe(true);
+      // Asiakaspalvelu ei voi poistaa tehtävää.
+      expect(screen.queryByRole("button", { name: "Poista" })).toBeNull();
+
+      fireEvent.change(screen.getByLabelText("Määräaika"), { target: { value: "2026-12-24" } });
+      expect(screen.getByText("Tallentamattomia muutoksia")).toBeTruthy();
+      expect(save.disabled).toBe(false);
+      expect(calls.some(request => request.method === "PUT")).toBe(false);
+
+      fireEvent.click(save);
+      await screen.findByRole("button", { name: "Tallenna" });
+      const put = calls.find(request => request.method === "PUT");
+      expect(put?.url).toContain("/tickets/ticket-1/fields");
+      expect(JSON.parse(put?.body ?? "{}").dueDate).toBe("2026-12-24");
+    } finally {
+      delete responses["/tickets/ticket-1"];
+    }
+  });
+
+  it("varoittaa ennen tehtävän poistamista ja poistaa vasta vahvistuksesta", async () => {
+    const detail = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
+    responses["/tickets/ticket-1"] = detail;
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      fireEvent.click(await screen.findByRole("button", { name: "Poista" }));
+      expect(screen.getByText("Poistetaanko tehtävä #0001?")).toBeTruthy();
+      expect(screen.getByText(/Poistoa ei voi perua/)).toBeTruthy();
+      expect(calls.some(request => request.method === "DELETE")).toBe(false);
+
+      fireEvent.click(screen.getByRole("button", { name: "Poista tehtävä" }));
+      await vi.waitFor(() => expect(calls.some(request => request.method === "DELETE" && request.url.endsWith("/tickets/ticket-1"))).toBe(true));
+    } finally {
+      delete responses["/tickets/ticket-1"];
+    }
   });
 
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {

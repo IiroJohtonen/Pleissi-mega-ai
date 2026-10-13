@@ -1,9 +1,8 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { AUTHORIZED_COMPANY_IDS } from "./access.js";
 import { createBackup, hasBackupToday } from "./backup.js";
-import { attachmentsDir, db } from "./db.js";
+import { db } from "./db.js";
 import { sendGmailReply } from "./gmail.js";
+import { deleteTicket } from "./routes/tickets.js";
 import { id, NEW_REPLY_SQL, now, today } from "./util.js";
 
 // ---------------------------------------------------------------------------------------------
@@ -66,17 +65,6 @@ async function sendReminderDigests() {
 // Säilytysaika: kun pääkäyttäjä on asettanut säilytysajan, sitä kauemmin suljettuna olleet tehtävät
 // poistetaan viesteineen ja liitteineen, samoin sitä vanhemmat lokimerkinnät. 0 = ei poisteta.
 // ---------------------------------------------------------------------------------------------
-async function deleteTicket(ticketId: string) {
-  const files = db.prepare("SELECT id FROM attachments WHERE ticket_id = ?").all(ticketId) as { id: string }[];
-  db.transaction(() => {
-    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log"]) {
-      db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
-    }
-    db.prepare("DELETE FROM tickets WHERE id = ?").run(ticketId);
-  })();
-  for (const file of files) await fs.rm(path.join(attachmentsDir, file.id), { force: true });
-}
-
 async function purgeExpiredData() {
   const { retention_months: months } = db.prepare("SELECT retention_months FROM office_settings WHERE id = 1").get() as
     { retention_months: number };

@@ -4,7 +4,7 @@ import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
-import { actorName, api, type OfficeUser } from "../session";
+import { actorName, api, errorMessage, isManager, type OfficeUser } from "../session";
 import type { Company, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
@@ -87,6 +87,7 @@ export function TicketDrawer({
   onDecision,
   onDraftSaved,
   onChanged,
+  onDeleted,
   company
 }: {
   detail: TicketDetail;
@@ -96,6 +97,8 @@ export function TicketDrawer({
   onDecision: (d: "ai" | "human" | "skip") => void;
   onDraftSaved: (draft: string) => void;
   onChanged: () => Promise<void>;
+  // Tehtävä on poistettu: näkymä suljetaan ja listat ladataan uudelleen.
+  onDeleted: () => Promise<void>;
 }) {
   const ticket = detail.ticket;
   const [draft, setDraft] = useState(ticket.draft || "");
@@ -246,10 +249,50 @@ export function TicketDrawer({
   const reporterOptions = reporter && !residents.some(r => r.id === reporter.id)
     ? [reporter, ...residents]
     : residents;
-  // Sähköposti haetaan asukastiedoista valitun ilmoittajan perusteella.
-  const reporterEmail = reporter
-    ? residents.find(r => r.id === reporter.id)?.email || reporter.email
-    : "";
+  // Tietokenttien muutokset kerätään tähän ja tallennetaan vasta Tallenna-painikkeesta. Tehtävän
+  // taustapäivitys ei koske niihin, joten keskeneräinen muokkaus säilyy.
+  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string };
+  const [edits, setEdits] = useState<FieldEdits>({});
+  const [saveError, setSaveError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  useEffect(() => {
+    setEdits({});
+    setSaveError("");
+    setConfirmDelete(false);
+    setDeleteError("");
+  }, [ticket.id]);
+
+  const savedFields = {
+    type: ticket.type,
+    priority: ticket.priority,
+    assigneeId: ticket.assignee_id ?? null,
+    dueDate: ticket.due_date ?? null,
+    reporterId: reporter?.id ?? ""
+  };
+  // Näytettävät arvot: tallennettu arvo, ellei kenttää ole muutettu.
+  const shown = { ...savedFields, ...edits };
+  const dirty = Object.keys(edits).length > 0;
+  const shownReporter = reporterOptions.find(r => r.id === shown.reporterId);
+
+  // Kirjaa kentän muutoksen; alkuperäiseen arvoon palaaminen poistaa sen muutoksista.
+  function edit<K extends keyof FieldEdits>(key: K, value: (typeof savedFields)[K]) {
+    setSaveError("");
+    setEdits(previous => {
+      const next = { ...previous };
+      if (value === savedFields[key]) delete next[key];
+      else (next as Record<string, unknown>)[key] = value;
+      return next;
+    });
+  }
+
+  // Sulkeminen varmistetaan, jos muutoksia on tallentamatta.
+  function requestClose() {
+    if (dirty && !window.confirm(t("Tallentamattomat muutokset menetetään. Suljetaanko tehtävä?"))) return;
+    onClose();
+  }
 
   // Ilmoittajan hakukenttä: null = ei muokata, jolloin kentässä näkyy nykyisen ilmoittajan nimi.
   const [reporterQuery, setReporterQuery] = useState<string | null>(null);
@@ -261,7 +304,7 @@ export function TicketDrawer({
 
   function chooseReporter(residentId: string) {
     setReporterQuery(null);
-    void setReporter(residentId);
+    edit("reporterId", residentId);
   }
 
   // Vaihtaa tehtävän ilmoittajan: aiemmat linkitykset poistetaan ja valittu asukas linkitetään tilalle.
@@ -286,7 +329,46 @@ export function TicketDrawer({
     }
   }
 
+  // Sähköposti haetaan asukastiedoista valitun ilmoittajan perusteella.
+  const reporterEmail = shownReporter
+    ? residents.find(r => r.id === shownReporter.id)?.email || shownReporter.email
+    : "";
+
   const [updatingFields, setUpdatingFields] = useState(false);
+
+  // Tallentaa kerätyt muutokset: ensin tietokentät, sitten ilmoittaja.
+  async function saveEdits() {
+    setUpdatingFields(true);
+    setSaveError("");
+    try {
+      const { reporterId, ...fields } = edits;
+      if (Object.keys(fields).length > 0) {
+        await api(`/tickets/${ticket.id}/fields`, {
+          method: "PUT",
+          body: JSON.stringify({ ...fields, actor: actorName() })
+        });
+      }
+      if (reporterId !== undefined) await setReporter(reporterId);
+      else await onChanged();
+      setEdits({});
+    } catch (error) {
+      setSaveError(errorMessage(error, t("Tallennus epäonnistui.")));
+    } finally {
+      setUpdatingFields(false);
+    }
+  }
+
+  async function deleteTicket() {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api(`/tickets/${ticket.id}`, { method: "DELETE" });
+      await onDeleted();
+    } catch (error) {
+      setDeleteError(errorMessage(error, t("Tehtävän poistaminen epäonnistui.")));
+      setDeleting(false);
+    }
+  }
 
   // Toimiston käyttäjät käsittelijän valintaa varten.
   const [officeUsers, setOfficeUsers] = useState<OfficeUser[]>([]);
@@ -375,13 +457,16 @@ export function TicketDrawer({
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
+    <div className="overlay" onClick={requestClose}>
       <aside className="drawer drawer-split" onClick={e => e.stopPropagation()}>
-        <button className="close" onClick={onClose}>×</button>
+        <button className="close" onClick={requestClose}>×</button>
         <div className="drawer-main">
         {/* Yläpalkki pysyy näkyvissä, kun tehtävää vieritetään. */}
         <div className="drawer-topbar">
-          <span className="drawer-topbar-number">#{formatTicketNumber(ticket.ticket_number)} · {statusLabel(ticket.status)}</span>
+          <span className="drawer-topbar-number">
+            #{formatTicketNumber(ticket.ticket_number)} · {statusLabel(ticket.status)}
+            {dirty && <em className="unsaved-mark">{t("Tallentamattomia muutoksia")}</em>}
+          </span>
           <div className="drawer-topbar-tools">
           <AttachmentsMenu attachments={detail.attachments} ticketId={ticket.id} onChanged={onChanged} />
           {ticket.status === "closed" && (
@@ -417,8 +502,19 @@ export function TicketDrawer({
               <button onClick={() => onDecision("skip")}>{t("Sulje")}</button>
             </div>
           )}
+          <div className="drawer-actions">
+            {isManager() && (
+              <button className="danger" onClick={() => { setDeleteError(""); setConfirmDelete(true); }} disabled={updatingFields}>
+                {t("Poista")}
+              </button>
+            )}
+            <button className={dirty ? "primary" : ""} onClick={() => void saveEdits()} disabled={!dirty || updatingFields}>
+              {updatingFields && dirty ? t("Tallennetaan…") : t("Tallenna")}
+            </button>
+          </div>
           </div>
         </div>
+        {saveError && <p className="send-error">{saveError}</p>}
         <h2>{ticket.subject}</h2>
 
         <dl className="ticket-facts">
@@ -434,15 +530,15 @@ export function TicketDrawer({
             <dt>{t("Osoite")}</dt>
             <dd>{[...new Set(detail.apartments.map(a => a.address).filter(Boolean))].join(", ") || "-"}</dd>
           </div>
-          <div>
+          <div className={edits.type !== undefined ? "changed" : ""}>
             <dt>{t("Tyyppi")}</dt>
             <dd>
               <FactDropdown
-                value={ticket.type}
+                value={shown.type}
                 options={(ticketTypeOptions.includes(ticket.type) ? ticketTypeOptions : [ticket.type, ...ticketTypeOptions])
                   .map(type => ({ value: type, label: t(type) }))}
                 disabled={updatingFields}
-                onChange={type => updateFields({ type })}
+                onChange={type => edit("type", type)}
               />
             </dd>
           </div>
@@ -458,11 +554,11 @@ export function TicketDrawer({
             <dt>{t("Tila")}</dt>
             <dd>{statusLabel(ticket.status)}</dd>
           </div>
-          <div>
+          <div className={edits.assigneeId !== undefined ? "changed" : ""}>
             <dt>{t("Käsittelijä")}</dt>
             <dd>
               <FactDropdown
-                value={ticket.assignee_id ?? ""}
+                value={shown.assigneeId ?? ""}
                 options={[
                   { value: "", label: t("Ei käsittelijää") },
                   ...officeUsers
@@ -470,34 +566,34 @@ export function TicketDrawer({
                     .map(user => ({ value: user.id, label: user.name }))
                 ]}
                 disabled={updatingFields || !canAssignTickets(company)}
-                onChange={assigneeId => updateFields({ assigneeId: assigneeId || null })}
+                onChange={assigneeId => edit("assigneeId", assigneeId || null)}
               />
             </dd>
           </div>
-          <div>
+          <div className={edits.priority !== undefined ? "changed" : ""}>
             <dt>{t("Prioriteetti")}</dt>
             <dd>
               <FactDropdown
-                value={ticket.priority}
+                value={shown.priority}
                 options={ticketPriorities.map(priority => ({
                   value: priority,
                   label: priorityLabel(priority),
                   pillClass: `priority ${priority}`
                 }))}
                 disabled={updatingFields}
-                onChange={priority => updateFields({ priority })}
+                onChange={priority => edit("priority", priority)}
               />
             </dd>
           </div>
-          <div>
+          <div className={edits.dueDate !== undefined ? "changed" : ""}>
             <dt>{t("Määräaika")}</dt>
             <dd className="fact-due">
               <input
                 type="date"
-                value={ticket.due_date ?? ""}
+                value={shown.dueDate ?? ""}
                 disabled={updatingFields || ticket.status === "closed"}
                 aria-label={t("Määräaika")}
-                onChange={event => updateFields({ dueDate: event.target.value || null })}
+                onChange={event => edit("dueDate", event.target.value || null)}
               />
               {isOverdue(ticket) && <em className="new-reply overdue">{t("Myöhässä")}</em>}
             </dd>
@@ -506,12 +602,12 @@ export function TicketDrawer({
             <dt>{t("Luotu")}</dt>
             <dd>{formatDate(ticket.created_at)}</dd>
           </div>
-          <div>
+          <div className={edits.reporterId !== undefined ? "changed" : ""}>
             <dt>{t("Ilmoittaja")}</dt>
             <dd className="fact-search">
               <input
                 ref={reporterInput}
-                value={reporterQuery ?? reporter?.name ?? ""}
+                value={reporterQuery ?? shownReporter?.name ?? ""}
                 placeholder={t("Hae asukasta nimellä…")}
                 disabled={linking}
                 onFocus={event => {
@@ -562,7 +658,7 @@ export function TicketDrawer({
                     </li>
                   ))}
                   {reporterMatches.length === 0 && <li className="empty-option">{t("Ei hakua vastaavia asukkaita")}</li>}
-                  {reporter && (
+                  {shownReporter && (
                     <li className="clear-option" onMouseDown={() => chooseReporter("")}>{t("Poista ilmoittaja")}</li>
                   )}
                 </ul>
@@ -576,7 +672,7 @@ export function TicketDrawer({
           <div>
             <dt>{t("Sähköposti")}</dt>
             <dd>
-              {reporter
+              {shownReporter
                 ? reporterEmail || "-"
                 : unlinkedSenders.length > 0 ? t("{0} (ei linkitetty asukkaaseen)", unlinkedSenders.join(", ")) : "-"}
             </dd>
@@ -755,6 +851,25 @@ export function TicketDrawer({
           </form>
         </section>
       </aside>
+
+      {confirmDelete && (
+        <div className="overlay skip-overlay" onClick={event => { event.stopPropagation(); if (!deleting) setConfirmDelete(false); }}>
+          <aside className="drawer skip-drawer" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onClick={event => event.stopPropagation()}>
+            <h2 id="delete-title">{t("Poistetaanko tehtävä #{0}?", formatTicketNumber(ticket.ticket_number))}</h2>
+            <p className="delete-warning">
+              {t("Tehtävä poistetaan pysyvästi viesteineen, liitteineen, muistiinpanoineen ja työtilauksineen. Poistoa ei voi perua.")}
+            </p>
+            <p className="muted">{t("Jos asia on vain hoidettu, sulje tehtävä poistamisen sijaan, niin se jää historiaan.")}</p>
+            {deleteError && <p className="send-error">{deleteError}</p>}
+            <div className="drawer-actions compact-actions">
+              <button type="button" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t("Peruuta")}</button>
+              <button type="button" className="danger-fill" onClick={() => void deleteTicket()} disabled={deleting}>
+                {deleting ? t("Poistetaan…") : t("Poista tehtävä")}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

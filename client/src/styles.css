@@ -2941,3 +2941,11 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .ticket-row-header.knowledge-cols,
   .ticket-row-search.knowledge-cols { display: none; }
 }
+
+/* Tehtäväkortti: tallentamattomat muutokset ja poiston varoitus. */
+.unsaved-mark { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: #fdf5dc; color: #7a5c0c; font-size: 11px; font-style: normal; font-weight: 700; }
+.ticket-facts > div.changed dt::after { content: " •"; color: #3f7fbf; font-weight: 800; }
+.drawer-actions button.danger { color: #b3402f; }
+.drawer-actions button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+.drawer-actions button.danger-fill { background: #b3402f; border-color: #b3402f; color: #fff; }
+.delete-warning { margin: 10px 0 8px; padding: 11px 13px; border-radius: 10px; background: #fbeae6; color: #9c2b1f; font-size: 13px; font-weight: 600; line-height: 1.5; }

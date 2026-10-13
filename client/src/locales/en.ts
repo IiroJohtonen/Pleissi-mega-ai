@@ -1156,5 +1156,13 @@ export const en: Record<string, string> = {
   "Sulkemisen syy": "Reason for closing",
   "Kommentti (valinnainen)": "Comment (optional)",
   "Esim. sovittu puhelimessa, huolto käy torstaina.": "E.g. agreed by phone, maintenance visits on Thursday.",
-  "Kommentti tallentuu tehtävän sisäiseksi muistiinpanoksi. Asukas ei näe sitä.": "The comment is saved as an internal note on the ticket. The resident does not see it."
+  "Kommentti tallentuu tehtävän sisäiseksi muistiinpanoksi. Asukas ei näe sitä.": "The comment is saved as an internal note on the ticket. The resident does not see it.",
+  "Tehtävä poistettu": "Ticket deleted",
+  "Tallentamattomat muutokset menetetään. Suljetaanko tehtävä?": "Unsaved changes will be lost. Close the ticket view?",
+  "Tehtävän poistaminen epäonnistui.": "Deleting the ticket failed.",
+  "Tallentamattomia muutoksia": "Unsaved changes",
+  "Poistetaanko tehtävä #{0}?": "Delete ticket #{0}?",
+  "Tehtävä poistetaan pysyvästi viesteineen, liitteineen, muistiinpanoineen ja työtilauksineen. Poistoa ei voi perua.": "The ticket is deleted permanently with its messages, attachments, notes and work orders. This cannot be undone.",
+  "Jos asia on vain hoidettu, sulje tehtävä poistamisen sijaan, niin se jää historiaan.": "If the matter is simply handled, close the ticket instead of deleting it so that it stays in the history.",
+  "Poista tehtävä": "Delete ticket"
 };
