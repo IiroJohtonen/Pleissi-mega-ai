@@ -272,16 +272,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       method: "POST",
       body: JSON.stringify({ decision, actor: actorName(), reason, comment })
     });
-    if (decision === "human") {
-      const companyId = allCompanyTickets.find(ticket => ticket.id === id)?.company_id
-        ?? (selected?.ticket.id === id ? selected.ticket.company_id : undefined);
-      setTab("my-tickets");
-      if (companyId && companyId !== selectedCompany) {
-        setSelectedCompany(companyId);
-        await load(companyId);
-        return;
-      }
-    }
+    // "Osoita minulle" ei vaihda näkymää: tehtävä poistuu päätösjonosta ja käyttäjä jatkaa siitä, missä oli.
     await load();
   }
 

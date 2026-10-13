@@ -256,6 +256,16 @@ describe("sovellus", () => {
     }
   });
 
+  it("Osoita minulle ei vie pois päätösjonosta", async () => {
+    const calls = mockApi();
+    await renderApp(staff("Asiakaspalvelu"), "#/queue");
+    fireEvent.click(await screen.findByRole("button", { name: "Osoita minulle" }));
+    await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets/ticket-1/decision"))).toBe(true));
+    await vi.waitFor(() => expect(calls.filter(request => request.url.includes("/tickets?companyId=")).length).toBeGreaterThan(1));
+    expect(window.location.hash).toBe("#/queue");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Päätösjono");
+  });
+
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {
     const calls = mockApi();
     await renderApp(staff("Pääkäyttäjä"));
