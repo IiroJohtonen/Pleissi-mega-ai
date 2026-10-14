@@ -88,7 +88,7 @@ export function Login() {
     return (
       <div className="login-page">
         <form className="login-card" onSubmit={requestReset}>
-          <img src="/kotilo-logo.svg" alt="Kotilo" />
+          <img src="/pleissi-logo-dark.svg" alt="Pleissi" />
           <h1>{t("Unohtunut salasana")}</h1>
           <p>{t("Anna sähköpostiosoitteesi, niin lähetämme linkin, jolla voit asettaa uuden salasanan.")}</p>
           <label>
@@ -109,7 +109,7 @@ export function Login() {
     return (
       <div className="login-page">
         <form className="login-card" onSubmit={submitNewPassword}>
-          <img src="/kotilo-logo.svg" alt="Kotilo" />
+          <img src="/pleissi-logo-dark.svg" alt="Pleissi" />
           <h1>{t("Aseta uusi salasana")}</h1>
           <p>{t("Salasanassa pitää olla vähintään 8 merkkiä.")}</p>
           <label>
@@ -143,7 +143,7 @@ export function Login() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <img src="/kotilo-logo.svg" alt="Kotilo" />
+        <img src="/pleissi-logo-dark.svg" alt="Pleissi" />
         <h1>{t("Kirjaudu sisään")}</h1>
         <p>{MANAGEMENT_OFFICE.name}{" "}{t("· henkilökunta ja asukkaat")}</p>
 

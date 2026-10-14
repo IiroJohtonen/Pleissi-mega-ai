@@ -5,7 +5,7 @@ import { type Language, language, LANGUAGES, setLanguage } from "../i18n";
 import {
   api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession, USER_ROLES
 } from "../session";
-import type { Company, MailProvider, MailStatus } from "../types";
+import type { MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
 import { t } from "../i18n";
@@ -77,7 +77,7 @@ function CollapseSection({ id, title, action, children }: {
 }
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
-export function Settings(props: { company?: Company; onSaved: () => Promise<void> }) {
+export function Settings(props: { onSaved: () => Promise<void> }) {
   const admin = isAdmin();
   const [tab, setTab] = useState<"user" | "office">("user");
 
@@ -438,19 +438,12 @@ export function MailAccountCard({ target }: { target: string }) {
   );
 }
 
-function OfficeSettings({
-  company,
-  onSaved
-}: {
-  company?: Company;
-  onSaved: () => Promise<void>;
-}) {
-  // Toimiston omat tiedot; taloyhtiöstä tällä lomakkeella muutetaan vain tehtävien vastaanotto-osoitetta.
+// Isännöitsijätoimiston omat tiedot. Ne eivät riipu valitusta taloyhtiöstä.
+function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [name, setName] = useState(MANAGEMENT_OFFICE.name);
   const [businessId, setBusinessId] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
-  const [emailAddress, setEmailAddress] = useState("");
   const [reminderEmails, setReminderEmails] = useState(false);
   const [aiPriority, setAiPriority] = useState(false);
   const [aiRelevance, setAiRelevance] = useState(false);
@@ -480,15 +473,6 @@ function OfficeSettings({
   const [error, setError] = useState("");
 
 
-  useEffect(() => {
-    setEmailAddress(company?.email_address ?? "");
-    setSaved(false);
-    setError("");
-  }, [company?.id]);
-
-  // Toimiston asetukset eivät riipu taloyhtiöstä; vain tehtävien vastaanotto-osoite on yhtiökohtainen.
-  const companyId = company?.id ?? "";
-
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const shortens = retentionMonths > 0 && (storedRetention === 0 || retentionMonths < storedRetention);
@@ -506,19 +490,6 @@ function OfficeSettings({
       });
       MANAGEMENT_OFFICE.name = office.name;
       setStoredRetention(office.retentionMonths ?? 0);
-      // Taloyhtiön omat tiedot säilyvät; vain vastaanotto-osoite päivitetään.
-      if (company && emailAddress.trim() !== (company.email_address ?? "")) {
-        await api(`/companies/${encodeURIComponent(companyId)}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            name: company.name,
-            businessId: company.business_id ?? "",
-            address: company.address ?? "",
-            phone: company.phone ?? "",
-            emailAddress
-          })
-        });
-      }
       await onSaved();
       setSaved(true);
     } catch (caught) {
@@ -562,25 +533,6 @@ function OfficeSettings({
         </label>
 
         </CollapseSection>
-
-        {company && (
-        <CollapseSection id="office-inbox" title={t("Tehtävien vastaanotto")}>
-
-        <label>
-          <span>{t("Sähköposti, johon tehtävät saapuvat (")}{company.name})</span>
-          <input
-            type="email"
-            value={emailAddress}
-            onChange={event => { setEmailAddress(event.target.value); setSaved(false); }}
-            placeholder={t("esim. asiakaspalvelu@yritys.fi")}
-          />
-        </label>
-        <p className="reply-hint">
-          {t("Tähän osoitteeseen lähetetyt viestit ohjataan tämän yhtiön tehtäviksi.")}
-        </p>
-
-        </CollapseSection>
-        )}
 
         <CollapseSection id="office-reminders" title={t("Muistutukset")}>
 
