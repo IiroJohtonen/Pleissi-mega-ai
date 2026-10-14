@@ -51,6 +51,26 @@ export function microsoftAuthUrl(state: string): string {
 
 type StoredTokens = { access_token: string; refresh_token: string; expires_at: number };
 
+// Yleisimmät Microsoftin kirjautumisvirheet ja niiden korjaus. Koodi (AADSTS...) näytetään aina, jotta
+// muunkin virheen syyn voi tarkistaa Microsoftin ohjeista.
+const MICROSOFT_ERRORS: Record<string, string> = {
+  AADSTS7000215: "Sovelluksen salaisuus on väärä. Kopioi Azure-portaalista salaisuuden Value-kenttä (ei Secret ID) palvelimen asetukseen MS_CLIENT_SECRET.",
+  AADSTS7000222: "Sovelluksen salaisuus on vanhentunut. Luo Azure-portaalissa uusi salaisuus ja vaihda se asetukseen MS_CLIENT_SECRET.",
+  AADSTS700016: "Sovellusta ei löydy. Tarkista, että MS_CLIENT_ID on Azure-portaalin Application (client) ID.",
+  AADSTS50011: "Paluuosoite ei täsmää. Lisää Azure-portaalin Redirect URI -listaan sama osoite kuin asetuksessa MS_REDIRECT_URI.",
+  AADSTS500113: "Azure-sovellukselle ei ole lisätty paluuosoitetta. Lisää Redirect URI (tyyppi Web).",
+  AADSTS65001: "Organisaation ylläpitäjän pitää hyväksyä sovellus ennen käyttöä.",
+  AADSTS90072: "Tiliä ei ole sovelluksen organisaatiossa. Valitse Azure-portaalissa tilityypiksi kaikki organisaatiot ja henkilökohtaiset Microsoft-tilit.",
+  AADSTS50194: "Sovellus on rajattu yhteen organisaatioon. Valitse Azure-portaalissa tilityypiksi useat organisaatiot tai aseta MS_TENANT organisaatiosi tunnukseksi.",
+  AADSTS54005: "Kirjautumiskoodi oli jo käytetty. Aloita yhdistäminen uudelleen."
+};
+
+export function microsoftErrorMessage(description: string): string {
+  const code = description.match(/AADSTS\d+/)?.[0] ?? "";
+  const hint = MICROSOFT_ERRORS[code] ?? "Yhdistä tili uudelleen asetuksista.";
+  return `Microsoft-kirjautuminen epäonnistui${code ? ` (${code})` : ""}. ${hint}`;
+}
+
 async function requestTokens(body: Record<string, string>): Promise<StoredTokens & { refresh_token?: string }> {
   const { clientId, clientSecret } = requireConfig();
   const response = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenant())}/oauth2/v2.0/token`, {
@@ -63,7 +83,7 @@ async function requestTokens(body: Record<string, string>): Promise<StoredTokens
   };
   if (!response.ok || !data.access_token) {
     console.warn("Microsoft-tunnisteen haku epäonnistui:", data.error, data.error_description);
-    throw new Error("Microsoft-kirjautuminen epäonnistui. Yhdistä tili uudelleen asetuksista.");
+    throw new Error(microsoftErrorMessage(data.error_description ?? data.error ?? ""));
   }
   return {
     access_token: data.access_token,

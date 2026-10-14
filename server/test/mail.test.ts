@@ -77,6 +77,16 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.equal(companyForUserMailbox("joku-muu", ""), "demo-company");
   });
 
+  it("kertoo Microsoftin kirjautumisvirheen koodin ja korjauksen", () => {
+    const message = modules.microsoft.microsoftErrorMessage(
+      "AADSTS7000215: Invalid client secret provided. Ensure the secret being sent in the request is the client secret value."
+    );
+    assert.match(message, /AADSTS7000215/);
+    assert.match(message, /Value-kenttä/);
+    assert.match(modules.microsoft.microsoftErrorMessage("AADSTS999999: tuntematon"), /AADSTS999999.*Yhdistä tili uudelleen/);
+    assert.equal(modules.microsoft.microsoftErrorMessage(""), "Microsoft-kirjautuminen epäonnistui. Yhdistä tili uudelleen asetuksista.");
+  });
+
   it("muuntaa Microsoft 365 -viestin tuotavaksi", async () => {
     const message = {
       id: "AAMk1",
