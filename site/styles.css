@@ -46,20 +46,35 @@
 }
 
 :root {
-  --paper: #f6f2ea;
-  --paper-deep: #efe8dc;
-  --card: #fffdf9;
-  --ink: #1f1d1a;
-  --ink-soft: #46423c;
-  --muted: #736c62;
-  --line: #e2d9ca;
-  --accent: #b4532a;
-  --accent-deep: #8f3f1d;
-  --sage: #e6ebe1;
+  /* Värit: syvä yönsininen tausta, vaalea teksti ja lämmin oranssi korostus. */
+  --bg: #16212e;
+  --bg-alt: #1e2b3b;
+  --card: #1f2d3e;
+  --field: #16212e;
+  --field-focus: #1b2837;
+  --ink: #f2eee7;
+  --ink-soft: #c6cdd5;
+  --muted: #93a0ae;
+  --line: #2d3c4f;
+  --frame: rgba(255, 255, 255, .12);
+  --accent: #e8946b;
+  --eyebrow: #eba380;
+  --btn: #f2eee7;
+  --btn-ink: #16212e;
+  --btn-hover: #ffffff;
+  --top-bg: rgba(22, 33, 46, .88);
+  --band: #0f1822;
+  --band-ink: #f2eee7;
+  --band-soft: #b6c0cb;
+  --band-line: rgba(255, 255, 255, .12);
+  --band-accent: #eba380;
+  --phone: #0b1118;
+  --ok: #8fd19e;
+  --err: #f2a08a;
   --serif: "Newsreader", Georgia, "Times New Roman", serif;
   --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 14px;
-  --shadow: 0 1px 2px rgba(60, 40, 20, .06), 0 24px 60px -24px rgba(60, 40, 20, .28);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 30px 70px -28px rgba(0, 0, 0, .65);
 }
 
 *,
@@ -70,7 +85,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 
 body {
   margin: 0;
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
   font-size: 17px;
@@ -102,7 +117,7 @@ p { margin: 0; text-wrap: pretty; }
 
 .eyebrow {
   margin-bottom: 18px;
-  color: var(--accent-deep);
+  color: var(--eyebrow);
   font-size: 14px;
   font-weight: 600;
   letter-spacing: .02em;
@@ -119,15 +134,15 @@ p { margin: 0; text-wrap: pretty; }
   padding: 10px 18px;
   border: 0;
   border-radius: 10px;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--btn);
+  color: var(--btn-ink);
   font: 600 15px/1.2 var(--sans);
   text-decoration: none;
   cursor: pointer;
   transition: background .15s ease, transform .15s ease;
 }
 
-.button:hover { background: #3a352f; }
+.button:hover { background: var(--btn-hover); }
 .button:active { transform: translateY(1px); }
 .button.large { padding: 14px 24px; font-size: 16px; }
 .button:disabled { opacity: .6; cursor: default; }
@@ -142,7 +157,7 @@ p { margin: 0; text-wrap: pretty; }
 }
 
 .text-link::after { content: " →"; }
-.text-link:hover { color: var(--accent-deep); }
+.text-link:hover { color: var(--accent); }
 
 /* Yläpalkki */
 .top {
@@ -150,7 +165,7 @@ p { margin: 0; text-wrap: pretty; }
   top: 0;
   z-index: 10;
   border-bottom: 1px solid transparent;
-  background: rgba(246, 242, 234, .86);
+  background: var(--top-bg);
   backdrop-filter: saturate(1.4) blur(12px);
   -webkit-backdrop-filter: saturate(1.4) blur(12px);
 }
@@ -187,7 +202,7 @@ p { margin: 0; text-wrap: pretty; }
   cursor: pointer;
 }
 
-.lang button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.lang button[aria-pressed="true"] { background: var(--btn); color: var(--btn-ink); }
 
 /* Avaus */
 .hero { padding: 88px 0 0; }
@@ -208,7 +223,7 @@ p { margin: 0; text-wrap: pretty; }
 .hero-shot { margin-top: 64px; }
 
 .hero-shot img {
-  border: 1px solid rgba(31, 29, 26, .1);
+  border: 1px solid var(--frame);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
@@ -284,7 +299,7 @@ p { margin: 0; text-wrap: pretty; }
 
 .shot {
   overflow: hidden;
-  border: 1px solid rgba(31, 29, 26, .1);
+  border: 1px solid var(--frame);
   border-radius: var(--radius);
   background: var(--card);
   box-shadow: var(--shadow);
@@ -303,7 +318,7 @@ p { margin: 0; text-wrap: pretty; }
 .trio p { margin-top: 10px; color: var(--ink-soft); font-size: 16px; }
 
 /* Asukkaille */
-.residents { background: var(--sage); }
+.residents { background: var(--bg-alt); }
 
 .residents-grid {
   display: grid;
@@ -325,7 +340,7 @@ p { margin: 0; text-wrap: pretty; }
 
 .plain-list li {
   padding: 12px 0;
-  border-top: 1px solid rgba(31, 29, 26, .12);
+  border-top: 1px solid var(--line);
   font-size: 16px;
   font-weight: 500;
 }
@@ -335,9 +350,9 @@ p { margin: 0; text-wrap: pretty; }
 .phone {
   width: min(260px, 45%);
   overflow: hidden;
-  border: 9px solid var(--ink);
+  border: 9px solid var(--phone);
   border-radius: 40px;
-  background: var(--ink);
+  background: var(--phone);
   box-shadow: var(--shadow);
 }
 
@@ -357,8 +372,8 @@ p { margin: 0; text-wrap: pretty; }
 .index dd { margin: 8px 0 0; color: var(--ink-soft); font-size: 16px; }
 
 /* Tietoturva */
-.security { background: var(--ink); color: var(--paper); }
-.security .eyebrow { color: #e7a07e; }
+.security { background: var(--band); color: var(--band-ink); }
+.security .eyebrow { color: var(--band-accent); }
 
 .security-grid {
   display: grid;
@@ -367,7 +382,7 @@ p { margin: 0; text-wrap: pretty; }
   align-items: start;
 }
 
-.security-grid > div > p:last-child { margin-top: 22px; color: #cfc6b8; font-size: 18px; }
+.security-grid > div > p:last-child { margin-top: 22px; color: var(--band-soft); font-size: 18px; }
 
 .security-list {
   display: grid;
@@ -378,9 +393,9 @@ p { margin: 0; text-wrap: pretty; }
   list-style: none;
 }
 
-.security-list li { display: grid; gap: 6px; padding: 22px 0 26px; border-top: 1px solid rgba(246, 242, 234, .16); }
+.security-list li { display: grid; gap: 6px; padding: 22px 0 26px; border-top: 1px solid var(--band-line); }
 .security-list strong { font-size: 17px; font-weight: 600; }
-.security-list span { color: #cfc6b8; font-size: 15px; }
+.security-list span { color: var(--band-soft); font-size: 15px; }
 
 /* Käyttöönotto */
 .steps {
@@ -434,22 +449,22 @@ p { margin: 0; text-wrap: pretty; }
   padding: 11px 13px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--paper);
+  background: var(--field);
   color: var(--ink);
   font: 16px/1.4 var(--sans);
   transition: border-color .15s ease, background .15s ease;
 }
 
 .contact-form input:focus,
-.contact-form textarea:focus { border-color: var(--accent); background: #fff; outline: none; }
+.contact-form textarea:focus { border-color: var(--accent); background: var(--field-focus); outline: none; }
 .contact-form textarea { resize: vertical; }
 
 .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
 .form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .form-status { font-size: 15px; }
-.form-status.ok { color: #2f6b3a; }
-.form-status.error { color: #a3361b; }
+.form-status.ok { color: var(--ok); }
+.form-status.error { color: var(--err); }
 
 /* Alatunniste */
 .foot { padding: 56px 0 32px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 15px; }
