@@ -30,8 +30,9 @@ describe("asukkaan tietojen vienti ja poisto", () => {
     assert.equal(exported.status, 200);
     assert.equal(exported.data.resident.name, "Matti Meikäläinen");
     assert.equal(exported.data.resident.has_portal_account, true);
-    assert.equal(exported.data.tickets.length, 1);
-    assert.equal(exported.data.tickets[0].messages[0].body, "Miten saan varattua saunavuoron?");
+    assert.equal(exported.data.tickets.length, 4);
+    const sauna = exported.data.tickets.find((ticket: any) => ticket.subject === "Saunavuoro");
+    assert.equal(sauna.messages[0].body, "Miten saan varattua saunavuoron?");
   });
 
   it("poisto anonymisoi asukkaan ja hänen tehtävänsä", async () => {
