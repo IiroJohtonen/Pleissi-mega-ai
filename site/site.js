@@ -8,7 +8,7 @@
   var TEXTS = {
     fi: {
       title: "Pleissi – isännöintitoimiston työkalu asukkaiden yhteydenottoihin",
-      description: "Pleissi kokoaa asukkaiden sähköpostit ja portaalin ilmoitukset yhteen jonoon, auttaa vastaamaan niihin ja hoitaa taloyhtiön varaukset, tiedotteet ja ilmoitukset.",
+      description: "Pleissi kokoaa asukkaiden sähköpostit ja portaalin ilmoitukset yhteen jonoon. Jokaisella asialla on käsittelijä, määräaika ja historia, ja vastaus lähtee tutusta osoitteesta.",
       missing: "Täytä nimi ja sähköpostiosoite.",
       sending: "Lähetetään…",
       sent: "Kiitos! Otamme sinuun yhteyttä.",
@@ -17,7 +17,7 @@
     },
     en: {
       title: "Pleissi – a tool for property managers to handle resident requests",
-      description: "Pleissi brings resident emails and portal reports into one queue, helps you reply to them and handles the housing company's bookings, announcements and notices.",
+      description: "Pleissi gathers resident emails and portal reports into one queue. Every matter has an owner, a deadline and a history, and replies go out from a familiar address.",
       missing: "Fill in your name and email address.",
       sending: "Sending…",
       sent: "Thank you! We will be in touch.",
@@ -53,6 +53,11 @@
     document.querySelectorAll("[data-en]").forEach(function (element) {
       swap(element, "data-en", function (el) { return el.innerHTML; }, function (el, value) { el.innerHTML = value; });
     });
+    document.querySelectorAll("[data-en-alt]").forEach(function (element) {
+      swap(element, "data-en-alt",
+        function (el) { return el.getAttribute("alt"); },
+        function (el, value) { el.setAttribute("alt", value); });
+    });
     document.querySelectorAll("[data-en-aria-label]").forEach(function (element) {
       swap(element, "data-en-aria-label",
         function (el) { return el.getAttribute("aria-label"); },
@@ -72,6 +77,12 @@
       // Selaimen tallennustila ei ole käytössä; valinta säilyy vain tämän käynnin ajan.
     }
   }
+
+  // Yläpalkki saa reunaviivan, kun sivua on vieritetty.
+  var top = document.querySelector(".top");
+  function markScrolled() { top.classList.toggle("scrolled", window.scrollY > 8); }
+  window.addEventListener("scroll", markScrolled, { passive: true });
+  markScrolled();
 
   document.querySelectorAll(".lang button").forEach(function (button) {
     button.addEventListener("click", function () { setLanguage(button.getAttribute("data-lang")); });
