@@ -499,6 +499,16 @@ for (const column of ["single_price", "monthly_price"]) {
   }
 }
 
+// Sähköpostitilin palvelu: gmail, microsoft tai imap. Muut kuin salaiset asetukset (esim. IMAP-palvelin)
+// ovat JSON-muodossa settings-sarakkeessa; token-sarakkeessa on tunnisteet tai salattu salasana.
+const mailAccountColumns = db.prepare("PRAGMA table_info(gmail_accounts)").all() as { name: string }[];
+if (!mailAccountColumns.some(column => column.name === "provider")) {
+  db.exec("ALTER TABLE gmail_accounts ADD COLUMN provider TEXT NOT NULL DEFAULT 'gmail'");
+}
+if (!mailAccountColumns.some(column => column.name === "settings")) {
+  db.exec("ALTER TABLE gmail_accounts ADD COLUMN settings TEXT NOT NULL DEFAULT '{}'");
+}
+
 // Viikoittain toistuvan varauksen vuorot jakavat saman series_id:n.
 const bookingColumns = db.prepare("PRAGMA table_info(bookings)").all() as { name: string }[];
 if (!bookingColumns.some(column => column.name === "series_id")) {

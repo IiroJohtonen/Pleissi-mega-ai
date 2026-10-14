@@ -252,8 +252,8 @@ function tokenFromRequest(req: Request): string {
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (req.method === "OPTIONS") return next();
   if (req.path === "/auth/login" || req.path === "/health") return next();
-  // Googlen kirjautuminen palaa tähän ilman istuntoa; pyyntö tunnistetaan kertakäyttöisestä state-arvosta.
-  if (req.path === "/gmail/callback") return next();
+  // Googlen ja Microsoftin kirjautuminen palaa tähän ilman istuntoa; pyyntö tunnistetaan kertakäyttöisestä state-arvosta.
+  if (req.path === "/gmail/callback" || req.path === "/mail/microsoft/callback") return next();
   // Salasanan palautus tehdään kirjautumatta.
   if (req.path === "/auth/forgot" || req.path === "/auth/reset") return next();
   // Kotisivun yhteydenottolomake lähetetään kirjautumatta.

@@ -57,9 +57,15 @@ Aseta `ANTHROPIC_API_KEY` tiedostoon `server/.env`. Ilman avainta vastausehdotuk
 
 Saapuvan tehtävän prioriteetin voi antaa AI:n arvioitavaksi: Asetukset → Isännöitsijätoimiston tiedot → AI. Asetus on oletuksena pois päältä, jolloin prioriteetti päätellään avainsanoista. Jokainen saapuva viesti on silloin yksi AI-kutsu. Samasta paikasta voi kytkeä päälle tarkistuksen, jossa AI pitää taloyhtiöön liittymättömät sähköpostit (mainokset, uutiskirjeet, automaattivastaukset) poissa päätösjonosta; ne tallentuvat suljettuina tehtävinä. Molemmat arviot tehdään samalla kutsulla.
 
-### Gmail
+### Sähköposti
 
-Saapuva ja lähtevä posti kulkee Gmailin kautta. Tallenna Google Cloudin OAuth-clientin tiedot tiedostoon `server/credentials.json` ja yhdistä tili sovelluksen asetuksista (Asetukset → Gmail). Taloyhtiölle voi yhdistää oman tilin; muuten käytetään toimiston tiliä. Tiedostot `credentials.json` ja `token.json` ovat salaisuuksia eivätkä kuulu repoon.
+Saapuva ja lähtevä posti kulkee toimiston tai taloyhtiön sähköpostitilin kautta. Tili yhdistetään asetuksista (Asetukset → Isännöitsijätoimiston tiedot → Toimiston sähköpostitili); taloyhtiölle voi yhdistää oman tilin, muuten käytetään toimiston tiliä. Palveluja on kolme:
+
+- **Gmail:** tallenna Google Cloudin OAuth-clientin tiedot tiedostoon `server/credentials.json`.
+- **Microsoft 365 / Outlook:** rekisteröi sovellus Azure-portaaliin ja aseta `MS_CLIENT_ID` ja `MS_CLIENT_SECRET`.
+- **Muu sähköposti (IMAP/SMTP):** ei vaadi palvelimen asetuksia; palvelimet ja salasana annetaan asetuksissa.
+
+Ohjeet ovat tiedostossa [deploy/server/README.md](deploy/server/README.md), kohta "Sähköposti". Tiedostot `credentials.json` ja `token.json` sekä data-kansion `mail-secret.key` ovat salaisuuksia eivätkä kuulu repoon.
 
 ## Käännökset
 
@@ -92,7 +98,9 @@ Kaikki asetukset ovat ympäristömuuttujia; selitykset ovat tiedostossa [server/
 | `BACKUP_DIR`, `BACKUP_KEEP` | Päivittäinen varmuuskopio ja säilytettävien kopioiden määrä |
 | `CLAMAV_HOST`, `CLAMAV_PORT` | Liitteiden virustarkistus ClamAV:lla |
 | `TRUST_PROXY` | Välityspalvelimien määrä palvelimen edessä |
-| `GMAIL_DISABLED` | `1` kytkee postin pois |
+| `GMAIL_DISABLED` | `1` kytkee postin pois (kaikki palvelut) |
+| `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_REDIRECT_URI` | Microsoft 365 -yhteys |
+| `MAIL_SECRET_KEY` | Sähköpostisalasanojen salausavain |
 | `VITE_API_URL` (client) | Rajapinnan osoite, jos se ei ole oletus |
 
 ## Tietoturva

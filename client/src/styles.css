@@ -2364,6 +2364,13 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .gmail-card .draft-actions { margin-top: 14px; }
 .gmail-card .draft-actions .secondary { padding: 8px 14px; font-size: 12px; }
 .gmail-shared { color: #747a80; font-weight: 400; }
+.mail-provider { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 99px; background: #e6f1fb; color: #24527f; font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.mail-connect-label { margin: 14px 0 0; color: #4b535d; font-size: 12px; font-weight: 700; }
+.gmail-card .draft-actions.mail-connect { margin-top: 6px; flex-wrap: wrap; }
+.gmail-card .mail-connect .secondary.active { border-color: #3f7fbf; background: #eaf2fb; }
+.gmail-card .mail-connect button:disabled { opacity: .55; cursor: not-allowed; }
+.mail-imap-form { margin-top: 14px; padding: 16px; border: 1px solid #e2e4e6; border-radius: 12px; background: #fafbfc; }
+.mail-imap-form input { background: #fff; }
 .settings-card.gmail-card .reply-hint { margin: 10px 0 0; }
 
 /* Asetusten välilehdet */

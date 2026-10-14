@@ -4,7 +4,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext, getAuthorizedTicket } from "../access.js";
 import { attachmentsDir, db } from "../db.js";
-import { type OutgoingAttachment, sendGmailReply } from "../gmail.js";
+import { type OutgoingAttachment, sendEmail } from "../mail.js";
 import { id, now, VALID_EMAIL } from "../util.js";
 
 export const workOrdersRouter: Router = express.Router();
@@ -89,7 +89,7 @@ workOrdersRouter.post("/tickets/:id/work-orders", async (req, res) => {
       outgoing.push({ filename: row.filename, mimeType: row.mime_type, content: await fs.readFile(path.join(attachmentsDir, row.id)) });
     }
     try {
-      const sent = await sendGmailReply({ to: contractorEmail, subject, body, attachments: outgoing, companyId: ticket.company_id });
+      const sent = await sendEmail({ to: contractorEmail, subject, body, attachments: outgoing, companyId: ticket.company_id });
       // Huoltoyhtiön vastaus tähän viestiin ohjautuu samalle tehtävälle.
       db.prepare("INSERT OR IGNORE INTO gmail_imports (gmail_message_id, ticket_id, created_at) VALUES (?, ?, ?)")
         .run(sent.id, req.params.id, timestamp);
@@ -162,7 +162,7 @@ workOrdersRouter.post("/work-orders/:id/messages", async (req, res) => {
 
   const timestamp = now();
   try {
-    const sent = await sendGmailReply({
+    const sent = await sendEmail({
       to, subject, body: `${parsed.data.body}\n\nYstävällisin terveisin\n${actor}`,
       sourceMessageId: thread?.gmail_message_id, attachments: outgoing, companyId: order.company_id
     });

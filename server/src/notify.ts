@@ -1,5 +1,5 @@
 import { db } from "./db.js";
-import { sendGmailReply } from "./gmail.js";
+import { sendEmail } from "./mail.js";
 import { id, now, VALID_EMAIL } from "./util.js";
 
 // Hätätapauksesta lähtee heti sähköposti taloyhtiön vastuuisännöitsijälle. Lähetys tehdään taustalla,
@@ -45,7 +45,7 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
   const reporter = [ticket.resident ?? ticket.sender, ticket.apartment && `asunto ${ticket.apartment}`].filter(Boolean).join(", ");
   const message = (ticket.message ?? ticket.summary).trim();
   try {
-    await sendGmailReply({
+    await sendEmail({
       to: email,
       notification: true,
       subject: `HÄTÄTAPAUS: ${ticket.subject} (${ticket.company})`,
@@ -83,7 +83,7 @@ export async function notifyResident(residentId: string, subject: string, lines:
   if (!resident || !/^[^\s<>,;@]+@[^\s<>,;@]+$/.test(email)) return;
   const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string };
   try {
-    await sendGmailReply({
+    await sendEmail({
       to: email,
       companyId: resident.company_id,
       subject: `${subject} (${resident.company})`,

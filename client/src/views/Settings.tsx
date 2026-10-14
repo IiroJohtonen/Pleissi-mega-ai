@@ -5,7 +5,7 @@ import { type Language, language, LANGUAGES, setLanguage } from "../i18n";
 import {
   api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession, USER_ROLES
 } from "../session";
-import type { Company, GmailStatus } from "../types";
+import type { Company, MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
 import { t } from "../i18n";
@@ -192,49 +192,111 @@ export type OfficeInfo = {
   aiRelevance?: number;
 };
 
-// Gmail-tili, jolla posti lähtee ja saapuu. target "office" = toimiston tili, muuten taloyhtiön tunniste.
-// Tilin vaihto avaa Googlen kirjautumisen uuteen välilehteen; vain pääkäyttäjä voi vaihtaa tilin.
-export function GmailAccountCard({ target }: { target: string }) {
+const providerNames: Record<MailProvider, string> = {
+  gmail: "Gmail",
+  microsoft: "Microsoft 365",
+  imap: t("IMAP/SMTP")
+};
+
+// IMAP/SMTP-tilin lomake. Portit ovat yleisimmät salatut oletukset; palvelimen osoite löytyy
+// sähköpostipalvelun ohjeista.
+const emptyImapForm = { email: "", imapHost: "", imapPort: "993", smtpHost: "", smtpPort: "465", username: "", password: "" };
+
+// Sähköpostitili, jolla posti lähtee ja saapuu. target "office" = toimiston tili, muuten taloyhtiön tunniste.
+// Gmail ja Microsoft 365 yhdistetään kirjautumalla uudessa välilehdessä, muut palvelut IMAP/SMTP-tiedoilla.
+// Vain pääkäyttäjä voi vaihtaa tilin.
+export function MailAccountCard({ target }: { target: string }) {
   const office = target === "office";
-  const [status, setStatus] = useState<(GmailStatus & { own?: boolean }) | null>(null);
+  const [status, setStatus] = useState<MailStatus | null>(null);
+  const [providers, setProviders] = useState<Record<MailProvider, boolean>>({ gmail: true, microsoft: false, imap: true });
   const [busy, setBusy] = useState(false);
-  const [waiting, setWaiting] = useState(false);
+  const [waiting, setWaiting] = useState<MailProvider | null>(null);
+  const [imapOpen, setImapOpen] = useState(false);
+  const [imapForm, setImapForm] = useState(emptyImapForm);
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
 
   async function loadStatus() {
     try {
-      setStatus(await api<GmailStatus & { own?: boolean }>(office ? "/gmail/status" : `/gmail/status?companyId=${encodeURIComponent(target)}`));
+      setStatus(await api<MailStatus>(office ? "/mail/status" : `/mail/status?companyId=${encodeURIComponent(target)}`));
     } catch {
       setStatus({ connected: false });
     }
   }
 
   useEffect(() => {
-    setWaiting(false);
+    setWaiting(null);
+    setImapOpen(false);
     setError("");
+    setSaved("");
     void loadStatus();
-    // Kun käyttäjä palaa Googlen kirjautumisesta tähän välilehteen, tila luetaan uudelleen.
+    api<Record<MailProvider, boolean>>("/mail/providers").then(setProviders).catch(() => undefined);
+    // Kun käyttäjä palaa kirjautumisesta tähän välilehteen, tila luetaan uudelleen.
     const onFocus = () => void loadStatus();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [target]);
 
-  async function connect() {
+  async function connectOAuth(provider: "gmail" | "microsoft") {
     setBusy(true);
     setError("");
+    setSaved("");
     try {
-      const { url } = await api<{ url: string }>("/gmail/connect", { method: "POST", body: JSON.stringify({ target }) });
+      const { url } = await api<{ url: string }>(provider === "gmail" ? "/gmail/connect" : "/mail/microsoft/connect", {
+        method: "POST", body: JSON.stringify({ target })
+      });
       window.open(url, "_blank", "noopener");
-      setWaiting(true);
+      setWaiting(provider);
     } catch (connectError) {
-      setError(errorMessage(connectError, t("Gmail-kirjautumisen aloitus epäonnistui.")));
+      setError(errorMessage(connectError, t("Kirjautumisen aloitus epäonnistui.")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function updateImap(key: keyof typeof emptyImapForm, value: string) {
+    setImapForm(current => {
+      const next = { ...current, [key]: value };
+      // SMTP-palvelin on yleensä IMAP-palvelimen kaltainen; ehdotetaan sitä, kunnes käyttäjä muuttaa sen itse.
+      if (key === "imapHost" && (!current.smtpHost || current.smtpHost === current.imapHost.replace(/^imap\./i, "smtp."))) {
+        next.smtpHost = value.replace(/^imap\./i, "smtp.");
+      }
+      return next;
+    });
+  }
+
+  async function connectImap(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setSaved("");
+    try {
+      const result = await api<{ email: string }>("/mail/imap", {
+        method: "POST",
+        body: JSON.stringify({
+          target,
+          email: imapForm.email.trim(),
+          imapHost: imapForm.imapHost.trim(),
+          imapPort: Number(imapForm.imapPort),
+          smtpHost: imapForm.smtpHost.trim(),
+          smtpPort: Number(imapForm.smtpPort),
+          username: imapForm.username.trim() || undefined,
+          password: imapForm.password
+        })
+      });
+      setImapOpen(false);
+      setImapForm(emptyImapForm);
+      setSaved(t("Tili {0} on yhdistetty.", result.email));
+      await loadStatus();
+    } catch (connectError) {
+      setError(errorMessage(connectError, t("Sähköpostitilin yhdistäminen epäonnistui.")));
     } finally {
       setBusy(false);
     }
   }
 
   async function removeOwn() {
-    if (!window.confirm(t("Poistetaanko taloyhtiön oma Gmail-tili? Taloyhtiön posti kulkee sen jälkeen toimiston tilin kautta."))) return;
+    if (!window.confirm(t("Poistetaanko taloyhtiön oma sähköpostitili? Taloyhtiön posti kulkee sen jälkeen toimiston tilin kautta."))) return;
     setBusy(true);
     setError("");
     try {
@@ -249,37 +311,111 @@ export function GmailAccountCard({ target }: { target: string }) {
 
   const admin = isAdmin();
   const own = office || Boolean(status?.own);
+  const connectedHere = own && status?.connected;
 
   return (
     <div className="settings-card gmail-card">
-      <CollapseSection id={office ? "gmail-office" : "gmail-company"} title={office ? t("Toimiston Gmail-tili") : t("Taloyhtiön Gmail-tili")}>
+      <CollapseSection id={office ? "gmail-office" : "gmail-company"} title={office ? t("Toimiston sähköpostitili") : t("Taloyhtiön sähköpostitili")}>
       {!status ? <p className="muted">{t("Tarkistetaan…")}</p> : status.connected ? (
         <>
-          <p><strong>{status.emailAddress}</strong>{!own && <span className="gmail-shared">{" "}{t("· toimiston yhteinen tili")}</span>}</p>
+          <p>
+            <strong>{status.emailAddress}</strong>
+            {status.provider && <span className="mail-provider">{providerNames[status.provider]}</span>}
+            {!own && <span className="gmail-shared">{" "}{t("· toimiston yhteinen tili")}</span>}
+          </p>
           <p className="muted">
             {office
               ? t("Kotilo lukee saapuvat viestit tämän tilin postilaatikosta ja lähettää vastaukset siitä. Taloyhtiö, jolla on oma tili, käyttää omaansa.")
               : own
                 ? t("Tämän taloyhtiön viestit saapuvat tähän postilaatikkoon ja lähtevät siitä.")
-                : t("Taloyhtiöllä ei ole omaa tiliä, joten sen posti kulkee toimiston tilin kautta. Voit yhdistää taloyhtiölle oman Gmail-tilin.")}
-            {status.canSend ? "" : t(" Tililtä puuttuu lähetysoikeus: yhdistä tili uudelleen.")}
+                : t("Taloyhtiöllä ei ole omaa tiliä, joten sen posti kulkee toimiston tilin kautta. Voit yhdistää taloyhtiölle oman sähköpostitilin.")}
+            {status.canSend === false ? t(" Tililtä puuttuu lähetysoikeus: yhdistä tili uudelleen.") : ""}
           </p>
         </>
       ) : (
-        <p className="send-error">{t("Gmail-tiliä ei ole yhdistetty tai yhteys on katkennut. Yhdistä tili uudelleen.")}</p>
+        <>
+          <p className="send-error">
+            {status.emailAddress
+              ? t("Yhteys tiliin {0} ei toimi. Yhdistä tili uudelleen.", status.emailAddress)
+              : t("Sähköpostitiliä ei ole yhdistetty. Valitse alta sähköpostipalvelusi.")}
+          </p>
+          {status.error && <p className="reply-hint">{status.error}</p>}
+        </>
       )}
       {admin ? (
-        <div className="draft-actions">
-          <button className="secondary" onClick={() => void connect()} disabled={busy}>
-            {own && status?.connected ? t("Vaihda Gmail-tili") : office ? t("Yhdistä Gmail-tili") : t("Yhdistä oma Gmail-tili")}
-          </button>
-          {!office && status?.own && <button className="danger" onClick={() => void removeOwn()} disabled={busy}>{t("Poista oma tili")}</button>}
-          {waiting && <button onClick={() => void loadStatus()}>{t("Tarkista yhteys")}</button>}
-        </div>
+        <>
+          <p className="mail-connect-label">{connectedHere ? t("Vaihda tili:") : t("Yhdistä tili:")}</p>
+          <div className="draft-actions mail-connect">
+            <button className="secondary" onClick={() => void connectOAuth("gmail")} disabled={busy || !providers.gmail}
+              title={providers.gmail ? undefined : t("Gmail-yhteyttä ei ole otettu käyttöön palvelimella.")}>
+              Gmail
+            </button>
+            <button className="secondary" onClick={() => void connectOAuth("microsoft")} disabled={busy || !providers.microsoft}
+              title={providers.microsoft ? undefined : t("Microsoft 365 -yhteyttä ei ole otettu käyttöön palvelimella.")}>
+              Microsoft 365 / Outlook
+            </button>
+            <button className={`secondary ${imapOpen ? "active" : ""}`} onClick={() => { setImapOpen(!imapOpen); setError(""); }} disabled={busy}>
+              {t("Muu sähköposti (IMAP/SMTP)")}
+            </button>
+            {!office && status?.own && <button className="danger" onClick={() => void removeOwn()} disabled={busy}>{t("Poista oma tili")}</button>}
+            {waiting && <button onClick={() => void loadStatus()}>{t("Tarkista yhteys")}</button>}
+          </div>
+          {!providers.microsoft && (
+            <p className="reply-hint">{t("Microsoft 365 -yhteys otetaan käyttöön palvelimen asetuksista (MS_CLIENT_ID ja MS_CLIENT_SECRET).")}</p>
+          )}
+          {imapOpen && (
+            <form className="ticket-form mail-imap-form" onSubmit={connectImap}>
+              <p className="reply-hint">
+                {t("Palvelimien osoitteet ja portit löytyvät sähköpostipalvelusi ohjeista hakusanalla \"IMAP-asetukset\". Jos tilillä on kaksivaiheinen tunnistautuminen, käytä palvelun antamaa sovellussalasanaa.")}
+              </p>
+              <label>
+                <span>{t("Sähköpostiosoite")}</span>
+                <input type="email" value={imapForm.email} onChange={event => updateImap("email", event.target.value)} placeholder={t("esim. posti@toimisto.fi")} required />
+              </label>
+              <div className="form-columns">
+                <label>
+                  <span>{t("Saapuvan postin palvelin (IMAP)")}</span>
+                  <input value={imapForm.imapHost} onChange={event => updateImap("imapHost", event.target.value)} placeholder="imap.toimisto.fi" required />
+                </label>
+                <label>
+                  <span>{t("IMAP-portti")}</span>
+                  <input inputMode="numeric" value={imapForm.imapPort} onChange={event => updateImap("imapPort", event.target.value)} required />
+                </label>
+                <label>
+                  <span>{t("Lähtevän postin palvelin (SMTP)")}</span>
+                  <input value={imapForm.smtpHost} onChange={event => updateImap("smtpHost", event.target.value)} placeholder="smtp.toimisto.fi" required />
+                </label>
+                <label>
+                  <span>{t("SMTP-portti")}</span>
+                  <input inputMode="numeric" value={imapForm.smtpPort} onChange={event => updateImap("smtpPort", event.target.value)} required />
+                </label>
+                <label>
+                  <span>{t("Käyttäjätunnus (jos eri kuin osoite)")}</span>
+                  <input value={imapForm.username} onChange={event => updateImap("username", event.target.value)} autoComplete="off" />
+                </label>
+                <label>
+                  <span>{t("Salasana")}</span>
+                  <input type="password" value={imapForm.password} onChange={event => updateImap("password", event.target.value)} autoComplete="new-password" required />
+                </label>
+              </div>
+              <div className="draft-actions">
+                <button type="button" onClick={() => setImapOpen(false)} disabled={busy}>{t("Peruuta")}</button>
+                <button className="primary" type="submit" disabled={busy}>{busy ? t("Tarkistetaan yhteyttä…") : t("Yhdistä tili")}</button>
+              </div>
+            </form>
+          )}
+        </>
       ) : (
-        <p className="reply-hint">{t("Vain pääkäyttäjä voi vaihtaa Gmail-tilin.")}</p>
+        <p className="reply-hint">{t("Vain pääkäyttäjä voi vaihtaa sähköpostitilin.")}</p>
       )}
-      {waiting && <p className="reply-hint">{t("Kirjaudu Googlen avaamassa välilehdessä ja hyväksy oikeudet. Palaa sitten tähän välilehteen.")}</p>}
+      {waiting && (
+        <p className="reply-hint">
+          {waiting === "gmail"
+            ? t("Kirjaudu Googlen avaamassa välilehdessä ja hyväksy oikeudet. Palaa sitten tähän välilehteen.")
+            : t("Kirjaudu Microsoftin avaamassa välilehdessä ja hyväksy oikeudet. Palaa sitten tähän välilehteen.")}
+        </p>
+      )}
+      {saved && <p className="portal-sent">{saved}</p>}
       {error && <p className="send-error">{error}</p>}
       </CollapseSection>
     </div>
@@ -444,7 +580,7 @@ function OfficeSettings({
           <i aria-hidden="true" />
         </label>
         <p className="reply-hint">
-          {t("Koosteessa ovat tehtävät, joiden määräaika on mennyt tai joissa asukkaan viesti on odottanut vastausta yli kaksi päivää. Viesti lähtee toimiston Gmail-tililtä käyttäjän kirjautumisosoitteeseen. Myöhässä olevat tehtävät näkyvät sovelluksessa aina.")}
+          {t("Koosteessa ovat tehtävät, joiden määräaika on mennyt tai joissa asukkaan viesti on odottanut vastausta yli kaksi päivää. Viesti lähtee toimiston sähköpostitililtä käyttäjän kirjautumisosoitteeseen. Myöhässä olevat tehtävät näkyvät sovelluksessa aina.")}
         </p>
 
         </CollapseSection>
@@ -536,7 +672,7 @@ function OfficeSettings({
         <span aria-hidden="true">→</span>
       </a>
 
-      <GmailAccountCard target="office" />
+      <MailAccountCard target="office" />
       </div>
 
       <OfficeUsers />

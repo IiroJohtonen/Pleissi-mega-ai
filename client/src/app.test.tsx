@@ -92,6 +92,36 @@ describe("sovellus", () => {
     expect(await screen.findByText("KOTILO / Testitoimisto Oy")).toBeTruthy();
   });
 
+  it("yhdistää muun sähköpostin IMAP-tiedoilla toimiston asetuksista", async () => {
+    responses["/mail/status"] = { connected: false };
+    responses["/mail/providers"] = { gmail: true, microsoft: false, imap: true };
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Pääkäyttäjä"), "#/settings");
+      fireEvent.click(await screen.findByRole("tab", { name: "Isännöitsijätoimiston tiedot" }));
+      expect(await screen.findByText("Sähköpostitiliä ei ole yhdistetty. Valitse alta sähköpostipalvelusi.")).toBeTruthy();
+      await vi.waitFor(() => expect((screen.getByRole("button", { name: "Microsoft 365 / Outlook" }) as HTMLButtonElement).disabled).toBe(true));
+
+      fireEvent.click(screen.getByRole("button", { name: "Muu sähköposti (IMAP/SMTP)" }));
+      fireEvent.change(screen.getByLabelText("Sähköpostiosoite"), { target: { value: "posti@toimisto.fi" } });
+      fireEvent.change(screen.getByLabelText("Saapuvan postin palvelin (IMAP)"), { target: { value: "imap.toimisto.fi" } });
+      // SMTP-palvelinta ehdotetaan IMAP-palvelimen perusteella.
+      expect((screen.getByLabelText("Lähtevän postin palvelin (SMTP)") as HTMLInputElement).value).toBe("smtp.toimisto.fi");
+      fireEvent.change(screen.getByLabelText("Salasana"), { target: { value: "sovellussalasana" } });
+      fireEvent.click(screen.getByRole("button", { name: "Yhdistä tili" }));
+
+      await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/mail/imap"))).toBe(true));
+      const body = JSON.parse(calls.find(request => request.url.endsWith("/mail/imap"))!.body);
+      expect(body).toMatchObject({
+        target: "office", email: "posti@toimisto.fi", imapHost: "imap.toimisto.fi", imapPort: 993,
+        smtpHost: "smtp.toimisto.fi", smtpPort: 465, password: "sovellussalasana"
+      });
+    } finally {
+      delete responses["/mail/status"];
+      delete responses["/mail/providers"];
+    }
+  });
+
   it("lukee vanhalla nimellä tallennetun istunnon", async () => {
     localStorage.clear();
     localStorage.setItem("kiito.session", JSON.stringify(staff("Pääkäyttäjä")));
