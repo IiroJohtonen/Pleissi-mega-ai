@@ -16,7 +16,8 @@ async function mailModules() {
     common: await import("../src/mail-common.js"),
     secrets: await import("../src/mail-secrets.js"),
     imap: await import("../src/mail-imap.js"),
-    microsoft: await import("../src/mail-microsoft.js")
+    microsoft: await import("../src/mail-microsoft.js"),
+    mail: await import("../src/mail.js")
   };
 }
 
@@ -85,6 +86,81 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.match(message, /Value-kenttä/);
     assert.match(modules.microsoft.microsoftErrorMessage("AADSTS999999: tuntematon"), /AADSTS999999.*Yhdistä tili uudelleen/);
     assert.equal(modules.microsoft.microsoftErrorMessage(""), "Microsoft-kirjautuminen epäonnistui. Yhdistä tili uudelleen asetuksista.");
+  });
+
+  it("valitsee vastaukselle lähettäjätilin", () => {
+    const { mail, common, secrets } = modules;
+    const save = (accountId: string, email: string) => common.saveMailAccount({
+      accountId, email, provider: "imap", token: secrets.encryptSecret("salasana"), connectedBy: "testi"
+    });
+    // Ei yhtään tiliä: toimiston tili.
+    assert.equal(mail.replyAccountFor({ company_id: "demo-company" }, "isannoitsija-2"), common.OFFICE_ACCOUNT);
+    save("demo-company", "koivikko@toimisto.fi");
+    assert.equal(mail.replyAccountFor({ company_id: "demo-company" }, "isannoitsija-2"), "demo-company");
+    // Oma postilaatikko menee taloyhtiön tilin edelle.
+    save("user:isannoitsija-2", "hanna@toimisto.fi");
+    assert.equal(mail.replyAccountFor({ company_id: "demo-company" }, "isannoitsija-2"), "user:isannoitsija-2");
+    assert.equal(mail.mailAccountAddress("user:isannoitsija-2"), "hanna@toimisto.fi");
+    // Tehtävä, joka tuli tietyn laatikon kautta, vastataan samasta laatikosta.
+    assert.equal(mail.replyAccountFor({ company_id: "demo-company", mail_account_id: "demo-company" }, "isannoitsija-2"), "demo-company");
+    // Poistettu laatikko: valinta jatkuu seuraavaan.
+    assert.equal(mail.replyAccountFor({ company_id: "demo-company", mail_account_id: "user:poistettu" }, "joku-muu"), "demo-company");
+    common.disconnectMailAccount("user:isannoitsija-2");
+    common.disconnectMailAccount("demo-company");
+  });
+
+  it("lähettää vastauksen Microsoft 365 -tililtä alkuperäiseen viestiin", async () => {
+    const { mail, common, secrets } = modules;
+    common.saveMailAccount({
+      accountId: "user:ms-testi",
+      email: "hanna@outlook.com",
+      provider: "microsoft",
+      token: secrets.encryptSecret(JSON.stringify({ access_token: "tunnus", refresh_token: "r", expires_at: Date.now() + 3_600_000 })),
+      connectedBy: "testi"
+    });
+    const calls: { method: string; url: string; body?: any }[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL, init: RequestInit = {}) => {
+      const url = String(input);
+      const method = init.method ?? "GET";
+      calls.push({ method, url, body: init.body ? JSON.parse(String(init.body)) : undefined });
+      assert.equal((init.headers as Record<string, string>).Authorization, "Bearer tunnus");
+      const json = (value: unknown) => new Response(JSON.stringify(value), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (method === "GET" && url.includes("$filter=")) return json({ value: [{ id: "alkuperainen" }] });
+      if (url.endsWith("/createReply")) return json({ id: "luonnos" });
+      if (method === "GET" && url.includes("/messages/luonnos")) return json({ internetMessageId: "<vastaus@outlook.com>" });
+      if (url.endsWith("/attachments")) return json({ id: "liite" });
+      if (method === "PATCH") return json({ id: "luonnos" });
+      return new Response(null, { status: method === "POST" ? 202 : 200 });
+    }) as typeof fetch;
+    try {
+      const sent = await mail.sendEmail({
+        to: "matti@example.com",
+        subject: "Re: Vuotava hana",
+        body: "Huoltomies tulee huomenna.",
+        sourceMessageId: "<ms-2@outlook.com>",
+        attachments: [{ filename: "ohje.txt", mimeType: "text/plain", content: Buffer.from("ohje") }],
+        companyId: "demo-company",
+        accountId: "user:ms-testi"
+      });
+      assert.equal(sent.id, "<vastaus@outlook.com>");
+    } finally {
+      globalThis.fetch = originalFetch;
+      common.disconnectMailAccount("user:ms-testi");
+    }
+    const steps = calls.map(call => `${call.method} ${call.url.replace(/^https:\/\/graph\.microsoft\.com\/v1\.0/, "").split("?")[0]}`);
+    assert.deepEqual(steps, [
+      "GET /me/messages",
+      "POST /me/messages/alkuperainen/createReply",
+      "PATCH /me/messages/luonnos",
+      "POST /me/messages/luonnos/attachments",
+      "GET /me/messages/luonnos",
+      "POST /me/messages/luonnos/send"
+    ]);
+    assert.match(decodeURIComponent(calls[0].url), /internetMessageId eq '<ms-2@outlook\.com>'/);
+    assert.equal(calls[2].body.body.content, "Huoltomies tulee huomenna.");
+    assert.equal(calls[2].body.toRecipients[0].emailAddress.address, "matti@example.com");
+    assert.equal(calls[3].body.name, "ohje.txt");
   });
 
   it("muuntaa Microsoft 365 -viestin tuotavaksi", async () => {
@@ -166,7 +242,10 @@ describe("sähköpostitilien yhdistäminen", () => {
       sourceMessageId: "<oma-1@example.com>", assigneeId: owner.id, mailAccountId: `user:${owner.id}`
     });
     assert.equal(created.status, 201);
-    const ticket = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data.ticket;
+    const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
+    const ticket = detail.ticket;
+    // Yhtään postitiliä ei ole yhdistetty, joten lähettäjän osoitetta ei näytetä.
+    assert.equal(detail.replyFrom, "");
     assert.equal(ticket.assignee_id, owner.id);
     assert.equal(ticket.status, "open");
     assert.equal(ticket.mail_account_id, `user:${owner.id}`);

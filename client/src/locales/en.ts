@@ -170,6 +170,7 @@ export const en: Record<string, string> = {
   "Tallenna luonnos": "Save draft",
   "Tallennettu": "Saved",
   "Lähetetty:": "Sent:",
+  "Lähettäjä: {0}": "From: {0}",
   "Vastaus lähetetään osoitteeseen {0}": "The reply will be sent to {0}",
   "Tehtävällä ei ole sähköpostiosoitetta, johon vastauksen voisi lähettää.": "The ticket has no email address to send the reply to.",
   "Aikajana": "Timeline",

@@ -1,7 +1,7 @@
 import { getGmailStatus, hasLegacyGmailToken, pollGmailAccount, sendViaGmail } from "./gmail.js";
 import {
   getMailAccount, lastPollError, mailAccountFor, mailEnabled, type MailProvider, OFFICE_ACCOUNT, type OutgoingEmail,
-  recordPollResult
+  recordPollResult, userAccountId
 } from "./mail-common.js";
 import { db } from "./db.js";
 import { pollImapAccount, sendViaImap } from "./mail-imap.js";
@@ -18,6 +18,20 @@ const POLL_INTERVAL_MS = 20_000;
 // Toimiston tili ilman tallennettua riviä on vanha Gmail-kirjautuminen (token.json).
 function providerOf(accountId: string): MailProvider {
   return getMailAccount(accountId)?.provider ?? "gmail";
+}
+
+// Tehtävän vastaus lähtee samasta postilaatikosta, jonka kautta tehtävä tuli. Muuten vastaaja
+// lähettää omasta postilaatikostaan, jos on yhdistänyt sellaisen, ja viimeisenä taloyhtiön tai
+// toimiston tililtä.
+export function replyAccountFor(ticket: { company_id: string; mail_account_id?: string | null }, userId?: string): string {
+  if (ticket.mail_account_id && getMailAccount(ticket.mail_account_id)) return ticket.mail_account_id;
+  if (userId && getMailAccount(userAccountId(userId))) return userAccountId(userId);
+  return mailAccountFor(ticket.company_id);
+}
+
+// Osoite, josta tilin viestit lähtevät; tyhjä, jos tiliä ei ole yhdistetty.
+export function mailAccountAddress(accountId: string): string {
+  return getMailAccount(accountId)?.email ?? "";
 }
 
 export async function sendEmail(input: OutgoingEmail): Promise<{ id: string }> {

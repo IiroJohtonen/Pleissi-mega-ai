@@ -5,6 +5,7 @@ import { z } from "zod";
 import { companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket } from "../access.js";
 import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
+import { mailAccountAddress, replyAccountFor } from "../mail.js";
 import { alertEmergency } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now } from "../util.js";
 
@@ -229,7 +230,10 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
     "SELECT maintenance_name AS name, maintenance_email AS email, maintenance_phone AS phone FROM companies WHERE id = (SELECT company_id FROM tickets WHERE id = ?)"
   ).get(req.params.id);
 
-  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor });
+  // Osoite, josta vastaus tälle tehtävälle lähtisi; näytetään vastauslomakkeessa.
+  const replyFrom = mailAccountAddress(replyAccountFor(ticket as { company_id: string; mail_account_id?: string | null }, res.locals.user?.id));
+
+  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyFrom });
 });
 
 ticketsRouter.put("/tickets/:id/fields", (req, res) => {

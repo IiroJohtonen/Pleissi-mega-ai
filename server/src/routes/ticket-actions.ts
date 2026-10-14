@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
 import { attachmentsDir, db } from "../db.js";
-import { type OutgoingAttachment, parseSender, sendEmail } from "../mail.js";
+import { type OutgoingAttachment, parseSender, replyAccountFor, sendEmail } from "../mail.js";
 import { notifyResident } from "../notify.js";
 import { id, now, unsafeFileMessage } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
@@ -306,7 +306,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
       sourceMessageId: gmailImport?.gmail_message_id,
       attachments: outgoing,
       companyId: ticket.company_id,
-      accountId: ticket.mail_account_id ?? undefined
+      accountId: replyAccountFor(ticket, res.locals.user?.id)
     });
     sentMessageId = sent.id;
   } catch (error: any) {

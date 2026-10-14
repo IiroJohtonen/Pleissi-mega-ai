@@ -1553,6 +1553,12 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   font-weight: 700;
 }
 
+.reply-from {
+  color: #4d627a;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .saved-indicator {
   color: #4d627a;
   font-size: 11px;
