@@ -191,8 +191,12 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
+// Tuotu tai poistetun tehtävän viesti: kumpaakaan ei tuoda uudelleen.
 export function isImported(sourceMessageId: string): boolean {
-  return Boolean(db.prepare("SELECT 1 FROM gmail_imports WHERE gmail_message_id = ?").get(sourceMessageId));
+  return Boolean(
+    db.prepare("SELECT 1 FROM gmail_imports WHERE gmail_message_id = ?").get(sourceMessageId)
+    ?? db.prepare("SELECT 1 FROM deleted_mail_messages WHERE message_id = ?").get(sourceMessageId)
+  );
 }
 
 // Saapunut viesti palvelusta riippumatta. Liitteet haetaan vasta, kun viesti on tuotu tehtävälle.

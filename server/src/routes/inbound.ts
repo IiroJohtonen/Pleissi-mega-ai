@@ -51,6 +51,11 @@ if (input.sourceMessageId) {
       duplicate: true
     });
   }
+
+  // Viesti kuului tehtävään, joka on poistettu: sitä ei tuoda uudelleen.
+  if (db.prepare("SELECT 1 FROM deleted_mail_messages WHERE message_id = ?").get(input.sourceMessageId)) {
+    return res.json({ duplicate: true, deleted: true });
+  }
 }
 
   // Vastaus ketjuun, jolla on jo tehtävä, lisätään sen tehtävän aikajanalle uuden tehtävän sijaan.

@@ -44,6 +44,17 @@ export function isOverdue(ticket: Ticket) {
     && (ticket.due_date as string) < new Date().toLocaleDateString("sv-SE");
 }
 
+// Työtilauksen valmis kuvaus tehtävän otsikosta ja tiivistelmästä. Sama teksti tulee vain kerran:
+// lyhyen viestin tiivistelmä on usein sama kuin otsikko tai sisältää sen.
+export function workOrderDescription(subject: string, summary: string): string {
+  const title = subject.trim();
+  const body = summary.trim();
+  const normalize = (text: string) => text.toLowerCase().replace(/[\s.!?:]+/g, " ").trim();
+  if (!body || normalize(title).includes(normalize(body))) return title;
+  if (!title || normalize(body).includes(normalize(title))) return body;
+  return `${title}\n\n${body}`;
+}
+
 export type ReminderSettings = { replyDays: number; dueDays: number };
 export type TicketReminder = { kind: "overdue" | "due" | "waiting"; text: string };
 

@@ -168,6 +168,18 @@ describe("sovellus", () => {
     }
   });
 
+  it("tumman tilan voi kytkeä päälle ja pois omista asetuksista", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/settings");
+    const toggle = await screen.findByRole("switch", { name: /Tumma tila/ }) as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    fireEvent.click(toggle);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("kotilo.theme")).toBe("dark");
+    fireEvent.click(toggle);
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(localStorage.getItem("kotilo.theme")).toBe("light");
+  });
+
   it("käyttäjä voi yhdistää oman sähköpostinsa omista asetuksistaan", async () => {
     responses["/mail/status?target=me"] = { connected: false, own: true };
     responses["/mail/providers"] = { gmail: true, microsoft: true, imap: true };

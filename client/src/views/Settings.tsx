@@ -9,6 +9,7 @@ import type { MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
 import { t } from "../i18n";
+import { setTheme, storedTheme } from "../theme";
 
 const COLLAPSED_KEY = "kotilo.settingsCollapsed";
 
@@ -99,6 +100,34 @@ export function Settings(props: { onSaved: () => Promise<void> }) {
 }
 
 // Kirjautuneen käyttäjän omat tiedot, salasana ja kieli.
+// Ulkoasu: tumma tila päälle tai pois. Valinta tallentuu tähän selaimeen ja vaihtuu heti.
+function AppearanceCard() {
+  const [dark, setDark] = useState(storedTheme() === "dark");
+  return (
+    <div className="settings-card ticket-form">
+      <CollapseSection id="appearance" title={t("Ulkoasu")}>
+        <label className="switch-row">
+          <span>
+            <strong>{t("Tumma tila")}</strong>
+            <small>{t("Tummat siniharmaat sävyt, jotka ovat silmille pehmeämmät hämärässä.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={dark}
+            onChange={event => {
+              setDark(event.target.checked);
+              setTheme(event.target.checked ? "dark" : "light");
+            }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">{t("Valinta tallentuu tähän selaimeen.")}</p>
+      </CollapseSection>
+    </div>
+  );
+}
+
 type SignatureSettings = { title: string; phone: string; template: string; defaultTemplate: string; preview: string };
 
 const SIGNATURE_FIELDS = ["nimi", "titteli", "puhelin", "sähköposti", "toimisto"];
@@ -296,6 +325,8 @@ function UserSettings() {
       <MailAccountCard target="me" />
 
       <SignatureCard />
+
+      <AppearanceCard />
 
       <div className="settings-card ticket-form">
         <CollapseSection id="language" title={t("Kieli")}>

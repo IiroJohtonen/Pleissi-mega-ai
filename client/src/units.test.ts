@@ -98,3 +98,14 @@ describe("käännökset", () => {
     expect(t("{0} h {1} min", 2, 5)).toBe("2 h 5 min");
   });
 });
+
+describe("työtilauksen kuvaus", () => {
+  it("ei toista tehtävän otsikkoa, kun tiivistelmä on sama tai sisältää sen", async () => {
+    const { workOrderDescription } = await import("./tickets/ticket-utils");
+    expect(workOrderDescription("pillulle ois tarve chapter 2", "pillulle ois tarve chapter 2")).toBe("pillulle ois tarve chapter 2");
+    expect(workOrderDescription("Vuotava hana", "Vuotava hana.")).toBe("Vuotava hana");
+    expect(workOrderDescription("Vesivuoto", "Keittiön hana tippuu")).toBe("Vesivuoto\n\nKeittiön hana tippuu");
+    expect(workOrderDescription("Kuivausrumpu ei lämpene", "Kuivausrumpu ei lämpene: pyykit märkiä")).toBe("Kuivausrumpu ei lämpene: pyykit märkiä");
+    expect(workOrderDescription("Otsikko", "")).toBe("Otsikko");
+  });
+});
