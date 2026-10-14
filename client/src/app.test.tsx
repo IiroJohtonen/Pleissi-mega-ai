@@ -341,6 +341,34 @@ describe("sovellus", () => {
     }
   });
 
+  it("vastaa oletuksena saapumislaatikosta ja lähettäjän voi vaihtaa", async () => {
+    const detail = {
+      ticket: { ...overdueTicket, status: "waiting_manager", company_name: "As Oy Koivikko" },
+      messages: [{ id: "m1", direction: "inbound", sender: "Matti <matti@example.com>", subject: "Hana vuotaa", body: "Apua", created_at: "2026-10-14T10:00:00Z", channel: "email" }],
+      audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [],
+      replyAccounts: [
+        { id: "office", email: "toimisto@toimisto.fi", kind: "office", arrived: true },
+        { id: "user:user-1", email: "testi@toimisto.fi", kind: "own", arrived: false }
+      ]
+    };
+    responses["/tickets/ticket-1"] = detail;
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      const from = await screen.findByLabelText("Lähettäjä") as HTMLSelectElement;
+      expect(from.value).toBe("office");
+      expect(screen.getByRole("option", { name: "toimisto@toimisto.fi (isännöintitoimisto, viesti saapui tänne)" })).toBeTruthy();
+      fireEvent.change(from, { target: { value: "user:user-1" } });
+      fireEvent.change(document.querySelector(".draft-editor")!, { target: { value: "Huoltomies tulee huomenna." } });
+      fireEvent.click(screen.getByRole("button", { name: "Lähetä" }));
+      await vi.waitFor(() => expect(calls.some(request => request.url.endsWith("/tickets/ticket-1/reply"))).toBe(true));
+      const reply = calls.find(request => request.url.endsWith("/tickets/ticket-1/reply"));
+      expect(JSON.parse(reply?.body ?? "{}").fromAccountId).toBe("user:user-1");
+    } finally {
+      delete responses["/tickets/ticket-1"];
+    }
+  });
+
   it("varoittaa ennen tehtävän poistamista ja poistaa vasta vahvistuksesta", async () => {
     const detail = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
     responses["/tickets/ticket-1"] = detail;

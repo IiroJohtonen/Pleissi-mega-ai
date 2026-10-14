@@ -1,6 +1,6 @@
 import { getGmailStatus, hasLegacyGmailToken, pollGmailAccount, sendViaGmail } from "./gmail.js";
 import {
-  getMailAccount, lastPollError, mailAccountFor, mailEnabled, type MailProvider, OFFICE_ACCOUNT, type OutgoingEmail,
+  getMailAccount, lastPollError, mailAccountFor, mailboxOwnerId, mailEnabled, type MailProvider, OFFICE_ACCOUNT, type OutgoingEmail,
   recordPollResult, userAccountId
 } from "./mail-common.js";
 import { db } from "./db.js";
@@ -20,18 +20,43 @@ function providerOf(accountId: string): MailProvider {
   return getMailAccount(accountId)?.provider ?? "gmail";
 }
 
-// Tehtävän vastaus lähtee samasta postilaatikosta, jonka kautta tehtävä tuli. Muuten vastaaja
-// lähettää omasta postilaatikostaan, jos on yhdistänyt sellaisen, ja viimeisenä taloyhtiön tai
-// toimiston tililtä.
-export function replyAccountFor(ticket: { company_id: string; mail_account_id?: string | null }, userId?: string): string {
-  if (ticket.mail_account_id && getMailAccount(ticket.mail_account_id)) return ticket.mail_account_id;
-  if (userId && getMailAccount(userAccountId(userId))) return userAccountId(userId);
-  return mailAccountFor(ticket.company_id);
+export type ReplyAccountKind = "own" | "office" | "company" | "user";
+export type ReplyAccount = { id: string; email: string; kind: ReplyAccountKind; arrived: boolean };
+
+function replyAccountKind(accountId: string, userId?: string): ReplyAccountKind {
+  if (accountId === OFFICE_ACCOUNT) return "office";
+  if (userId && accountId === userAccountId(userId)) return "own";
+  return mailboxOwnerId(accountId) ? "user" : "company";
 }
 
-// Osoite, josta tilin viestit lähtevät; tyhjä, jos tiliä ei ole yhdistetty.
-export function mailAccountAddress(accountId: string): string {
-  return getMailAccount(accountId)?.email ?? "";
+function accountUsable(accountId: string): boolean {
+  return Boolean(getMailAccount(accountId)) || (accountId === OFFICE_ACCOUNT && hasLegacyGmailToken());
+}
+
+// Tilit, joilta käyttäjä voi vastata tehtävään. Ensimmäisenä on postilaatikko, johon tehtävän viesti
+// saapui; sitten vastaajan oma laatikko, taloyhtiön oma tili ja toimiston tili. Toisen käyttäjän
+// omasta laatikosta ei voi lähettää.
+export function replyAccountsFor(
+  ticket: { id: string; company_id: string; mail_account_id?: string | null }, userId?: string
+): ReplyAccount[] {
+  // Ennen saapumislaatikon tallentamista tuodut sähköpostit tulivat taloyhtiön tai toimiston tilille.
+  const arrivedVia = ticket.mail_account_id
+    || (db.prepare("SELECT 1 FROM messages WHERE ticket_id = ? AND direction = 'inbound' AND channel = 'email' LIMIT 1").get(ticket.id)
+      ? mailAccountFor(ticket.company_id) : "");
+  const candidates: { id: string; arrived: boolean }[] = [];
+  if (arrivedVia) candidates.push({ id: arrivedVia, arrived: true });
+  if (userId) candidates.push({ id: userAccountId(userId), arrived: false });
+  candidates.push({ id: mailAccountFor(ticket.company_id), arrived: false });
+  candidates.push({ id: OFFICE_ACCOUNT, arrived: false });
+
+  const accounts: ReplyAccount[] = [];
+  for (const candidate of candidates) {
+    if (accounts.some(account => account.id === candidate.id) || !accountUsable(candidate.id)) continue;
+    const kind = replyAccountKind(candidate.id, userId);
+    if (kind === "user") continue;
+    accounts.push({ id: candidate.id, email: getMailAccount(candidate.id)?.email ?? "", kind, arrived: candidate.arrived });
+  }
+  return accounts;
 }
 
 export async function sendEmail(input: OutgoingEmail): Promise<{ id: string }> {

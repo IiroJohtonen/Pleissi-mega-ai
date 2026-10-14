@@ -247,7 +247,7 @@ export async function importInboundEmail(accountId: string, email: InboundEmail,
   const owner = mailboxOwnerId(accountId);
   const target = owner
     ? { companyId: companyForUserMailbox(owner, sender.email), assigneeId: owner, mailAccountId: accountId }
-    : { companyId: accountId === OFFICE_ACCOUNT ? DEFAULT_COMPANY_ID : accountId };
+    : { companyId: accountId === OFFICE_ACCOUNT ? DEFAULT_COMPANY_ID : accountId, mailAccountId: accountId };
   const response = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/inbound/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-token": INTERNAL_TOKEN },

@@ -5,7 +5,7 @@ import {
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
 import { actorName, api, errorMessage, isManager, type OfficeUser } from "../session";
-import type { Company, Resident, TicketDetail } from "../types";
+import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { TicketWorkOrders } from "./TicketWorkOrders";
@@ -131,6 +131,11 @@ export function TicketDrawer({
   // Sama järjestys kuin palvelimella: ensin alkuperäinen lähettäjä, muuten linkitetyt asukkaat.
   // Aikajanalta valittu viesti, johon vastataan; ilman valintaa vastataan viimeisimpään saapuneeseen.
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  // Valittu lähettäjätili; oletuksena tili, johon tehtävän viesti saapui.
+  const [fromChoice, setFromChoice] = useState("");
+  const fromAccountId = detail.replyAccounts.some(account => account.id === fromChoice)
+    ? fromChoice
+    : detail.replyAccounts[0]?.id ?? "";
   const replyTarget = detail.messages.find(m => m.id === replyTargetId && m.direction === "inbound") ?? null;
   const draftEditor = useRef<HTMLTextAreaElement>(null);
 
@@ -434,6 +439,7 @@ export function TicketDrawer({
           body: draft,
           actor: actorName(),
           messageId: replyTarget?.id,
+          fromAccountId: fromAccountId || undefined,
           attachments: await Promise.all(replyFiles.map(async file => ({
             filename: file.name,
             mimeType: file.type || "application/octet-stream",
@@ -771,6 +777,18 @@ export function TicketDrawer({
               <button onClick={() => setReplyTargetId(null)} title={t("Peru valinta")} aria-label={t("Peru valinta")}>×</button>
             </p>
           )}
+          {canReply && detail.replyAccounts.length > 0 && (
+            <label className="reply-from">
+              <span>{t("Lähettäjä")}</span>
+              <select value={fromAccountId} onChange={event => setFromChoice(event.target.value)}>
+                {detail.replyAccounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    {replyAccountLabel(account)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <textarea
             ref={draftEditor}
             className="draft-editor"
@@ -838,9 +856,7 @@ export function TicketDrawer({
             </button>
             {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
             {sentTo && <span className="saved-indicator">{t("Lähetetty:")}{" "}{sentTo}</span>}
-            {canReply && detail.replyFrom && !sentTo && (
-              <span className="reply-from">{t("Lähettäjä: {0}", detail.replyFrom)}</span>
-            )}
+
           </div>
           {canReply && (
             <p className="reply-hint">
@@ -917,4 +933,13 @@ export function TicketDrawer({
       )}
     </section>
   );
+}
+
+// Lähettäjävalikon teksti: osoite ja tilin laji; saapumislaatikko merkitään.
+function replyAccountLabel(account: ReplyAccount): string {
+  const kind = account.kind === "own" ? t("oma postilaatikko")
+    : account.kind === "office" ? t("isännöintitoimisto")
+    : t("taloyhtiö");
+  const name = account.email || t("Toimiston tili");
+  return account.arrived ? t("{0} ({1}, viesti saapui tänne)", name, kind) : `${name} (${kind})`;
 }
