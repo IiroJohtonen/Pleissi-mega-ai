@@ -44,6 +44,7 @@ describe("kotisivun yhteydenottolomake", () => {
 
   it("pääkäyttäjä asettaa osoitteen, johon pyynnöt lähetetään sähköpostina", async () => {
     assert.equal((await call(server, "", "GET", "/contact-settings")).status, 401);
+    assert.equal((await call(server, admin, "GET", "/contact-settings")).data.email, "kotilotesti2@outlook.com");
     assert.equal((await call(server, manager, "PUT", "/contact-settings", { email: "myynti@example.com" })).status, 403);
     assert.equal((await call(server, admin, "PUT", "/contact-settings", { email: "ei osoite" })).status, 400);
 

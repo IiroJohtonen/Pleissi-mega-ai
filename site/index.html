@@ -220,24 +220,9 @@
             <p data-en="An announcement for the whole housing company or one stairwell, also by email.">Tiedote koko taloyhtiölle tai yhdelle rapulle, myös sähköpostilla.</p>
           </li>
           <li class="card">
-            <figure><img src="img/kortti-avaimet.webp" loading="lazy" alt="Avainrekisteri" data-en-alt="Key register"></figure>
-            <h3 data-en="Key register">Avainrekisteri</h3>
-            <p data-en="Who holds which key, until when and for which apartment.">Kenellä mikin avain on, mihin asti ja mistä asunnosta.</p>
-          </li>
-          <li class="card">
-            <figure><img src="img/kortti-autopaikat.webp" loading="lazy" alt="Autopaikat" data-en-alt="Parking spaces"></figure>
-            <h3 data-en="Parking spaces">Autopaikat</h3>
-            <p data-en="Garages, indoor and outdoor spaces with their holders, plus waiting lists.">Autotallit, halli- ja ulkopaikat haltijoineen sekä jonot.</p>
-          </li>
-          <li class="card">
-            <figure><img src="img/kortti-lukemat.webp" loading="lazy" alt="Kulutuslukemat" data-en-alt="Meter readings"></figure>
-            <h3 data-en="Meter readings">Kulutuslukemat</h3>
-            <p data-en="Water and electricity readings by apartment, with usage since the last reading.">Vesi- ja sähkölukemat asunnoittain ja kulutus edelliseen verrattuna.</p>
-          </li>
-          <li class="card">
-            <figure><img src="img/kortti-remontit.webp" loading="lazy" alt="Remontti-ilmoitukset" data-en-alt="Renovation notices"></figure>
-            <h3 data-en="Renovation notices">Remontti-ilmoitukset</h3>
-            <p data-en="Notices from the resident portal, approved with conditions in one click.">Asukkaan ilmoitus portaalista, hyväksyntä ehtoineen yhdellä painalluksella.</p>
+            <figure><img src="img/kortti-asukkaat.webp" loading="lazy" alt="Asukkaat" data-en-alt="Residents"></figure>
+            <h3 data-en="Residents">Asukkaat</h3>
+            <p data-en="Residents and apartments by housing company, imported from CSV or Excel.">Asukkaat ja asunnot taloyhtiöittäin, tuonti CSV- tai Excel-tiedostosta.</p>
           </li>
           <li class="card">
             <figure><img src="img/kortti-muutot.webp" loading="lazy" alt="Muuttoilmoitukset" data-en-alt="Move notices"></figure>
@@ -245,19 +230,24 @@
             <p data-en="New residents and door names are recorded once the notice is approved.">Uudet asukkaat ja ovinimet kirjautuvat, kun ilmoitus hyväksytään.</p>
           </li>
           <li class="card">
-            <figure><img src="img/kortti-asukkaat.webp" loading="lazy" alt="Asukkaat" data-en-alt="Residents"></figure>
-            <h3 data-en="Residents">Asukkaat</h3>
-            <p data-en="Residents and apartments by housing company, imported from CSV or Excel.">Asukkaat ja asunnot taloyhtiöittäin, tuonti CSV- tai Excel-tiedostosta.</p>
+            <figure><img src="img/kortti-remontit.webp" loading="lazy" alt="Remontti-ilmoitukset" data-en-alt="Renovation notices"></figure>
+            <h3 data-en="Renovation notices">Remontti-ilmoitukset</h3>
+            <p data-en="Notices from the resident portal, approved with conditions in one click.">Asukkaan ilmoitus portaalista, hyväksyntä ehtoineen yhdellä painalluksella.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-autopaikat.webp" loading="lazy" alt="Autopaikat" data-en-alt="Parking spaces"></figure>
+            <h3 data-en="Parking spaces">Autopaikat</h3>
+            <p data-en="Garages, indoor and outdoor spaces with their holders, plus waiting lists.">Autotallit, halli- ja ulkopaikat haltijoineen sekä jonot.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-avaimet.webp" loading="lazy" alt="Avainrekisteri" data-en-alt="Key register"></figure>
+            <h3 data-en="Key register">Avainrekisteri</h3>
+            <p data-en="Who holds which key, until when and for which apartment.">Kenellä mikin avain on, mihin asti ja mistä asunnosta.</p>
           </li>
           <li class="card">
             <figure><img src="img/kortti-dokumentaatio.webp" loading="lazy" alt="Dokumentaatio" data-en-alt="Documentation"></figure>
             <h3 data-en="Documentation">Dokumentaatio</h3>
             <p data-en="The housing company's instructions that reply suggestions are based on.">Taloyhtiön ohjeet, joihin vastausehdotukset perustuvat.</p>
-          </li>
-          <li class="card">
-            <figure><img src="img/kortti-allekirjoitus.webp" loading="lazy" alt="Oma allekirjoitus" data-en-alt="Your own signature"></figure>
-            <h3 data-en="Your own signature">Oma allekirjoitus</h3>
-            <p data-en="Every user has their own email signature with a template.">Jokaisella käyttäjällä oma sähköpostiallekirjoitus pohjineen.</p>
           </li>
           </ul>
           <div class="rail-controls">
@@ -278,10 +268,8 @@
         <ul class="security-list" data-reveal>
           <li><strong data-en="Server in Finland">Palvelin Suomessa</strong><span data-en="The platform and its database run on a server in Helsinki.">Alusta ja tietokanta toimivat helsinkiläisellä palvelimella.</span></li>
           <li><strong data-en="Access by role">Pääsy roolin mukaan</strong><span data-en="A manager sees only their own housing companies, and a resident only their own matters.">Isännöitsijä näkee vain omat taloyhtiönsä ja asukas vain omat asiansa.</span></li>
-          <li><strong data-en="Retention periods">Säilytysajat</strong><span data-en="Closed tasks and logs are deleted automatically after the period you choose.">Suljetut tehtävät ja lokit poistuvat automaattisesti valitsemasi ajan jälkeen.</span></li>
-          <li><strong data-en="Data requests">Tietopyynnöt</strong><span data-en="A resident's data can be exported and deleted on request.">Asukkaan tiedot voi viedä tiedostoksi ja poistaa pyynnöstä.</span></li>
           <li><strong data-en="AI is optional">Tekoäly on valinnainen</strong><span data-en="AI features are switched on separately, and a person always approves what is sent.">Tekoälyominaisuudet kytketään päälle erikseen, ja ihminen hyväksyy aina lähetettävän.</span></li>
-          <li><strong data-en="Daily backups">Päivittäiset varmuuskopiot</strong><span data-en="The database and files are backed up every day.">Tietokannasta ja tiedostoista otetaan varmuuskopio joka päivä.</span></li>
+          <li><strong data-en="Retention periods">Säilytysajat</strong><span data-en="Closed tasks and logs are deleted automatically after the period you choose.">Suljetut tehtävät ja lokit poistuvat automaattisesti valitsemasi ajan jälkeen.</span></li>
         </ul>
       </div>
     </section>
