@@ -60,10 +60,8 @@ describe("sovellus", () => {
 
   it("näyttää päätösjonon ja merkitsee myöhässä olevan tehtävän", async () => {
     await renderApp(staff("Asiakaspalvelu"));
-    // Myöhässä oleva oma tehtävä on sekä muistutuksissa että avoimissa tehtävissä.
-    expect((await screen.findAllByText("Saunavuoron varaus")).length).toBe(2);
+    expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
     expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
-    expect(screen.getByText("Määräaika ylittynyt 1.1.2026")).toBeTruthy();
     expect(screen.getByText("As Oy Koivikko")).toBeTruthy();
   });
 
@@ -88,22 +86,33 @@ describe("sovellus", () => {
     }
   });
 
-  it("nostaa päätösjonon kärkeen tehtävät, joissa asukas on odottanut vastausta", async () => {
+  it("laskee muistutukset päätösjonoon ja näyttää ne suodatettuna listana", async () => {
     const waiting = {
       ...overdueTicket, id: "ticket-4", ticket_number: 4, subject: "Odottava kysymys", due_date: null, status: "waiting_manager",
       waiting_since: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     };
     const fresh = { ...waiting, id: "ticket-5", ticket_number: 5, subject: "Tuore kysymys", waiting_since: new Date().toISOString() };
     const original = responses["/tickets?companyId=demo-company"];
-    responses["/tickets?companyId=demo-company"] = [waiting, fresh];
+    const originalMine = responses["/my-tickets?companyId=demo-company"];
+    responses["/tickets?companyId=demo-company"] = [waiting, fresh, overdueTicket];
+    responses["/my-tickets?companyId=demo-company"] = [waiting, fresh, overdueTicket];
     try {
       await renderApp(staff("Isännöitsijä"), "#/queue");
-      const reminders = await screen.findByRole("region", { name: "Muistutukset" });
-      expect(reminders.textContent).toContain("Odottava kysymys");
-      expect(reminders.textContent).toContain("Asukas odottanut vastausta 3 päivää");
-      expect(reminders.textContent).not.toContain("Tuore kysymys");
+      const box = await screen.findByTitle("Näytä omat tehtävät, jotka vaativat huomiota");
+      // Odottava kysymys ja myöhässä oleva tehtävä; tuore kysymys ei vielä.
+      await vi.waitFor(() => expect(box.querySelector("strong")?.textContent).toBe("2"));
+      // Avoimen tehtävän kortissa näkyy myöhästyminen.
+      expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
+
+      fireEvent.click(box);
+      expect(window.location.hash).toBe("#/my-tickets");
+      expect(await screen.findByText("Odottava kysymys")).toBeTruthy();
+      expect(screen.getByText("Asukas odottanut 3 päivää")).toBeTruthy();
+      expect(screen.getByText("Saunavuoron varaus")).toBeTruthy();
+      expect(screen.queryByText("Tuore kysymys")).toBeNull();
     } finally {
       responses["/tickets?companyId=demo-company"] = original;
+      responses["/my-tickets?companyId=demo-company"] = originalMine;
     }
   });
 

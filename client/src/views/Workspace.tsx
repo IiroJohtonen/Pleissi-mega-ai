@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
-import { formatTicketNumber, priorityLabel, statusLabel, ticketStatuses } from "../format";
+import { priorityLabel, statusLabel, ticketStatuses } from "../format";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
 import { actorName, api, logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
@@ -374,13 +374,16 @@ export function Workspace({ user }: { user: OfficeUser }) {
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
   const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unassigned";
-  const sourceTickets = tab === "queue" ? queueTickets : tab === "unassigned" ? unassignedTickets : tab === "my-tickets" ? myTickets : tab === "ai-handled" ? aiTickets : tickets;
+  // Muistutukset koskevat kaikkia omia keskeneräisiä tehtäviä kaikista yhtiöistä, myös päätösjonon avoimia.
+  const sourceTickets = tab === "queue" ? queueTickets : tab === "unassigned" ? unassignedTickets
+    : tab === "my-tickets" ? (dueFilter === "reminders" ? reminderTickets.map(item => item.ticket) : myTickets)
+    : tab === "ai-handled" ? aiTickets : tickets;
   // Päätösjonossa ei ole suodattimia; ne koskevat vain tehtävälistoja.
   const visibleTickets = tab === "queue" ? queueTickets : sourceTickets.filter(ticket =>
     (priorityFilter === "all" || ticket.priority === priorityFilter)
     && (typeFilter === "all" || ticket.type === typeFilter)
     && (!statusFilterTab || statusFilter === "all" || ticket.status === statusFilter)
-    && (dueFilter === "all" || isOverdue(ticket))
+    && (dueFilter === "all" || (dueFilter === "reminders" ? ticketReminders(ticket, reminderSettings).length > 0 : isOverdue(ticket)))
     && ticketColumns.every(column => {
       const search = (columnSearch[column.key] ?? "").trim().toLowerCase();
       return !search || ticketColumnText(ticket, column.key).toLowerCase().includes(search);
@@ -408,7 +411,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       ? [{ key: "status", label: t("Tila"), value: statusLabel(statusFilter), clear: () => setStatusFilter("all") }]
       : []),
     ...(dueFilter !== "all"
-      ? [{ key: "due", label: t("Määräaika"), value: t("Myöhässä"), clear: () => setDueFilter("all") }]
+      ? [{ key: "due", label: t("Määräaika"), value: dueFilter === "reminders" ? t("Muistutus") : t("Myöhässä"), clear: () => setDueFilter("all") }]
       : [])
   ];
   const listedTickets = ticketSort && tab !== "queue"
@@ -736,32 +739,22 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     <small>{count === 1 ? t("oma tehtävä") : t("omaa tehtävää")}</small>
                   </button>
                 ))}
+                <button
+                  className={reminderTickets.length > 0 ? "reminder-box active" : "reminder-box"}
+                  title={t("Näytä omat tehtävät, jotka vaativat huomiota")}
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setPriorityFilter("all");
+                    setTypeFilter("all");
+                    setDueFilter("reminders");
+                    setTab("my-tickets");
+                  }}
+                >
+                  <span>{t("Muistutukset")}</span>
+                  <strong>{reminderTickets.length}</strong>
+                  <small>{t("vaatii huomiota")}</small>
+                </button>
               </div>
-            )}
-            {tab === "queue" && reminderTickets.length > 0 && (
-              <section className="reminders" aria-label={t("Muistutukset")}>
-                <h2 className="queue-subheading">
-                  {t("Muistutukset")}
-                  <b>{reminderTickets.length}</b>
-                </h2>
-                <ul>
-                  {reminderTickets.map(({ ticket, reminders }) => (
-                    <li key={ticket.id}>
-                      <button onClick={() => openTicket(ticket.id)}>
-                        <span className="reminder-ticket">
-                          <small>#{formatTicketNumber(ticket.ticket_number)}</small>
-                          <strong>{ticket.subject}</strong>
-                        </span>
-                        <span className="reminder-reasons">
-                          {reminders.map(reminder => (
-                            <em key={reminder.kind} className={`reminder-${reminder.kind}`}>{reminder.text}</em>
-                          ))}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
             )}
             {tab === "queue" && (
               <h2 className="queue-subheading">
@@ -811,6 +804,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <select value={dueFilter} onChange={event => setDueFilter(event.target.value)}>
                   <option value="all">{t("Kaikki")}</option>
                   <option value="overdue">{t("Myöhässä")}</option>
+                  <option value="reminders">{t("Muistutus")}</option>
                 </select>
               </label>
               {filtersActive && (
@@ -927,6 +921,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <TicketCard
                   key={ticket.id}
                   ticket={ticket}
+                  reminders={ticketReminders(ticket, reminderSettings).filter(reminder => reminder.kind !== "overdue")}
                   compact={tab !== "queue"}
                   companyName={companies.find(company => company.id === ticket.company_id)?.name}
                   users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}
