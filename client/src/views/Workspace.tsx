@@ -37,6 +37,8 @@ const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 const subTabs = navGroups.flatMap(group => group.tabs);
 // Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
 const ownTicketStatuses = ["waiting_manager", "waiting_third_party"];
+// Keskeneräisen tehtävän tilat.
+const openTicketStatuses = ["open", ...ownTicketStatuses];
 
 // Mitä alasivun laskuri tarkoittaa.
 const navCountTitles: Partial<Record<TicketTab, string>> = {
@@ -316,13 +318,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
     return response;
   }
 
-  // Päätösjonossa ovat avoimet tehtävät, jotka on osoitettu käyttäjälle tai joilla ei ole vielä käsittelijää.
+  // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät.
   const queueTickets = allCompanyTickets
-    .filter(ticket => ticket.status === "open" && (!ticket.assignee_id || ticket.assignee_id === user.id))
+    .filter(ticket => ticket.status === "open" && ticket.assignee_id === user.id)
+    .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
+  // Kaikkien yhtiöiden keskeneräiset tehtävät, joita ei ole vielä annettu kenenkään käsiteltäväksi.
+  const unassignedTickets = allCompanyTickets
+    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id)
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
-  const statusFilterTab = tab === "tickets" || tab === "my-tickets";
-  const sourceTickets = tab === "queue" ? queueTickets : tab === "my-tickets" ? myTickets : tab === "ai-handled" ? aiTickets : tickets;
+  const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unassigned";
+  const sourceTickets = tab === "queue" ? queueTickets : tab === "unassigned" ? unassignedTickets : tab === "my-tickets" ? myTickets : tab === "ai-handled" ? aiTickets : tickets;
   // Päätösjonossa ei ole suodattimia; ne koskevat vain tehtävälistoja.
   const visibleTickets = tab === "queue" ? queueTickets : sourceTickets.filter(ticket =>
     (priorityFilter === "all" || ticket.priority === priorityFilter)
@@ -409,7 +415,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
         </a>
 
         <nav>
-          <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>
+          <button className={tab === "queue" || tab === "unassigned" ? "active" : ""} onClick={() => setTab("queue")}>
             <TabIcon tab="queue" />
             {t("Päätösjono")}
             <b>{queueTickets.length}</b>
@@ -640,13 +646,23 @@ export function Workspace({ user }: { user: OfficeUser }) {
             {(tab === "my-tickets" || tab === "ai-handled") && (
               <a className="back-link" href="#/tickets">{t("← Kaikki tehtävät")}</a>
             )}
+            {tab === "unassigned" && <a className="back-link" href="#/queue">{t("← Päätösjono")}</a>}
             {tab === "queue" && (
               <div className="queue-summary queue-summary-large">
-                <div>
+                <button
+                  title={t("Näytä tehtävät, joilla ei ole käsittelijää")}
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setPriorityFilter("all");
+                    setTypeFilter("all");
+                    setDueFilter("all");
+                    setTab("unassigned");
+                  }}
+                >
                   <span>{t("Jonossa")}</span>
-                  <strong>{queueTickets.length}</strong>
-                  <small>{t("odottavaa tehtävää")}</small>
-                </div>
+                  <strong>{unassignedTickets.length}</strong>
+                  <small>{t("tehtävää ilman käsittelijää")}</small>
+                </button>
                 {ownStatusCounts.map(({ status, count }) => (
                   <button
                     key={status}
@@ -700,7 +716,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   <span>{t("Tila")}</span>
                   <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
                     <option value="all">{t("Kaikki")}</option>
-                    {(tab === "my-tickets" ? ownTicketStatuses : ticketStatuses).map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
+                    {(tab === "my-tickets" ? ownTicketStatuses : tab === "unassigned" ? openTicketStatuses : ticketStatuses).map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
                   </select>
                 </label>
               )}

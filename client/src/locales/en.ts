@@ -1232,5 +1232,11 @@ export const en: Record<string, string> = {
   "Toivetta ei löytynyt.": "Request not found.",
   "Toive on jo käsitelty.": "The request has already been handled.",
   "Vuoron aika on jo mennyt.": "The slot has already passed.",
-  "Perustelu on liian pitkä.": "The reason is too long."
+  "Perustelu on liian pitkä.": "The reason is too long.",
+  "Ilman käsittelijää": "Unassigned",
+  "Ei sinulle osoitettuja avoimia tehtäviä.": "No open tickets assigned to you.",
+  "Kaikilla tehtävillä on käsittelijä.": "Every ticket has an assignee.",
+  "Näytä tehtävät, joilla ei ole käsittelijää": "Show tickets without an assignee",
+  "tehtävää ilman käsittelijää": "tickets without an assignee",
+  "← Päätösjono": "← Decision queue"
 };

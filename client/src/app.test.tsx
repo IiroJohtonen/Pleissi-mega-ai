@@ -5,7 +5,8 @@ const company = { id: "demo-company", name: "As Oy Koivikko", email_address: "",
 const overdueTicket = {
   id: "ticket-1", ticket_number: 1, company_id: "demo-company", type: "Kysymys", priority: "normal", status: "open",
   subject: "Saunavuoron varaus", summary: "Asukas kysyy saunavuorosta.", source_channel: "email", ai_action: "pending_decision",
-  ai_reason: "", due_date: "2026-01-01", created_at: "2025-12-27T08:00:00.000Z", updated_at: "2025-12-27T08:00:00.000Z"
+  ai_reason: "", due_date: "2026-01-01", created_at: "2025-12-27T08:00:00.000Z", updated_at: "2025-12-27T08:00:00.000Z",
+  assignee_id: "user-1"
 };
 
 // Vastaukset rajapinnan lukukutsuihin; muut polut palauttavat tyhjän listan.
@@ -64,15 +65,21 @@ describe("sovellus", () => {
     expect(screen.getByText("As Oy Koivikko")).toBeTruthy();
   });
 
-  it("näyttää päätösjonossa vain omat ja käsittelijättömät tehtävät", async () => {
-    const own = { ...overdueTicket, id: "ticket-2", ticket_number: 2, subject: "Oma tehtävä", assignee_id: "user-1" };
+  it("näyttää päätösjonossa vain omat tehtävät ja Jonossa-laatikosta käsittelijättömät", async () => {
+    const unassigned = { ...overdueTicket, id: "ticket-2", ticket_number: 2, subject: "Käsittelijätön tehtävä", assignee_id: null };
     const others = { ...overdueTicket, id: "ticket-3", ticket_number: 3, subject: "Toisen tehtävä", assignee_id: "user-2" };
     const original = responses["/tickets?companyId=demo-company"];
-    responses["/tickets?companyId=demo-company"] = [overdueTicket, own, others];
+    responses["/tickets?companyId=demo-company"] = [overdueTicket, unassigned, others];
     try {
       await renderApp(staff("Isännöitsijä"), "#/queue");
-      expect(await screen.findByText("Oma tehtävä")).toBeTruthy();
-      expect(screen.getByText("Saunavuoron varaus")).toBeTruthy();
+      expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
+      expect(screen.queryByText("Käsittelijätön tehtävä")).toBeNull();
+      expect(screen.queryByText("Toisen tehtävä")).toBeNull();
+
+      fireEvent.click(screen.getByTitle("Näytä tehtävät, joilla ei ole käsittelijää"));
+      expect(await screen.findByText("Käsittelijätön tehtävä")).toBeTruthy();
+      expect(window.location.hash).toBe("#/unassigned");
+      expect(screen.queryByText("Saunavuoron varaus")).toBeNull();
       expect(screen.queryByText("Toisen tehtävä")).toBeNull();
     } finally {
       responses["/tickets?companyId=demo-company"] = original;
