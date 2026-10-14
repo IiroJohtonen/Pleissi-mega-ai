@@ -208,7 +208,7 @@ export function TicketCard({
   if (compact) {
     return (
       <article
-        className="ticket-row"
+        className={`ticket-row priority-${ticket.priority}`}
         onClick={onOpen}
         onKeyDown={event => {
           if (event.key === "Enter" || event.key === " ") {

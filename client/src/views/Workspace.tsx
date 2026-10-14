@@ -51,14 +51,6 @@ const navCountTitles: Partial<Record<TicketTab, string>> = {
   keys: t("Palautus myöhässä")
 };
 
-function SummaryIcon({ path }: { path: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d={path} />
-    </svg>
-  );
-}
-
 export function Workspace({ user }: { user: OfficeUser }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
@@ -696,7 +688,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
             {tab === "queue" && (
               <div className="queue-summary queue-summary-large">
                 <button
-                  className="tone-amber"
                   title={t("Näytä tehtävät, joilla ei ole käsittelijää")}
                   onClick={() => {
                     setStatusFilter("all");
@@ -706,7 +697,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     setTab("unassigned");
                   }}
                 >
-                  <i className="summary-icon" aria-hidden="true"><SummaryIcon path="M3 12h4l3 8 4-16 3 8h4" /></i>
                   <span>{t("Jonossa")}</span>
                   <strong>{unassignedTickets.length}</strong>
                   <small>{t("tehtävää ilman käsittelijää")}</small>
@@ -714,7 +704,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 {ownStatusCounts.map(({ status, count }) => (
                   <button
                     key={status}
-                    className={status === "waiting_manager" ? "tone-blue" : "tone-violet"}
                     title={t("Näytä nämä tehtävät")}
                     onClick={() => {
                       setStatusFilter(status);
@@ -724,11 +713,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
                       setTab("my-tickets");
                     }}
                   >
-                    <i className="summary-icon" aria-hidden="true">
-                      <SummaryIcon path={status === "waiting_manager"
-                        ? "M12 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"
-                        : "M12 7v5l3 2M12 21a9 9 0 1 0 0-18a9 9 0 0 0 0 18"} />
-                    </i>
                     <span>{statusLabel(status)}</span>
                     <strong>{count}</strong>
                     <small>{count === 1 ? t("oma tehtävä") : t("omaa tehtävää")}</small>
