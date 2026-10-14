@@ -2,17 +2,17 @@
    Käsin säädetyt tummat tyylit ovat tiedostossa styles-dark-overrides.css. */
 
 :root[data-theme="dark"] {
-    color: #d9dde2;
+    color: #e3e6ea;
     background: #212935
 }
 :root[data-theme="dark"] .logo {
     background: #384a58;
-    color: #d9dde2
+    color: #e3e6ea
 }
 :root[data-theme="dark"] .card-tabs button {
     border: 1px solid #354150;
     background: #283341;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .card-tabs button.active {
     background: #d6dbe1;
@@ -35,10 +35,10 @@
 }
 :root[data-theme="dark"] .suggest-header .ai-button:disabled {
     background: #151b23;
-    color: #95a1af
+    color: #b7bfc9
 }
 :root[data-theme="dark"] .suggest-header .ai-button:disabled svg {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .source-link:hover {
     background: #344151
@@ -56,10 +56,10 @@
     border-color: #2d3744
 }
 :root[data-theme="dark"] .knowledge-entry-top .date {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .knowledge-entry p {
-    color: #9fa9b6
+    color: #bdc4ce
 }
 :root[data-theme="dark"] .knowledge-file {
     color: #b5c2d2
@@ -88,18 +88,18 @@
     border-top: 1px solid #394555
 }
 :root[data-theme="dark"] .back-link {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .table-card {
     background: #283341;
     border: 1px solid #384454
 }
 :root[data-theme="dark"] .data-table th {
-    color: #8491a2;
+    color: #acb5c0;
     border-bottom: 1px solid #384454
 }
 :root[data-theme="dark"] .data-table td {
-    color: #9fa9b6;
+    color: #bdc4ce;
     border-bottom: 1px solid #3b4858
 }
 :root[data-theme="dark"] .data-table tr.clickable:hover td,
@@ -107,17 +107,17 @@
     background: #2d3a47
 }
 :root[data-theme="dark"] .data-table td strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .company small,
 :root[data-theme="dark"] .company span {
-    color: #8390a1
+    color: #acb4c0
 }
 :root[data-theme="dark"] .eyebrow {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .muted {
-    color: #94a0ae
+    color: #b7bec9
 }
 :root[data-theme="dark"] .refresh,
 :root[data-theme="dark"] .secondary {
@@ -147,28 +147,28 @@
     border-color: #a6b1bf
 }
 :root[data-theme="dark"] .queue-summary span {
-    color: #9ea8b5
+    color: #bdc4cd
 }
 :root[data-theme="dark"] .queue-summary strong {
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .queue-summary small {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .ticket-filters {
     border: 1px solid #384454;
     background: #283341
 }
 :root[data-theme="dark"] .ticket-filters label {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .ticket-filters select {
     border: 1px solid #374353;
     background: #242e3b;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .clear-filters {
-    color: #9ea9b6
+    color: #bdc4cd
 }
 :root[data-theme="dark"] .ticket-card {
     background: #283341;
@@ -198,25 +198,25 @@
 }
 :root[data-theme="dark"] .priority.low {
     background: #1c242e;
-    color: #a3adb9
+    color: #c0c7d0
 }
 :root[data-theme="dark"] .type {
     background: #1f2732;
-    color: #9ea9b6
+    color: #bdc4cd
 }
 :root[data-theme="dark"] .status-badge {
     background: #313e4c;
     color: #b3c1d1
 }
 :root[data-theme="dark"] .date {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .ticket-row {
     border: 1px solid #384454;
     background: #283341
 }
 :root[data-theme="dark"] .ticket-row-header button {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .filter-chip {
     background: #d6dbe1;
@@ -226,19 +226,19 @@
     color: #ffffff
 }
 :root[data-theme="dark"] .filter-toggle {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .filter-toggle:hover {
     background: #181e27;
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .filter-toggle.active {
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .ticket-row-search input {
     border: 1px solid #354150;
     background: #283341;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .ticket-row-search input:focus {
     outline: 2px solid #3d5a71;
@@ -249,7 +249,7 @@
 }
 :root[data-theme="dark"] .ticket-row-header button:hover,
 :root[data-theme="dark"] .ticket-row-header button.active {
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .ticket-row:hover,
 :root[data-theme="dark"] .ticket-row:focus-visible {
@@ -272,21 +272,21 @@
     color: #19222e
 }
 :root[data-theme="dark"] .ticket-number {
-    color: #95a1af
+    color: #b7bfc9
 }
 :root[data-theme="dark"] .ticket-row-main strong {
-    color: #ced4da
+    color: #dce0e5
 }
 :root[data-theme="dark"] .ticket-row-main span,
 :root[data-theme="dark"] .ticket-row-contact {
-    color: #8e9aaa
+    color: #b3bbc6
 }
 :root[data-theme="dark"] .ticket-main p {
-    color: #a5aebb
+    color: #c1c8d0
 }
 :root[data-theme="dark"] .meta span {
     background: #232c38;
-    color: #9ea8b5
+    color: #bdc4cd
 }
 :root[data-theme="dark"] .draft-pill {
     background: #2f3b49;
@@ -298,10 +298,10 @@
     border: 1px solid #43576b
 }
 :root[data-theme="dark"] .recommendation small {
-    color: #95a1af
+    color: #b7bfc9
 }
 :root[data-theme="dark"] .recommendation p {
-    color: #a8b1bd
+    color: #c3cad2
 }
 :root[data-theme="dark"] .actions button,
 :root[data-theme="dark"] .drawer-actions button {
@@ -319,7 +319,7 @@
     border-color: #a6b1bf
 }
 :root[data-theme="dark"] .ticket-form label {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .required-label {
     color: #ea9e96
@@ -329,7 +329,7 @@
 :root[data-theme="dark"] .ticket-form textarea {
     border: 1px solid #374353;
     background: #242d3a;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .ticket-form input:focus,
 :root[data-theme="dark"] .ticket-form select:focus,
@@ -347,7 +347,7 @@
     background: #2d3a47
 }
 :root[data-theme="dark"] .reason-options legend {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .ticket-form label.reason-option {
     border: 1px solid #374353;
@@ -360,14 +360,14 @@
     background: #2d3a47
 }
 :root[data-theme="dark"] .reason-option strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .reason-option small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .empty {
     background: #283341;
-    color: #94a0ae;
+    color: #b7bec9;
     border: 1px solid #384555
 }
 :root[data-theme="dark"] .drawer {
@@ -381,7 +381,7 @@
     border-bottom: 1px solid #364251
 }
 :root[data-theme="dark"] .drawer-topbar-number {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .attachments-menu > button {
     border: 1px solid #354150;
@@ -391,7 +391,7 @@
     border-color: #2d3744
 }
 :root[data-theme="dark"] .assign-picker.attachments-menu > button svg.clip {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .attachments-menu > button b {
     background: #303d4b;
@@ -402,10 +402,10 @@
     background: #2d3a47
 }
 :root[data-theme="dark"] .attachments-menu .assign-menu a strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .attachments-menu .assign-menu a em {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .drawer-main .drawer-section {
     border-top-color: #364251
@@ -440,7 +440,7 @@
     border-color: #3d5671
 }
 :root[data-theme="dark"] .message-head svg {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .message-direction {
     background: #151b23;
@@ -451,11 +451,11 @@
 }
 :root[data-theme="dark"] .message.inbound strong,
 :root[data-theme="dark"] .message.outbound strong {
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .message.inbound p,
 :root[data-theme="dark"] .message.outbound p {
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .message-reply {
     border: 1px solid #333e4d;
@@ -470,7 +470,7 @@
     color: #9dbbe4
 }
 :root[data-theme="dark"] .message.collapsed p {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .message-thumbnail {
     border: 1px solid #364251;
@@ -490,7 +490,7 @@
     border-color: #5a697c
 }
 :root[data-theme="dark"] .message-file small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .image-preview {
     background: rgba(213, 218, 226, 0.78)
@@ -518,7 +518,7 @@
     border: 1px solid #333e4d
 }
 :root[data-theme="dark"] .fact-dropdown li button {
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .fact-dropdown li button:hover,
 :root[data-theme="dark"] .fact-dropdown li button:focus-visible {
@@ -543,11 +543,11 @@
     color: #a8e2bb
 }
 :root[data-theme="dark"] .ticket-description h3 {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .ticket-description p {
     border: 1px solid #333e4d;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .fact-search input:hover {
     border-color: #364251
@@ -557,11 +557,11 @@
     outline: 2px solid #3d5a71
 }
 :root[data-theme="dark"] .fact-search-button {
-    color: #9ea8b5
+    color: #bdc4cd
 }
 :root[data-theme="dark"] .fact-search-button:hover {
     background: #151b23;
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .fact-search ul {
     background: #2e3a49;
@@ -571,17 +571,17 @@
     background: #151b23
 }
 :root[data-theme="dark"] .fact-search li span {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .fact-search li.empty-option {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .fact-search li.clear-option {
     color: #ea9e96;
     border-top: 1px solid #364251
 }
 :root[data-theme="dark"] .close {
-    color: #9ea8b5
+    color: #bdc4cd
 }
 :root[data-theme="dark"] .drawer-section {
     border-top: 1px solid #394555
@@ -589,7 +589,7 @@
 :root[data-theme="dark"] .draft-editor {
     border: 1px solid #374353;
     background: linear-gradient(180deg, #252f3c 0%, #2d3847 100%);
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .draft-editor:focus {
     border-color: #313c4a
@@ -604,7 +604,7 @@
     border-color: #a6b1bf
 }
 :root[data-theme="dark"] .reply-hint {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .send-error {
     color: #e4a096
@@ -615,7 +615,7 @@
 :root[data-theme="dark"] .reply-from select {
     border: 1px solid #374353;
     background: #252f3c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 14px;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .reply-from select:focus {
     border-color: #29323d
@@ -633,11 +633,11 @@
     background: #47412e
 }
 :root[data-theme="dark"] .ticket-facts dt {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .reporter span,
 :root[data-theme="dark"] .attachment span {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .reporter-meta button {
     color: #e4a096
@@ -651,13 +651,13 @@
     background: #283341
 }
 :root[data-theme="dark"] .drawer-empty {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .timeline-event {
-    color: #9ea8b5
+    color: #bdc4cd
 }
 :root[data-theme="dark"] .timeline-event small {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .note-form textarea {
     border: 1px solid #374353
@@ -668,10 +668,10 @@
 }
 :root[data-theme="dark"] .message small,
 :root[data-theme="dark"] .audit span {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .audit-email {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .audit-email summary {
     color: #b5c2d2
@@ -684,13 +684,14 @@
     border-top: 1px solid #3b4858
 }
 :root[data-theme="dark"] .user-avatar {
-    background: #d6dbe1
+    background: #d6dbe1;
+    color: #1f527a
 }
 :root[data-theme="dark"] .settings-users li strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .settings-users li div span {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .settings-users li em {
     background: #303d4b;
@@ -703,28 +704,6 @@
 :root[data-theme="dark"] .resident-drawer .ticket-form select {
     background: #283341
 }
-:root[data-theme="dark"] .login-card {
-    background: #283341
-}
-:root[data-theme="dark"] .login-card > p {
-    color: #94a0ae
-}
-:root[data-theme="dark"] .login-card label {
-    color: #afb8c3
-}
-:root[data-theme="dark"] .login-card input {
-    border: 1px solid #374353;
-    background: #242d3a;
-    color: #d4d8de
-}
-:root[data-theme="dark"] .login-card input:focus {
-    outline: 2px solid #3d5a71;
-    border-color: #3d5a71
-}
-:root[data-theme="dark"] .login-card button {
-    background: #d6dbe1;
-    color: #19222e
-}
 :root[data-theme="dark"] .settings-card.settings-users .reply-hint {
     border-top: 1px solid #3b4858
 }
@@ -733,70 +712,70 @@
     border: 1px solid #384454
 }
 :root[data-theme="dark"] .residents-toolbar {
-    color: #94a0ae
+    color: #b7bec9
 }
 :root[data-theme="dark"] .resident-row {
     background: #283341;
     border: 1px solid #384454
 }
 :root[data-theme="dark"] .resident-row span {
-    color: #9fa9b6
+    color: #bdc4ce
 }
 :root[data-theme="dark"] .ticket-filters input {
     border: 1px solid #374353;
     background: #242e3b;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .knowledge-card {
     background: #283341;
     border: 1px solid #384454
 }
 :root[data-theme="dark"] .knowledge-card span {
-    color: #8794a5
+    color: #aeb7c2
 }
 :root[data-theme="dark"] .knowledge-card p {
-    color: #9fa9b6
+    color: #bdc4ce
 }
 :root[data-theme="dark"] .report-period {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .report-card {
     background: #283341;
     border: 1px solid #384454
 }
 :root[data-theme="dark"] .report-card h2 {
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .report-tag {
     background: #303d4b;
     color: #b5c2d2
 }
 :root[data-theme="dark"] .report-topics td span {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .dropdown-label {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .ticket-form .dropdown-label {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .dropdown-trigger {
     border: 1px solid #374353;
     background: #283341;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .dropdown-trigger:hover:not(:disabled) {
     border-color: #2d3643
 }
 :root[data-theme="dark"] .dropdown-trigger svg {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .dropdown ul {
     background: #283341;
     border: 1px solid #374353
 }
 :root[data-theme="dark"] .dropdown li button {
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .dropdown li button:hover,
 :root[data-theme="dark"] .dropdown li button:focus-visible {
@@ -809,10 +788,10 @@
     border-top: 1px solid #3b4858
 }
 :root[data-theme="dark"] .switch-row strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .switch-row small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .switch-row i {
     background: #151b23
@@ -824,32 +803,32 @@
     outline: 2px solid #3d5a71
 }
 :root[data-theme="dark"] .booking-settings-duration strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .booking-settings-duration small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .booking-settings-duration select {
     border: 1px solid #374353;
     background: #242d3a;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .price-input {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .price-input input {
     border: 1px solid #374353;
     background: #242d3a;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .billing-tabs-head {
     border-bottom: 1px solid #384454
 }
 :root[data-theme="dark"] .billing-tabs button {
-    color: #94a0ae
+    color: #b7bec9
 }
 :root[data-theme="dark"] .billing-tabs button:hover {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .billing-tabs button.active {
     color: #99bde2
@@ -862,7 +841,7 @@
     border-left-color: #29323d
 }
 :root[data-theme="dark"] .work-order small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .attachments-add {
     border-top: 1px solid #3b4858;
@@ -880,10 +859,10 @@
 }
 :root[data-theme="dark"] .work-order-status.done {
     background: #1c242e;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .work-order-files legend {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .draft-actions .danger {
     color: #e4a096
@@ -893,21 +872,21 @@
     border: 1px solid #384454
 }
 :root[data-theme="dark"] .portal-announcements small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .message-quoted-toggle {
     color: #99bbdd
 }
 :root[data-theme="dark"] .message p.message-quoted {
     border-left: 2px solid #364251;
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .ticket-card.emergency {
     border-color: #71443d;
     background: #252f3c
 }
 :root[data-theme="dark"] .manager-picks legend {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .ticket-form .manager-picks label {
     border: 1px solid #374353;
@@ -918,17 +897,17 @@
     color: #9dbbe4
 }
 :root[data-theme="dark"] .assign-picker > button svg {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .assign-menu {
     border: 1px solid #374353;
     background: #283341
 }
 :root[data-theme="dark"] .assign-menu small {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .assign-menu p {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .actions .assign-menu button:hover,
 :root[data-theme="dark"] .drawer-actions .assign-menu button:hover,
@@ -939,10 +918,10 @@
     background: #2e3a48
 }
 :root[data-theme="dark"] .assign-name strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .assign-name em {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .assign-menu button > svg {
     color: #99bbdd
@@ -950,9 +929,6 @@
 :root[data-theme="dark"] .assignee-pill {
     background: #2e3a49;
     color: #b5c2d2
-}
-:root[data-theme="dark"] .login-card button.login-link {
-    color: #99bde2
 }
 :root[data-theme="dark"] .login-notice {
     background: #2f3d49;
@@ -967,7 +943,7 @@
     border-color: #3d5671
 }
 :root[data-theme="dark"] .portal-message small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .portal-thread-files {
     border: 1px solid #384454;
@@ -977,10 +953,10 @@
     color: #99bde2
 }
 :root[data-theme="dark"] .portal-thread-files small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .gmail-shared {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .user-mailbox {
     color: #9fc2e4 !important
@@ -990,7 +966,7 @@
     color: #9fc2e4
 }
 :root[data-theme="dark"] .mail-connect-label {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .gmail-card .mail-connect .secondary.active {
     background: #2e3a48
@@ -1003,22 +979,22 @@
     background: #283341
 }
 :root[data-theme="dark"] .move-new-residents legend {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .move-person button {
     border: 1px solid #374353;
     background: #283341;
-    color: #9fa9b6
+    color: #bdc4ce
 }
 :root[data-theme="dark"] .portal-queues article {
     background: #283341;
     border: 1px solid #384454
 }
 :root[data-theme="dark"] .portal-queue-position {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .collapse-head svg {
-    color: #828fa1
+    color: #abb4bf
 }
 :root[data-theme="dark"] .collapse-head:hover svg {
     color: #99bbdd
@@ -1027,17 +1003,17 @@
     outline: 2px solid #3d5a71
 }
 :root[data-theme="dark"] .repeat-choice legend {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .ticket-form .repeat-choice label {
     border: 1px solid #364251;
     background: #283341
 }
 :root[data-theme="dark"] .repeat-choice strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .repeat-choice small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .portal-sent {
     background: #2f3d49;
@@ -1058,30 +1034,30 @@
     border-color: #384454;
     border-left-color: #2d3643;
     background: #1f2732;
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .calendar-toolbar {
     border: 1px solid #384454;
     background: #283341
 }
 :root[data-theme="dark"] .calendar-toolbar label {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .calendar-toolbar select {
     border: 1px solid #374353;
     background: #242e3b;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .calendar-week button {
     border: 1px solid #354150;
     background: #283341;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .calendar-week button:hover {
     border-color: #3d5a71
 }
 :root[data-theme="dark"] .calendar-count {
-    color: #94a0ae
+    color: #b7bec9
 }
 :root[data-theme="dark"] .calendar {
     border: 1px solid #384454;
@@ -1091,13 +1067,13 @@
     border-bottom: 2px solid #3b4858
 }
 :root[data-theme="dark"] .calendar-day span {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .calendar-day.today strong {
     color: #9dbbe4
 }
 :root[data-theme="dark"] .calendar-time {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .calendar-slot.free {
     border: 1px dashed #364251;
@@ -1114,10 +1090,10 @@
 :root[data-theme="dark"] .calendar-slot.booked {
     border: 1px solid #3d5571;
     background: #2e3a48;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .calendar-slot span {
-    color: #9fa9b6
+    color: #bdc4ce
 }
 :root[data-theme="dark"] .drawer-actions .danger {
     border-color: #71443d;
@@ -1135,30 +1111,30 @@
 }
 :root[data-theme="dark"] .reply-file {
     background: #32404e;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .reply-file small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .reply-file button {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .settings-link:hover {
     border-color: #3d5a71
 }
 :root[data-theme="dark"] .settings-link > span {
-    color: #94a0ae
+    color: #b7bec9
 }
 :root[data-theme="dark"] .log-search {
     border: 1.5px solid #2d3643;
     background: #283341;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .log-search input {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .log-search input::placeholder {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .log-table a {
     color: #9dbbe4
@@ -1169,15 +1145,15 @@
     color: #b5c2d2
 }
 :root[data-theme="dark"] .import-skipped {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .pager {
-    color: #94a0ae
+    color: #b7bec9
 }
 :root[data-theme="dark"] .pager button {
     border: 1px solid #354150;
     background: #283341;
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .pager button:hover:not(:disabled) {
     border-color: #3d5a71
@@ -1186,7 +1162,7 @@
     border-top-color: #364251
 }
 :root[data-theme="dark"] .topic-text {
-    color: #cbd1d8
+    color: #dadee3
 }
 :root[data-theme="dark"] .topic-drawer .ticket-form textarea {
     background: #283341
@@ -1195,7 +1171,7 @@
     background: #151b23
 }
 :root[data-theme="dark"] .topic-ticket small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .ai-button.topic-create {
     background: #d6dbe1;
@@ -1209,7 +1185,7 @@
     color: #b5c2d2
 }
 :root[data-theme="dark"] .report-axis {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .report-bars {
     border-bottom: 1px solid #354150;
@@ -1217,22 +1193,22 @@
     linear-gradient(#1d2530, #1d2530) center / 100% 1px no-repeat
 }
 :root[data-theme="dark"] .report-labels span {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .report-row {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .report-row strong {
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .report-row small {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .data-table td .work-order-status {
     color: #9fc2e4
 }
 :root[data-theme="dark"] .data-table td .work-order-status.done {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .data-table td .work-order-status.approved {
     background: #304b38;
@@ -1247,7 +1223,7 @@
 }
 :root[data-theme="dark"] .knowledge-state.internal {
     background: #1c242e;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .knowledge-audience {
     background: #2f3d49;
@@ -1255,7 +1231,7 @@
 }
 :root[data-theme="dark"] .knowledge-audience.internal {
     background: #1c242e;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .unsaved-mark {
     background: #4b4430;
@@ -1286,11 +1262,11 @@
     border-bottom: 1px solid #364251
 }
 :root[data-theme="dark"] .ticket-section-tabs button {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .ticket-section-tabs button b {
     background: #151b23;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .ticket-section-tabs button.active b {
     background: #2f3d49;
@@ -1298,7 +1274,7 @@
 }
 :root[data-theme="dark"] .new-reply.filtered {
     background: #1c242e;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .filtered-notice {
     background: #1c242e;
@@ -1306,16 +1282,16 @@
 }
 :root[data-theme="dark"] .covered-topics {
     background: #2e3a49;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .covered-topics strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .covered-topics a {
     color: #99bde2
 }
 :root[data-theme="dark"] .ticket-row-assignee {
-    color: #ced4da
+    color: #dce0e5
 }
 :root[data-theme="dark"] .overlay > .drawer:not(.skip-drawer) {
     background: #2e3a49
@@ -1328,7 +1304,7 @@
 :root[data-theme="dark"] .drawer-back {
     border: 1px solid #354150;
     background: #283341;
-    color: #c8ced5
+    color: #d8dce2
 }
 :root[data-theme="dark"] .drawer-back:hover {
     border-color: #3d5a71;
@@ -1340,16 +1316,16 @@
 }
 :root[data-theme="dark"] .contact-requests li span,
 :root[data-theme="dark"] .contact-requests li p {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .contact-requests li small {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .contact-requests li a {
     color: #9dbbe4
 }
 :root[data-theme="dark"] .queue-subheading {
-    color: #d7dbe1
+    color: #e2e5e9
 }
 :root[data-theme="dark"] .booking-requests {
     border: 1px solid #71623d;
@@ -1370,10 +1346,10 @@
     border-color: #3b4858
 }
 :root[data-theme="dark"] .booking-request > div:first-child {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .booking-request strong {
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .booking-request-reject input {
     border: 1px solid #374353
@@ -1400,10 +1376,10 @@
 :root[data-theme="dark"] .calendar-days button {
     border: 1px solid #384454;
     background: #283341;
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .calendar-days button span {
-    color: #8491a2
+    color: #acb5c0
 }
 :root[data-theme="dark"] .calendar-days button.today {
     border-color: #3d5771
@@ -1416,10 +1392,10 @@
 :root[data-theme="dark"] .calendar-list-slot {
     border: 1px solid #384454;
     background: #283341;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .calendar-list-slot span {
-    color: #afb8c3
+    color: #c8ced6
 }
 :root[data-theme="dark"] .calendar-list-slot em {
     background: #d6dbe1;
@@ -1444,7 +1420,7 @@
 }
 :root[data-theme="dark"] .calendar-list-slot.other em {
     background: #283341;
-    color: #afb8c3;
+    color: #c8ced6;
     border: 1px solid #343f4e
 }
 :root[data-theme="dark"] .calendar-list-slot.requested {
@@ -1466,12 +1442,12 @@
     border-bottom: 1px solid #3b4858
 }
 :root[data-theme="dark"] .portal-sheet-user span {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .portal-sheet > button {
     border: 1px solid #3b4858;
     background: #252f3c;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .portal-sheet > button.active {
     border-color: #5a697c
@@ -1482,14 +1458,14 @@
         background: #283341
     }
     :root[data-theme="dark"] .portal-tabbar button {
-        color: #939fae
+        color: #b6bec8
     }
     :root[data-theme="dark"] .portal-tabbar button:hover {
-        color: #939fae
+        color: #b6bec8
     }
     :root[data-theme="dark"] .portal-tabbar button.active,
 :root[data-theme="dark"] .portal-tabbar button.active:hover {
-        color: #d8dde2;
+        color: #e3e6ea;
         background: #202833
     }
     :root[data-theme="dark"] .portal .portal-cards tr {
@@ -1497,7 +1473,7 @@
         background: #283341
     }
     :root[data-theme="dark"] .portal .portal-cards td::before {
-        color: #8491a2
+        color: #acb5c0
     }
 }
 :root[data-theme="dark"] .queue-summary-large > div,
@@ -1529,7 +1505,7 @@
 :root[data-theme="dark"] .reply-cc input {
     border: 1px solid #374353;
     background: #252f3c;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .reply-cc input:focus {
     border-color: #29323d
@@ -1537,7 +1513,7 @@
 :root[data-theme="dark"] .reply-cc-add {
     border: 1px solid #354150;
     background: #283341;
-    color: #d4d8de
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .reply-cc-add:hover {
     border-color: #29323d;
@@ -1549,7 +1525,7 @@
 :root[data-theme="dark"] .reply-signature pre,
 :root[data-theme="dark"] .signature-preview pre {
     border-left: 3px solid #364251;
-    color: #a2acb9
+    color: #c0c7cf
 }
 :root[data-theme="dark"] .signature-field {
     border: 1px solid #333e4d;
@@ -1578,7 +1554,7 @@
     color: #9dbbe4
 }
 :root[data-theme="dark"] .sender-contacts > small {
-    color: #939fae
+    color: #b6bec8
 }
 :root[data-theme="dark"] .sender-action {
     border: 1px solid #3d5571;

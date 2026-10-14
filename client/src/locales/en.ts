@@ -1276,6 +1276,8 @@ export const en: Record<string, string> = {
   "Lähetä toive": "Send request",
   "Asukasportaalin valikko": "Resident portal menu",
   "Lisää": "More",
+  "Varaukset": "Bookings",
+  "Asiointi": "Services",
   "Varaustoiveita odottaa käsittelyä": "Booking requests waiting to be handled",
   "Avoimet tehtäväsi": "Your open tickets",
   "Tarkista toiveen tiedot.": "Check the request details.",
