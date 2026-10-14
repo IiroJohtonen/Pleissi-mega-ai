@@ -522,7 +522,56 @@ p { margin: 0; text-wrap: pretty; }
 .card p { padding: 0 6px; }
 .card p { color: var(--ink-soft); font-size: 15px; }
 
-.rail-controls { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.rail-controls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 8px; }
+
+/* Karuselli: kortit päällekkäin keskikohdan ympärillä; site.js laskee kunkin kortin paikan. */
+.coverflow { padding: 12px 0 4px; }
+
+/* Karusellin reunimmaiset kortit saavat ulottua sisältöalueen ohi; vain koko näkymän reuna rajaa. */
+.everyday { overflow-x: clip; }
+
+.coverflow .rail-track {
+  position: relative;
+  display: block;
+  padding: 0;
+  overflow: visible;
+  perspective: 1400px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.coverflow .card {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(400px, 78vw);
+  margin-left: calc(min(400px, 78vw) / -2);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .7);
+  transition: opacity .3s ease, filter .3s ease;
+  will-change: transform;
+}
+
+.coverflow .card:hover { transform: none; }
+.coverflow .card:not(.is-active) { cursor: pointer; }
+.coverflow .card.is-active { border-color: var(--frame); }
+.coverflow .rail-track.dragging,
+.coverflow .rail-track.dragging .card { cursor: grabbing; }
+
+.rail-dots { display: flex; gap: 8px; }
+
+.rail-controls .rail-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--line);
+  cursor: pointer;
+  transition: width .3s ease, background .3s ease;
+}
+
+.rail-controls .rail-dots button[aria-current="true"] { width: 24px; background: var(--accent); }
 .rail-controls button { width: 44px; height: 44px; padding: 0; font-size: 18px; }
 
 /* Usein kysyttyä */

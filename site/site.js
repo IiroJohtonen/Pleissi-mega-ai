@@ -120,42 +120,150 @@
     watchVisibility(phone, function (isVisible) { phoneVisible = isVisible; restart(); });
   }
 
-  // Korttirivi: nuolipainikkeet ja hiirellä vetäminen.
+  // Korttikaruselli: keskimmäinen kortti on edessä, ja sivukortit ovat pienempinä osittain sen takana.
+  // Karusellia vedetään hiirellä tai sormella, ja se asettuu lähimpään korttiin. Kortit kiertävät ympäri.
   var rail = document.querySelector("[data-rail]");
   if (rail) {
     var track = rail.querySelector(".rail-track");
-    var step = function () {
-      var card = track.querySelector(".card");
-      return card ? card.getBoundingClientRect().width + 20 : 320;
-    };
-    rail.querySelector(".rail-prev").addEventListener("click", function () { track.scrollBy({ left: -step(), behavior: "smooth" }); });
-    rail.querySelector(".rail-next").addEventListener("click", function () { track.scrollBy({ left: step(), behavior: "smooth" }); });
+    var cards = Array.prototype.slice.call(track.querySelectorAll(".card"));
+    var count = cards.length;
+    var position = 0;
+    var target = 0;
+    var animating = 0;
+    var dots = rail.querySelector(".rail-dots");
+    rail.classList.add("coverflow");
 
-    var dragStart = 0;
-    var scrollStart = 0;
-    var dragging = false;
+    // Pisteet korttien alle: yksi jokaista korttia kohden.
+    cards.forEach(function (card, i) {
+      var dot = document.createElement("button");
+      dot.type = "button";
+      dot.setAttribute("aria-label", String(i + 1) + " / " + count);
+      dot.addEventListener("click", function () { stopAuto(); goTo(nearestIndex(i)); });
+      dots.appendChild(dot);
+    });
+
+    // Lyhin matka kortin kohdalle, kun kortit kiertävät ympäri.
+    function wrapOffset(offset) {
+      offset = ((offset % count) + count) % count;
+      return offset > count / 2 ? offset - count : offset;
+    }
+    function nearestIndex(i) { return target + wrapOffset(i - target); }
+
+    function spacing() { return Math.min(260, track.clientWidth * 0.3); }
+
+    function layout() {
+      var gap = spacing();
+      var active = ((Math.round(position) % count) + count) % count;
+      cards.forEach(function (card, i) {
+        var offset = wrapOffset(i - position);
+        var distance = Math.abs(offset);
+        var scale = 1 - Math.min(distance, 3) * 0.13;
+        var x = offset * gap;
+        var rotate = Math.max(-1, Math.min(1, offset)) * -14;
+        card.style.transform = "translateX(" + x.toFixed(1) + "px) scale(" + scale.toFixed(3) + ") rotateY(" + rotate.toFixed(1) + "deg)";
+        card.style.zIndex = String(100 - Math.round(distance * 10));
+        // Lähimmät kortit ovat peittäviä; vasta kauimmaiset häivytetään pois.
+        card.style.opacity = String(Math.max(0, Math.min(1, (2.7 - distance) / 0.7)).toFixed(3));
+        card.style.filter = "brightness(" + (1 - Math.min(distance, 2) * 0.22).toFixed(2) + ")";
+        card.classList.toggle("is-active", i === active);
+        card.setAttribute("aria-hidden", String(i !== active));
+      });
+      dots.querySelectorAll("button").forEach(function (dot, i) { dot.setAttribute("aria-current", String(i === active)); });
+    }
+
+    // Pehmeä siirtymä kohti kohdekorttia.
+    function animate() {
+      position += (target - position) * 0.16;
+      if (Math.abs(target - position) < 0.001) position = target;
+      layout();
+      animating = position === target ? 0 : requestAnimationFrame(animate);
+    }
+    function goTo(index) {
+      target = index;
+      if (!animating) animating = requestAnimationFrame(animate);
+    }
+
+    // Korkeus korkeimman kortin mukaan, koska kortit ovat päällekkäin.
+    function measure() {
+      var tallest = cards.reduce(function (max, card) { return Math.max(max, card.offsetHeight); }, 0);
+      track.style.height = tallest + 24 + "px";
+      layout();
+    }
+    window.addEventListener("resize", measure);
+    cards.forEach(function (card) {
+      var img = card.querySelector("img");
+      if (img && !img.complete) img.addEventListener("load", measure, { once: true });
+    });
+    measure();
+
+    rail.querySelector(".rail-prev").addEventListener("click", function () { stopAuto(); goTo(Math.round(target) - 1); });
+    rail.querySelector(".rail-next").addEventListener("click", function () { stopAuto(); goTo(Math.round(target) + 1); });
+    track.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowLeft") { event.preventDefault(); stopAuto(); goTo(Math.round(target) - 1); }
+      if (event.key === "ArrowRight") { event.preventDefault(); stopAuto(); goTo(Math.round(target) + 1); }
+    });
+
+    // Vetäminen: liike siirtää karusellia, ja irrotettaessa se asettuu lähimpään korttiin.
+    // Nopea pyyhkäisy siirtää yhden kortin, vaikka matka jäisi lyhyeksi.
+    var drag = null;
     track.addEventListener("pointerdown", function (event) {
-      if (event.pointerType !== "mouse") return;
-      dragging = true;
-      dragStart = event.clientX;
-      scrollStart = track.scrollLeft;
+      if (event.button !== 0) return;
+      stopAuto();
+      cancelAnimationFrame(animating);
+      animating = 0;
+      drag = { x: event.clientX, start: position, moved: false, time: performance.now(), lastX: event.clientX, velocity: 0 };
       track.setPointerCapture(event.pointerId);
     });
     track.addEventListener("pointermove", function (event) {
-      if (!dragging) return;
-      var distance = event.clientX - dragStart;
-      if (Math.abs(distance) > 4) track.classList.add("dragging");
-      track.scrollLeft = scrollStart - distance;
+      if (!drag) return;
+      var dx = event.clientX - drag.x;
+      if (Math.abs(dx) > 5) {
+        drag.moved = true;
+        track.classList.add("dragging");
+      }
+      var now = performance.now();
+      drag.velocity = (event.clientX - drag.lastX) / Math.max(1, now - drag.time);
+      drag.lastX = event.clientX;
+      drag.time = now;
+      position = drag.start - dx / spacing();
+      target = position;
+      layout();
     });
-    var endDrag = function () {
-      if (!dragging) return;
-      dragging = false;
+    function endDrag(event) {
+      if (!drag) return;
+      var wasDrag = drag.moved;
+      var velocity = drag.velocity;
+      drag = null;
       track.classList.remove("dragging");
-    };
+      if (!wasDrag) {
+        // Klikkaus sivukorttiin tuo sen eteen.
+        var card = event.target.closest && event.target.closest(".card");
+        var index = cards.indexOf(card);
+        if (index >= 0) goTo(nearestIndex(index));
+        return;
+      }
+      var next = Math.round(position);
+      if (Math.abs(velocity) > 0.45 && next === Math.round(target)) next += velocity < 0 ? 1 : -1;
+      goTo(next);
+    }
     track.addEventListener("pointerup", endDrag);
     track.addEventListener("pointercancel", endDrag);
-  }
 
+    // Karuselli pyörii itsestään, kunnes käyttäjä koskee siihen.
+    var autoTimer = 0;
+    var railVisible = false;
+    function startAuto() {
+      clearInterval(autoTimer);
+      if (!reduceMotion && railVisible && !rail.dataset.touched) autoTimer = setInterval(function () { goTo(Math.round(target) + 1); }, 3800);
+    }
+    function stopAuto() {
+      rail.dataset.touched = "1";
+      clearInterval(autoTimer);
+    }
+    rail.addEventListener("mouseenter", function () { clearInterval(autoTimer); });
+    rail.addEventListener("mouseleave", startAuto);
+    watchVisibility(rail, function (isVisible) { railVisible = isVisible; if (isVisible) startAuto(); else clearInterval(autoTimer); });
+  }
 
   // Sivun tekstit ovat suomeksi HTML:ssä ja englanniksi data-en-attribuuteissa. Muut tekstit ovat tässä.
   var TEXTS = {
