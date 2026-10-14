@@ -2034,18 +2034,6 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .calendar-slot.hidden-slot { border: 1px solid transparent; background: transparent; }
 
 /* Vuorovarausten asetukset: kytkimet */
-.booking-settings-company { display: grid; gap: 6px; margin-top: 14px; font-size: 12px; font-weight: 700; color: #4b535d; }
-
-.booking-settings-company select {
-  border: 1px solid #dfe3e7;
-  border-radius: 10px;
-  background: #f9faf8;
-  padding: 10px 12px;
-  font: inherit;
-  font-weight: 400;
-  color: #1d2329;
-}
-
 .booking-settings-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid #eeeff1; }
 .booking-settings-section h3 { margin: 0 0 4px; font-size: 14px; }
 
