@@ -938,7 +938,6 @@ export const en: Record<string, string> = {
   "Vuoro annettu": "Slot given",
   "Poista jonosta": "Remove from the list",
   "Päätösjonoon": "To the decision queue",
-  "omat tehtävät ja AI tehtävät": "my tickets and AI tickets",
   "taloyhtiöiden alasivut": "housing company subpages",
   "Muutot": "Moves",
   "Remontit": "Renovations",
@@ -1238,5 +1237,5 @@ export const en: Record<string, string> = {
   "Kaikilla tehtävillä on käsittelijä.": "Every ticket has an assignee.",
   "Näytä tehtävät, joilla ei ole käsittelijää": "Show tickets without an assignee",
   "tehtävää ilman käsittelijää": "tickets without an assignee",
-  "← Päätösjono": "← Decision queue"
+  "ilman käsittelijää, omat tehtävät ja AI tehtävät": "unassigned, my tickets and AI tickets"
 };

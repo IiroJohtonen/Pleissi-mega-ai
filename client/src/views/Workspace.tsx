@@ -136,7 +136,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   // Alavalikko aukeaa itsestään, kun sen näkymään siirrytään muuta kautta (esim. päätöksen jälkeen).
   useEffect(() => {
-    if (tab === "my-tickets" || tab === "ai-handled") setMyTicketsOpen(true);
+    if (tab === "my-tickets" || tab === "ai-handled" || tab === "unassigned") setMyTicketsOpen(true);
     if (tab === "knowledge-ai" || tab === "knowledge-internal") setKnowledgeOpen(true);
     if (subTabs.includes(tab)) setResidentsOpen(true);
     // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään.
@@ -415,7 +415,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
         </a>
 
         <nav>
-          <button className={tab === "queue" || tab === "unassigned" ? "active" : ""} onClick={() => setTab("queue")}>
+          <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>
             <TabIcon tab="queue" />
             {t("Päätösjono")}
             <b>{queueTickets.length}</b>
@@ -425,10 +425,15 @@ export function Workspace({ user }: { user: OfficeUser }) {
               <TabIcon tab="tickets" />
               {t("Kaikki tehtävät")}
             </button>
-            <NavToggle open={myTicketsOpen} label={t("omat tehtävät ja AI tehtävät")} onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
+            <NavToggle open={myTicketsOpen} label={t("ilman käsittelijää, omat tehtävät ja AI tehtävät")} onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
           </div>
           {myTicketsOpen && (
             <>
+              <button className={`nav-sub ${tab === "unassigned" ? "active" : ""}`} onClick={() => setTab("unassigned")}>
+                <TabIcon tab="unassigned" />
+                {t("Ilman käsittelijää")}
+                <b>{unassignedTickets.length}</b>
+              </button>
               <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => setTab("my-tickets")}>
                 <TabIcon tab="my-tickets" />
                 {t("Omat tehtävät")}
@@ -643,10 +648,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
             />
           ) : (
           <section className="content">
-            {(tab === "my-tickets" || tab === "ai-handled") && (
+            {(tab === "my-tickets" || tab === "ai-handled" || tab === "unassigned") && (
               <a className="back-link" href="#/tickets">{t("← Kaikki tehtävät")}</a>
             )}
-            {tab === "unassigned" && <a className="back-link" href="#/queue">{t("← Päätösjono")}</a>}
             {tab === "queue" && (
               <div className="queue-summary queue-summary-large">
                 <button
