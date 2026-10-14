@@ -595,6 +595,12 @@ for (const column of ["reminder_emails", "retention_months", "ai_priority", "ai_
 if (!officeColumns.some(existing => existing.name === "contact_email")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN contact_email TEXT NOT NULL DEFAULT ''");
 }
+// Kotisivun yhteydenottopyynnöille asetetaan vastaanottaja kerran. Pääkäyttäjä voi vaihtaa tai
+// tyhjentää sen asetuksista, eikä tämä aseta sitä uudelleen.
+if ((db.pragma("user_version", { simple: true }) as number) < 1) {
+  db.prepare("UPDATE office_settings SET contact_email = ? WHERE contact_email = ''").run("kotilotesti2@outlook.com");
+  db.pragma("user_version = 1");
+}
 // Muistutusten rajat päivinä: asukas on odottanut vastausta / määräaikaan on enintään näin monta päivää.
 if (!officeColumns.some(existing => existing.name === "reply_reminder_days")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN reply_reminder_days INTEGER NOT NULL DEFAULT 2");
