@@ -74,10 +74,17 @@ export type KnowledgeDetail = KnowledgeEntry & {
   versions: KnowledgeEntry[];
 };
 
-export type GmailStatus = {
+export type MailProvider = "gmail" | "microsoft" | "imap";
+
+export type MailStatus = {
   connected: boolean;
+  provider?: MailProvider;
   emailAddress?: string;
   canSend?: boolean;
+  // Viimeisimmän postin tarkistuksen virhe, jos yhteys ei toimi.
+  error?: string;
+  // Taloyhtiön oma tili; muuten taloyhtiön posti kulkee toimiston tilin kautta.
+  own?: boolean;
 };
 
 export type WorkOrder = {

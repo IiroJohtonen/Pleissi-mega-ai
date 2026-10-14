@@ -11,7 +11,7 @@ import "./startup.js";
 import { requestUser } from "./access.js";
 import { authRouter, INTERNAL_TOKEN, requireAuth, type User } from "./auth.js";
 import { db } from "./db.js";
-import { startGmailPolling } from "./gmail.js";
+import { startMailPolling } from "./mail.js";
 import { startMaintenanceJobs } from "./jobs.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { billingRouter } from "./routes/billing.js";
@@ -139,6 +139,6 @@ app.listen(PORT, (error?: Error) => {
     process.exit(1);
   }
   console.log(`Kotilo API running at http://localhost:${PORT}`);
-  startGmailPolling();
+  startMailPolling();
   startMaintenanceJobs();
 });

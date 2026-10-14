@@ -3,7 +3,7 @@ import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
 import { requireManager } from "../auth.js";
 import { db } from "../db.js";
-import { sendGmailReply } from "../gmail.js";
+import { sendEmail } from "../mail.js";
 import { ACTIVE_RESIDENT, id, now, VALID_EMAIL } from "../util.js";
 import { portalResident } from "./portal.js";
 
@@ -75,7 +75,7 @@ announcementsRouter.post("/companies/:companyId/announcements", requireManager, 
       // Lähetetään erissä, jotta yhden viestin vastaanottajamäärä pysyy kohtuullisena.
       for (let start = 0; start < emails.length; start += 50) {
         const batch = emails.slice(start, start + 50);
-        await sendGmailReply({ bcc: batch.join(", "), subject: `Tiedote: ${parsed.data.title} (${company.name})`, body: text, companyId });
+        await sendEmail({ bcc: batch.join(", "), subject: `Tiedote: ${parsed.data.title} (${company.name})`, body: text, companyId });
         emailed += batch.length;
       }
     } catch (error: any) {

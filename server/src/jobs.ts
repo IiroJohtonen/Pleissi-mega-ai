@@ -1,7 +1,7 @@
 import { AUTHORIZED_COMPANY_IDS } from "./access.js";
 import { createBackup, hasBackupToday } from "./backup.js";
 import { db } from "./db.js";
-import { sendGmailReply } from "./gmail.js";
+import { sendEmail } from "./mail.js";
 import { deleteTicket } from "./routes/tickets.js";
 import { id, NEW_REPLY_SQL, now, today } from "./util.js";
 
@@ -48,7 +48,7 @@ async function sendReminderDigests() {
       return `#${number} ${row.subject} (${row.company}) – ${reason}`;
     });
     try {
-      await sendGmailReply({
+      await sendEmail({
         to: user.email,
         subject: `Kotilo: ${lines.length} tehtävää odottaa toimenpiteitäsi`,
         body: [`Hei ${user.name},`, "", "nämä tehtävät odottavat toimenpiteitäsi:", "", ...lines, "", office.name].join("\n")

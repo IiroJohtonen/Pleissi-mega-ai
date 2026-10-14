@@ -2,7 +2,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { consumePasswordReset, createPasswordResets } from "../auth.js";
 import { db } from "../db.js";
-import { sendGmailReply } from "../gmail.js";
+import { sendEmail } from "../mail.js";
 
 export const passwordResetRouter: Router = express.Router();
 
@@ -40,7 +40,7 @@ passwordResetRouter.post("/auth/forgot", async (req, res) => {
       office.name
     ].join("\n");
     try {
-      await sendGmailReply({ to: parsed.data.email, subject: "Kotilo: salasanan vaihto", body });
+      await sendEmail({ to: parsed.data.email, subject: "Kotilo: salasanan vaihto", body });
     } catch (error: any) {
       console.error("Palautuslinkin lähetys epäonnistui:", error?.message ?? error);
       return res.status(502).json({ error: "Palautuslinkin lähetys epäonnistui. Yritä uudelleen tai pyydä pääkäyttäjää vaihtamaan salasana." });

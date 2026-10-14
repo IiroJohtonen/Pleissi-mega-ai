@@ -71,7 +71,11 @@ exit
 
 Aja sen jälkeen kohdan 4 komento uudelleen, jotta muutos tulee voimaan.
 
-## 6. Gmail
+## 6. Sähköposti
+
+Saapuva ja lähtevä posti kulkee toimiston tai taloyhtiön sähköpostitilin kautta. Tili yhdistetään alustassa: **Asetukset → Isännöitsijätoimiston tiedot → Toimiston sähköpostitili**, ja taloyhtiön oma tili taloyhtiön sivulta. Vaihtoehtoja on kolme.
+
+### Gmail
 
 1. Google Cloud -konsolissa OAuth-clientin **Authorized redirect URIs** -listaan lisätään `https://app.kotilo.io/api/gmail/callback`.
 2. Vie OAuth-clientin tiedosto palvelimelle:
@@ -80,8 +84,41 @@ Aja sen jälkeen kohdan 4 komento uudelleen, jotta muutos tulee voimaan.
    scp server\credentials.json root@PALVELIMEN-IP:/opt/kotilo/config/credentials.json
    ```
 
-3. Yhdistä tili alustassa: Asetukset → Isännöitsijätoimiston tiedot → Toimiston Gmail-tili.
-4. Lisää kehitysversion tiedostoon `server\.env` rivi `GMAIL_DISABLED=1`. Muuten kehitysversio ja palvelin lukevat samaa postilaatikkoa, ja sama viesti päätyy kumpaankin.
+3. Yhdistä tili alustassa painikkeella **Gmail**.
+
+### Microsoft 365 / Outlook
+
+Sovellus rekisteröidään kerran Microsoftin Azure-portaaliin. Kirjaudu toimiston Microsoft 365 -työtilillä; henkilökohtaisella tilillä (esim. @outlook.com) portaali ei avaudu ilman omaa hakemistoa.
+
+1. Avaa https://portal.azure.com → **Microsoft Entra ID → App registrations → New registration**.
+2. **Name:** Kotilo. **Supported account types:** *Accounts in any organizational directory and personal Microsoft accounts*.
+3. **Redirect URI:** tyyppi **Web**, osoite `https://app.kotilo.io/api/mail/microsoft/callback`.
+4. Kopioi **Application (client) ID**.
+5. **Certificates & secrets → New client secret** ja kopioi salaisuuden **Value** (näytetään vain kerran). Salaisuus vanhenee valitun ajan kuluttua; tee silloin uusi ja vaihda se palvelimelle.
+6. Lisää palvelimen tiedostoon `/opt/kotilo/.env`:
+
+   ```
+   MS_CLIENT_ID=kopioitu-client-id
+   MS_CLIENT_SECRET=kopioitu-salaisuus
+   MS_REDIRECT_URI=https://app.kotilo.io/api/mail/microsoft/callback
+   ```
+
+7. Aja kohdan 4 julkaisukomento uudelleen, jotta asetukset tulevat voimaan.
+8. Yhdistä tili alustassa painikkeella **Microsoft 365 / Outlook**. Jos organisaatio vaatii ylläpitäjän hyväksynnän, Microsoft pyytää sen kirjautumisen yhteydessä.
+
+Kotilo tarvitsee oikeudet lukea ja lähettää postia (Mail.ReadWrite, Mail.Send) sekä lukea tilin osoitteen (User.Read).
+
+### Muu sähköposti (IMAP/SMTP)
+
+Toimii useimpien palvelujen kanssa (oman domainin posti, Telia, Elisa, iCloud ym.) eikä vaadi palvelimen asetuksia. Valitse alustassa **Muu sähköposti (IMAP/SMTP)** ja täytä sähköpostipalvelun antamat tiedot: saapuvan postin palvelin (IMAP, portti yleensä 993) ja lähtevän postin palvelin (SMTP, portti yleensä 465 tai 587). Kotilo kokeilee yhteyden ennen tallennusta. Jos tilillä on kaksivaiheinen tunnistautuminen, käytä palvelun sovellussalasanaa.
+
+Yritysten Microsoft 365 -tileissä IMAP-kirjautuminen salasanalla on yleensä estetty; käytä niille Microsoft 365 -yhteyttä.
+
+Salasanat ja Microsoftin tunnisteet tallennetaan salattuina. Salausavain on data-levyn tiedostossa `mail-secret.key` tai muuttujassa `MAIL_SECRET_KEY`. Jos tietokanta palautetaan varmuuskopiosta uudelle levylle ilman avainta, sähköpostitilit pitää yhdistää uudelleen.
+
+### Kehitysversio
+
+Lisää kehitysversion tiedostoon `server\.env` rivi `GMAIL_DISABLED=1`. Muuten kehitysversio ja palvelin lukevat samaa postilaatikkoa, ja sama viesti päätyy kumpaankin.
 
 ## Päivittäminen
 

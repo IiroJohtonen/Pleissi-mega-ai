@@ -6,7 +6,7 @@ import { BookingCalendar } from "./Bookings";
 import { KnowledgeBase } from "./Knowledge";
 import { ParkingSpaces } from "./Parking";
 import { Residents } from "./Residents";
-import { BookingSettings, GmailAccountCard } from "./Settings";
+import { BookingSettings, MailAccountCard } from "./Settings";
 import { t } from "../i18n";
 
 export function Companies({
@@ -73,7 +73,7 @@ export function Companies({
         <button className="back-link" onClick={() => setOpenCompanyId(null)}>{t("← Kaikki taloyhtiöt")}</button>
 
         <CompanyCard company={openCompany} onSaved={onChanged} />
-        <GmailAccountCard target={openCompany.id} />
+        <MailAccountCard target={openCompany.id} />
         <BookingSettings key={openCompany.id} companyId={openCompany.id} />
 
         <div className="card-tabs">

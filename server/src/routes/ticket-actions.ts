@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
 import { attachmentsDir, db } from "../db.js";
-import { type OutgoingAttachment, parseSender, sendGmailReply } from "../gmail.js";
+import { type OutgoingAttachment, parseSender, sendEmail } from "../mail.js";
 import { notifyResident } from "../notify.js";
 import { id, now, unsafeFileMessage } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
@@ -282,7 +282,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     });
   }
 
-  // Vastaus ketjutetaan siihen Gmail-viestiin, johon vastataan. Viestin ja sen Gmail-tunnisteen
+  // Vastaus ketjutetaan siihen sähköpostiin, johon vastataan. Viestin ja sen tunnisteen
   // yhdistää sama tallennushetki; vanhoilla viesteillä käytetään tehtävän ensimmäistä tuontia.
   const gmailImport = replyTo && inbound
     ? (db.prepare(
@@ -299,7 +299,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
 
   let sentMessageId: string;
   try {
-    const sent = await sendGmailReply({
+    const sent = await sendEmail({
       to: recipient,
       subject,
       body: parsed.data.body,
@@ -313,7 +313,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     const status = error?.status ?? error?.response?.status;
     return res.status(502).json({
       error: status === 403
-        ? "Gmail-valtuutuksesta puuttuu lähetysoikeus. Aja server-kansiossa 'node gmail-auth.js' ja kirjaudu uudelleen."
+        ? "Sähköpostitililtä puuttuu lähetysoikeus. Yhdistä tili uudelleen asetuksista."
         : "Sähköpostin lähetys epäonnistui. Yritä uudelleen."
     });
   }
