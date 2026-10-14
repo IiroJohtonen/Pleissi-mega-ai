@@ -1261,6 +1261,40 @@ type ContactRequest = {
 function ContactRequests() {
   const [requests, setRequests] = useState<ContactRequest[]>([]);
   const [error, setError] = useState("");
+  // Osoite, johon uudet pyynnöt lähetetään sähköpostina; tyhjä = ei lähetetä.
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [savedEmail, setSavedEmail] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailSaved, setEmailSaved] = useState(false);
+
+  useEffect(() => {
+    api<{ email?: string }>("/contact-settings")
+      .then(settings => {
+        setNotifyEmail(settings.email ?? "");
+        setSavedEmail(settings.email ?? "");
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function saveNotifyEmail(event: FormEvent) {
+    event.preventDefault();
+    setSavingEmail(true);
+    setEmailSaved(false);
+    setError("");
+    try {
+      const saved = await api<{ email: string }>("/contact-settings", {
+        method: "PUT",
+        body: JSON.stringify({ email: notifyEmail.trim() })
+      });
+      setNotifyEmail(saved.email);
+      setSavedEmail(saved.email);
+      setEmailSaved(true);
+    } catch (caught) {
+      setError(errorMessage(caught, t("Osoitteen tallennus epäonnistui.")));
+    } finally {
+      setSavingEmail(false);
+    }
+  }
 
   async function load() {
     try {
@@ -1289,6 +1323,27 @@ function ContactRequests() {
     <div className="settings-card contact-requests">
       <CollapseSection id="contact-requests" title={t("Yhteydenottopyynnöt")}>
         <p className="muted">{t("Kotisivun lomakkeella jätetyt yhteystiedot, uusin ensin.")}</p>
+        <form className="ticket-form contact-notify" onSubmit={saveNotifyEmail}>
+          <label>
+            <span>{t("Lähetä uudet pyynnöt sähköpostiin")}</span>
+            <input
+              type="email"
+              value={notifyEmail}
+              onChange={event => { setNotifyEmail(event.target.value); setEmailSaved(false); }}
+              placeholder={t("esim. myynti@yritys.fi")}
+              maxLength={200}
+            />
+          </label>
+          <div className="draft-actions">
+            <button type="submit" className="primary" disabled={savingEmail || notifyEmail.trim() === savedEmail}>
+              {savingEmail ? t("Tallennetaan…") : t("Tallenna")}
+            </button>
+            {emailSaved && <span className="saved-indicator">{t("Tallennettu")}</span>}
+          </div>
+          <p className="reply-hint">
+            {t("Viesti lähtee toimiston sähköpostitililtä. Vastaus viestiin menee suoraan yhteydenottajalle. Jätä tyhjäksi, jos et halua sähköpostia.")}
+          </p>
+        </form>
         {error && <p className="send-error">{error}</p>}
         {!error && requests.length === 0 && <p className="drawer-empty">{t("Ei yhteydenottopyyntöjä.")}</p>}
         <ul>

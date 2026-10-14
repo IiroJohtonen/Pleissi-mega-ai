@@ -6,7 +6,7 @@ import {
 } from "../format";
 import { api, errorMessage, type OfficeUser, session } from "../session";
 import type { Ticket, TicketDetail } from "../types";
-import { isManagerRole, isOverdue } from "./ticket-utils";
+import { isManagerRole, isOverdue, type TicketReminder } from "./ticket-utils";
 import { t } from "../i18n";
 
 // "Anna toiselle" -nappi: avaa listan toimiston isännöitsijöistä ja vaihtaa tehtävän käsittelijän.
@@ -182,6 +182,7 @@ export function AttachmentsMenu({
 
 export function TicketCard({
   ticket,
+  reminders = [],
   compact = false,
   companyName,
   users,
@@ -192,6 +193,8 @@ export function TicketCard({
   onDecision
 }: {
   ticket: Ticket;
+  // Muistutusten syyt (määräaika lähestyy, asukas odottanut vastausta); myöhästyminen näkyy omana merkkinään.
+  reminders?: TicketReminder[];
   compact?: boolean;
   companyName?: string;
   // Käyttäjät, joille tehtävän voi antaa, ja saako kirjautunut käyttäjä antaa sen eteenpäin.
@@ -229,6 +232,11 @@ export function TicketCard({
               : null}
             {isOverdue(ticket) ? <em className="new-reply overdue" title={t("Määräaika oli {0}", formatDay(ticket.due_date))}>{t("Myöhässä")}</em> : null}
           </strong>
+          {reminders.length > 0 && (
+            <span className="ticket-row-reminders">
+              {reminders.map(reminder => <em key={reminder.kind} className={`reminder-chip reminder-${reminder.kind}`}>{reminder.text}</em>)}
+            </span>
+          )}
           {/* Kapealla näytöllä käsittelijä näkyy otsikon alla, koska sarake ei mahdu. */}
           <span className="ticket-row-assignee-line">{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
         </div>
@@ -266,7 +274,8 @@ export function TicketCard({
             <span className="assignee-pill">{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
             {hasDraft && <span className="draft-pill">{t("Luonnos tallennettu")}</span>}
             {ticket.has_new_reply ? <span className="new-reply">{t("Uusi viesti")}</span> : null}
-            {ticket.due_date && (
+            {reminders.map(reminder => <span key={reminder.kind} className={`reminder-chip reminder-${reminder.kind}`}>{reminder.text}</span>)}
+            {ticket.due_date && !reminders.some(reminder => reminder.kind === "due") && (
               <span className={isOverdue(ticket) ? "new-reply overdue" : "assignee-pill"}>
                 {isOverdue(ticket) ? t("Myöhässä") : t("Määräaika")} {formatDay(ticket.due_date)}
               </span>

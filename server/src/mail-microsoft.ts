@@ -292,7 +292,8 @@ export async function sendViaMicrosoft(accountId: string, input: OutgoingEmail):
     body: { contentType: "Text", content: input.body },
     toRecipients: recipientsOf(input.to),
     ccRecipients: recipientsOf(input.cc),
-    bccRecipients: recipientsOf(input.bcc)
+    bccRecipients: recipientsOf(input.bcc),
+    ...(input.replyTo ? { replyTo: recipientsOf(input.replyTo) } : {})
   };
 
   let draftId = "";

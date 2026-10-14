@@ -1,4 +1,5 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
+import { api, errorMessage } from "../session";
 import type { Company } from "../types";
 import { t } from "../i18n";
 
@@ -196,6 +197,130 @@ export function TicketCreateModal({
             <button className="primary" type="submit" disabled={submitting || !subject.trim() || !summary.trim()}>
               {submitting ? t("Luodaan…") : t("Luo tehtävä")}
             </button>
+          </div>
+        </form>
+      </aside>
+    </div>
+  );
+}
+
+type Apartment = { id: string; apartment_number: string; address: string };
+
+// Uusi asukas tehtävän sähköpostin lähettäjästä. Nimi ja sähköposti täytetään viestistä valmiiksi;
+// asunto valitaan taloyhtiön asunnoista tai kirjoitetaan uusi.
+export function CreateResidentModal({
+  companyId,
+  companyName,
+  initialName,
+  initialEmail,
+  onClose,
+  onCreated
+}: {
+  companyId: string;
+  companyName?: string;
+  initialName: string;
+  initialEmail: string;
+  onClose: () => void;
+  onCreated: (residentId: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(initialName);
+  const [email, setEmail] = useState(initialEmail);
+  const [apartments, setApartments] = useState<Apartment[]>([]);
+  // Valitun asunnon tunniste; "new" = uusi asunto, jonka osoite ja numero kirjoitetaan.
+  const [apartmentId, setApartmentId] = useState("new");
+  const [address, setAddress] = useState("");
+  const [apartmentNumber, setApartmentNumber] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api<Apartment[]>(`/companies/${encodeURIComponent(companyId)}/apartments`)
+      .then(loaded => {
+        setApartments(loaded);
+        if (loaded.length > 0) setApartmentId(loaded[0].id);
+      })
+      .catch(() => setApartments([]));
+  }, [companyId]);
+
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => event.key === "Escape" && !submitting && onClose();
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [onClose, submitting]);
+
+  const apartment = apartments.find(item => item.id === apartmentId);
+  const finalAddress = apartment ? apartment.address : address.trim();
+  const finalNumber = apartment ? apartment.apartment_number : apartmentNumber.trim();
+  const ready = name.trim() && finalAddress && finalNumber;
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!ready) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const created = await api<{ residentId: string }>(`/companies/${encodeURIComponent(companyId)}/residents`, {
+        method: "POST",
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), address: finalAddress, apartmentNumber: finalNumber })
+      });
+      await onCreated(created.residentId);
+    } catch (submitError) {
+      setError(errorMessage(submitError, t("Asukkaan lisääminen epäonnistui.")));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="overlay skip-overlay" onClick={() => !submitting && onClose()}>
+      <aside
+        className="drawer skip-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-resident-title"
+        onClick={event => event.stopPropagation()}
+      >
+        <button className="close" onClick={onClose} disabled={submitting} aria-label={t("Sulje")}>×</button>
+        <h2 id="create-resident-title">{t("Uusi asukas")}</h2>
+        <p className="muted">
+          {companyName ? t("Asukas lisätään taloyhtiöön {0} ja liitetään tämän tehtävän ilmoittajaksi.", companyName)
+            : t("Asukas liitetään tämän tehtävän ilmoittajaksi.")}
+        </p>
+        <form className="ticket-form" onSubmit={handleSubmit}>
+          <label>
+            <span>{t("Nimi")}</span>
+            <input value={name} onChange={event => setName(event.target.value)} autoFocus maxLength={200} />
+          </label>
+          <label>
+            <span>{t("Sähköposti")}</span>
+            <input type="email" value={email} onChange={event => setEmail(event.target.value)} maxLength={200} />
+          </label>
+          <label>
+            <span>{t("Asunto")}</span>
+            <select value={apartmentId} onChange={event => setApartmentId(event.target.value)}>
+              {apartments.map(item => (
+                <option key={item.id} value={item.id}>{item.apartment_number} · {item.address}</option>
+              ))}
+              <option value="new">{t("Uusi asunto…")}</option>
+            </select>
+          </label>
+          {!apartment && (
+            <div className="signature-fields">
+              <label>
+                <span>{t("Osoite")}</span>
+                <input value={address} onChange={event => setAddress(event.target.value)} placeholder={t("Esim. Koivikkotie 10")} maxLength={200} />
+              </label>
+              <label>
+                <span>{t("Asunto")}</span>
+                <input value={apartmentNumber} onChange={event => setApartmentNumber(event.target.value)} placeholder={t("Esim. A 12")} maxLength={40} />
+              </label>
+            </div>
+          )}
+          {error && <p className="send-error">{error}</p>}
+          <div className="draft-actions">
+            <button className="primary" type="submit" disabled={submitting || !ready}>
+              {submitting ? t("Tallennetaan…") : t("Lisää asukas")}
+            </button>
+            <button type="button" onClick={onClose} disabled={submitting}>{t("Peruuta")}</button>
           </div>
         </form>
       </aside>

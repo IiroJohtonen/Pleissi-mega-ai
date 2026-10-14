@@ -3664,48 +3664,52 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .signature-preview { display: grid; gap: 2px; }
 .signature-preview > span { color: #4d627a; font-size: 12px; font-weight: 700; }
 
-/* Päätösjonon muistutukset */
-.reminders { margin: 0 0 22px; }
-
-.reminders ul {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* Muistutukset: laskuri päätösjonossa ja syyt tehtäväkorteissa */
+.queue-summary.queue-summary-large > button.reminder-box.active {
+  border-color: #e6c46a;
+  background: linear-gradient(180deg, #fffaf0 0%, #fff4dc 100%);
 }
 
-.reminders li button {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #e6d3a3;
-  border-left: 4px solid #d9a21b;
-  border-radius: 10px;
-  background: #fffaf0;
-  text-align: left;
-}
+.queue-summary.queue-summary-large > button.reminder-box.active strong { color: #a86b00; }
 
-.reminders li button:hover { border-color: #d9a21b; }
-
-.reminder-ticket { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.reminder-ticket small { flex: none; color: #747a80; font-weight: 700; }
-.reminder-ticket strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.reminder-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.reminder-reasons em {
-  padding: 2px 9px;
+.reminder-chip {
+  padding: 2px 8px;
   border-radius: 99px;
-  font-size: 12px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 700;
+  white-space: nowrap;
 }
+
+.ticket-row-main .ticket-row-reminders { display: flex; flex-wrap: wrap; gap: 4px; overflow: visible; white-space: normal; }
 
 .reminder-overdue { background: #fbe3df; color: #9c2f1f; }
 .reminder-due { background: #fdf0cf; color: #7a5600; }
 .reminder-waiting { background: #e3edf8; color: #28548f; }
+
+/* Tehtävän linkittämätön lähettäjä ja pikanappi asukkaan lisäämiseen */
+.sender-contacts { display: grid; gap: 4px; }
+.sender-contacts > small { color: #747a80; font-size: 11px; }
+
+.sender-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.sender-contact > span { overflow-wrap: anywhere; }
+
+.sender-action {
+  flex: none;
+  padding: 2px 10px;
+  border: 1px solid #b9cbe0;
+  border-radius: 99px;
+  background: #eef4fb;
+  color: #28548f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sender-action:hover:not(:disabled) { border-color: #3f7fbf; background: #e2edf9; }

@@ -591,6 +591,10 @@ for (const column of ["reminder_emails", "retention_months", "ai_priority", "ai_
     db.exec(`ALTER TABLE office_settings ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`);
   }
 }
+// Osoite, johon kotisivun yhteydenottopyynnöt lähetetään sähköpostina; tyhjä = ei lähetetä.
+if (!officeColumns.some(existing => existing.name === "contact_email")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN contact_email TEXT NOT NULL DEFAULT ''");
+}
 // Muistutusten rajat päivinä: asukas on odottanut vastausta / määräaikaan on enintään näin monta päivää.
 if (!officeColumns.some(existing => existing.name === "reply_reminder_days")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN reply_reminder_days INTEGER NOT NULL DEFAULT 2");

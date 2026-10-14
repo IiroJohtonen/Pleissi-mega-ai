@@ -8,6 +8,7 @@ import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUse
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
+import { CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
 import { t } from "../i18n";
 
@@ -454,6 +455,26 @@ export function TicketDrawer({
     }
   }
 
+  // Lähettäjä, josta tehdään uusi asukas; null = kortti kiinni.
+  const [newResidentFrom, setNewResidentFrom] = useState<{ name: string; email: string } | null>(null);
+  // Linkittämättömät lähettäjät nimeksi ja osoitteeksi. Jos osoitteella on jo asukas, hänet voi linkittää suoraan.
+  const senderContacts = unlinkedSenders.map(sender => {
+    const email = sender.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? "";
+    const name = sender.replace(/<[^>]*>/, "").replace(/["']/g, "").trim();
+    return {
+      sender,
+      email,
+      name: name && name !== email ? name : "",
+      existing: email ? residents.find(resident => resident.email?.toLowerCase() === email.toLowerCase()) : undefined
+    };
+  });
+
+  async function createResidentFromSender(residentId: string) {
+    await setReporter(residentId);
+    setNewResidentFrom(null);
+    api<Resident[]>(`/companies/${encodeURIComponent(ticket.company_id)}/residents`).then(setResidents).catch(() => undefined);
+  }
+
   // Sähköposti haetaan asukastiedoista valitun ilmoittajan perusteella.
   const reporterEmail = shownReporter
     ? residents.find(r => r.id === shownReporter.id)?.email || shownReporter.email
@@ -810,10 +831,51 @@ export function TicketDrawer({
             <dd>
               {shownReporter
                 ? reporterEmail || "-"
-                : unlinkedSenders.length > 0 ? t("{0} (ei linkitetty asukkaaseen)", unlinkedSenders.join(", ")) : "-"}
+                : senderContacts.length > 0 ? (
+                  <span className="sender-contacts">
+                    {senderContacts.map(contact => (
+                      <span className="sender-contact" key={contact.sender}>
+                        <span>{contact.email || contact.sender}</span>
+                        {contact.existing ? (
+                          <button
+                            type="button"
+                            className="sender-action"
+                            disabled={linking}
+                            onClick={() => void setReporter(contact.existing!.id)}
+                            title={t("Liitä asukas {0} tämän tehtävän ilmoittajaksi", contact.existing.name)}
+                          >
+                            {t("Linkitä: {0}", contact.existing.name)}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="sender-action"
+                            disabled={linking}
+                            onClick={() => setNewResidentFrom({ name: contact.name, email: contact.email })}
+                            title={t("Lähettäjää ei löydy asukkaista. Lisää hänet asukkaaksi.")}
+                          >
+                            {t("Tee käyttäjä")}
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                    <small>{t("Ei linkitetty asukkaaseen")}</small>
+                  </span>
+                ) : "-"}
             </dd>
           </div>
         </dl>
+
+        {newResidentFrom && (
+          <CreateResidentModal
+            companyId={ticket.company_id}
+            companyName={ticket.company_name}
+            initialName={newResidentFrom.name}
+            initialEmail={newResidentFrom.email}
+            onClose={() => setNewResidentFrom(null)}
+            onCreated={createResidentFromSender}
+          />
+        )}
 
         <div className="ticket-description">
           <h3>{t("Kuvaus")}</h3>

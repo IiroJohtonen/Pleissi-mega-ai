@@ -60,10 +60,8 @@ describe("sovellus", () => {
 
   it("näyttää päätösjonon ja merkitsee myöhässä olevan tehtävän", async () => {
     await renderApp(staff("Asiakaspalvelu"));
-    // Myöhässä oleva oma tehtävä on sekä muistutuksissa että avoimissa tehtävissä.
-    expect((await screen.findAllByText("Saunavuoron varaus")).length).toBe(2);
+    expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
     expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
-    expect(screen.getByText("Määräaika ylittynyt 1.1.2026")).toBeTruthy();
     expect(screen.getByText("As Oy Koivikko")).toBeTruthy();
   });
 
@@ -88,22 +86,33 @@ describe("sovellus", () => {
     }
   });
 
-  it("nostaa päätösjonon kärkeen tehtävät, joissa asukas on odottanut vastausta", async () => {
+  it("laskee muistutukset päätösjonoon ja näyttää ne suodatettuna listana", async () => {
     const waiting = {
       ...overdueTicket, id: "ticket-4", ticket_number: 4, subject: "Odottava kysymys", due_date: null, status: "waiting_manager",
       waiting_since: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     };
     const fresh = { ...waiting, id: "ticket-5", ticket_number: 5, subject: "Tuore kysymys", waiting_since: new Date().toISOString() };
     const original = responses["/tickets?companyId=demo-company"];
-    responses["/tickets?companyId=demo-company"] = [waiting, fresh];
+    const originalMine = responses["/my-tickets?companyId=demo-company"];
+    responses["/tickets?companyId=demo-company"] = [waiting, fresh, overdueTicket];
+    responses["/my-tickets?companyId=demo-company"] = [waiting, fresh, overdueTicket];
     try {
       await renderApp(staff("Isännöitsijä"), "#/queue");
-      const reminders = await screen.findByRole("region", { name: "Muistutukset" });
-      expect(reminders.textContent).toContain("Odottava kysymys");
-      expect(reminders.textContent).toContain("Asukas odottanut vastausta 3 päivää");
-      expect(reminders.textContent).not.toContain("Tuore kysymys");
+      const box = await screen.findByTitle("Näytä omat tehtävät, jotka vaativat huomiota");
+      // Odottava kysymys ja myöhässä oleva tehtävä; tuore kysymys ei vielä.
+      await vi.waitFor(() => expect(box.querySelector("strong")?.textContent).toBe("2"));
+      // Avoimen tehtävän kortissa näkyy myöhästyminen.
+      expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
+
+      fireEvent.click(box);
+      expect(window.location.hash).toBe("#/my-tickets");
+      expect(await screen.findByText("Odottava kysymys")).toBeTruthy();
+      expect(screen.getByText("Asukas odottanut 3 päivää")).toBeTruthy();
+      expect(screen.getByText("Saunavuoron varaus")).toBeTruthy();
+      expect(screen.queryByText("Tuore kysymys")).toBeNull();
     } finally {
       responses["/tickets?companyId=demo-company"] = original;
+      responses["/my-tickets?companyId=demo-company"] = originalMine;
     }
   });
 
@@ -427,6 +436,44 @@ describe("sovellus", () => {
       URL.createObjectURL = createObjectURL;
       URL.revokeObjectURL = revokeObjectURL;
       delete responses["/tickets/ticket-1"];
+    }
+  });
+
+  it("tekee tuntemattomasta lähettäjästä asukkaan ja liittää hänet ilmoittajaksi", async () => {
+    const detail = {
+      ticket: { ...overdueTicket, company_name: "As Oy Koivikko" },
+      messages: [{ id: "m1", direction: "inbound", sender: "Uusi Asukas <uusi@example.com>", subject: "Kysymys", body: "Hei", created_at: "2026-10-14T10:00:00Z", channel: "email" }],
+      audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [], replyAccounts: [], signature: ""
+    };
+    responses["/tickets/ticket-1"] = detail;
+    responses["/companies/demo-company/apartments"] = [{ id: "apt-1", apartment_number: "A 12", address: "Koivikkotie 10" }];
+    try {
+      const calls = mockApi();
+      const base = globalThis.fetch;
+      vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await base(input, init);
+        return init?.method === "POST" && String(input).endsWith("/companies/demo-company/residents")
+          ? new Response(JSON.stringify({ ok: true, residentId: "resident-new" }), { status: 201, headers: { "Content-Type": "application/json" } })
+          : response;
+      }));
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      fireEvent.click(await screen.findByRole("button", { name: "Tee käyttäjä" }));
+
+      const dialog = screen.getByRole("dialog", { name: "Uusi asukas" });
+      expect((screen.getByLabelText("Nimi") as HTMLInputElement).value).toBe("Uusi Asukas");
+      expect((dialog.querySelector("input[type=email]") as HTMLInputElement).value).toBe("uusi@example.com");
+      await vi.waitFor(() => expect((dialog.querySelector("select") as HTMLSelectElement).value).toBe("apt-1"));
+      fireEvent.click(screen.getByRole("button", { name: "Lisää asukas" }));
+
+      await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets/ticket-1/reporters"))).toBe(true));
+      const created = calls.find(request => request.method === "POST" && request.url.endsWith("/companies/demo-company/residents"));
+      expect(JSON.parse(created?.body ?? "{}")).toEqual({ name: "Uusi Asukas", email: "uusi@example.com", address: "Koivikkotie 10", apartmentNumber: "A 12" });
+      const linked = calls.find(request => request.url.endsWith("/tickets/ticket-1/reporters"));
+      expect(JSON.parse(linked?.body ?? "{}").residentId).toBe("resident-new");
+      await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Uusi asukas" })).toBeNull());
+    } finally {
+      delete responses["/tickets/ticket-1"];
+      delete responses["/companies/demo-company/apartments"];
     }
   });
 

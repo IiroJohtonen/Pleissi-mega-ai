@@ -45,6 +45,8 @@ export type OutgoingEmail = {
   to?: string;
   // Kopion saajat näkyvät muille vastaanottajille.
   cc?: string;
+  // Osoite, johon vastaukset menevät (pelkkä sähköpostiosoite).
+  replyTo?: string;
   // Piilokopion saajat eivät näe toistensa osoitteita.
   bcc?: string;
   subject: string;

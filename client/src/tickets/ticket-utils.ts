@@ -73,7 +73,7 @@ export function ticketReminders(ticket: Ticket, settings: ReminderSettings, now 
   if (ticket.waiting_since) {
     const days = Math.floor((now.getTime() - new Date(ticket.waiting_since).getTime()) / DAY_MS);
     if (days >= settings.replyDays) {
-      reminders.push({ kind: "waiting", text: days === 1 ? t("Asukas odottanut vastausta 1 päivän") : t("Asukas odottanut vastausta {0} päivää", days) });
+      reminders.push({ kind: "waiting", text: days === 1 ? t("Asukas odottanut 1 päivän") : t("Asukas odottanut {0} päivää", days) });
     }
   }
   return reminders;
