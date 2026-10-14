@@ -2178,6 +2178,9 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   cursor: pointer;
 }
 
+/* Lomakkeen label-tyyli (grid) ei saa kumota kytkinrivin asettelua. */
+.ticket-form label.switch-row { display: flex; gap: 16px; }
+
 .switch-row strong { display: block; font-size: 13px; color: #1d2329; }
 .switch-row small { display: block; margin-top: 1px; color: #747a80; font-size: 12px; }
 .switch-row input { position: absolute; opacity: 0; width: 0; height: 0; }

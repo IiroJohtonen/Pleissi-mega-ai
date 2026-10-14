@@ -1,0 +1,6 @@
+/* Tumman tilan käsin säädetyt tyylit. Nämä ohittavat generoidun styles-dark.css-tiedoston. */
+
+/* Kytkin: vaalea nuppi ja erottuva ura tummalla pohjalla. */
+:root[data-theme="dark"] .switch-row i { background: #3a4757; }
+:root[data-theme="dark"] .switch-row i::after { background: #e9edf2; }
+:root[data-theme="dark"] .switch-row input:checked + i { background: #4f8fd0; }
