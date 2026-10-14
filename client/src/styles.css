@@ -3429,3 +3429,56 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .booking-request-actions { width: 100%; }
   .booking-request-actions button { flex: 1; min-height: 44px; }
 }
+
+/* Päätösjonon värit: laatikoilla oma sävy ja kuvake, korteilla prioriteetin värinen reuna. */
+.queue-summary-large > div, .queue-summary-large > button {
+  --tone: #3f7fbf;
+  --tone-soft: #eaf2fb;
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--tone) 25%, #e1e4e7);
+  background: linear-gradient(140deg, var(--tone-soft) 0%, #fff 70%);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.queue-summary-large > *::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: var(--tone);
+}
+.queue-summary-large > button:hover {
+  transform: translateY(-2px);
+  border-color: var(--tone);
+  background: linear-gradient(140deg, var(--tone-soft) 0%, #fff 85%);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--tone) 18%, transparent);
+}
+.queue-summary-large .tone-amber { --tone: #d68a14; --tone-soft: #fdf1d8; }
+.queue-summary-large .tone-blue { --tone: #2f6fb8; --tone-soft: #e3effb; }
+.queue-summary-large .tone-violet { --tone: #7a55c7; --tone-soft: #efe8fb; }
+.queue-summary.queue-summary-large strong { color: var(--tone); }
+.summary-icon {
+  position: absolute;
+  bottom: 26px;
+  right: 24px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--tone);
+  color: #fff;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--tone) 30%, transparent);
+}
+.summary-icon svg { width: 24px; height: 24px; }
+
+.queue-subheading { display: flex; align-items: center; gap: 10px; }
+.queue-subheading b { padding: 2px 10px; border-radius: 99px; background: #171c22; color: #fff; font-size: 13px; }
+
+.ticket-card.priority-urgent { border-left: 4px solid #e08a1e; }
+.ticket-card.priority-normal { border-left: 4px solid #3f7fbf; }
+.ticket-card.priority-low { border-left: 4px solid #a7b0b9; }
+
+@media (max-width: 760px) {
+  .summary-icon { bottom: 20px; right: 18px; width: 40px; height: 40px; border-radius: 12px; }
+}

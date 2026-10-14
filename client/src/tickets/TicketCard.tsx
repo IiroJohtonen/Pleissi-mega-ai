@@ -244,7 +244,7 @@ export function TicketCard({
   }
 
   return (
-    <article className={`ticket-card ${ticket.status === "waiting_manager" ? "managed" : ""} ${ticket.priority === "emergency" ? "emergency" : ""}`} onClick={onOpen}>
+    <article className={`ticket-card priority-${ticket.priority} ${ticket.status === "waiting_manager" ? "managed" : ""} ${ticket.priority === "emergency" ? "emergency" : ""}`} onClick={onOpen}>
       <div className="ticket-top">
         <span className="ticket-company" title={t("Taloyhtiö")}>
           <TabIcon tab="companies" />
