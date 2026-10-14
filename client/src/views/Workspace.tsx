@@ -427,7 +427,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
     count: allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && ticket.status === status).length
   }));
   const ticketTypes = [...new Set(tickets.map(ticket => ticket.type))].sort((a, b) => a.localeCompare(b, "fi"));
-  const activeCompany = companies.find(company => company.id === selectedCompany);
   const showResidentsLink = residentsOpen;
 
   return (
@@ -440,14 +439,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <path d="M4 18h16" />
           </svg>
         </button>
-        <img src="/kotilo-logo.svg" alt="Kotilo" />
+        <img src="/pleissi-logo.svg" alt="Pleissi" />
         <strong>{tabTitles[tab]}</strong>
       </div>
       {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
       <aside className="sidebar">
         <button className="mobile-nav-close" onClick={() => setNavOpen(false)} aria-label={t("Sulje valikko")}>×</button>
         <a className="brand" href="#/queue" title={t("Päätösjonoon")}>
-          <img src="/kotilo-logo.svg" alt="Kotilo" />
+          <img src="/pleissi-logo.svg" alt="Pleissi" />
         </a>
 
         <nav>
@@ -687,7 +686,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "settings" ? (
             <Settings
-              company={activeCompany}
               onSaved={async () => setCompanies(await api<Company[]>("/companies"))}
             />
           ) : (

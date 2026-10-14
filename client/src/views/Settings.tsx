@@ -5,7 +5,7 @@ import { type Language, language, LANGUAGES, setLanguage } from "../i18n";
 import {
   api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession, USER_ROLES
 } from "../session";
-import type { Company, MailProvider, MailStatus } from "../types";
+import type { MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
 import { t } from "../i18n";
@@ -77,7 +77,7 @@ function CollapseSection({ id, title, action, children }: {
 }
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
-export function Settings(props: { company?: Company; onSaved: () => Promise<void> }) {
+export function Settings(props: { onSaved: () => Promise<void> }) {
   const admin = isAdmin();
   const [tab, setTab] = useState<"user" | "office">("user");
 
@@ -172,6 +172,8 @@ function UserSettings() {
         </CollapseSection>
       </form>
 
+      <MailAccountCard target="me" />
+
       <div className="settings-card ticket-form">
         <CollapseSection id="language" title={t("Kieli")}>
         <Dropdown label={t("Käyttöliittymän kieli")} value={language} options={LANGUAGES} onChange={value => setLanguage(value as Language)} />
@@ -202,11 +204,13 @@ const providerNames: Record<MailProvider, string> = {
 // sähköpostipalvelun ohjeista.
 const emptyImapForm = { email: "", imapHost: "", imapPort: "993", smtpHost: "", smtpPort: "465", username: "", password: "" };
 
-// Sähköpostitili, jolla posti lähtee ja saapuu. target "office" = toimiston tili, muuten taloyhtiön tunniste.
-// Gmail ja Microsoft 365 yhdistetään kirjautumalla uudessa välilehdessä, muut palvelut IMAP/SMTP-tiedoilla.
-// Vain pääkäyttäjä voi vaihtaa tilin.
+// Sähköpostitili, jolla posti lähtee ja saapuu. target "office" = toimiston tili, "me" = kirjautuneen
+// käyttäjän oma postilaatikko, muuten taloyhtiön tunniste. Gmail ja Microsoft 365 yhdistetään kirjautumalla
+// uudessa välilehdessä, muut palvelut IMAP/SMTP-tiedoilla. Oman laatikon yhdistää käyttäjä itse,
+// toimiston ja taloyhtiön tilin vain pääkäyttäjä.
 export function MailAccountCard({ target }: { target: string }) {
   const office = target === "office";
+  const personal = target === "me";
   const [status, setStatus] = useState<MailStatus | null>(null);
   const [providers, setProviders] = useState<Record<MailProvider, boolean>>({ gmail: true, microsoft: false, imap: true });
   const [busy, setBusy] = useState(false);
@@ -218,7 +222,7 @@ export function MailAccountCard({ target }: { target: string }) {
 
   async function loadStatus() {
     try {
-      setStatus(await api<MailStatus>(office ? "/mail/status" : `/mail/status?companyId=${encodeURIComponent(target)}`));
+      setStatus(await api<MailStatus>(personal ? "/mail/status?target=me" : office ? "/mail/status" : `/mail/status?companyId=${encodeURIComponent(target)}`));
     } catch {
       setStatus({ connected: false });
     }
@@ -296,11 +300,13 @@ export function MailAccountCard({ target }: { target: string }) {
   }
 
   async function removeOwn() {
-    if (!window.confirm(t("Poistetaanko taloyhtiön oma sähköpostitili? Taloyhtiön posti kulkee sen jälkeen toimiston tilin kautta."))) return;
+    if (!window.confirm(personal
+      ? t("Poistetaanko oma sähköpostitilisi Kotilosta? Postilaatikkoon tulevista viesteistä ei enää tehdä tehtäviä.")
+      : t("Poistetaanko taloyhtiön oma sähköpostitili? Taloyhtiön posti kulkee sen jälkeen toimiston tilin kautta."))) return;
     setBusy(true);
     setError("");
     try {
-      await api(`/gmail/accounts/${encodeURIComponent(target)}`, { method: "DELETE" });
+      await api(personal ? "/mail/accounts/me" : `/gmail/accounts/${encodeURIComponent(target)}`, { method: "DELETE" });
       await loadStatus();
     } catch (removeError) {
       setError(errorMessage(removeError, t("Tilin poistaminen epäonnistui.")));
@@ -310,12 +316,16 @@ export function MailAccountCard({ target }: { target: string }) {
   }
 
   const admin = isAdmin();
-  const own = office || Boolean(status?.own);
+  const canManage = personal || admin;
+  const own = office || personal || Boolean(status?.own);
   const connectedHere = own && status?.connected;
 
   return (
     <div className="settings-card gmail-card">
-      <CollapseSection id={office ? "gmail-office" : "gmail-company"} title={office ? t("Toimiston sähköpostitili") : t("Taloyhtiön sähköpostitili")}>
+      <CollapseSection
+        id={personal ? "mail-personal" : office ? "gmail-office" : "gmail-company"}
+        title={personal ? t("Oma sähköpostitili") : office ? t("Toimiston sähköpostitili") : t("Taloyhtiön sähköpostitili")}
+      >
       {!status ? <p className="muted">{t("Tarkistetaan…")}</p> : status.connected ? (
         <>
           <p>
@@ -324,7 +334,9 @@ export function MailAccountCard({ target }: { target: string }) {
             {!own && <span className="gmail-shared">{" "}{t("· toimiston yhteinen tili")}</span>}
           </p>
           <p className="muted">
-            {office
+            {personal
+              ? t("Tähän osoitteeseen tulevista viesteistä tehdään tehtäviä, jotka annetaan sinulle. Vastaukset lähtevät tästä osoitteesta.")
+              : office
               ? t("Kotilo lukee saapuvat viestit tämän tilin postilaatikosta ja lähettää vastaukset siitä. Taloyhtiö, jolla on oma tili, käyttää omaansa.")
               : own
                 ? t("Tämän taloyhtiön viestit saapuvat tähän postilaatikkoon ja lähtevät siitä.")
@@ -334,15 +346,17 @@ export function MailAccountCard({ target }: { target: string }) {
         </>
       ) : (
         <>
-          <p className="send-error">
+          <p className={personal && !status.emailAddress ? "muted" : "send-error"}>
             {status.emailAddress
               ? t("Yhteys tiliin {0} ei toimi. Yhdistä tili uudelleen.", status.emailAddress)
-              : t("Sähköpostitiliä ei ole yhdistetty. Valitse alta sähköpostipalvelusi.")}
+              : personal
+                ? t("Yhdistä oma työsähköpostisi, niin siihen tulevista viesteistä tehdään sinulle tehtäviä ja vastaat niihin samasta osoitteesta.")
+                : t("Sähköpostitiliä ei ole yhdistetty. Valitse alta sähköpostipalvelusi.")}
           </p>
           {status.error && <p className="reply-hint">{status.error}</p>}
         </>
       )}
-      {admin ? (
+      {canManage ? (
         <>
           <p className="mail-connect-label">{connectedHere ? t("Vaihda tili:") : t("Yhdistä tili:")}</p>
           <div className="draft-actions mail-connect">
@@ -357,10 +371,12 @@ export function MailAccountCard({ target }: { target: string }) {
             <button className={`secondary ${imapOpen ? "active" : ""}`} onClick={() => { setImapOpen(!imapOpen); setError(""); }} disabled={busy}>
               {t("Muu sähköposti (IMAP/SMTP)")}
             </button>
-            {!office && status?.own && <button className="danger" onClick={() => void removeOwn()} disabled={busy}>{t("Poista oma tili")}</button>}
+            {((personal && (status?.connected || status?.emailAddress)) || (!office && !personal && status?.own)) && (
+              <button className="danger" onClick={() => void removeOwn()} disabled={busy}>{personal ? t("Poista tili") : t("Poista oma tili")}</button>
+            )}
             {waiting && <button onClick={() => void loadStatus()}>{t("Tarkista yhteys")}</button>}
           </div>
-          {!providers.microsoft && (
+          {!providers.microsoft && admin && (
             <p className="reply-hint">{t("Microsoft 365 -yhteys otetaan käyttöön palvelimen asetuksista (MS_CLIENT_ID ja MS_CLIENT_SECRET).")}</p>
           )}
           {imapOpen && (
@@ -422,19 +438,12 @@ export function MailAccountCard({ target }: { target: string }) {
   );
 }
 
-function OfficeSettings({
-  company,
-  onSaved
-}: {
-  company?: Company;
-  onSaved: () => Promise<void>;
-}) {
-  // Toimiston omat tiedot; taloyhtiöstä tällä lomakkeella muutetaan vain tehtävien vastaanotto-osoitetta.
+// Isännöitsijätoimiston omat tiedot. Ne eivät riipu valitusta taloyhtiöstä.
+function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [name, setName] = useState(MANAGEMENT_OFFICE.name);
   const [businessId, setBusinessId] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
-  const [emailAddress, setEmailAddress] = useState("");
   const [reminderEmails, setReminderEmails] = useState(false);
   const [aiPriority, setAiPriority] = useState(false);
   const [aiRelevance, setAiRelevance] = useState(false);
@@ -464,15 +473,6 @@ function OfficeSettings({
   const [error, setError] = useState("");
 
 
-  useEffect(() => {
-    setEmailAddress(company?.email_address ?? "");
-    setSaved(false);
-    setError("");
-  }, [company?.id]);
-
-  // Toimiston asetukset eivät riipu taloyhtiöstä; vain tehtävien vastaanotto-osoite on yhtiökohtainen.
-  const companyId = company?.id ?? "";
-
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const shortens = retentionMonths > 0 && (storedRetention === 0 || retentionMonths < storedRetention);
@@ -490,19 +490,6 @@ function OfficeSettings({
       });
       MANAGEMENT_OFFICE.name = office.name;
       setStoredRetention(office.retentionMonths ?? 0);
-      // Taloyhtiön omat tiedot säilyvät; vain vastaanotto-osoite päivitetään.
-      if (company && emailAddress.trim() !== (company.email_address ?? "")) {
-        await api(`/companies/${encodeURIComponent(companyId)}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            name: company.name,
-            businessId: company.business_id ?? "",
-            address: company.address ?? "",
-            phone: company.phone ?? "",
-            emailAddress
-          })
-        });
-      }
       await onSaved();
       setSaved(true);
     } catch (caught) {
@@ -546,25 +533,6 @@ function OfficeSettings({
         </label>
 
         </CollapseSection>
-
-        {company && (
-        <CollapseSection id="office-inbox" title={t("Tehtävien vastaanotto")}>
-
-        <label>
-          <span>{t("Sähköposti, johon tehtävät saapuvat (")}{company.name})</span>
-          <input
-            type="email"
-            value={emailAddress}
-            onChange={event => { setEmailAddress(event.target.value); setSaved(false); }}
-            placeholder={t("esim. asiakaspalvelu@yritys.fi")}
-          />
-        </label>
-        <p className="reply-hint">
-          {t("Tähän osoitteeseen lähetetyt viestit ohjataan tämän yhtiön tehtäviksi.")}
-        </p>
-
-        </CollapseSection>
-        )}
 
         <CollapseSection id="office-reminders" title={t("Muistutukset")}>
 
@@ -1052,6 +1020,7 @@ function OfficeUsers() {
             <div>
               <strong>{user.name}{session?.user.id === user.id ? t(" (sinä)") : ""}</strong>
               <span>{user.email}</span>
+              {user.mail_email && <span className="user-mailbox">{t("Postilaatikko: {0}", user.mail_email)}</span>}
             </div>
             <em>{t(user.role)}</em>
           </li>

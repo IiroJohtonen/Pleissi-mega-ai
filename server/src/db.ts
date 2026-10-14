@@ -499,6 +499,13 @@ for (const column of ["single_price", "monthly_price"]) {
   }
 }
 
+// Postilaatikko, jonka kautta tehtävä saapui (esim. isännöitsijän oma tili "user:<id>"). Vastaukset
+// lähetetään samasta laatikosta, jotta asukas saa ne siltä, jolle hän kirjoitti.
+const ticketMailColumns = db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];
+if (!ticketMailColumns.some(column => column.name === "mail_account_id")) {
+  db.exec("ALTER TABLE tickets ADD COLUMN mail_account_id TEXT");
+}
+
 // Sähköpostitilin palvelu: gmail, microsoft tai imap. Muut kuin salaiset asetukset (esim. IMAP-palvelin)
 // ovat JSON-muodossa settings-sarakkeessa; token-sarakkeessa on tunnisteet tai salattu salasana.
 const mailAccountColumns = db.prepare("PRAGMA table_info(gmail_accounts)").all() as { name: string }[];

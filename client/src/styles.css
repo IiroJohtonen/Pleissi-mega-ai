@@ -1783,7 +1783,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
 }
 
-.login-card img { height: 54px; justify-self: start; padding: 10px 14px; border-radius: 12px; background: #171c22; }
+.login-card img { height: 40px; justify-self: start; }
 .login-card h1 { margin: 6px 0 0; font-size: 24px; letter-spacing: -.02em; }
 .login-card > p { margin: -8px 0 4px; color: #717880; font-size: 13px; }
 .login-card label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: #4b535d; }
@@ -2364,6 +2364,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .gmail-card .draft-actions { margin-top: 14px; }
 .gmail-card .draft-actions .secondary { padding: 8px 14px; font-size: 12px; }
 .gmail-shared { color: #747a80; font-weight: 400; }
+.user-mailbox { color: #24527f !important; font-size: 11px; }
 .mail-provider { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 99px; background: #e6f1fb; color: #24527f; font-size: 11px; font-weight: 700; vertical-align: 1px; }
 .mail-connect-label { margin: 14px 0 0; color: #4b535d; font-size: 12px; font-weight: 700; }
 .gmail-card .draft-actions.mail-connect { margin-top: 6px; flex-wrap: wrap; }

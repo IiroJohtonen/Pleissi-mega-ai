@@ -2,13 +2,18 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import { simpleParser } from "mailparser";
-import { ADMIN_EMAIL, call, login, MANAGER_EMAIL, startServer, tempDir, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, MANAGER_EMAIL, startServer, tempDir, type TestServer, userByEmail } from "./helpers.js";
 
 // Moduulit avaavat tietokannan tuonnin yhteydessä, joten ne ladataan vasta väliaikaisen data-kansion jälkeen.
 async function mailModules() {
   process.env.DATA_DIR = await tempDir();
   process.env.MAIL_SECRET_KEY = "11".repeat(32);
+  // Demokanta ja toinen, sovelluksessa luotu yhtiö, jonka vastuuisännöitsijä on "isannoitsija-2".
+  const { db, seed } = await import("../src/db.js");
+  seed();
+  db.prepare("INSERT INTO companies (id, name, email_address, managed, manager_id) VALUES ('toinen-yhtio', 'As Oy Toinen', '', 1, 'isannoitsija-2')").run();
   return {
+    common: await import("../src/mail-common.js"),
     secrets: await import("../src/mail-secrets.js"),
     imap: await import("../src/mail-imap.js"),
     microsoft: await import("../src/mail-microsoft.js")
@@ -57,6 +62,29 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
       from: "posti@toimisto.fi", to: "hanna@toimisto.fi", subject: "Hätä", text: "x", headers: { "X-Kotilo-Notification": "1" }
     }).compile().build());
     assert.equal(modules.imap.isKotiloNotification(notification), true);
+  });
+
+  it("valitsee isännöitsijän omaan laatikkoon tulleelle viestille taloyhtiön", () => {
+    const { companyForUserMailbox, mailboxOwnerId, userAccountId } = modules.common;
+    assert.equal(userAccountId("abc"), "user:abc");
+    assert.equal(mailboxOwnerId("user:abc"), "abc");
+    assert.equal(mailboxOwnerId("office"), null);
+    // Tunnettu asukas: hänen taloyhtiönsä, vaikka isännöitsijä hoitaa toista yhtiötä.
+    assert.equal(companyForUserMailbox("isannoitsija-2", "MATTI@example.com"), "demo-company");
+    // Tuntematon lähettäjä: isännöitsijän ainoa oma yhtiö.
+    assert.equal(companyForUserMailbox("isannoitsija-2", "tuntematon@example.com"), "toinen-yhtio");
+    // Ei omaa yhtiötä: oletusyhtiö.
+    assert.equal(companyForUserMailbox("joku-muu", ""), "demo-company");
+  });
+
+  it("kertoo Microsoftin kirjautumisvirheen koodin ja korjauksen", () => {
+    const message = modules.microsoft.microsoftErrorMessage(
+      "AADSTS7000215: Invalid client secret provided. Ensure the secret being sent in the request is the client secret value."
+    );
+    assert.match(message, /AADSTS7000215/);
+    assert.match(message, /Value-kenttä/);
+    assert.match(modules.microsoft.microsoftErrorMessage("AADSTS999999: tuntematon"), /AADSTS999999.*Yhdistä tili uudelleen/);
+    assert.equal(modules.microsoft.microsoftErrorMessage(""), "Microsoft-kirjautuminen epäonnistui. Yhdistä tili uudelleen asetuksista.");
   });
 
   it("muuntaa Microsoft 365 -viestin tuotavaksi", async () => {
@@ -112,6 +140,36 @@ describe("sähköpostitilien yhdistäminen", () => {
     const callback = await call(server, null, "GET", "/mail/microsoft/callback?state=tuntematon&code=x");
     assert.equal(callback.status, 200);
     assert.match(String(callback.data), /vanhentunut tai virheellinen/);
+  });
+
+  it("jokainen käyttäjä voi yhdistää oman postilaatikkonsa", async () => {
+    const own = await call(server, manager, "GET", "/mail/status?target=me");
+    assert.equal(own.status, 200);
+    assert.equal(own.data.own, true);
+    assert.equal(own.data.connected, false);
+
+    // Isännöitsijä saa yrittää omaa laatikkoaan, mutta ei toimiston tiliä.
+    const refused = await call(server, manager, "POST", "/mail/imap", {
+      target: "me", email: "hanna@toimisto.fi", imapHost: "127.0.0.1", imapPort: 1, smtpHost: "127.0.0.1", smtpPort: 1, password: "x"
+    });
+    assert.equal(refused.status, 400);
+    assert.match(refused.data.error, /IMAP-palvelimeen ei saatu yhteyttä/);
+    assert.equal((await call(server, manager, "POST", "/mail/microsoft/connect", { target: "me" })).status, 200);
+    assert.equal((await call(server, manager, "DELETE", "/mail/accounts/me")).status, 404);
+  });
+
+  it("omaan laatikkoon tullut tehtävä annetaan laatikon omistajalle", async () => {
+    const owner = await userByEmail(server, admin, MANAGER_EMAIL);
+    const created = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", senderName: "Liisa Mallikas", senderEmail: "liisa@example.com",
+      subject: "Kysymys pyörävarastosta", body: "Mistä saan avaimen pyörävarastoon?",
+      sourceMessageId: "<oma-1@example.com>", assigneeId: owner.id, mailAccountId: `user:${owner.id}`
+    });
+    assert.equal(created.status, 201);
+    const ticket = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data.ticket;
+    assert.equal(ticket.assignee_id, owner.id);
+    assert.equal(ticket.status, "open");
+    assert.equal(ticket.mail_account_id, `user:${owner.id}`);
   });
 
   it("tarkistaa IMAP-tiedot ja kertoo, jos palvelimeen ei saada yhteyttä", async () => {

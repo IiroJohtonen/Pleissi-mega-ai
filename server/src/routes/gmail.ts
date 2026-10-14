@@ -2,9 +2,9 @@ import crypto from "node:crypto";
 import express, { type Request, type Response, type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
-import { requireAdmin } from "../auth.js";
+import { isAdmin, requireAdmin } from "../auth.js";
 import { connectGmailAccount, gmailAuthUrl, gmailConfigured } from "../gmail.js";
-import { getMailStatus, mailAccountFor, OFFICE_ACCOUNT } from "../mail.js";
+import { getMailStatus, mailAccountFor, OFFICE_ACCOUNT, userAccountId } from "../mail.js";
 import { disconnectMailAccount } from "../mail-common.js";
 import { connectImapAccount } from "../mail-imap.js";
 import { connectMicrosoftAccount, microsoftAuthUrl, microsoftConfigured } from "../mail-microsoft.js";
@@ -14,6 +14,11 @@ import { connectMicrosoftAccount, microsoftAuthUrl, microsoftConfigured } from "
 export const gmailRouter: Router = express.Router();
 
 async function statusRoute(req: Request, res: Response) {
+  // target=me palauttaa kirjautuneen käyttäjän oman postilaatikon.
+  if (req.query.target === "me") {
+    const accountId = userAccountId(res.locals.user?.id ?? "");
+    return res.json({ ...(await getMailStatus(accountId)), own: true });
+  }
   // Ilman taloyhtiötä palautetaan toimiston tili. Taloyhtiölle palautetaan sen käyttämä tili ja tieto,
   // onko se taloyhtiön oma (own) vai toimiston yhteinen.
   const companyId = typeof req.query.companyId === "string" ? companyIdFromContext(req.query.companyId) : null;
@@ -28,21 +33,30 @@ gmailRouter.get("/mail/providers", (_req, res) => {
   res.json({ gmail: gmailConfigured(), microsoft: microsoftConfigured(), imap: true });
 });
 
-// target = "office" tai taloyhtiön tunniste, johon pyynnön tekijällä on oikeus.
-function connectTarget(value: unknown): string | null {
-  if (value === OFFICE_ACCOUNT) return OFFICE_ACCOUNT;
-  return typeof value === "string" ? companyIdFromContext(value) : null;
+// target = "me" (käyttäjän oma postilaatikko), "office" tai taloyhtiön tunniste. Oman laatikon voi
+// yhdistää jokainen käyttäjä itse; toimiston ja taloyhtiöiden tilit vain pääkäyttäjä.
+function connectTarget(req: Request, res: Response): string | null {
+  const value = req.body?.target;
+  if (value === "me") {
+    if (res.locals.user?.id) return userAccountId(res.locals.user.id);
+  } else if (!isAdmin(res)) {
+    res.status(403).json({ error: "Tämä toiminto vaatii pääkäyttäjän oikeudet." });
+    return null;
+  } else if (value === OFFICE_ACCOUNT) {
+    return OFFICE_ACCOUNT;
+  } else if (typeof value === "string" && companyIdFromContext(value)) {
+    return value;
+  }
+  res.status(400).json({ error: "Valitse toimisto tai taloyhtiö." });
+  return null;
 }
 
 type ConnectState = { provider: "gmail" | "microsoft"; target: string; userName: string; returnTo: string; expiresAt: number };
 const connectStates = new Map<string, ConnectState>();
 
 function startConnect(req: Request, res: Response, provider: ConnectState["provider"]): string | null {
-  const target = connectTarget(req.body?.target);
-  if (!target) {
-    res.status(400).json({ error: "Valitse toimisto tai taloyhtiö." });
-    return null;
-  }
+  const target = connectTarget(req, res);
+  if (!target) return null;
   const state = crypto.randomBytes(24).toString("hex");
   const origin = typeof req.headers.origin === "string" && /^https?:\/\/[^\s/]+$/.test(req.headers.origin)
     ? req.headers.origin
@@ -52,7 +66,7 @@ function startConnect(req: Request, res: Response, provider: ConnectState["provi
 }
 
 // Gmail-tilin yhdistäminen: palauttaa Googlen kirjautumisosoitteen.
-gmailRouter.post("/gmail/connect", requireAdmin, async (req, res) => {
+gmailRouter.post("/gmail/connect", async (req, res) => {
   const state = startConnect(req, res, "gmail");
   if (!state) return;
   try {
@@ -63,7 +77,7 @@ gmailRouter.post("/gmail/connect", requireAdmin, async (req, res) => {
 });
 
 // Microsoft 365 -tilin yhdistäminen: palauttaa Microsoftin kirjautumisosoitteen.
-gmailRouter.post("/mail/microsoft/connect", requireAdmin, (req, res) => {
+gmailRouter.post("/mail/microsoft/connect", (req, res) => {
   if (!microsoftConfigured()) {
     return res.status(400).json({ error: "Microsoft 365 -yhteyttä ei ole otettu käyttöön palvelimella. Katso ohje tiedostosta deploy/server/README.md." });
   }
@@ -107,9 +121,9 @@ gmailRouter.get("/mail/microsoft/callback", (req, res) => connectCallback(req, r
 // IMAP/SMTP-tilin yhdistäminen: yhteys kokeillaan ennen tallennusta, jotta virheelliset tiedot huomataan heti.
 const hostSchema = z.string().trim().min(3).max(200).regex(/^[a-z0-9.-]+$/i, "Palvelimen osoite on virheellinen.");
 const portSchema = z.coerce.number().int().min(1).max(65535);
-gmailRouter.post("/mail/imap", requireAdmin, async (req, res) => {
-  const target = connectTarget(req.body?.target);
-  if (!target) return res.status(400).json({ error: "Valitse toimisto tai taloyhtiö." });
+gmailRouter.post("/mail/imap", async (req, res) => {
+  const target = connectTarget(req, res);
+  if (!target) return;
   const parsed = z.object({
     email: z.string().trim().email().max(200),
     imapHost: hostSchema,
@@ -140,5 +154,16 @@ gmailRouter.delete("/gmail/accounts/:companyId", requireAdmin, (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId || req.params.companyId === OFFICE_ACCOUNT) return res.status(400).json({ error: "Toimiston tiliä ei voi poistaa; vaihda se toiseen." });
   if (!disconnectMailAccount(companyId)) return res.status(404).json({ error: "Taloyhtiöllä ei ole omaa sähköpostitiliä." });
+  res.json({ ok: true });
+});
+
+// Käyttäjän oman postilaatikon poisto. Pääkäyttäjä voi poistaa minkä tahansa käyttäjän laatikon.
+gmailRouter.delete("/mail/accounts/me", (_req, res) => {
+  if (!disconnectMailAccount(userAccountId(res.locals.user?.id ?? ""))) return res.status(404).json({ error: "Sinulla ei ole yhdistettyä sähköpostitiliä." });
+  res.json({ ok: true });
+});
+
+gmailRouter.delete("/mail/accounts/user/:userId", requireAdmin, (req: Request<{ userId: string }>, res) => {
+  if (!disconnectMailAccount(userAccountId(req.params.userId))) return res.status(404).json({ error: "Käyttäjällä ei ole yhdistettyä sähköpostitiliä." });
   res.json({ ok: true });
 });

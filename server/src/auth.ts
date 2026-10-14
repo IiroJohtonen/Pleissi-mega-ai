@@ -356,7 +356,12 @@ authRouter.get("/auth/me", (_req, res) => {
 });
 
 authRouter.get("/users", (_req, res) => {
-  res.json(db.prepare("SELECT id, name, email, role FROM users ORDER BY name").all());
+  // mail_email = käyttäjän oman postilaatikon osoite, jos hän on yhdistänyt sellaisen.
+  res.json(db.prepare(`
+    SELECT u.id, u.name, u.email, u.role, m.email AS mail_email
+    FROM users u LEFT JOIN gmail_accounts m ON m.id = 'user:' || u.id
+    ORDER BY u.name
+  `).all());
 });
 
 authRouter.post("/users", requireAdmin, (req, res) => {
@@ -461,6 +466,7 @@ authRouter.delete("/users/:id", requireAdmin, (req, res) => {
     db.prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
     db.prepare("DELETE FROM password_resets WHERE kind = 'user' AND subject_id = ?").run(user.id);
     db.prepare("DELETE FROM reminder_log WHERE user_id = ?").run(user.id);
+    db.prepare("DELETE FROM gmail_accounts WHERE id = ?").run(`user:${user.id}`);
     db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
       `audit-${crypto.randomUUID()}`, null, actor.name, "user_deleted",

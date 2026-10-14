@@ -22,7 +22,11 @@ const inboundSchema = z.object({
   sourceMessageId: z.string().optional(),
   // Saman sähköpostiketjun aiempien viestien tunnisteet; niiden avulla vastaus löytää tehtävänsä.
   threadMessageIds: z.array(z.string()).max(200).optional(),
-  recipientEmails: z.array(z.string()).optional()
+  recipientEmails: z.array(z.string()).optional(),
+  // Isännöitsijän omaan postilaatikkoon tullut viesti annetaan suoraan hänelle, ja vastaukset
+  // lähetetään samasta laatikosta.
+  assigneeId: z.string().optional(),
+  mailAccountId: z.string().optional()
 });
 
 inboundRouter.post("/inbound/messages", async (req, res) => {
@@ -163,7 +167,19 @@ if (input.sourceMessageId) {
     timestamp
   );
 
-  if (!filtered) assignToCompanyManager(ticketId, companyId);
+  const mailboxOwner = input.assigneeId
+    ? db.prepare("SELECT id FROM users WHERE id = ?").get(input.assigneeId) as { id: string } | undefined
+    : undefined;
+  if (filtered) {
+    // Suodatettu viesti ei mene kenenkään käsiteltäväksi.
+  } else if (mailboxOwner) {
+    db.prepare("UPDATE tickets SET assignee_id = ? WHERE id = ?").run(mailboxOwner.id, ticketId);
+  } else {
+    assignToCompanyManager(ticketId, companyId);
+  }
+  if (input.mailAccountId) {
+    db.prepare("UPDATE tickets SET mail_account_id = ? WHERE id = ?").run(input.mailAccountId, ticketId);
+  }
 
   if (source) {
     db.prepare(

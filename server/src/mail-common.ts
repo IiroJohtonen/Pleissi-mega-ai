@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { AUTHORIZED_COMPANY_IDS } from "./access.js";
 import { INTERNAL_TOKEN } from "./auth.js";
 import { attachmentsDir, db } from "./db.js";
 import { assertSafeFile } from "./scan.js";
@@ -14,6 +15,15 @@ export type MailProvider = "gmail" | "microsoft" | "imap";
 // "office" on toimiston tili, muut tunnisteet ovat taloyhtiöitä. Taloyhtiö ilman omaa tiliä käyttää
 // toimiston tiliä.
 export const OFFICE_ACCOUNT = "office";
+
+// Toimiston käyttäjän oma postilaatikko: tunniste on "user:<käyttäjän id>".
+export function userAccountId(userId: string) {
+  return `user:${userId}`;
+}
+
+export function mailboxOwnerId(accountId: string): string | null {
+  return accountId.startsWith("user:") ? accountId.slice("user:".length) : null;
+}
 
 // KIITO_COMPANY_ID on muuttujan vanha nimi; se toimii edelleen.
 export const DEFAULT_COMPANY_ID = process.env.DEFAULT_COMPANY_ID || process.env.KIITO_COMPANY_ID || "demo-company";
@@ -42,6 +52,8 @@ export type OutgoingEmail = {
   attachments?: OutgoingAttachment[];
   // Taloyhtiö, jonka nimissä viesti lähtee: käytetään sen omaa tiliä, jos sellainen on.
   companyId?: string;
+  // Tietty postilaatikko (esim. isännöitsijän oma), jos tehtävä saapui sen kautta. Ohittaa taloyhtiön tilin.
+  accountId?: string;
   // Kotilon oma ilmoitus toimiston käyttäjälle: merkitään otsakkeella, jotta sitä ei tuoda tehtäväksi.
   notification?: boolean;
 };
@@ -204,8 +216,27 @@ export function skipMessage(sourceMessageId: string) {
   skippedMessageIds.add(sourceMessageId);
 }
 
+// Taloyhtiö isännöitsijän omaan laatikkoon tulleelle viestille: lähettäjän asuintalo, jos lähettäjä on
+// asukas; muuten yhtiö, jonka vastuuisännöitsijä laatikon omistaja on, jos niitä on yksi; muuten oletusyhtiö.
+export function companyForUserMailbox(userId: string, senderEmail: string): string {
+  const authorized = [...AUTHORIZED_COMPANY_IDS];
+  const inList = (column: string) => `${column} IN (${authorized.map(() => "?").join(", ") || "NULL"})`;
+  if (senderEmail) {
+    const resident = db.prepare(`
+      SELECT company_id FROM residents
+      WHERE lower(email) = lower(?) AND erased_at IS NULL AND ${inList("company_id")}
+      ORDER BY (moved_out_at IS NOT NULL), name LIMIT 1
+    `).get(senderEmail, ...authorized) as { company_id: string } | undefined;
+    if (resident) return resident.company_id;
+  }
+  const managed = db.prepare(`SELECT id FROM companies WHERE manager_id = ? AND ${inList("id")}`)
+    .all(userId, ...authorized) as { id: string }[];
+  return managed.length === 1 ? managed[0].id : DEFAULT_COMPANY_ID;
+}
+
 // Tuo yhden saapuneen viestin. Taloyhtiön oman tilin viestit kuuluvat aina sille taloyhtiölle;
-// toimiston tilin viestit ohjataan vastaanottajan osoitteen perusteella.
+// toimiston tilin viestit ohjataan vastaanottajan osoitteen perusteella. Isännöitsijän omaan
+// laatikkoon tullut viesti annetaan hänelle.
 export async function importInboundEmail(accountId: string, email: InboundEmail, label: string): Promise<boolean> {
   if (!email.body.trim()) {
     console.warn(`${label}-viesti ${email.id} ohitettiin: viestin tekstisisältö puuttuu.`);
@@ -213,11 +244,15 @@ export async function importInboundEmail(accountId: string, email: InboundEmail,
     return false;
   }
   const sender = parseSender(email.from);
+  const owner = mailboxOwnerId(accountId);
+  const target = owner
+    ? { companyId: companyForUserMailbox(owner, sender.email), assigneeId: owner, mailAccountId: accountId }
+    : { companyId: accountId === OFFICE_ACCOUNT ? DEFAULT_COMPANY_ID : accountId };
   const response = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/inbound/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-token": INTERNAL_TOKEN },
     body: JSON.stringify({
-      companyId: accountId === OFFICE_ACCOUNT ? DEFAULT_COMPANY_ID : accountId,
+      ...target,
       channel: "email",
       senderName: sender.name,
       senderEmail: sender.email || undefined,

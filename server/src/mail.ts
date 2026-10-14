@@ -1,4 +1,4 @@
-import { getGmailStatus, pollGmailAccount, sendViaGmail } from "./gmail.js";
+import { getGmailStatus, hasLegacyGmailToken, pollGmailAccount, sendViaGmail } from "./gmail.js";
 import {
   getMailAccount, lastPollError, mailAccountFor, mailEnabled, type MailProvider, OFFICE_ACCOUNT, type OutgoingEmail,
   recordPollResult
@@ -10,7 +10,7 @@ import { pollMicrosoftAccount, sendViaMicrosoft } from "./mail-microsoft.js";
 // Sähköpostin julkinen rajapinta muulle sovellukselle. Taloyhtiön posti kulkee sen omalla tilillä tai
 // toimiston tilillä, ja tilin palvelu (Gmail, Microsoft 365 tai IMAP/SMTP) valitsee toteutuksen.
 export {
-  mailAccountFor, mailEnabled, OFFICE_ACCOUNT, type OutgoingAttachment, type OutgoingEmail, parseSender
+  mailAccountFor, mailEnabled, OFFICE_ACCOUNT, userAccountId, type OutgoingAttachment, type OutgoingEmail, parseSender
 } from "./mail-common.js";
 
 const POLL_INTERVAL_MS = 20_000;
@@ -21,7 +21,7 @@ function providerOf(accountId: string): MailProvider {
 }
 
 export async function sendEmail(input: OutgoingEmail): Promise<{ id: string }> {
-  const accountId = mailAccountFor(input.companyId);
+  const accountId = input.accountId && getMailAccount(input.accountId) ? input.accountId : mailAccountFor(input.companyId);
   const provider = providerOf(accountId);
   if (provider === "imap") return sendViaImap(accountId, input);
   if (provider === "microsoft") return sendViaMicrosoft(accountId, input);
@@ -53,6 +53,8 @@ async function pollAll(): Promise<void> {
   try {
     const companyAccounts = db.prepare("SELECT id FROM gmail_accounts WHERE id != ?").all(OFFICE_ACCOUNT) as { id: string }[];
     for (const accountId of [OFFICE_ACCOUNT, ...companyAccounts.map(account => account.id)]) {
+      // Toimistolle ei ole vielä yhdistetty tiliä: tarkistettavaa ei ole, eikä lokia täytetä virheillä.
+      if (!getMailAccount(accountId) && !hasLegacyGmailToken()) continue;
       const provider = providerOf(accountId);
       try {
         if (provider === "imap") await pollImapAccount(accountId);

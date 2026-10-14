@@ -9,7 +9,8 @@ export const MANAGEMENT_OFFICE = {
   email: "toimisto@pohjantahti-isannointi.fi"
 };
 
-export type OfficeUser = { id: string; name: string; email: string; role: string };
+// mail_email = käyttäjän oman, Kotiloon yhdistetyn postilaatikon osoite.
+export type OfficeUser = { id: string; name: string; email: string; role: string; mail_email?: string | null };
 export type ResidentAccount = {
   id: string;
   name: string;

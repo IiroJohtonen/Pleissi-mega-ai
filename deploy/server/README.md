@@ -116,6 +116,10 @@ Yritysten Microsoft 365 -tileissä IMAP-kirjautuminen salasanalla on yleensä es
 
 Salasanat ja Microsoftin tunnisteet tallennetaan salattuina. Salausavain on data-levyn tiedostossa `mail-secret.key` tai muuttujassa `MAIL_SECRET_KEY`. Jos tietokanta palautetaan varmuuskopiosta uudelle levylle ilman avainta, sähköpostitilit pitää yhdistää uudelleen.
 
+### Käyttäjien omat postilaatikot
+
+Jokainen toimiston käyttäjä voi yhdistää oman postilaatikkonsa itse: **Asetukset → Käyttäjän asetukset → Oma sähköpostitili**. Palvelut ja ohjeet ovat samat kuin yllä. Laatikkoon tulevista viesteistä tehdään tehtäviä, jotka annetaan sen omistajalle, ja vastaukset lähtevät samasta osoitteesta. Pääkäyttäjä näkee käyttäjälistassa, kenellä on postilaatikko yhdistettynä. Kun käyttäjä poistetaan, myös hänen postilaatikkonsa yhteys poistuu.
+
 ### Kehitysversio
 
 Lisää kehitysversion tiedostoon `server\.env` rivi `GMAIL_DISABLED=1`. Muuten kehitysversio ja palvelin lukevat samaa postilaatikkoa, ja sama viesti päätyy kumpaankin.

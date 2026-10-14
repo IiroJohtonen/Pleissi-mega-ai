@@ -1280,5 +1280,13 @@ export const en: Record<string, string> = {
   "SMTP-kirjautuminen epäonnistui. Tarkista käyttäjätunnus ja salasana. Jos tilillä on kaksivaiheinen tunnistautuminen, käytä sovellussalasanaa.": "SMTP sign-in failed. Check the username and password. If the account uses two-step verification, use an app password.",
   "SMTP-palvelinta ei löytynyt. Tarkista palvelimen osoite.": "The SMTP server was not found. Check the server address.",
   "SMTP-palvelimeen ei saatu yhteyttä. Tarkista palvelimen osoite ja portti.": "Could not connect to the SMTP server. Check the server address and port.",
-  "SMTP-yhteys epäonnistui. Tarkista palvelimen osoite, portti ja tunnukset.": "The SMTP connection failed. Check the server address, port and credentials."
+  "SMTP-yhteys epäonnistui. Tarkista palvelimen osoite, portti ja tunnukset.": "The SMTP connection failed. Check the server address, port and credentials.",
+  "Poistetaanko oma sähköpostitilisi Kotilosta? Postilaatikkoon tulevista viesteistä ei enää tehdä tehtäviä.": "Remove your own email account from Kotilo? Messages arriving in the mailbox will no longer become tickets.",
+  "Oma sähköpostitili": "My email account",
+  "Tähän osoitteeseen tulevista viesteistä tehdään tehtäviä, jotka annetaan sinulle. Vastaukset lähtevät tästä osoitteesta.": "Messages sent to this address become tickets assigned to you. Replies are sent from this address.",
+  "Yhdistä oma työsähköpostisi, niin siihen tulevista viesteistä tehdään sinulle tehtäviä ja vastaat niihin samasta osoitteesta.": "Connect your work email so that messages arriving there become tickets for you and you reply from the same address.",
+  "Poista tili": "Remove account",
+  "Postilaatikko: {0}": "Mailbox: {0}",
+  "Sinulla ei ole yhdistettyä sähköpostitiliä.": "You have no connected email account.",
+  "Käyttäjällä ei ole yhdistettyä sähköpostitiliä.": "The user has no connected email account."
 };

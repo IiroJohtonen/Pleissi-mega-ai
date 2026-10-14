@@ -58,7 +58,7 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
   return (
     <div className="portal">
       <header className="portal-header">
-        <img src="/kotilo-logo.svg" alt="Kotilo" />
+        <img src="/pleissi-logo.svg" alt="Pleissi" />
         <nav className="portal-nav">
           {portalViews.map(item => (
             <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => open(item.view)}>{item.label}</button>
