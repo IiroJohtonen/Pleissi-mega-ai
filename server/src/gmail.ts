@@ -374,6 +374,7 @@ export async function sendViaGmail(accountId: string, input: OutgoingEmail): Pro
     ...(input.to ? [`To: ${input.to}`] : []),
     ...(input.cc ? [`Cc: ${input.cc}`] : []),
     ...(input.bcc ? [`Bcc: ${input.bcc}`] : []),
+    ...(input.replyTo ? [`Reply-To: ${input.replyTo}`] : []),
     `Subject: ${encodeHeaderValue(input.subject)}`,
     "MIME-Version: 1.0",
     ...(input.notification ? [`${NOTIFICATION_HEADER}: 1`, "Auto-Submitted: auto-generated"] : []),

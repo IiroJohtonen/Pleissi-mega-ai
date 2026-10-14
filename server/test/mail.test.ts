@@ -145,6 +145,7 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
       const sent = await mail.sendEmail({
         to: "matti@example.com",
         cc: "hallitus@koivikko.fi",
+        replyTo: "matti.vastaus@example.com",
         subject: "Re: Vuotava hana",
         body: "Huoltomies tulee huomenna.",
         sourceMessageId: "<ms-2@outlook.com>",
@@ -170,6 +171,7 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.equal(calls[2].body.body.content, "Huoltomies tulee huomenna.");
     assert.equal(calls[2].body.toRecipients[0].emailAddress.address, "matti@example.com");
     assert.equal(calls[2].body.ccRecipients[0].emailAddress.address, "hallitus@koivikko.fi");
+    assert.equal(calls[2].body.replyTo[0].emailAddress.address, "matti.vastaus@example.com");
     assert.equal(calls[3].body.name, "ohje.txt");
   });
 

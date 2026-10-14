@@ -205,6 +205,7 @@ export async function sendViaImap(accountId: string, input: OutgoingEmail): Prom
     to: input.to,
     cc: input.cc,
     bcc: input.bcc,
+    replyTo: input.replyTo,
     subject: input.subject,
     text: input.body,
     attachments: (input.attachments ?? []).map(attachment => ({
