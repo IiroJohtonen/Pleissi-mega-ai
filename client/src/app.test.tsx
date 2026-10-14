@@ -369,6 +369,46 @@ describe("sovellus", () => {
     }
   });
 
+  it("näyttää saapuneen viestin liitteet aikajanalla pikkukuvina", async () => {
+    const detail = {
+      ticket: { ...overdueTicket, company_name: "As Oy Koivikko" },
+      messages: [{ id: "m1", direction: "inbound", sender: "Matti <matti@example.com>", subject: "Vuoto", body: "Kuvat liitteenä", created_at: "2026-10-14T10:00:00Z", channel: "email" }],
+      audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, replyAccounts: [],
+      attachments: [
+        { id: "a1", filename: "vuoto.jpg", mime_type: "image/jpeg", size: 2048, created_at: "2026-10-14T10:00:01Z", direction: "inbound", message_id: "m1" },
+        { id: "a2", filename: "lasku.pdf", mime_type: "application/pdf", size: 4096, created_at: "2026-10-14T10:00:01Z", direction: "inbound", message_id: "m1" },
+        { id: "a3", filename: "muistio.pdf", mime_type: "application/pdf", size: 10, created_at: "2026-10-14T11:00:00Z", direction: "internal", message_id: null }
+      ]
+    };
+    responses["/tickets/ticket-1"] = detail;
+    const createObjectURL = URL.createObjectURL;
+    const revokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn(() => "blob:vuoto");
+    URL.revokeObjectURL = vi.fn();
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      const thumbnail = await screen.findByRole("button", { name: "Näytä kuva vuoto.jpg" });
+      const image = await screen.findByAltText("vuoto.jpg") as HTMLImageElement;
+      expect(image.src).toBe("blob:vuoto");
+      const imageCall = calls.find(request => request.url.endsWith("/attachments/a1?inline=1"));
+      expect(imageCall?.headers.Authorization).toBe("Bearer testitunniste");
+      // Muu liite näkyy viestin alla nimellä; sisäinen liite ei kuulu viestille.
+      const timeline = document.querySelector(".drawer-timeline")!;
+      expect(timeline.textContent).toContain("lasku.pdf");
+      expect(timeline.textContent).not.toContain("muistio.pdf");
+
+      fireEvent.click(thumbnail);
+      const preview = screen.getByRole("dialog", { name: "vuoto.jpg" });
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(preview.isConnected).toBe(false);
+    } finally {
+      URL.createObjectURL = createObjectURL;
+      URL.revokeObjectURL = revokeObjectURL;
+      delete responses["/tickets/ticket-1"];
+    }
+  });
+
   it("varoittaa ennen tehtävän poistamista ja poistaa vasta vahvistuksesta", async () => {
     const detail = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
     responses["/tickets/ticket-1"] = detail;

@@ -115,7 +115,8 @@ export type TicketDetail = {
   workOrders: WorkOrder[];
   // Taloyhtiön huoltoyhtiö, jolle työtilaus lähetetään.
   contractor: { name: string; email: string; phone: string } | null;
-  attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string }[];
+  // message_id: viesti, jonka mukana liite tuli; liite näytetään aikajanalla sen alla.
+  attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string; message_id?: string | null }[];
   // Postitilit, joilta vastauksen voi lähettää; ensimmäinen on oletus (tili, johon viesti saapui).
   replyAccounts: ReplyAccount[];
 };

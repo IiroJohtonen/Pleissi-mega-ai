@@ -42,6 +42,50 @@ describe("liitteet", () => {
     assert.equal((await fetch(`${server.url}/api/attachments/${attachmentId}?token=${admin}`)).status, 401);
   });
 
+  it("kuvan voi näyttää esikatseluna, muut liitteet vain ladataan", async () => {
+    const ticketId = await createTicket(server, admin);
+    const saved = await call(server, admin, "POST", `/tickets/${ticketId}/attachments`, {
+      attachments: [
+        { filename: "kuva.png", mimeType: "image/png", data: PNG },
+        { filename: "ohje.pdf", mimeType: "application/pdf", data: PDF }
+      ]
+    });
+    assert.equal(saved.status, 201);
+    const [imageId, pdfId] = saved.data.attachmentIds;
+    const headers = { Authorization: `Bearer ${admin}` };
+
+    const image = await fetch(`${server.url}/api/attachments/${imageId}?inline=1`, { headers });
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get("content-type"), "image/png");
+    assert.equal(image.headers.get("content-disposition"), "inline");
+    assert.equal(image.headers.get("x-content-type-options"), "nosniff");
+
+    const pdf = await fetch(`${server.url}/api/attachments/${pdfId}?inline=1`, { headers });
+    assert.equal(pdf.headers.get("content-type"), "application/octet-stream");
+    assert.match(pdf.headers.get("content-disposition") ?? "", /^attachment/);
+    assert.equal((await fetch(`${server.url}/api/attachments/${imageId}?inline=1`)).status, 401);
+  });
+
+  it("saapuneen sähköpostin liite liitetään viestiin aikajanalla", async () => {
+    const created = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", senderName: "Matti", senderEmail: "matti@example.com",
+      subject: "Kuva vuodosta", body: "Liitteenä kuva.", sourceMessageId: "<liite-1@example.com>"
+    });
+    assert.equal(created.status, 201);
+    assert.ok(created.data.messageId);
+    const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
+    assert.equal(detail.messages[0].id, created.data.messageId);
+
+    const reply = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", senderName: "Matti", senderEmail: "matti@example.com",
+      subject: "Re: Kuva vuodosta", body: "Vielä toinen.", sourceMessageId: "<liite-2@example.com>",
+      threadMessageIds: ["<liite-1@example.com>"]
+    });
+    assert.equal(reply.data.ticketId, created.data.ticketId);
+    assert.ok(reply.data.messageId);
+    assert.notEqual(reply.data.messageId, created.data.messageId);
+  });
+
   it("ajettava tiedosto hylätään päätteen ja sisällön perusteella", async () => {
     const ticketId = await createTicket(server, admin);
     const byName = await call(server, admin, "POST", `/tickets/${ticketId}/attachments`, {

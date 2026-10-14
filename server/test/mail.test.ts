@@ -171,6 +171,23 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.equal(calls[3].body.name, "ohje.txt");
   });
 
+  it("liittää vanhat liitteet aikajanan viesteihin", async () => {
+    const { linkAttachmentsToMessages } = await import("../src/routes/tickets.js");
+    const messages = [
+      { id: "m1", direction: "inbound", created_at: "2026-10-14T10:00:00.000Z", channel: "email" },
+      { id: "m2", direction: "outbound", created_at: "2026-10-14T11:00:00.000Z", channel: "email" },
+      { id: "m3", direction: "inbound", created_at: "2026-10-14T12:00:00.000Z", channel: "portal" }
+    ];
+    const linked = linkAttachmentsToMessages([
+      { id: "a1", created_at: "2026-10-14T10:00:01.500Z", direction: "inbound" },
+      { id: "a2", created_at: "2026-10-14T11:00:00.000Z", direction: "outbound" },
+      { id: "a3", created_at: "2026-10-14T12:00:00.000Z", direction: "portal" },
+      { id: "a4", created_at: "2026-10-14T12:30:00.000Z", direction: "internal" },
+      { id: "a5", created_at: "2026-10-14T12:30:00.000Z", direction: "inbound", message_id: "m1" }
+    ], messages);
+    assert.deepEqual(linked.map(attachment => attachment.message_id ?? null), ["m1", "m2", "m3", null, "m1"]);
+  });
+
   it("muuntaa Microsoft 365 -viestin tuotavaksi", async () => {
     const message = {
       id: "AAMk1",

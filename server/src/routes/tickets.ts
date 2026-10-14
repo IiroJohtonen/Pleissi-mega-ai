@@ -168,6 +168,26 @@ ticketsRouter.get("/decision-queue", (req, res) => {
   res.json(rows);
 });
 
+const PREVIEW_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]);
+
+type TicketAttachment = { id: string; created_at: string; direction?: string; message_id?: string | null };
+type TimelineMessageRow = { id: string; direction: string; created_at: string; channel?: string | null };
+
+// Liite näytetään aikajanalla sen viestin alla, jonka mukana se tuli. Vanhoilla liitteillä viestiä ei
+// ole tallennettu: portaalin viestin ja lähetetyn vastauksen liitteillä on sama tallennushetki kuin
+// viestillä, ja sähköpostin liite tallennettiin heti viestin jälkeen.
+export function linkAttachmentsToMessages<T extends TicketAttachment>(attachments: T[], messages: TimelineMessageRow[]): T[] {
+  return attachments.map(attachment => {
+    if (attachment.message_id || attachment.direction === "internal") return attachment;
+    const sameTime = messages.find(message => message.created_at === attachment.created_at);
+    const previousEmail = attachment.direction === "inbound"
+      ? messages.filter(message => message.direction === "inbound" && message.channel === "email" && message.created_at <= attachment.created_at)
+        .at(-1)
+      : undefined;
+    return { ...attachment, message_id: (sameTime ?? previousEmail)?.id ?? null };
+  });
+}
+
 ticketsRouter.get("/tickets/:id", (req, res) => {
   if (!getAuthorizedTicket(req.params.id)) {
     return res.status(404).json({ error: "Ticket not found" });
@@ -217,9 +237,11 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
     "SELECT * FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at"
   ).all(req.params.id);
 
-  const attachments = db.prepare(
-    "SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at, filename"
-  ).all(req.params.id);
+  const attachments = linkAttachmentsToMessages(
+    db.prepare("SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at, filename")
+      .all(req.params.id) as TicketAttachment[],
+    messages as TimelineMessageRow[]
+  );
 
   const workOrders = db.prepare(
     "SELECT * FROM work_orders WHERE ticket_id = ? ORDER BY ordered_at DESC"
@@ -423,10 +445,22 @@ ticketsRouter.post("/tickets/:id/notes", (req, res) => {
 
 ticketsRouter.get("/attachments/:id", (req, res) => {
   const attachment = db.prepare("SELECT * FROM attachments WHERE id = ?")
-    .get(req.params.id) as { id: string; ticket_id: string; filename: string } | undefined;
+    .get(req.params.id) as { id: string; ticket_id: string; filename: string; mime_type: string } | undefined;
 
   if (!attachment || !getAuthorizedTicket(attachment.ticket_id)) {
     return res.status(404).json({ error: "Attachment not found" });
+  }
+
+  // Aikajanan pikkukuva: vain tavalliset bittikarttakuvat näytetään selaimessa, muut ladataan tiedostona.
+  if (req.query.inline === "1" && PREVIEW_IMAGE_TYPES.has(attachment.mime_type.toLowerCase())) {
+    return res.sendFile(path.join(attachmentsDir, attachment.id), {
+      headers: {
+        "Content-Type": attachment.mime_type.toLowerCase(),
+        "Content-Disposition": "inline",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, max-age=3600"
+      }
+    });
   }
 
   res.download(path.join(attachmentsDir, attachment.id), attachment.filename, {

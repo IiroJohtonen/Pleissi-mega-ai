@@ -272,14 +272,14 @@ export async function importInboundEmail(accountId: string, email: InboundEmail,
     return false;
   }
 
-  const result = await response.json() as { ticketId?: string; duplicate?: boolean };
+  const result = await response.json() as { ticketId?: string; messageId?: string; duplicate?: boolean };
   if (result.duplicate) return false;
-  if (result.ticketId) await saveInboundAttachments(email, result.ticketId);
+  if (result.ticketId) await saveInboundAttachments(email, result.ticketId, result.messageId);
   console.log(`${label}-viesti käsitelty: "${email.subject}" (tehtävä ${result.ticketId || "luotu"})`);
   return true;
 }
 
-async function saveInboundAttachments(email: InboundEmail, ticketId: string) {
+async function saveInboundAttachments(email: InboundEmail, ticketId: string, messageId?: string) {
   let attachments: OutgoingAttachment[];
   try {
     attachments = await email.attachments();
@@ -294,10 +294,10 @@ async function saveInboundAttachments(email: InboundEmail, ticketId: string) {
       const attachmentId = `attachment-${crypto.randomUUID()}`;
       await fs.writeFile(path.join(attachmentsDir, attachmentId), attachment.content);
       db.prepare(`
-        INSERT INTO attachments (id, ticket_id, filename, mime_type, size, created_at, direction)
-        VALUES (?, ?, ?, ?, ?, ?, 'inbound')
+        INSERT INTO attachments (id, ticket_id, filename, mime_type, size, created_at, direction, message_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'inbound', ?)
       `).run(attachmentId, ticketId, attachment.filename, attachment.mimeType || "application/octet-stream",
-        attachment.content.length, new Date().toISOString());
+        attachment.content.length, new Date().toISOString(), messageId ?? null);
     } catch (error) {
       console.warn(`Liitteen "${attachment.filename}" tallennus epäonnistui:`, error instanceof Error ? error.message : error);
     }

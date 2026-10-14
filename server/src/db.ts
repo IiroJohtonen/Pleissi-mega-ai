@@ -527,6 +527,10 @@ const attachmentColumns = db.prepare("PRAGMA table_info(attachments)").all() as 
 if (!attachmentColumns.some(column => column.name === "direction")) {
   db.exec("ALTER TABLE attachments ADD COLUMN direction TEXT NOT NULL DEFAULT 'inbound'");
 }
+// Viesti, jonka mukana liite tuli; liite näytetään aikajanalla viestin alla.
+if (!attachmentColumns.some(column => column.name === "message_id")) {
+  db.exec("ALTER TABLE attachments ADD COLUMN message_id TEXT");
+}
 
 const messageColumns = db.prepare("PRAGMA table_info(messages)").all() as { name: string }[];
 if (!messageColumns.some(column => column.name === "channel")) {
