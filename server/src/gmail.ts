@@ -93,6 +93,11 @@ async function oauthConfig() {
   return config as { client_id: string; client_secret: string; redirect_uris?: string[] };
 }
 
+// Ennen tilien tallennusta tietokantaan toimiston Gmail-tunniste oli tiedostossa token.json.
+export function hasLegacyGmailToken(): boolean {
+  return existsSync(tokenPath);
+}
+
 // Gmail-yhteys on käytössä, kun Googlen OAuth-clientin tiedot on tallennettu palvelimelle.
 export function gmailConfigured(): boolean {
   return existsSync(credentialsPath);

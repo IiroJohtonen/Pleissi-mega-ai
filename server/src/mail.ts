@@ -1,4 +1,4 @@
-import { getGmailStatus, pollGmailAccount, sendViaGmail } from "./gmail.js";
+import { getGmailStatus, hasLegacyGmailToken, pollGmailAccount, sendViaGmail } from "./gmail.js";
 import {
   getMailAccount, lastPollError, mailAccountFor, mailEnabled, type MailProvider, OFFICE_ACCOUNT, type OutgoingEmail,
   recordPollResult
@@ -53,6 +53,8 @@ async function pollAll(): Promise<void> {
   try {
     const companyAccounts = db.prepare("SELECT id FROM gmail_accounts WHERE id != ?").all(OFFICE_ACCOUNT) as { id: string }[];
     for (const accountId of [OFFICE_ACCOUNT, ...companyAccounts.map(account => account.id)]) {
+      // Toimistolle ei ole vielä yhdistetty tiliä: tarkistettavaa ei ole, eikä lokia täytetä virheillä.
+      if (!getMailAccount(accountId) && !hasLegacyGmailToken()) continue;
       const provider = providerOf(accountId);
       try {
         if (provider === "imap") await pollImapAccount(accountId);
