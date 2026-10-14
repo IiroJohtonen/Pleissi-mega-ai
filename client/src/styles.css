@@ -301,6 +301,22 @@ nav button.nav-label {
 }
 
 nav button.nav-label:first-child { margin-top: 0; }
+
+/* Taloyhtiön valinta: alasivut koskevat valittua yhtiötä. */
+.nav-company { display: grid; gap: 4px; margin: 4px 0 6px 14px; }
+.nav-company span { padding-left: 2px; color: #747a80; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.nav-company select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #343d47;
+  border-radius: 8px;
+  background: #242c35;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.nav-company select:focus { outline: 2px solid #9bd3ff; outline-offset: 1px; }
 nav button.nav-label:hover { transform: none; color: #b8bdc2; }
 nav button.nav-label .tab-icon { width: 12px; height: 12px; margin-left: auto; transition: transform .15s ease; }
 nav button.nav-label.open .tab-icon { transform: rotate(180deg); }
@@ -3147,21 +3163,21 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Tavallisella kannettavan näytöllä yhdeksän saraketta ei mahdu, joten Muokattu jää ensin pois. */
 @media (max-width: 1500px) {
   .ticket-row:not(.knowledge-cols),
-  .ticket-row-header:not(.knowledge-cols),
+  .ticket-row-header:not(.knowledge-cols):not(.resident-row-header),
   .ticket-row-search:not(.knowledge-cols) { grid-template-columns: 60px minmax(150px, 1fr) 92px 100px minmax(90px, .6fr) minmax(100px, .55fr) 146px 114px; }
   .ticket-row:not(.knowledge-cols) > .date:last-child,
-  .ticket-row-header:not(.knowledge-cols) > button:last-child,
+  .ticket-row-header:not(.knowledge-cols):not(.resident-row-header) > button:last-child,
   .ticket-row-search:not(.knowledge-cols) > input:last-child { display: none; }
 }
 
 @media (max-width: 1150px) {
   .ticket-row:not(.knowledge-cols),
-  .ticket-row-header:not(.knowledge-cols),
+  .ticket-row-header:not(.knowledge-cols):not(.resident-row-header),
   .ticket-row-search:not(.knowledge-cols) { grid-template-columns: 56px minmax(160px, 1fr) 96px 104px minmax(104px, .5fr) 150px; }
   .ticket-row:not(.knowledge-cols) > .ticket-row-contact,
   .ticket-row:not(.knowledge-cols) > .date,
-  .ticket-row-header:not(.knowledge-cols) > button:nth-child(5),
-  .ticket-row-header:not(.knowledge-cols) > button:nth-last-child(-n+2),
+  .ticket-row-header:not(.knowledge-cols):not(.resident-row-header) > button:nth-child(5),
+  .ticket-row-header:not(.knowledge-cols):not(.resident-row-header) > button:nth-last-child(-n+2),
   .ticket-row-search:not(.knowledge-cols) > input:nth-child(5),
   .ticket-row-search:not(.knowledge-cols) > input:nth-last-child(-n+2) { display: none; }
 }
@@ -3170,7 +3186,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .ticket-row:not(.knowledge-cols) { grid-template-columns: 56px minmax(0, 1fr) auto auto; }
   .ticket-row:not(.knowledge-cols) > .ticket-row-assignee,
   .ticket-row:not(.knowledge-cols) > .type { display: none; }
-  .ticket-row-header:not(.knowledge-cols), .ticket-row-search:not(.knowledge-cols) { display: none; }
+  .ticket-row-header:not(.knowledge-cols):not(.resident-row-header), .ticket-row-search:not(.knowledge-cols) { display: none; }
   .ticket-row-assignee-line { display: block; }
 }
 

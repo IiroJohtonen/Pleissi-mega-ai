@@ -161,12 +161,23 @@ describe("sovellus", () => {
       await renderApp(staff("Isännöitsijä"), "#/moves");
       expect(await screen.findByText("Odottava Asukas")).toBeTruthy();
       expect(screen.queryByText("Hyväksytty Asukas")).toBeNull();
-      expect(screen.getByTitle("Odottaa käsittelyä").textContent).toBe("1");
+      expect((await screen.findByTitle("Odottaa käsittelyä")).textContent).toBe("1");
       // Yhden taloyhtiön toimistolla Taloyhtiö-saraketta ei näytetä.
       expect(screen.queryByRole("columnheader", { name: "Taloyhtiö" })).toBeNull();
     } finally {
       delete responses["/companies/demo-company/moves"];
     }
+  });
+
+  it("näyttää taloyhtiön alasivut vasta, kun taloyhtiö on valittu", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/companies");
+    fireEvent.click(await screen.findByTitle("Näytä taloyhtiöiden alasivut"));
+    const picker = screen.getByRole("combobox", { name: "Taloyhtiö" }) as HTMLSelectElement;
+    expect(picker.value).toBe("");
+    expect(screen.queryByText("Pyykkitupa")).toBeNull();
+    fireEvent.change(picker, { target: { value: "demo-company" } });
+    expect(screen.getByText("Pyykkitupa")).toBeTruthy();
+    expect(localStorage.getItem("kotilo.navCompany")).toBe("demo-company");
   });
 
   it("sulkee ja avaa alavalikon ryhmän ja muistaa valinnan", async () => {

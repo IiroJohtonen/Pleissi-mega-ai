@@ -34,6 +34,8 @@ const navGroups: { key: string; label: string; tabs: TicketTab[] }[] = [
   { key: "notices", label: t("Ilmoitukset"), tabs: ["announcements", "renovations", "meters"] }
 ];
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
+// Sivupalkissa valittu taloyhtiö, jonka asukkaat, tilat ja ilmoitukset näytetään. Valinta säilyy selaimessa.
+const NAV_COMPANY_KEY = "kotilo.navCompany";
 const subTabs = navGroups.flatMap(group => group.tabs);
 // Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
 const ownTicketStatuses = ["waiting_manager", "waiting_third_party"];
@@ -124,6 +126,31 @@ export function Workspace({ user }: { user: OfficeUser }) {
     }
   });
 
+  const [navCompanyId, setNavCompanyIdState] = useState(() => {
+    try {
+      return localStorage.getItem(NAV_COMPANY_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+  function setNavCompanyId(companyId: string) {
+    setNavCompanyIdState(companyId);
+    try {
+      localStorage.setItem(NAV_COMPANY_KEY, companyId);
+    } catch {
+      // Selaimen tallennustila ei ole käytössä; valinta säilyy vain tämän käynnin ajan.
+    }
+  }
+  const navCompany = companies.find(company => company.id === navCompanyId);
+  // Alasivut näyttävät vain valitun taloyhtiön tiedot.
+  const navCompanies = navCompany ? [navCompany] : companies;
+  const navCompanyKey = navCompany?.id ?? selectedCompany;
+
+  // Alasivulle tultaessa ilman valittua yhtiötä (esim. suoralla linkillä) valitaan tehtävänäkymän yhtiö.
+  useEffect(() => {
+    if (companies.length > 0 && subTabs.includes(tab) && !navCompany) setNavCompanyId(selectedCompany);
+  }, [tab, companies.length]);
+
   function toggleGroup(key: string) {
     const next = closedGroups.includes(key) ? closedGroups.filter(item => item !== key) : [...closedGroups, key];
     setClosedGroups(next);
@@ -146,8 +173,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   // Alavalikon laskurit: käsittelyä odottavat varaustoiveet, muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
   async function refreshNavCounts() {
-    if (companies.length === 0) return;
-    const lists = <T,>(resource: string) => Promise.all(companies.map(company =>
+    if (!navCompany) return;
+    const lists = <T,>(resource: string) => Promise.all([navCompany].map(company =>
       api<T[]>(`/companies/${encodeURIComponent(company.id)}/${resource}`).catch(() => [] as T[]))).then(all => all.flat());
     const [moves, renovations, keys, bookingRequests] = await Promise.all([
       lists<{ status: string }>("moves"),
@@ -167,7 +194,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   // Laskurit päivittyvät yhtiöiden latauduttua, näkymää vaihdettaessa ja minuutin välein.
   useEffect(() => {
     void refreshNavCounts();
-  }, [companies.length, tab, clock]);
+  }, [navCompany?.id, tab, clock]);
 
   // silent = taustapäivitys: listaa ei vaihdeta hetkeksi "Ladataan…"-tilaan.
   async function load(companyId = selectedCompany, companyList = companies, silent = false) {
@@ -478,7 +505,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
           </div>
           {showResidentsLink && (
             <div className="nav-subs">
-              {navGroups.map(group => {
+              <label className="nav-company">
+                <span>{t("Taloyhtiö")}</span>
+                <select value={navCompany?.id ?? ""} onChange={event => setNavCompanyId(event.target.value)}>
+                  <option value="" disabled>{t("Valitse taloyhtiö")}</option>
+                  {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+                </select>
+              </label>
+              {navCompany && navGroups.map(group => {
                 const open = !closedGroups.includes(group.key);
                 // Suljetun ryhmän otsikossa näkyy sen laskurien summa, jotta odottavat asiat eivät jää piiloon.
                 const hiddenCount = open ? 0 : group.tabs.reduce((sum, item) => sum + (navCounts[item] ?? 0), 0);
@@ -585,34 +619,34 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <AuditLog />
           )
           : tab === "parking" ? (
-            <ParkingSpaces companies={companies} defaultCompanyId={selectedCompany} />
+            <ParkingSpaces key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "announcements" ? (
-            <Announcements companies={companies} defaultCompanyId={selectedCompany} />
+            <Announcements key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "moves" ? (
-            <MoveNotices companies={companies} onChanged={() => void refreshNavCounts()} />
+            <MoveNotices key={navCompanyKey} companies={navCompanies} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "renovations" ? (
-            <RenovationNotices companies={companies} onChanged={() => void refreshNavCounts()} />
+            <RenovationNotices key={navCompanyKey} companies={navCompanies} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "keys" ? (
-            <KeyRegister companies={companies} defaultCompanyId={selectedCompany} onChanged={() => void refreshNavCounts()} />
+            <KeyRegister key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "meters" ? (
-            <MeterReadings companies={companies} defaultCompanyId={selectedCompany} />
+            <MeterReadings key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "waitlist" ? (
-            <Waitlists companies={companies} />
+            <Waitlists key={navCompanyKey} companies={navCompanies} />
           )
           : tab === "sauna" || tab === "laundry" ? (
             <BookingCalendar
               // Avain vaihtaa kalenterin tilan, kun siirrytään saunasta pyykkitupaan.
-              key={tab}
+              key={`${tab}-${navCompanyKey}`}
               resource={tab}
-              companyId={selectedCompany}
-              companies={companies}
-              onCompanyChange={changeCompany}
+              companyId={navCompanyKey}
+              companies={navCompanies}
+              onCompanyChange={setNavCompanyId}
               onRequestsChanged={() => void refreshNavCounts()}
             />
           )
@@ -635,9 +669,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "residents" ? (
             <Residents
-              companyId={selectedCompany}
-              companies={companies}
-              onCompanyChange={changeCompany}
+              key={navCompanyKey}
+              companyId={navCompanyKey}
+              companies={navCompanies}
               onChanged={async () => setCompanies(await api<Company[]>("/companies"))}
             />
           )
