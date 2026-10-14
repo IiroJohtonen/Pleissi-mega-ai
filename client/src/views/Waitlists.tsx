@@ -150,6 +150,7 @@ export function Waitlists({ companies }: { companies: Company[] }) {
       {open && (
         <div className="overlay">
           <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={() => setOpenId(null)} disabled={saving}>{t("← Takaisin")}</button>
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
             <h2>{open.resident_name || t("Tuntematon asukas")}</h2>
             <p className="muted">

@@ -925,6 +925,7 @@ function OfficeUsers() {
       {(editing || creating) && (
         <div className="overlay">
           <aside className="drawer form-drawer resident-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
             <button className="close" onClick={closeForm}>×</button>
             <h2>{editing ? editing.name : t("Lisää käyttäjä")}</h2>
             <p className="muted">

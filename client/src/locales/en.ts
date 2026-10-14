@@ -1238,5 +1238,6 @@ export const en: Record<string, string> = {
   "Näytä tehtävät, joilla ei ole käsittelijää": "Show tickets without an assignee",
   "tehtävää ilman käsittelijää": "tickets without an assignee",
   "ilman käsittelijää, omat tehtävät ja AI tehtävät": "unassigned, my tickets and AI tickets",
-  "Valitse taloyhtiö": "Choose a housing company"
+  "Valitse taloyhtiö": "Choose a housing company",
+  "← Takaisin": "← Back"
 };

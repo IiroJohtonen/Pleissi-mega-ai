@@ -180,6 +180,7 @@ export function MoveNotices({ companies, onChanged }: { companies: Company[]; on
       {open && (
         <div className="overlay">
           <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={() => setOpenId(null)} disabled={saving}>{t("← Takaisin")}</button>
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
             <h2>{t("Muuttoilmoitus")}</h2>
             <p className="muted">

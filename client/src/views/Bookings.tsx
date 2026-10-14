@@ -638,6 +638,7 @@ export function BookingCalendar({
       {slot && (
         <div className="overlay">
           <aside className="drawer form-drawer resident-drawer">
+            <button type="button" className="drawer-back" onClick={() => setSlot(null)}>{t("← Takaisin")}</button>
             <button className="close" onClick={() => setSlot(null)}>×</button>
             <h2>{slot.booking ? (portal && !slot.booking.mine ? t("Varattu vuoro") : t("Varaus")) : t("Uusi varaus")}</h2>
             <p className="muted">

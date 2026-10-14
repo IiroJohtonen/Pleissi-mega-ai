@@ -183,6 +183,7 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
       {open && (
         <div className="overlay">
           <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={() => setOpen(null)}>{t("← Takaisin")}</button>
             <button className="close" onClick={() => setOpen(null)}>×</button>
             <h2>{open.title}</h2>
             <p className="muted">
@@ -202,6 +203,7 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
       {creating && (
         <div className="overlay">
           <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={() => setCreating(false)} disabled={saving}>{t("← Takaisin")}</button>
             <button className="close" onClick={() => setCreating(false)} disabled={saving}>×</button>
             <h2>{t("Uusi tiedote")}</h2>
             <p className="muted">{t("Tiedote näkyy asukkaille asukasportaalissa ja lähtee haluttaessa sähköpostilla.")}</p>

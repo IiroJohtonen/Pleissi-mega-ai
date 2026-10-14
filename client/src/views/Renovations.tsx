@@ -188,6 +188,7 @@ export function RenovationNotices({ companies, onChanged }: { companies: Company
       {open && (
         <div className="overlay">
           <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={() => setOpenId(null)} disabled={saving}>{t("← Takaisin")}</button>
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
             <h2>{t("Remontti-ilmoitus")}</h2>
             <p className="muted">

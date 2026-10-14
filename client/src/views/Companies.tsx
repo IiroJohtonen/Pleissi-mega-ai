@@ -172,6 +172,7 @@ export function Companies({
       {adding && (
         <div className="overlay">
           <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
             <button className="close" onClick={closeForm}>×</button>
             <h2>{t("Lisää taloyhtiö")}</h2>
             <p className="muted">{t("Taloyhtiö tulee valittavaksi tehtävänäkymiin ja asukastietokantaan.")}</p>

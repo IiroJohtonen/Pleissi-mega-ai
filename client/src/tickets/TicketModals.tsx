@@ -138,6 +138,7 @@ export function TicketCreateModal({
   return (
     <div className="overlay">
       <aside className="drawer form-drawer">
+        <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>
         <button className="close" onClick={onClose}>×</button>
         <h2>{t("Luo uusi tehtävä")}</h2>
         <p className="muted">{t("Lisää manuaalinen tehtävä omiin tehtäviin.")}</p>

@@ -3201,10 +3201,39 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   --card-column: 880px;
   width: 100%;
   box-shadow: none;
-  padding: 34px max(34px, calc((100vw - var(--card-column)) / 2)) 48px;
+  /* Prosentit lasketaan kortin leveydestä, joten palsta pysyy keskellä myös sivupalkin vieressä. */
+  padding: 34px max(34px, calc((100% - var(--card-column)) / 2)) 48px;
+  /* Avattu tietue erottuu sivusta vaalealla taustalla; kentät ja osiot ovat valkoisia. */
+  background: #eef1f5;
 }
 .overlay > .form-drawer:not(.skip-drawer) { --card-column: 620px; }
-.overlay > .drawer:not(.skip-drawer) > .close { right: max(22px, calc((100vw - var(--card-column)) / 2 - 8px)); }
+.overlay > .drawer:not(.skip-drawer) > .close { right: max(22px, calc((100% - var(--card-column)) / 2 - 8px)); }
+.overlay > .drawer:not(.skip-drawer) .ticket-form input:not([type="checkbox"]):not([type="radio"]),
+.overlay > .drawer:not(.skip-drawer) .ticket-form select,
+.overlay > .drawer:not(.skip-drawer) .ticket-form textarea { background: #fff; }
+
+/* Takaisin-painike tietueen yläreunassa; ruksi jää oikeaan yläkulmaan. */
+.drawer-back {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 6px;
+  padding: 7px 12px;
+  border: 1px solid #d5dbe2;
+  border-radius: 8px;
+  background: #fff;
+  color: #2b333b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.drawer-back:hover { border-color: #9bd3ff; background: #f3f8fd; }
+.drawer-back:disabled { opacity: .6; cursor: default; }
+
+/* Henkilökunnan näkymässä avattu tietue jättää sivupalkin näkyviin ja käytettäväksi. */
+@media (min-width: 761px) {
+  .app .overlay:not(.skip-overlay) { left: 250px; }
+}
 
 @media (max-width: 760px) {
   .overlay > .drawer:not(.skip-drawer) { padding: 22px 16px 32px; }
