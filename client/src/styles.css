@@ -3207,3 +3207,180 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .contact-requests li small { color: #898f95; font-size: 12px; }
 .contact-requests li a { color: #28548f; }
 .contact-requests li button { flex: none; }
+
+/* Päätösjonon alaotsikko laskureiden ja listan välissä. */
+.queue-subheading { margin: 14px 0 0; color: #191f25; font-size: 20px; letter-spacing: -.01em; }
+
+/* Varaustoiveet: henkilökunnan käsittelylista ja asukkaan omat toiveet. */
+.booking-requests { display: grid; gap: 10px; padding: 18px 20px; border: 1px solid #e5d3a6; border-radius: 14px; background: #fffaf0; }
+.booking-requests.own { border-color: #e2e4e6; background: #fff; }
+.booking-requests h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
+.booking-requests h2 b { padding: 1px 8px; border-radius: 99px; background: #b7791f; color: #fff; font-size: 12px; }
+.booking-requests > .muted { margin: 0; font-size: 13px; }
+.booking-request { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; border: 1px solid #ebe2cc; border-radius: 10px; background: #fff; }
+.booking-requests.own .booking-request { border-color: #eeeff1; }
+.booking-request > div:first-child { display: grid; gap: 2px; min-width: 0; font-size: 13px; color: #4b535d; }
+.booking-request strong { color: #1d2329; font-size: 14px; }
+.booking-request strong::first-letter { text-transform: uppercase; }
+.drawer-actions.booking-request-actions, .drawer-actions.booking-request-reject { flex-wrap: wrap; align-items: center; margin-top: 0; }
+.booking-request-reject input { min-width: 220px; padding: 8px 10px; border: 1px solid #dfe3e7; border-radius: 8px; font: inherit; }
+.request-status { justify-self: start; padding: 2px 9px; border-radius: 99px; background: #fdf1d8; color: #8a5a12; font-size: 12px; font-weight: 700; }
+.request-status.approved { background: #e3f4e8; color: #23683a; }
+.request-status.rejected { background: #fbeae6; color: #9c2b1f; }
+.calendar-slot.booked.requested { border-left-color: #b7791f; }
+.calendar-slot .request-badge { display: block; color: #8a5a12; font-weight: 700; }
+.calendar-slot.booked.other:not(:disabled) { cursor: pointer; }
+.calendar-slot.booked.other:not(:disabled):hover { border-color: #b8bdc2; background: #e9ebed; }
+
+/* Asukkaan päivänäkymä puhelimella: päivävalitsin ja vuorot isoina riveinä. */
+.calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.calendar-days button {
+  display: grid;
+  gap: 1px;
+  padding: 8px 0;
+  border: 1px solid #e2e4e6;
+  border-radius: 10px;
+  background: #fff;
+  color: #4b535d;
+  font: inherit;
+}
+.calendar-days button strong { font-size: 12px; text-transform: capitalize; }
+.calendar-days button span { font-size: 11px; color: #898f95; }
+.calendar-days button.today { border-color: #9bc3ea; }
+.calendar-days button.active { border-color: #171c22; background: #171c22; color: #fff; }
+.calendar-days button.active span { color: #c9ced3; }
+.calendar-list { display: grid; gap: 8px; }
+.calendar-list-slot {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 16px;
+  border: 1px solid #e2e4e6;
+  border-radius: 12px;
+  background: #fff;
+  color: #1d2329;
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+}
+.calendar-list-slot strong { font-variant-numeric: tabular-nums; }
+.calendar-list-slot span { color: #4b535d; }
+.calendar-list-slot em { padding: 7px 12px; border-radius: 8px; background: #171c22; color: #fff; font-size: 13px; font-style: normal; font-weight: 700; }
+.calendar-list-slot.free { border-color: #b9d3ec; }
+.calendar-list-slot.free span { color: #23683a; font-weight: 600; }
+.calendar-list-slot.mine { border-color: #3f7fbf; border-left-width: 4px; background: #eaf2fb; }
+.calendar-list-slot.mine em { background: #fff; color: #28548f; border: 1px solid #b9d3ec; }
+.calendar-list-slot.other { background: #f6f7f8; }
+.calendar-list-slot.other em { background: #fff; color: #4b535d; border: 1px solid #d2d6da; }
+.calendar-list-slot.requested { border-color: #e5c07b; border-left-width: 4px; background: #fffaf0; }
+.calendar-list-slot.requested span { color: #8a5a12; font-weight: 600; }
+.calendar-list-slot.requested em { background: #fff; color: #8a5a12; border: 1px solid #e5c07b; }
+.calendar-list-slot:disabled { opacity: .55; cursor: default; }
+
+/* Asukasportaalin puhelinnavigaatio: alapalkki ja Lisää-valikko. Työpöydällä piilossa. */
+.portal-tabbar, .portal-header-home { display: none; }
+.portal-sheet-backdrop { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; background: rgba(13, 16, 20, .45); }
+.portal-sheet {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-height: 85dvh;
+  overflow-y: auto;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  background: #fff;
+}
+.portal-sheet-user { display: grid; gap: 2px; padding: 4px 4px 12px; border-bottom: 1px solid #eeeff1; margin-bottom: 4px; }
+.portal-sheet-user strong { font-size: 16px; }
+.portal-sheet-user span { color: #747a80; font-size: 13px; }
+.portal-sheet > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid #eeeff1;
+  border-radius: 12px;
+  background: #fafbfc;
+  color: #1d2329;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+.portal-sheet > button.active { border-color: #171c22; }
+.portal-sheet > button span { color: #9aa0a6; font-size: 22px; }
+.portal-sheet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.portal-sheet-actions button { min-height: 48px; font-size: 15px; }
+
+@media (max-width: 760px) {
+  .portal-header { position: sticky; top: 0; z-index: 30; flex-wrap: nowrap; padding: 10px 16px; }
+  .portal-header .portal-nav, .portal-header .portal-user { display: none; }
+  .portal-header-home { display: block; margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aab0b6; font-size: 12px; }
+  .portal-main { padding: 18px 16px calc(96px + env(safe-area-inset-bottom)); }
+
+  .portal-tabbar {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid #e2e4e6;
+    background: #fff;
+    box-shadow: 0 -6px 20px rgba(13, 16, 20, .06);
+  }
+  .portal-tabbar button {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    min-height: 54px;
+    padding: 6px 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #747a80;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .portal-tabbar svg { width: 24px; height: 24px; }
+  .portal-tabbar button:hover { background: transparent; color: #747a80; }
+  .portal-tabbar button.active, .portal-tabbar button.active:hover { color: #171c22; background: #f1f3f5; }
+  .portal .drawer .ticket-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Painikkeet ja kentät ovat sormella helppoja painaa. */
+  .portal .portal-new, .portal .drawer-actions button, .portal .portal-ticket-actions button { min-height: 48px; font-size: 15px; }
+  .portal .portal-ticket-actions, .portal .drawer-actions { display: grid; grid-template-columns: 1fr; }
+  .portal .portal-ticket-actions .portal-new, .portal-tickets-head .portal-new { width: 100%; }
+  .portal .portal-ticket-form { padding: 18px 16px; }
+  .portal .ticket-form input, .portal .ticket-form select, .portal .ticket-form textarea { min-height: 46px; }
+
+  /* Varaus- ja toiveikkuna nousee alareunasta. */
+  .portal .overlay { align-items: flex-end; z-index: 80; }
+  .portal .overlay > .drawer { height: auto; max-height: 92dvh; border-radius: 18px 18px 0 0; padding: 22px 16px calc(24px + env(safe-area-inset-bottom)); }
+
+  /* Kalenterin työkalurivi tiiviimmin. */
+  .portal .calendar-toolbar { flex-wrap: wrap; gap: 8px; }
+  .portal .calendar-toolbar .filter-toggle { display: none; }
+  .portal .calendar-week { width: 100%; justify-content: space-between; }
+  .portal .calendar-week button { min-width: 44px; min-height: 44px; }
+  .portal .calendar-week strong { min-width: 0; flex: 1; }
+  .portal .calendar-count { width: 100%; text-align: center; }
+
+  /* Taulukot korteiksi: jokainen rivi on oma korttinsa ja sarakkeen nimi näkyy arvon edellä. */
+  .portal .table-card.portal-cards { overflow: visible; border: 0; background: transparent; box-shadow: none; }
+  .portal .portal-cards > table { min-width: 0; }
+  .portal .portal-cards thead { display: none; }
+  .portal .portal-cards tbody { display: grid; gap: 10px; }
+  .portal .portal-cards tr { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #e2e4e6; border-radius: 12px; background: #fff; }
+  .portal .portal-cards td { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; padding: 0; border: 0; font-size: 14px; }
+  .portal .portal-cards td::before { content: attr(data-label); color: #898f95; font-size: 12px; font-weight: 600; }
+  .portal .portal-cards td span { display: block; }
+
+  .portal-queues { grid-template-columns: minmax(0, 1fr); }
+  .booking-request { align-items: stretch; }
+  .booking-request-actions { width: 100%; }
+  .booking-request-actions button { flex: 1; min-height: 44px; }
+}

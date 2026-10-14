@@ -132,6 +132,24 @@ CREATE TABLE IF NOT EXISTS bookings (
   FOREIGN KEY(company_id) REFERENCES companies(id)
 );
 
+-- Asukkaan toive jo varatusta vuorosta. Isännöitsijä hyväksyy (vuoro siirtyy toivojalle) tai hylkää sen.
+-- status: pending, approved, rejected tai cancelled (asukas perui).
+CREATE TABLE IF NOT EXISTS booking_requests (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  resident_id TEXT NOT NULL,
+  starts_at TEXT NOT NULL,
+  ends_at TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  decision_note TEXT NOT NULL DEFAULT '',
+  decided_by TEXT,
+  decided_at TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(company_id) REFERENCES companies(id)
+);
+
 -- Mitä vuorotyyppejä taloyhtiön tilaan saa varata. Rivin puuttuessa molemmat ovat sallittuja.
 CREATE TABLE IF NOT EXISTS booking_settings (
   company_id TEXT NOT NULL,

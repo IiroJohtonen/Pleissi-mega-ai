@@ -196,6 +196,21 @@ export function NavToggle({ open, label, onToggle }: { open: boolean; label: str
   );
 }
 
+// Onko näyttö kapea (puhelin). Päivittyy, kun ikkunan koko muuttuu.
+export function useNarrowScreen(maxWidth = 760) {
+  const query = `(max-width: ${maxWidth}px)`;
+  const [narrow, setNarrow] = useState(() => typeof window.matchMedia === "function" && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(query);
+    const update = () => setNarrow(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [query]);
+  return narrow;
+}
+
 const PAGE_SIZE = 15;
 
 // Sivuttaa listan 15 tietueen sivuihin. resetKey vaihtuu, kun listan rajaus tai järjestys muuttuu,
