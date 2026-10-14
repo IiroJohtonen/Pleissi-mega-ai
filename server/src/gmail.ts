@@ -372,6 +372,7 @@ export async function sendViaGmail(accountId: string, input: OutgoingEmail): Pro
 
   const headers = [
     ...(input.to ? [`To: ${input.to}`] : []),
+    ...(input.cc ? [`Cc: ${input.cc}`] : []),
     ...(input.bcc ? [`Bcc: ${input.bcc}`] : []),
     `Subject: ${encodeHeaderValue(input.subject)}`,
     "MIME-Version: 1.0",

@@ -5,9 +5,10 @@ import { z } from "zod";
 import { companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket } from "../access.js";
 import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
-import { mailAccountAddress, replyAccountFor } from "../mail.js";
+import { replyAccountsFor } from "../mail.js";
+import { renderSignature } from "../signature.js";
 import { alertEmergency } from "../notify.js";
-import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now } from "../util.js";
+import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL } from "../util.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -48,7 +49,7 @@ ticketsRouter.get("/tickets", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
@@ -138,7 +139,7 @@ ticketsRouter.get("/my-tickets", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
@@ -156,7 +157,7 @@ ticketsRouter.get("/decision-queue", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
@@ -167,6 +168,26 @@ ticketsRouter.get("/decision-queue", (req, res) => {
   `).all(companyId);
   res.json(rows);
 });
+
+const PREVIEW_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]);
+
+type TicketAttachment = { id: string; created_at: string; direction?: string; message_id?: string | null };
+type TimelineMessageRow = { id: string; direction: string; created_at: string; channel?: string | null };
+
+// Liite näytetään aikajanalla sen viestin alla, jonka mukana se tuli. Vanhoilla liitteillä viestiä ei
+// ole tallennettu: portaalin viestin ja lähetetyn vastauksen liitteillä on sama tallennushetki kuin
+// viestillä, ja sähköpostin liite tallennettiin heti viestin jälkeen.
+export function linkAttachmentsToMessages<T extends TicketAttachment>(attachments: T[], messages: TimelineMessageRow[]): T[] {
+  return attachments.map(attachment => {
+    if (attachment.message_id || attachment.direction === "internal") return attachment;
+    const sameTime = messages.find(message => message.created_at === attachment.created_at);
+    const previousEmail = attachment.direction === "inbound"
+      ? messages.filter(message => message.direction === "inbound" && message.channel === "email" && message.created_at <= attachment.created_at)
+        .at(-1)
+      : undefined;
+    return { ...attachment, message_id: (sameTime ?? previousEmail)?.id ?? null };
+  });
+}
 
 ticketsRouter.get("/tickets/:id", (req, res) => {
   if (!getAuthorizedTicket(req.params.id)) {
@@ -217,9 +238,11 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
     "SELECT * FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at"
   ).all(req.params.id);
 
-  const attachments = db.prepare(
-    "SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at, filename"
-  ).all(req.params.id);
+  const attachments = linkAttachmentsToMessages(
+    db.prepare("SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at, filename")
+      .all(req.params.id) as TicketAttachment[],
+    messages as TimelineMessageRow[]
+  );
 
   const workOrders = db.prepare(
     "SELECT * FROM work_orders WHERE ticket_id = ? ORDER BY ordered_at DESC"
@@ -230,10 +253,13 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
     "SELECT maintenance_name AS name, maintenance_email AS email, maintenance_phone AS phone FROM companies WHERE id = (SELECT company_id FROM tickets WHERE id = ?)"
   ).get(req.params.id);
 
-  // Osoite, josta vastaus tälle tehtävälle lähtisi; näytetään vastauslomakkeessa.
-  const replyFrom = mailAccountAddress(replyAccountFor(ticket as { company_id: string; mail_account_id?: string | null }, res.locals.user?.id));
+  // Tilit, joilta vastauksen voi lähettää; ensimmäinen on oletus.
+  const replyAccounts = replyAccountsFor(ticket as { id: string; company_id: string; mail_account_id?: string | null }, res.locals.user?.id);
 
-  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyFrom });
+  // Allekirjoitus, joka lisätään vastauksen loppuun; näytetään vastauslomakkeessa.
+  const signature = renderSignature(res.locals.user?.id);
+
+  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature });
 });
 
 ticketsRouter.put("/tickets/:id/fields", (req, res) => {
@@ -423,10 +449,22 @@ ticketsRouter.post("/tickets/:id/notes", (req, res) => {
 
 ticketsRouter.get("/attachments/:id", (req, res) => {
   const attachment = db.prepare("SELECT * FROM attachments WHERE id = ?")
-    .get(req.params.id) as { id: string; ticket_id: string; filename: string } | undefined;
+    .get(req.params.id) as { id: string; ticket_id: string; filename: string; mime_type: string } | undefined;
 
   if (!attachment || !getAuthorizedTicket(attachment.ticket_id)) {
     return res.status(404).json({ error: "Attachment not found" });
+  }
+
+  // Aikajanan pikkukuva: vain tavalliset bittikarttakuvat näytetään selaimessa, muut ladataan tiedostona.
+  if (req.query.inline === "1" && PREVIEW_IMAGE_TYPES.has(attachment.mime_type.toLowerCase())) {
+    return res.sendFile(path.join(attachmentsDir, attachment.id), {
+      headers: {
+        "Content-Type": attachment.mime_type.toLowerCase(),
+        "Content-Disposition": "inline",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, max-age=3600"
+      }
+    });
   }
 
   res.download(path.join(attachmentsDir, attachment.id), attachment.filename, {

@@ -118,6 +118,10 @@ export async function connectMicrosoftAccount(accountId: string, code: string, c
   const me = await graphFetch<{ mail?: string; userPrincipalName?: string }>(tokens.access_token, "/me?$select=mail,userPrincipalName");
   const email = me.mail || me.userPrincipalName || "";
   if (!email) throw new Error("Microsoft-tilin sähköpostiosoitetta ei saatu luettua.");
+  // Gmail-osoitteella luodun Microsoft-tilin posti menee Gmailiin, joten Microsoftin laatikko pysyy tyhjänä.
+  if (/@(gmail|googlemail)\.com$/i.test(email)) {
+    throw new Error(`Osoitteen ${email} posti tulee Gmailiin, ei Microsoftille. Yhdistä tili Gmail-painikkeella.`);
+  }
   saveMailAccount({ accountId, email, provider: "microsoft", token: encryptSecret(JSON.stringify(tokens)), connectedBy });
   return email;
 }
@@ -287,6 +291,7 @@ export async function sendViaMicrosoft(accountId: string, input: OutgoingEmail):
     subject: input.subject,
     body: { contentType: "Text", content: input.body },
     toRecipients: recipientsOf(input.to),
+    ccRecipients: recipientsOf(input.cc),
     bccRecipients: recipientsOf(input.bcc)
   };
 

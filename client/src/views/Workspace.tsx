@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
-import { priorityLabel, statusLabel, ticketStatuses } from "../format";
+import { formatTicketNumber, priorityLabel, statusLabel, ticketStatuses } from "../format";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
 import { actorName, api, logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
-  assignableUsers, canAssignTickets, compareTickets, fetchTicketDetail, isOverdue, ticketColumns, ticketColumnText,
-  type TicketSort, type TicketSortKey
+  assignableUsers, canAssignTickets, compareTickets, fetchTicketDetail, isOverdue, type ReminderSettings, ticketColumns,
+  ticketColumnText, ticketReminders, type TicketSort, type TicketSortKey
 } from "../tickets/ticket-utils";
 import { TicketCard } from "../tickets/TicketCard";
 import { TicketDrawer } from "../tickets/TicketDrawer";
@@ -58,6 +58,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [allCompanyTickets, setAllCompanyTickets] = useState<Ticket[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [, setOfficeVersion] = useState(0);
+  const [reminderSettings, setReminderSettings] = useState<ReminderSettings>({ replyDays: 2, dueDays: 1 });
   // Toimiston käyttäjät tehtävien käsittelijän näyttämistä ja vaihtamista varten.
   const [officeUsers, setOfficeUsers] = useState<OfficeUser[]>([]);
   useEffect(() => {
@@ -76,6 +77,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       .then(office => {
         MANAGEMENT_OFFICE.name = office.name;
         setOfficeVersion(version => version + 1);
+        setReminderSettings({ replyDays: office.replyReminderDays ?? 2, dueDays: office.dueReminderDays ?? 1 });
       })
       .catch(() => undefined);
   }, []);
@@ -358,6 +360,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const queueTickets = allCompanyTickets
     .filter(ticket => ticket.status === "open" && ticket.assignee_id === user.id)
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
+  // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
+  const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
+  const reminderTickets = allCompanyTickets
+    .filter(ticket => ticket.assignee_id === user.id)
+    .map(ticket => ({ ticket, reminders: ticketReminders(ticket, reminderSettings) }))
+    .filter(item => item.reminders.length > 0)
+    .sort((a, b) => reminderOrder[a.reminders[0].kind] - reminderOrder[b.reminders[0].kind]
+      || compareTickets(a.ticket, b.ticket, "priority"));
   // Kaikkien yhtiöiden keskeneräiset tehtävät, joita ei ole vielä annettu kenenkään käsiteltäväksi.
   const unassignedTickets = allCompanyTickets
     .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id)
@@ -607,7 +617,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
         <header>
           <div>
             {/* Toimiston nimi tulee isännöitsijätoimiston asetuksista ja päivittyy tallennettaessa. */}
-            <p className="eyebrow">KOTILO / {MANAGEMENT_OFFICE.name}</p>
+            <p className="eyebrow">PLEISSI / {MANAGEMENT_OFFICE.name}</p>
             <h1>{tabTitles[tab]}</h1>
           </div>
         </header>
@@ -727,6 +737,31 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   </button>
                 ))}
               </div>
+            )}
+            {tab === "queue" && reminderTickets.length > 0 && (
+              <section className="reminders" aria-label={t("Muistutukset")}>
+                <h2 className="queue-subheading">
+                  {t("Muistutukset")}
+                  <b>{reminderTickets.length}</b>
+                </h2>
+                <ul>
+                  {reminderTickets.map(({ ticket, reminders }) => (
+                    <li key={ticket.id}>
+                      <button onClick={() => openTicket(ticket.id)}>
+                        <span className="reminder-ticket">
+                          <small>#{formatTicketNumber(ticket.ticket_number)}</small>
+                          <strong>{ticket.subject}</strong>
+                        </span>
+                        <span className="reminder-reasons">
+                          {reminders.map(reminder => (
+                            <em key={reminder.kind} className={`reminder-${reminder.kind}`}>{reminder.text}</em>
+                          ))}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
             {tab === "queue" && (
               <h2 className="queue-subheading">

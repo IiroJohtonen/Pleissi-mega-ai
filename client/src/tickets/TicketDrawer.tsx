@@ -1,23 +1,121 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { FactDropdown } from "../components/common";
+import { DownloadLink, FactDropdown } from "../components/common";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
-import { actorName, api, errorMessage, isManager, type OfficeUser } from "../session";
-import type { Company, Resident, TicketDetail } from "../types";
+import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUser } from "../session";
+import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { TicketWorkOrders } from "./TicketWorkOrders";
 import { t } from "../i18n";
 
+type Attachment = TicketDetail["attachments"][number];
+
+const PREVIEW_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
+
+function isPreviewImage(attachment: Attachment) {
+  return PREVIEW_IMAGE_TYPES.includes(attachment.mime_type.toLowerCase());
+}
+
+// Kuvan pikkukuva aikajanalla. Kuva haetaan kirjautumistunnisteen kanssa, joten se ladataan
+// selaimen muistiin eikä suoraan osoitteesta.
+function AttachmentThumbnail({ attachment, onOpen }: { attachment: Attachment; onOpen: (url: string) => void }) {
+  const [url, setUrl] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let objectUrl = "";
+    let cancelled = false;
+    fetchObjectUrl(`/attachments/${encodeURIComponent(attachment.id)}?inline=1`)
+      .then(result => {
+        objectUrl = result;
+        if (cancelled) URL.revokeObjectURL(result);
+        else setUrl(result);
+      })
+      .catch(() => !cancelled && setFailed(true));
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [attachment.id]);
+
+  if (failed) return <AttachmentFile attachment={attachment} />;
+  return (
+    <button
+      className="message-thumbnail"
+      onClick={() => url && onOpen(url)}
+      title={t("Näytä kuva {0}", attachment.filename)}
+      aria-label={t("Näytä kuva {0}", attachment.filename)}
+    >
+      {url ? <img src={url} alt={attachment.filename} /> : <span className="message-thumbnail-loading" aria-hidden="true" />}
+    </button>
+  );
+}
+
+function AttachmentFile({ attachment }: { attachment: Attachment }) {
+  return (
+    <DownloadLink className="message-file" path={`/attachments/${attachment.id}`} filename={attachment.filename} title={t("Lataa liite")}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+      </svg>
+      <span>{attachment.filename}</span>
+      <small>{formatFileSize(attachment.size)}</small>
+    </DownloadLink>
+  );
+}
+
+// Viestin liitteet aikajanalla: kuvat pikkukuvina, muut tiedostot nimellä. Kuvan saa avattua isompana.
+function MessageAttachments({ attachments }: { attachments: Attachment[] }) {
+  const [preview, setPreview] = useState<{ url: string; attachment: Attachment } | null>(null);
+
+  useEffect(() => {
+    if (!preview) return;
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setPreview(null);
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [preview]);
+
+  if (attachments.length === 0) return null;
+  const images = attachments.filter(isPreviewImage);
+  const files = attachments.filter(attachment => !isPreviewImage(attachment));
+  return (
+    <div className="message-attachments">
+      {images.length > 0 && (
+        <div className="message-thumbnails">
+          {images.map(attachment => (
+            <AttachmentThumbnail key={attachment.id} attachment={attachment} onOpen={url => setPreview({ url, attachment })} />
+          ))}
+        </div>
+      )}
+      {files.map(attachment => <AttachmentFile key={attachment.id} attachment={attachment} />)}
+      {preview && (
+        <div className="image-preview" role="dialog" aria-modal="true" aria-label={preview.attachment.filename} onClick={() => setPreview(null)}>
+          <figure onClick={event => event.stopPropagation()}>
+            <img src={preview.url} alt={preview.attachment.filename} />
+            <figcaption>
+              <span>{preview.attachment.filename}</span>
+              <DownloadLink path={`/attachments/${preview.attachment.id}`} filename={preview.attachment.filename}>{t("Lataa")}</DownloadLink>
+              <button onClick={() => setPreview(null)}>{t("Sulje")}</button>
+            </figcaption>
+          </figure>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Aikajanan viesti; väkäsestä viestin saa tiivistettyä yhdelle riville.
 function TimelineMessage({
   message,
+  attachments = [],
   replying = false,
   onReply
 }: {
   message: TicketDetail["messages"][number];
+  attachments?: Attachment[];
   replying?: boolean;
   // Annetaan vain viesteille, joihin voi vastata sähköpostilla.
   onReply?: () => void;
@@ -77,6 +175,7 @@ function TimelineMessage({
           {showQuoted && <p className="message-quoted">{quoted}</p>}
         </>
       )}
+      <MessageAttachments attachments={attachments} />
     </div>
   );
 }
@@ -131,6 +230,14 @@ export function TicketDrawer({
   // Sama järjestys kuin palvelimella: ensin alkuperäinen lähettäjä, muuten linkitetyt asukkaat.
   // Aikajanalta valittu viesti, johon vastataan; ilman valintaa vastataan viimeisimpään saapuneeseen.
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  // Valittu lähettäjätili; oletuksena tili, johon tehtävän viesti saapui.
+  const [fromChoice, setFromChoice] = useState("");
+  // Kopion saajat ja allekirjoituksen lisääminen vastaukseen.
+  const [cc, setCc] = useState("");
+  const [useSignature, setUseSignature] = useState(true);
+  const fromAccountId = detail.replyAccounts.some(account => account.id === fromChoice)
+    ? fromChoice
+    : detail.replyAccounts[0]?.id ?? "";
   const replyTarget = detail.messages.find(m => m.id === replyTargetId && m.direction === "inbound") ?? null;
   const draftEditor = useRef<HTMLTextAreaElement>(null);
 
@@ -146,7 +253,8 @@ export function TicketDrawer({
 
   const recipient = (replyTarget ?? lastInbound)?.sender.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
     || detail.reporters.map(r => r.email?.trim()).filter(Boolean).join(", ");
-  const canReply = ticket.status === "waiting_manager" || ticket.status === "waiting_third_party";
+  // Vastata voi kaikkiin keskeneräisiin tehtäviin; suljettu tehtävä avataan ensin uudelleen.
+  const canReply = ticket.status !== "closed";
 
   useEffect(() => {
     setDraft(ticket.draft || "");
@@ -434,6 +542,9 @@ export function TicketDrawer({
           body: draft,
           actor: actorName(),
           messageId: replyTarget?.id,
+          fromAccountId: fromAccountId || undefined,
+          cc: cc.trim() || undefined,
+          signature: useSignature,
           attachments: await Promise.all(replyFiles.map(async file => ({
             filename: file.name,
             mimeType: file.type || "application/octet-stream",
@@ -444,6 +555,7 @@ export function TicketDrawer({
       setDraft("");
       setReplyFiles([]);
       setReplyTargetId(null);
+      setCc("");
       setSentTo(result.to);
       await onChanged();
     } catch (error) {
@@ -771,6 +883,41 @@ export function TicketDrawer({
               <button onClick={() => setReplyTargetId(null)} title={t("Peru valinta")} aria-label={t("Peru valinta")}>×</button>
             </p>
           )}
+          {canReply && detail.replyAccounts.length > 0 && (
+            <label className="reply-from">
+              <span>{t("Lähettäjä")}</span>
+              <select value={fromAccountId} onChange={event => setFromChoice(event.target.value)}>
+                {detail.replyAccounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    {replyAccountLabel(account)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {canReply && (
+            <div className="reply-cc">
+              <label>
+                <span>{t("Kopio (Cc)")}</span>
+                <input
+                  type="text"
+                  value={cc}
+                  onChange={event => setCc(event.target.value)}
+                  placeholder={t("esim. hallitus@yhtio.fi, useampi pilkulla eroteltuna")}
+                />
+              </label>
+              {detail.contractor?.email && !cc.toLowerCase().includes(detail.contractor.email.toLowerCase()) && (
+                <button
+                  type="button"
+                  className="reply-cc-add"
+                  onClick={() => setCc(current => [current.trim(), detail.contractor!.email].filter(Boolean).join(", "))}
+                  title={detail.contractor.email}
+                >
+                  {t("+ Huoltoyhtiö")}
+                </button>
+              )}
+            </div>
+          )}
           <textarea
             ref={draftEditor}
             className="draft-editor"
@@ -783,6 +930,17 @@ export function TicketDrawer({
               setSentTo("");
             }}
           />
+          {canReply && (
+            <div className="reply-signature">
+              <label className="reply-signature-toggle">
+                <input type="checkbox" checked={useSignature} onChange={event => setUseSignature(event.target.checked)} />
+                {t("Lisää allekirjoitus")}
+              </label>
+              {useSignature && (detail.signature
+                ? <pre>{detail.signature}</pre>
+                : <p className="reply-hint">{t("Sinulla ei ole allekirjoitusta.")}{" "}<a href="#/settings">{t("Lisää se omista asetuksistasi.")}</a></p>)}
+            </div>
+          )}
           {canReply && (
             <div className="reply-attachments">
               <label className="attach-button">
@@ -838,9 +996,7 @@ export function TicketDrawer({
             </button>
             {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
             {sentTo && <span className="saved-indicator">{t("Lähetetty:")}{" "}{sentTo}</span>}
-            {canReply && detail.replyFrom && !sentTo && (
-              <span className="reply-from">{t("Lähettäjä: {0}", detail.replyFrom)}</span>
-            )}
+
           </div>
           {canReply && (
             <p className="reply-hint">
@@ -866,6 +1022,7 @@ export function TicketDrawer({
             <TimelineMessage
               key={item.id}
               message={item.message}
+              attachments={detail.attachments.filter(attachment => attachment.message_id === item.message.id)}
               replying={replyTarget?.id === item.message.id}
               onReply={canReply && item.message.direction === "inbound" && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(item.message.sender)
                 ? () => startReply(item.message)
@@ -917,4 +1074,13 @@ export function TicketDrawer({
       )}
     </section>
   );
+}
+
+// Lähettäjävalikon teksti: osoite ja tilin laji; saapumislaatikko merkitään.
+function replyAccountLabel(account: ReplyAccount): string {
+  const kind = account.kind === "own" ? t("oma postilaatikko")
+    : account.kind === "office" ? t("isännöintitoimisto")
+    : t("taloyhtiö");
+  const name = account.email || t("Toimiston tili");
+  return account.arrived ? t("{0} ({1}, viesti saapui tänne)", name, kind) : `${name} (${kind})`;
 }

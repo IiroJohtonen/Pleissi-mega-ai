@@ -84,6 +84,17 @@ export async function downloadFile(path: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+// Lataa tiedoston selaimen muistiin ja palauttaa sen osoitteen (esim. kuvan esikatselua varten).
+// Kutsujan pitää vapauttaa osoite URL.revokeObjectURL-funktiolla.
+export async function fetchObjectUrl(path: string): Promise<string> {
+  const response = await fetch(`${API}${path}`, {
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {}
+  });
+  if (response.status === 401) setSession(null);
+  if (!response.ok) throw new Error(await response.text());
+  return URL.createObjectURL(await response.blob());
+}
+
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     headers: {

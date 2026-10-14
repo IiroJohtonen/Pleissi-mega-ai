@@ -61,7 +61,7 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
         "Viesti:",
         message.length > ALERT_MESSAGE_MAX ? `${message.slice(0, ALERT_MESSAGE_MAX)}…` : message,
         "",
-        `Avaa tehtävä Kotilossa: ${process.env.APP_URL || "http://localhost:5173"}`,
+        `Avaa tehtävä Pleississä: ${process.env.APP_URL || "http://localhost:5173"}`,
         "",
         office.name
       ].join("\n")

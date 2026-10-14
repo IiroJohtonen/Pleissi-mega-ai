@@ -5,8 +5,9 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
 import { attachmentsDir, db } from "../db.js";
-import { type OutgoingAttachment, parseSender, replyAccountFor, sendEmail } from "../mail.js";
+import { type OutgoingAttachment, parseSender, replyAccountsFor, sendEmail } from "../mail.js";
 import { notifyResident } from "../notify.js";
+import { renderSignature, withSignature } from "../signature.js";
 import { id, now, unsafeFileMessage } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
 
@@ -215,6 +216,12 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     actor: z.string().default("isannoitsija"),
     // Aikajanan viesti, johon vastataan. Ilman tätä vastataan tehtävän viimeisimpään saapuneeseen viestiin.
     messageId: z.string().optional(),
+    // Postitili, jolta vastaus lähetetään; oletuksena tili, johon tehtävän viesti saapui.
+    fromAccountId: z.string().optional(),
+    // Kopion saajat pilkulla tai puolipisteellä eroteltuina.
+    cc: z.string().max(1000).optional(),
+    // Lisätäänkö käyttäjän allekirjoitus vastauksen loppuun.
+    signature: z.boolean().default(true),
     attachments: z.array(z.object({
       filename: z.string().trim().min(1).max(200),
       mimeType: z.string().max(120).default("application/octet-stream"),
@@ -242,6 +249,19 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
 
   const ticket = getAuthorizedTicket(req.params.id) as any;
   if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+  const cc = (parsed.data.cc ?? "").split(/[,;\s]+/).map(address => address.trim()).filter(Boolean);
+  const invalidCc = cc.find(address => !/^[^\s<>,;@]+@[^\s<>,;@]+\.[^\s<>,;@]+$/.test(address));
+  if (invalidCc) return res.status(400).json({ error: `Kopion osoite ${invalidCc} ei ole kelvollinen sähköpostiosoite.` });
+  const body = parsed.data.signature ? withSignature(parsed.data.body, renderSignature(res.locals.user?.id)) : parsed.data.body;
+
+  const accounts = replyAccountsFor(ticket, res.locals.user?.id);
+  const fromAccount = parsed.data.fromAccountId
+    ? accounts.find(account => account.id === parsed.data.fromAccountId)
+    : accounts[0];
+  if (parsed.data.fromAccountId && !fromAccount) {
+    return res.status(400).json({ error: "Valitulta sähköpostitililtä ei voi lähettää. Valitse toinen lähettäjä." });
+  }
 
   type InboundRow = { sender: string; subject: string; created_at: string };
   const inbound = parsed.data.messageId
@@ -301,14 +321,16 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   try {
     const sent = await sendEmail({
       to: recipient,
+      cc: cc.join(", ") || undefined,
       subject,
-      body: parsed.data.body,
+      body,
       sourceMessageId: gmailImport?.gmail_message_id,
       attachments: outgoing,
       companyId: ticket.company_id,
-      accountId: replyAccountFor(ticket, res.locals.user?.id)
+      accountId: fromAccount?.id
     });
     sentMessageId = sent.id;
+    console.log(`Vastaus lähetetty tehtävältä ${ticket.id} osoitteeseen ${recipient} tililtä ${fromAccount?.email || fromAccount?.id || "oletus"}.`);
   } catch (error: any) {
     console.error("Vastauksen lähetys epäonnistui:", error?.message ?? error);
     const status = error?.status ?? error?.response?.status;
@@ -337,7 +359,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     "outbound",
     parsed.data.actor,
     subject,
-    parsed.data.body,
+    body,
     timestamp,
     "email"
   );
@@ -363,7 +385,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     req.params.id,
     parsed.data.actor,
     "reply_sent",
-    JSON.stringify({ to: recipient, subject }),
+    JSON.stringify({ to: recipient, ...(cc.length > 0 ? { cc: cc.join(", ") } : {}), subject }),
     timestamp
   );
 

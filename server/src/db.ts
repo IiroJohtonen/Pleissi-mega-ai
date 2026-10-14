@@ -527,6 +527,10 @@ const attachmentColumns = db.prepare("PRAGMA table_info(attachments)").all() as 
 if (!attachmentColumns.some(column => column.name === "direction")) {
   db.exec("ALTER TABLE attachments ADD COLUMN direction TEXT NOT NULL DEFAULT 'inbound'");
 }
+// Viesti, jonka mukana liite tuli; liite näytetään aikajanalla viestin alla.
+if (!attachmentColumns.some(column => column.name === "message_id")) {
+  db.exec("ALTER TABLE attachments ADD COLUMN message_id TEXT");
+}
 
 const messageColumns = db.prepare("PRAGMA table_info(messages)").all() as { name: string }[];
 if (!messageColumns.some(column => column.name === "channel")) {
@@ -587,6 +591,13 @@ for (const column of ["reminder_emails", "retention_months", "ai_priority", "ai_
     db.exec(`ALTER TABLE office_settings ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`);
   }
 }
+// Muistutusten rajat päivinä: asukas on odottanut vastausta / määräaikaan on enintään näin monta päivää.
+if (!officeColumns.some(existing => existing.name === "reply_reminder_days")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN reply_reminder_days INTEGER NOT NULL DEFAULT 2");
+}
+if (!officeColumns.some(existing => existing.name === "due_reminder_days")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN due_reminder_days INTEGER NOT NULL DEFAULT 1");
+}
 
 // Toistuvien aiheiden raportti: aiheet, jotka jätettiin pois, koska niistä on jo dokumentaatio.
 if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]).some(column => column.name === "covered")) {
@@ -595,6 +606,14 @@ if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]
 
 db.exec(`
 -- Käyttäjälle lähetetty muistutuskooste: enintään yksi päivässä.
+-- Käyttäjän sähköpostin allekirjoitus. template NULL = oletuspohja, tyhjä = ei allekirjoitusta.
+CREATE TABLE IF NOT EXISTS user_signatures (
+  user_id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  template TEXT
+);
+
 CREATE TABLE IF NOT EXISTS reminder_log (
   user_id TEXT NOT NULL,
   day TEXT NOT NULL,
@@ -735,7 +754,7 @@ export function seed() {
     "knowledge-3",
     "demo-company",
     "Huoltoyhtiö",
-    "Normaalit huoltoasiat ilmoitetaan Kotilon kautta. Päivystysnumero on 010 123 4567."
+    "Normaalit huoltoasiat ilmoitetaan Pleissin kautta. Päivystysnumero on 010 123 4567."
   );
   backfillKnowledge();
 
@@ -758,7 +777,7 @@ export function seed() {
     "email",
     "ai",
     "Vastaus löytyy taloyhtiön tietopankista.",
-    "Hei! Saunavuorot varataan taloyhtiön varausjärjestelmästä. Terveisin Kotilo-sihteeri.",
+    "Hei! Saunavuorot varataan taloyhtiön varausjärjestelmästä.",
     now,
     now
   );

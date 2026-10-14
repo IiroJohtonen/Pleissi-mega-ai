@@ -69,8 +69,9 @@ if (input.sourceMessageId) {
       // Suljettu tehtävä avataan uudelleen päätösjonoon; muuten se pysyy nykyisellä käsittelijällään.
       const reopened = existingTicket.status === "closed";
 
+      const appendedMessageId = id("message");
       db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
-        id("message"),
+        appendedMessageId,
         existingTicket.id,
         "inbound",
         input.senderEmail ? `${input.senderName} <${input.senderEmail}>` : input.senderName,
@@ -103,7 +104,7 @@ if (input.sourceMessageId) {
         `).run(input.sourceMessageId, existingTicket.id, timestamp);
       }
 
-      return res.status(201).json({ ticketId: existingTicket.id, appended: true, reopened });
+      return res.status(201).json({ ticketId: existingTicket.id, messageId: appendedMessageId, appended: true, reopened });
     }
   }
 
@@ -221,6 +222,7 @@ if (input.sourceMessageId) {
 
   res.status(201).json({
     ticketId,
+    messageId,
     emergency: result.emergency && !filtered,
     filtered,
     action: filtered ? "filtered" : result.emergency ? "emergency_routed" : "decision_queue"

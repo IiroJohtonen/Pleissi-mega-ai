@@ -15,7 +15,8 @@ export async function fetchTicketDetail(id: string): Promise<TicketDetail> {
     attachments: detail.attachments ?? [],
     workOrders: detail.workOrders ?? [],
     contractor: detail.contractor ?? null,
-    replyFrom: detail.replyFrom ?? ""
+    replyAccounts: detail.replyAccounts ?? [],
+    signature: detail.signature ?? ""
   };
 }
 
@@ -41,6 +42,46 @@ const priorityRank: Record<string, number> = { emergency: 0, urgent: 1, normal: 
 export function isOverdue(ticket: Ticket) {
   return ticket.status !== "closed" && Boolean(ticket.due_date)
     && (ticket.due_date as string) < new Date().toLocaleDateString("sv-SE");
+}
+
+export type ReminderSettings = { replyDays: number; dueDays: number };
+export type TicketReminder = { kind: "overdue" | "due" | "waiting"; text: string };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function addDays(day: string, days: number) {
+  const date = new Date(`${day}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toLocaleDateString("sv-SE");
+}
+
+// Syyt, joiden vuoksi keskeneräinen tehtävä nostetaan päätösjonon kärkeen: määräaika on mennyt tai
+// lähestyy, tai asukas on odottanut vastausta asetetun ajan.
+export function ticketReminders(ticket: Ticket, settings: ReminderSettings, now = new Date()): TicketReminder[] {
+  if (ticket.status === "closed") return [];
+  const day = now.toLocaleDateString("sv-SE");
+  const reminders: TicketReminder[] = [];
+  const due = ticket.due_date ?? "";
+  if (due && due < day) {
+    reminders.push({ kind: "overdue", text: t("Määräaika ylittynyt {0}", formatDay(due)) });
+  } else if (due && due <= addDays(day, settings.dueDays)) {
+    reminders.push({
+      kind: "due",
+      text: due === day ? t("Määräaika tänään") : due === addDays(day, 1) ? t("Määräaika huomenna") : t("Määräaika {0}", formatDay(due))
+    });
+  }
+  if (ticket.waiting_since) {
+    const days = Math.floor((now.getTime() - new Date(ticket.waiting_since).getTime()) / DAY_MS);
+    if (days >= settings.replyDays) {
+      reminders.push({ kind: "waiting", text: days === 1 ? t("Asukas odottanut vastausta 1 päivän") : t("Asukas odottanut vastausta {0} päivää", days) });
+    }
+  }
+  return reminders;
+}
+
+function formatDay(day: string) {
+  const [year, month, date] = day.split("-");
+  return `${Number(date)}.${Number(month)}.${year}`;
 }
 
 export function compareTickets(a: Ticket, b: Ticket, key: TicketSortKey) {

@@ -11,6 +11,7 @@ import "./startup.js";
 import { requestUser } from "./access.js";
 import { authRouter, INTERNAL_TOKEN, requireAuth, type User } from "./auth.js";
 import { db } from "./db.js";
+import { signatureRouter } from "./signature.js";
 import { startMailPolling } from "./mail.js";
 import { startMaintenanceJobs } from "./jobs.js";
 import { announcementsRouter } from "./routes/announcements.js";
@@ -43,7 +44,12 @@ const app = express();
 // välityspalvelimien määrä (yleensä 1); ilman asetusta otsakkeeseen ei luoteta.
 if (process.env.TRUST_PROXY) app.set("trust proxy", Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 
-app.use(helmet());
+// Liitteiden pikkukuvat haetaan kirjautumistunnisteen kanssa ja näytetään selaimen muistista (blob:).
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: { "img-src": ["'self'", "data:", "blob:"] }
+  }
+}));
 
 // Selainkutsut sallitaan vain sovelluksen omista osoitteista. CORS_ORIGINS on pilkuilla erotettu lista.
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || process.env.APP_URL || "http://localhost:5173,http://127.0.0.1:5173")
@@ -102,7 +108,7 @@ app.get("/api/health", (_req, res) => {
 
 // Rajapinnan reitit aihealueittain; jokainen on omassa tiedostossaan kansiossa routes.
 for (const router of [
-  authRouter, passwordResetRouter, officeRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
+  authRouter, passwordResetRouter, officeRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingRequestsRouter, billingRouter, portalRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
   metersRouter, contactRouter

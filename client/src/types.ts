@@ -22,6 +22,8 @@ export type Ticket = {
   due_date?: string | null;
   // 1, kun asukas on vastannut eikä hänelle ole vielä vastattu.
   has_new_reply?: number;
+  // Milloin asukas alkoi odottaa vastausta; tyhjä, kun toimisto on vastannut viimeisimpään viestiin.
+  waiting_since?: string | null;
   // 1, kun tehtävälle on pyydetty AI-ehdotus.
   ai_suggested?: number;
   knowledge_source_id?: string | null;
@@ -103,6 +105,8 @@ export type WorkOrder = {
   ticket_number?: number;
 };
 
+export type ReplyAccount = { id: string; email: string; kind: "own" | "office" | "company"; arrived: boolean };
+
 export type TicketDetail = {
   ticket: Ticket & { company_name?: string };
   messages: { id: string; direction: string; sender: string; subject: string; body: string; created_at: string; channel?: string }[];
@@ -113,9 +117,12 @@ export type TicketDetail = {
   workOrders: WorkOrder[];
   // Taloyhtiön huoltoyhtiö, jolle työtilaus lähetetään.
   contractor: { name: string; email: string; phone: string } | null;
-  attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string }[];
-  // Sähköpostiosoite, josta vastaus lähtee; tyhjä, jos postitiliä ei ole yhdistetty.
-  replyFrom?: string;
+  // message_id: viesti, jonka mukana liite tuli; liite näytetään aikajanalla sen alla.
+  attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string; message_id?: string | null }[];
+  // Postitilit, joilta vastauksen voi lähettää; ensimmäinen on oletus (tili, johon viesti saapui).
+  replyAccounts: ReplyAccount[];
+  // Käyttäjän allekirjoitus, joka lisätään vastauksen loppuun; tyhjä, jos sitä ei ole.
+  signature: string;
 };
 
 export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log";

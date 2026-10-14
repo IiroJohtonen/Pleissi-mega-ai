@@ -1220,7 +1220,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 /* Vastaa-painike saapuneen viestin oikeassa reunassa; vastaus lähtee saman viestin ketjuun. */
 .message { position: relative; }
-.message.inbound .message-head { padding-right: 86px; }
+.message.inbound .message-head { padding-right: 118px; }
 
 .message-reply {
   position: absolute;
@@ -1273,6 +1273,104 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Tiivistettynä näkyy vain aihe ja viestin ensimmäinen rivi. */
 .message.collapsed strong { margin-top: 6px; }
 .message.collapsed p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #747a80; font-size: 12px; }
+.message.collapsed .message-attachments { display: none; }
+
+/* Viestin liitteet aikajanalla: kuvat pikkukuvina, muut tiedostot nimellä. */
+.message-attachments {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.message-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.message-thumbnail {
+  width: 112px;
+  height: 84px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dcdfe2;
+  border-radius: 8px;
+  background: #f3f5f7;
+  cursor: zoom-in;
+}
+
+.message-thumbnail:hover { border-color: #69819c; }
+
+.message-thumbnail img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message-thumbnail-loading {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #eef1f4, #f7f9fa, #eef1f4);
+}
+
+.message-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid #dcdfe2;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.message-file:hover { border-color: #69819c; }
+.message-file svg { flex: none; width: 15px; height: 15px; }
+.message-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.message-file small { flex: none; color: #747a80; }
+
+.image-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 20, 26, 0.78);
+}
+
+.image-preview figure {
+  display: grid;
+  gap: 8px;
+  max-width: min(1100px, 100%);
+  max-height: 100%;
+  margin: 0;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: calc(100vh - 96px);
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.image-preview figcaption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.image-preview figcaption span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.image-preview figcaption a { color: #fff; font-weight: 700; }
 
 @media (max-width: 900px) {
   .drawer.drawer-split { display: block; overflow-y: auto; }
@@ -1554,9 +1652,19 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 
 .reply-from {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
   color: #4d627a;
   font-size: 12px;
-  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.reply-from select {
+  flex: 1;
+  min-width: 0;
+  font-weight: 400;
 }
 
 .saved-indicator {
@@ -3489,3 +3597,115 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 @media (max-width: 760px) {
 }
+
+/* Vastauslomakkeen kopio ja allekirjoitus */
+.reply-cc {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.reply-cc label { flex: 1; min-width: 0; display: grid; gap: 4px; color: #4d627a; font-size: 12px; font-weight: 700; }
+.reply-cc input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #dfe3e7;
+  border-radius: 10px;
+  background: #fafbfc;
+  color: #1c232a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.reply-cc input:focus { outline: 2px solid rgba(111, 130, 152, .2); border-color: #9aa8b8; }
+.reply-cc-add { flex: none; font-size: 12px; }
+
+.reply-signature { margin: 8px 0 0; }
+
+.reply-signature-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4d627a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reply-signature pre,
+.signature-preview pre {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid #dcdfe2;
+  color: #5b6570;
+  font: inherit;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+/* Allekirjoituksen asetukset */
+.signature-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.signature-field {
+  margin: 0 4px 4px 0;
+  padding: 1px 7px;
+  border: 1px solid #cdd3da;
+  border-radius: 99px;
+  background: #fff;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.signature-preview { display: grid; gap: 2px; }
+.signature-preview > span { color: #4d627a; font-size: 12px; font-weight: 700; }
+
+/* Päätösjonon muistutukset */
+.reminders { margin: 0 0 22px; }
+
+.reminders ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reminders li button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e6d3a3;
+  border-left: 4px solid #d9a21b;
+  border-radius: 10px;
+  background: #fffaf0;
+  text-align: left;
+}
+
+.reminders li button:hover { border-color: #d9a21b; }
+
+.reminder-ticket { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.reminder-ticket small { flex: none; color: #747a80; font-weight: 700; }
+.reminder-ticket strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.reminder-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.reminder-reasons em {
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.reminder-overdue { background: #fbe3df; color: #9c2f1f; }
+.reminder-due { background: #fdf0cf; color: #7a5600; }
+.reminder-waiting { background: #e3edf8; color: #28548f; }

@@ -43,6 +43,8 @@ export type OutgoingAttachment = { filename: string; mimeType: string; content: 
 
 export type OutgoingEmail = {
   to?: string;
+  // Kopion saajat näkyvät muille vastaanottajille.
+  cc?: string;
   // Piilokopion saajat eivät näe toistensa osoitteita.
   bcc?: string;
   subject: string;
@@ -247,7 +249,7 @@ export async function importInboundEmail(accountId: string, email: InboundEmail,
   const owner = mailboxOwnerId(accountId);
   const target = owner
     ? { companyId: companyForUserMailbox(owner, sender.email), assigneeId: owner, mailAccountId: accountId }
-    : { companyId: accountId === OFFICE_ACCOUNT ? DEFAULT_COMPANY_ID : accountId };
+    : { companyId: accountId === OFFICE_ACCOUNT ? DEFAULT_COMPANY_ID : accountId, mailAccountId: accountId };
   const response = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/inbound/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-token": INTERNAL_TOKEN },
@@ -272,14 +274,14 @@ export async function importInboundEmail(accountId: string, email: InboundEmail,
     return false;
   }
 
-  const result = await response.json() as { ticketId?: string; duplicate?: boolean };
+  const result = await response.json() as { ticketId?: string; messageId?: string; duplicate?: boolean };
   if (result.duplicate) return false;
-  if (result.ticketId) await saveInboundAttachments(email, result.ticketId);
+  if (result.ticketId) await saveInboundAttachments(email, result.ticketId, result.messageId);
   console.log(`${label}-viesti käsitelty: "${email.subject}" (tehtävä ${result.ticketId || "luotu"})`);
   return true;
 }
 
-async function saveInboundAttachments(email: InboundEmail, ticketId: string) {
+async function saveInboundAttachments(email: InboundEmail, ticketId: string, messageId?: string) {
   let attachments: OutgoingAttachment[];
   try {
     attachments = await email.attachments();
@@ -294,10 +296,10 @@ async function saveInboundAttachments(email: InboundEmail, ticketId: string) {
       const attachmentId = `attachment-${crypto.randomUUID()}`;
       await fs.writeFile(path.join(attachmentsDir, attachmentId), attachment.content);
       db.prepare(`
-        INSERT INTO attachments (id, ticket_id, filename, mime_type, size, created_at, direction)
-        VALUES (?, ?, ?, ?, ?, ?, 'inbound')
+        INSERT INTO attachments (id, ticket_id, filename, mime_type, size, created_at, direction, message_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'inbound', ?)
       `).run(attachmentId, ticketId, attachment.filename, attachment.mimeType || "application/octet-stream",
-        attachment.content.length, new Date().toISOString());
+        attachment.content.length, new Date().toISOString(), messageId ?? null);
     } catch (error) {
       console.warn(`Liitteen "${attachment.filename}" tallennus epäonnistui:`, error instanceof Error ? error.message : error);
     }

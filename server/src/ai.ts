@@ -169,14 +169,14 @@ function localSuggestion(question: string, knowledge: KnowledgeItem[]): ReplySug
   const answer = findKnowledgeAnswer(question, knowledge);
   if (answer) {
     return {
-      draft: `Hei! ${answer.answer}\n\nYstävällisin terveisin\nIsännöinti`,
+      draft: `Hei! ${answer.answer}`,
       reason: `Vastaus löytyy yhtiön dokumentaatiosta (${answer.sourceTitle}).`,
       sourceId: answer.sourceId,
       usedAi: false
     };
   }
   return {
-    draft: "Hei! Kiitos viestistäsi. Selvitämme asian ja palaamme siihen mahdollisimman pian.\n\nYstävällisin terveisin\nIsännöinti",
+    draft: "Hei! Kiitos viestistäsi. Selvitämme asian ja palaamme siihen mahdollisimman pian.",
     reason: "Yhtiön dokumentaatiosta ei löytynyt tähän sopivaa tietoa.",
     sourceId: null,
     usedAi: false
@@ -193,10 +193,12 @@ export async function suggestReply(
   if (!ai) return localSuggestion(`${subject}\n${conversation}`, knowledge);
 
   const system = `
-You are Kotilo, an AI secretary for Finnish housing companies. A property manager is handling a
+You are Pleissi, an AI secretary for Finnish housing companies. A property manager is handling a
 resident's ticket and needs a reply draft they can edit and send to the resident.
 
 draft: a polite, concise reply in Finnish, written as the property manager, ready to send.
+Do not end the draft with a closing greeting, name or signature: the manager's own email signature
+is appended automatically when the reply is sent.
 Use only the supplied company knowledge for facts about the company, because the manager sends
 the reply in the company's name: never invent facts, dates, prices, phone numbers or resident
 identity. If the knowledge does not cover the matter, write a short reply that acknowledges the
@@ -391,7 +393,7 @@ export async function assessIncoming(subject: string, body: string, sender = "")
   if (!ai) return null;
 
   const system = `
-You are Kotilo, an AI secretary for a Finnish property management office. A message has just
+You are Pleissi, an AI secretary for a Finnish property management office. A message has just
 arrived in the mailbox the office uses for a housing company. You assess two things: whether the
 message belongs in the property manager's work queue at all, and how quickly the office must act
 on it.
@@ -475,8 +477,8 @@ function emergencyTriage(subject: string, reason: string, emergencyPhone?: strin
     suggestedAction: "Ohjaa huoltoyhtiön päivystykseen heti.",
     reason,
     draft: emergencyPhone
-      ? `Hei! Kiireellinen asia on havaittu. Olethan yhteydessä huoltoyhtiön päivystykseen: ${emergencyPhone}. Terveisin Kotilo-sihteeri.`
-      : "Hei! Kiireellinen asia on havaittu. Olethan heti yhteydessä huoltoyhtiön päivystykseen. Terveisin Kotilo-sihteeri.",
+      ? `Hei! Kiireellinen asia on havaittu. Olethan yhteydessä huoltoyhtiön päivystykseen: ${emergencyPhone}.`
+      : "Hei! Kiireellinen asia on havaittu. Olethan heti yhteydessä huoltoyhtiön päivystykseen.",
     emergency: true,
     sourceId: null
   };
@@ -509,7 +511,7 @@ function localTriage(
       summary: subject || body.slice(0, 140),
       suggestedAction: "Vastaa yhtiön tietojen perusteella.",
       reason: `Vastaus löytyy yhtiön tiedoista (${answer.sourceTitle}).`,
-      draft: `Hei! ${answer.answer}\n\nTerveisin Kotilo-sihteeri.`,
+      draft: `Hei! ${answer.answer}`,
       emergency: false,
       sourceId: answer.sourceId
     };
@@ -534,7 +536,7 @@ function localTriage(
     summary: subject || body.slice(0, 140),
     suggestedAction: "Tarkista viesti ja pyydä tarvittaessa AI-ehdotus.",
     reason: "Odottaa käsittelyä. AI-ehdotuksen voi pyytää tehtävältä.",
-    draft: "Hei! Kiitos viestistä. Kotilo-sihteeri on vastaanottanut asian ja se käsitellään mahdollisimman pian.",
+    draft: "Hei! Kiitos viestistä. Olemme vastaanottaneet asian, ja se käsitellään mahdollisimman pian.",
     emergency: false,
     sourceId: null
   };

@@ -88,25 +88,33 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.equal(modules.microsoft.microsoftErrorMessage(""), "Microsoft-kirjautuminen epäonnistui. Yhdistä tili uudelleen asetuksista.");
   });
 
-  it("valitsee vastaukselle lähettäjätilin", () => {
+  it("tarjoaa vastaukselle lähettäjät ja valitsee oletukseksi saapumislaatikon", () => {
     const { mail, common, secrets } = modules;
     const save = (accountId: string, email: string) => common.saveMailAccount({
       accountId, email, provider: "imap", token: secrets.encryptSecret("salasana"), connectedBy: "testi"
     });
-    // Ei yhtään tiliä: toimiston tili.
-    assert.equal(mail.replyAccountFor({ company_id: "demo-company" }, "isannoitsija-2"), common.OFFICE_ACCOUNT);
-    save("demo-company", "koivikko@toimisto.fi");
-    assert.equal(mail.replyAccountFor({ company_id: "demo-company" }, "isannoitsija-2"), "demo-company");
-    // Oma postilaatikko menee taloyhtiön tilin edelle.
+    const choices = (ticket: { id: string; company_id: string; mail_account_id?: string | null }, userId?: string) =>
+      mail.replyAccountsFor(ticket, userId).map(account => `${account.kind}:${account.email}${account.arrived ? ":saapui" : ""}`);
+    const manual = { id: "ei-sahkopostia", company_id: "demo-company" };
+
+    // Ei yhtään tiliä: ei lähettäjiä.
+    assert.deepEqual(choices(manual, "isannoitsija-2"), []);
+    save("office", "toimisto@toimisto.fi");
     save("user:isannoitsija-2", "hanna@toimisto.fi");
-    assert.equal(mail.replyAccountFor({ company_id: "demo-company" }, "isannoitsija-2"), "user:isannoitsija-2");
-    assert.equal(mail.mailAccountAddress("user:isannoitsija-2"), "hanna@toimisto.fi");
-    // Tehtävä, joka tuli tietyn laatikon kautta, vastataan samasta laatikosta.
-    assert.equal(mail.replyAccountFor({ company_id: "demo-company", mail_account_id: "demo-company" }, "isannoitsija-2"), "demo-company");
-    // Poistettu laatikko: valinta jatkuu seuraavaan.
-    assert.equal(mail.replyAccountFor({ company_id: "demo-company", mail_account_id: "user:poistettu" }, "joku-muu"), "demo-company");
-    common.disconnectMailAccount("user:isannoitsija-2");
-    common.disconnectMailAccount("demo-company");
+    save("user:isannoitsija-3", "kalle@toimisto.fi");
+    // Käsin luotu tehtävä: ensin oma laatikko, sitten toimisto.
+    assert.deepEqual(choices(manual, "isannoitsija-2"), ["own:hanna@toimisto.fi", "office:toimisto@toimisto.fi"]);
+    // Toimiston laatikkoon saapunut: toimisto on oletus.
+    assert.deepEqual(choices({ ...manual, mail_account_id: "office" }, "isannoitsija-2"),
+      ["office:toimisto@toimisto.fi:saapui", "own:hanna@toimisto.fi"]);
+    // Kollegan laatikkoon saapunut: kollegan laatikosta ei voi lähettää.
+    assert.deepEqual(choices({ ...manual, mail_account_id: "user:isannoitsija-3" }, "isannoitsija-2"),
+      ["own:hanna@toimisto.fi", "office:toimisto@toimisto.fi"]);
+    // Taloyhtiön oma tili näkyy omana vaihtoehtonaan.
+    save("demo-company", "koivikko@toimisto.fi");
+    assert.deepEqual(choices({ ...manual, mail_account_id: "demo-company" }, "isannoitsija-2"),
+      ["company:koivikko@toimisto.fi:saapui", "own:hanna@toimisto.fi", "office:toimisto@toimisto.fi"]);
+    for (const accountId of ["office", "user:isannoitsija-2", "user:isannoitsija-3", "demo-company"]) common.disconnectMailAccount(accountId);
   });
 
   it("lähettää vastauksen Microsoft 365 -tililtä alkuperäiseen viestiin", async () => {
@@ -136,6 +144,7 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     try {
       const sent = await mail.sendEmail({
         to: "matti@example.com",
+        cc: "hallitus@koivikko.fi",
         subject: "Re: Vuotava hana",
         body: "Huoltomies tulee huomenna.",
         sourceMessageId: "<ms-2@outlook.com>",
@@ -160,7 +169,25 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.match(decodeURIComponent(calls[0].url), /internetMessageId eq '<ms-2@outlook\.com>'/);
     assert.equal(calls[2].body.body.content, "Huoltomies tulee huomenna.");
     assert.equal(calls[2].body.toRecipients[0].emailAddress.address, "matti@example.com");
+    assert.equal(calls[2].body.ccRecipients[0].emailAddress.address, "hallitus@koivikko.fi");
     assert.equal(calls[3].body.name, "ohje.txt");
+  });
+
+  it("liittää vanhat liitteet aikajanan viesteihin", async () => {
+    const { linkAttachmentsToMessages } = await import("../src/routes/tickets.js");
+    const messages = [
+      { id: "m1", direction: "inbound", created_at: "2026-10-14T10:00:00.000Z", channel: "email" },
+      { id: "m2", direction: "outbound", created_at: "2026-10-14T11:00:00.000Z", channel: "email" },
+      { id: "m3", direction: "inbound", created_at: "2026-10-14T12:00:00.000Z", channel: "portal" }
+    ];
+    const linked = linkAttachmentsToMessages([
+      { id: "a1", created_at: "2026-10-14T10:00:01.500Z", direction: "inbound" },
+      { id: "a2", created_at: "2026-10-14T11:00:00.000Z", direction: "outbound" },
+      { id: "a3", created_at: "2026-10-14T12:00:00.000Z", direction: "portal" },
+      { id: "a4", created_at: "2026-10-14T12:30:00.000Z", direction: "internal" },
+      { id: "a5", created_at: "2026-10-14T12:30:00.000Z", direction: "inbound", message_id: "m1" }
+    ], messages);
+    assert.deepEqual(linked.map(attachment => attachment.message_id ?? null), ["m1", "m2", "m3", null, "m1"]);
   });
 
   it("muuntaa Microsoft 365 -viestin tuotavaksi", async () => {
@@ -244,11 +271,18 @@ describe("sähköpostitilien yhdistäminen", () => {
     assert.equal(created.status, 201);
     const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
     const ticket = detail.ticket;
-    // Yhtään postitiliä ei ole yhdistetty, joten lähettäjän osoitetta ei näytetä.
-    assert.equal(detail.replyFrom, "");
+    // Yhtään postitiliä ei ole yhdistetty, joten lähettäjävaihtoehtoja ei ole.
+    assert.deepEqual(detail.replyAccounts, []);
     assert.equal(ticket.assignee_id, owner.id);
     assert.equal(ticket.status, "open");
     assert.equal(ticket.mail_account_id, `user:${owner.id}`);
+
+    // Lähettäjäksi ei voi valita tiliä, jota käyttäjälle ei tarjota.
+    const refused = await call(server, manager, "POST", `/tickets/${created.data.ticketId}/reply`, {
+      body: "Avain on huoltoyhtiöllä.", fromAccountId: "user:joku-muu"
+    });
+    assert.equal(refused.status, 400);
+    assert.match(refused.data.error, /Valitse toinen lähettäjä/);
   });
 
   it("tarkistaa IMAP-tiedot ja kertoo, jos palvelimeen ei saada yhteyttä", async () => {

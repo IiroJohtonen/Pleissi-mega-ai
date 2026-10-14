@@ -31,7 +31,7 @@ passwordResetRouter.post("/auth/forgot", async (req, res) => {
     const body = [
       "Hei,",
       "",
-      "saimme pyynnön vaihtaa Kotilo-tunnuksesi salasana. Aseta uusi salasana alla olevasta linkistä.",
+      "saimme pyynnön vaihtaa Pleissi-tunnuksesi salasana. Aseta uusi salasana alla olevasta linkistä.",
       "Linkki on voimassa tunnin ja toimii vain kerran.",
       "",
       ...resets.flatMap(reset => [`${reset.label} (${reset.name}):`, `${origin}/#/reset/${reset.token}`, ""]),
@@ -40,7 +40,7 @@ passwordResetRouter.post("/auth/forgot", async (req, res) => {
       office.name
     ].join("\n");
     try {
-      await sendEmail({ to: parsed.data.email, subject: "Kotilo: salasanan vaihto", body });
+      await sendEmail({ to: parsed.data.email, subject: "Pleissi: salasanan vaihto", body });
     } catch (error: any) {
       console.error("Palautuslinkin lähetys epäonnistui:", error?.message ?? error);
       return res.status(502).json({ error: "Palautuslinkin lähetys epäonnistui. Yritä uudelleen tai pyydä pääkäyttäjää vaihtamaan salasana." });
