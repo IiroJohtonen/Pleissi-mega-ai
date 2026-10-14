@@ -122,6 +122,22 @@ describe("sovellus", () => {
     }
   });
 
+  it("näyttää toimiston asetukset ja sähköpostitilin, vaikka taloyhtiöitä ei ole", async () => {
+    const original = responses["/companies"];
+    responses["/companies"] = [];
+    responses["/mail/status"] = { connected: false };
+    try {
+      await renderApp(staff("Pääkäyttäjä"), "#/settings");
+      fireEvent.click(await screen.findByRole("tab", { name: "Isännöitsijätoimiston tiedot" }));
+      expect(await screen.findByText("Toimiston sähköpostitili")).toBeTruthy();
+      expect(screen.queryByText("Yhtiötä ei ole valittu.")).toBeNull();
+      expect(screen.queryByText("Tehtävien vastaanotto")).toBeNull();
+    } finally {
+      responses["/companies"] = original;
+      delete responses["/mail/status"];
+    }
+  });
+
   it("lukee vanhalla nimellä tallennetun istunnon", async () => {
     localStorage.clear();
     localStorage.setItem("kiito.session", JSON.stringify(staff("Pääkäyttäjä")));

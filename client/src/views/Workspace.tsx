@@ -224,8 +224,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
 
   useEffect(() => {
-    async function initialize() {
-      const availableCompanies = await api<Company[]>("/companies");
+    // Jos palvelin ei vastaa (esim. se käynnistyy juuri uudelleen julkaisun jälkeen), haku yritetään
+    // uudelleen, jotta taloyhtiöt eivät jää puuttumaan ennen sivun uudelleenlatausta.
+    async function initialize(attempt = 0): Promise<void> {
+      let availableCompanies: Company[];
+      try {
+        availableCompanies = await api<Company[]>("/companies");
+      } catch (error) {
+        if (attempt >= 10) throw error;
+        await new Promise(resolve => window.setTimeout(resolve, 3000));
+        return initialize(attempt + 1);
+      }
       setCompanies(availableCompanies);
       const initialCompany = availableCompanies.find(company => company.id === selectedCompany) ?? availableCompanies[0];
       if (initialCompany) {

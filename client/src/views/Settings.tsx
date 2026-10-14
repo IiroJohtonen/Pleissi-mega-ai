@@ -470,8 +470,8 @@ function OfficeSettings({
     setError("");
   }, [company?.id]);
 
-  if (!company) return <div className="empty">{t("Yhtiötä ei ole valittu.")}</div>;
-  const companyId = company.id;
+  // Toimiston asetukset eivät riipu taloyhtiöstä; vain tehtävien vastaanotto-osoite on yhtiökohtainen.
+  const companyId = company?.id ?? "";
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -547,6 +547,7 @@ function OfficeSettings({
 
         </CollapseSection>
 
+        {company && (
         <CollapseSection id="office-inbox" title={t("Tehtävien vastaanotto")}>
 
         <label>
@@ -563,6 +564,7 @@ function OfficeSettings({
         </p>
 
         </CollapseSection>
+        )}
 
         <CollapseSection id="office-reminders" title={t("Muistutukset")}>
 
