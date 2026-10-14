@@ -19,7 +19,7 @@ const TARGET = path.join(here, "../src/styles-dark.css");
 const PREFIX = ':root[data-theme="dark"]';
 
 // Valmiiksi tumma kehys: näiden sääntöjen värit pysyvät samoina.
-const CHROME = /(^|[\s,>+~])(\.sidebar|nav\b|\.nav-company|\.settings-button|\.login-page|\.portal-header|\.portal-user|\.mobile-bar|\.mobile-menu|\.report-tooltip)/;
+const CHROME = /(^|[\s,>+~])(\.sidebar|nav\b|\.nav-company|\.settings-button|\.login-page|\.login-card|\.portal-header|\.portal-user|\.mobile-bar|\.mobile-menu|\.report-tooltip)/;
 
 // Tumman tilan perussävy: sininen, kevyesti kylläinen.
 const HUE = 214;
@@ -84,8 +84,9 @@ function convert(token, role, invert) {
     else out = fromHsl(HUE, NEUTRAL_SAT, Math.max(0.11, 0.205 - (1 - l) * 0.9));
   } else if (role === "text") {
     if (colorful && l < 0.75) out = fromHsl(h, Math.min(s, 0.72), clamp(0.74 + (0.45 - l) * 0.15, 0.64, 0.82));
-    else if (colorful) out = rgb;
-    else if (l < 0.6) out = fromHsl(HUE, 0.14, 0.94 - l * 0.65);
+    else if (colorful) out = invert ? fromHsl(h, Math.min(s, 0.6), 0.3) : rgb;
+    // Harmaat sävyt pidetään selvästi luettavina: himmeinkin teksti jää kontrastiltaan yli 4,5:1.
+    else if (l < 0.6) out = fromHsl(HUE, 0.14, 0.95 - l * 0.42);
     else out = invert ? fromHsl(HUE, 0.3, 0.14) : rgb;
   } else {
     if (colorful && l > 0.6) out = fromHsl(h, Math.min(s, 0.3), 0.34);

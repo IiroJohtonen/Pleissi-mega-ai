@@ -4,3 +4,11 @@
 :root[data-theme="dark"] .switch-row i { background: #3a4757; }
 :root[data-theme="dark"] .switch-row i::after { background: #e9edf2; }
 :root[data-theme="dark"] .switch-row input:checked + i { background: #4f8fd0; }
+
+/* Poistettu painike: selaimen oma harmaa (30 % valkoista) ja läpinäkyvyys yhdessä hävittivät tekstin
+   lähes kokonaan. Teksti pidetään painikkeen omassa värissä ja himmennetään vain läpinäkyvyydellä. */
+:root[data-theme="dark"] button:disabled { color: #c9d1db; opacity: .65; }
+:root[data-theme="dark"] button.primary:disabled { color: #1d2733; opacity: .75; }
+
+/* Kirjautumiskortti pysyy vaaleana myös tummassa tilassa, joten sen perimä tekstiväri pidetään tummana. */
+:root[data-theme="dark"] .login-card { color: #1d2329; }
