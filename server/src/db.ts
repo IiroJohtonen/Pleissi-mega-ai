@@ -621,10 +621,66 @@ function backfillKnowledge() {
   db.prepare("UPDATE knowledge SET created_at = ? WHERE created_at IS NULL").run(new Date().toISOString());
 }
 
+// Kiireellisiä esimerkkitehtäviä samankaltaisista aiheista (vesi- ja lämmitysviat). Lisätään myös
+// olemassa olevaan demokantaan, jos niitä ei vielä ole.
+const urgentExamples = [
+  {
+    apartment: "apt-12", resident: "resident-1", sender: "Matti Meikäläinen <matti@example.com>",
+    subject: "Keittiön altaan alla vuotaa", summary: "Asukas ilmoittaa vesivuodosta keittiön altaan alla. Lattialla on vettä.",
+    body: "Keittiön tiskialtaan alta tippuu vettä ja kaapin pohja on märkä. Laitoin ämpärin alle."
+  },
+  {
+    apartment: "apt-34", resident: "resident-2", sender: "Liisa Mallikas <liisa@example.com>",
+    subject: "Patterit kylmänä", summary: "Asukas kertoo, että asunnon kaikki patterit ovat kylmiä.",
+    body: "Kaikki patterit ovat olleet kylmiä eilisestä asti ja sisälämpö on laskenut 17 asteeseen."
+  },
+  {
+    apartment: "apt-12", resident: "resident-1", sender: "Matti Meikäläinen <matti@example.com>",
+    subject: "Kylpyhuoneen lattiakaivo tulvii", summary: "Asukas ilmoittaa, että kylpyhuoneen lattiakaivo nostaa vettä lattialle.",
+    body: "Lattiakaivosta nousee vettä aina kun suihkua käytetään. Vesi ei vedä ollenkaan."
+  },
+  {
+    apartment: "apt-34", resident: "resident-2", sender: "Liisa Mallikas <liisa@example.com>",
+    subject: "Lämmintä vettä ei tule", summary: "Asukas kertoo, että hanoista tulee vain kylmää vettä.",
+    body: "Keittiön ja kylpyhuoneen hanoista ei tule lämmintä vettä lainkaan tänä aamuna."
+  },
+  {
+    apartment: "apt-12", resident: "resident-1", sender: "Matti Meikäläinen <matti@example.com>",
+    subject: "Kosteusläikkä katossa", summary: "Asukas havaitsi kasvavan kosteusläikän kylpyhuoneen katossa.",
+    body: "Kylpyhuoneen kattoon on ilmestynyt kostea läikkä, joka on kasvanut päivän aikana. Epäilen yläkerran vuotoa."
+  }
+];
+
+function seedUrgentExamples() {
+  if (!db.prepare("SELECT id FROM companies WHERE id = ?").get("demo-company")) return;
+  const insertTicket = db.prepare(`
+    INSERT INTO tickets
+    (id, company_id, apartment_id, resident_id, type, priority, status, subject, summary,
+     source_channel, ai_action, ai_reason, draft, created_at, updated_at)
+    VALUES (?, 'demo-company', ?, ?, 'Vikailmoitus', 'urgent', 'open', ?, ?, 'email', 'pending_decision', ?, NULL, ?, ?)
+  `);
+  const insertMessage = db.prepare("INSERT INTO messages VALUES (?, ?, 'inbound', ?, ?, ?, ?, 'email')");
+  const insertAudit = db.prepare("INSERT INTO audit_log VALUES (?, ?, 'system', 'ticket_created', 'Demo-ticket luotu', ?)");
+  urgentExamples.forEach((example, index) => {
+    const id = `ticket-urgent-${index + 1}`;
+    if (db.prepare("SELECT id FROM tickets WHERE id = ?").get(id)) return;
+    const now = new Date().toISOString();
+    insertTicket.run(
+      id, example.apartment, example.resident, example.subject, example.summary,
+      "Vikailmoitus vaatii huoltoyhtiön nopeaa toimenpidettä.", now, now
+    );
+    insertMessage.run(`message-urgent-${index + 1}`, id, example.sender, example.subject, example.body, now);
+    insertAudit.run(`audit-urgent-${index + 1}`, id, now);
+  });
+}
+
 export function seed() {
   backfillKnowledge();
   const company = db.prepare("SELECT id FROM companies WHERE id = ?").get("demo-company");
-  if (company) return;
+  if (company) {
+    seedUrgentExamples();
+    return;
+  }
 
   db.prepare("INSERT INTO companies (id, name, email_address) VALUES (?, ?, ?)").run(
     "demo-company",
@@ -709,4 +765,5 @@ export function seed() {
     "Demo-ticket luotu",
     now
   );
+  seedUrgentExamples();
 }
