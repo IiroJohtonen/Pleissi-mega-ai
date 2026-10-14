@@ -7,8 +7,8 @@
   // Sivun tekstit ovat suomeksi HTML:ssä ja englanniksi data-en-attribuuteissa. Muut tekstit ovat tässä.
   var TEXTS = {
     fi: {
-      title: "Kotilo – isännöintitoimiston työkalu asukkaiden yhteydenottoihin",
-      description: "Kotilo kokoaa asukkaiden sähköpostit ja portaalin ilmoitukset yhteen jonoon, auttaa vastaamaan niihin ja hoitaa taloyhtiön varaukset, tiedotteet ja ilmoitukset.",
+      title: "Pleissi – isännöintitoimiston työkalu asukkaiden yhteydenottoihin",
+      description: "Pleissi kokoaa asukkaiden sähköpostit ja portaalin ilmoitukset yhteen jonoon, auttaa vastaamaan niihin ja hoitaa taloyhtiön varaukset, tiedotteet ja ilmoitukset.",
       missing: "Täytä nimi ja sähköpostiosoite.",
       sending: "Lähetetään…",
       sent: "Kiitos! Otamme sinuun yhteyttä.",
@@ -16,8 +16,8 @@
       failed: "Lähetys epäonnistui. Yritä uudelleen tai lähetä sähköpostia."
     },
     en: {
-      title: "Kotilo – a tool for property managers to handle resident requests",
-      description: "Kotilo brings resident emails and portal reports into one queue, helps you reply to them and handles the housing company's bookings, announcements and notices.",
+      title: "Pleissi – a tool for property managers to handle resident requests",
+      description: "Pleissi brings resident emails and portal reports into one queue, helps you reply to them and handles the housing company's bookings, announcements and notices.",
       missing: "Fill in your name and email address.",
       sending: "Sending…",
       sent: "Thank you! We will be in touch.",
