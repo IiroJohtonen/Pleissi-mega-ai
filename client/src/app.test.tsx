@@ -64,6 +64,21 @@ describe("sovellus", () => {
     expect(screen.getByText("As Oy Koivikko")).toBeTruthy();
   });
 
+  it("näyttää päätösjonossa vain omat ja käsittelijättömät tehtävät", async () => {
+    const own = { ...overdueTicket, id: "ticket-2", ticket_number: 2, subject: "Oma tehtävä", assignee_id: "user-1" };
+    const others = { ...overdueTicket, id: "ticket-3", ticket_number: 3, subject: "Toisen tehtävä", assignee_id: "user-2" };
+    const original = responses["/tickets?companyId=demo-company"];
+    responses["/tickets?companyId=demo-company"] = [overdueTicket, own, others];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      expect(await screen.findByText("Oma tehtävä")).toBeTruthy();
+      expect(screen.getByText("Saunavuoron varaus")).toBeTruthy();
+      expect(screen.queryByText("Toisen tehtävä")).toBeNull();
+    } finally {
+      responses["/tickets?companyId=demo-company"] = original;
+    }
+  });
+
   it("lukee vanhalla nimellä tallennetun istunnon", async () => {
     localStorage.clear();
     localStorage.setItem("kiito.session", JSON.stringify(staff("Pääkäyttäjä")));

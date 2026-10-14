@@ -311,8 +311,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
     return response;
   }
 
+  // Päätösjonossa ovat avoimet tehtävät, jotka on osoitettu käyttäjälle tai joilla ei ole vielä käsittelijää.
   const queueTickets = allCompanyTickets
-    .filter(ticket => ticket.status === "open")
+    .filter(ticket => ticket.status === "open" && (!ticket.assignee_id || ticket.assignee_id === user.id))
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
   const statusFilterTab = tab === "tickets" || tab === "my-tickets";

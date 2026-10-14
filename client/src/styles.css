@@ -482,18 +482,20 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .filter-chips > button.create-ticket:hover { background: #26303b; border-color: #26303b; }
 
 /* Päätösjonon laskurit ovat isoja ja jakavat rivin tasan. */
-.queue-summary-large { gap: 16px; }
+.queue-summary-large { gap: 20px; }
 .queue-summary-large > div,
 .queue-summary-large > button {
   flex: 1 1 0;
-  min-width: 200px;
-  padding: 24px 28px 22px;
-  border-radius: 16px;
-  row-gap: 6px;
+  min-width: 240px;
+  min-height: 190px;
+  padding: 32px 36px 30px;
+  border-radius: 20px;
+  row-gap: 10px;
+  align-content: center;
 }
-.queue-summary-large span { font-size: 14px; }
-.queue-summary-large strong { font-size: 44px; }
-.queue-summary-large small { font-size: 13px; }
+.queue-summary.queue-summary-large span { font-size: 17px; }
+.queue-summary.queue-summary-large strong { font-size: 64px; line-height: 1; }
+.queue-summary.queue-summary-large small { font-size: 15px; }
 
 /* Laskuri: otsikko ylhäällä, luku isona sen alla ja selite pienenä alimpana. */
 .queue-summary span {
@@ -3081,7 +3083,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .queue-summary > div, .queue-summary > button { min-width: 0; padding: 11px 13px; }
   .queue-summary strong { font-size: 22px; overflow: hidden; text-overflow: ellipsis; }
   .queue-summary-large { grid-template-columns: minmax(0, 1fr); }
-  .queue-summary-large strong { font-size: 34px; }
+  .queue-summary-large > div, .queue-summary-large > button { min-height: 0; padding: 20px 22px; }
+  .queue-summary.queue-summary-large strong { font-size: 44px; }
   .ticket-main { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .ticket-card .actions { flex-wrap: wrap; justify-content: flex-start; }
   .suggest-header { flex-wrap: wrap; }
