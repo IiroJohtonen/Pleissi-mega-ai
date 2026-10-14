@@ -430,6 +430,44 @@ describe("sovellus", () => {
     }
   });
 
+  it("tekee tuntemattomasta lähettäjästä asukkaan ja liittää hänet ilmoittajaksi", async () => {
+    const detail = {
+      ticket: { ...overdueTicket, company_name: "As Oy Koivikko" },
+      messages: [{ id: "m1", direction: "inbound", sender: "Uusi Asukas <uusi@example.com>", subject: "Kysymys", body: "Hei", created_at: "2026-10-14T10:00:00Z", channel: "email" }],
+      audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [], replyAccounts: [], signature: ""
+    };
+    responses["/tickets/ticket-1"] = detail;
+    responses["/companies/demo-company/apartments"] = [{ id: "apt-1", apartment_number: "A 12", address: "Koivikkotie 10" }];
+    try {
+      const calls = mockApi();
+      const base = globalThis.fetch;
+      vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await base(input, init);
+        return init?.method === "POST" && String(input).endsWith("/companies/demo-company/residents")
+          ? new Response(JSON.stringify({ ok: true, residentId: "resident-new" }), { status: 201, headers: { "Content-Type": "application/json" } })
+          : response;
+      }));
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      fireEvent.click(await screen.findByRole("button", { name: "Tee käyttäjä" }));
+
+      const dialog = screen.getByRole("dialog", { name: "Uusi asukas" });
+      expect((screen.getByLabelText("Nimi") as HTMLInputElement).value).toBe("Uusi Asukas");
+      expect((dialog.querySelector("input[type=email]") as HTMLInputElement).value).toBe("uusi@example.com");
+      await vi.waitFor(() => expect((dialog.querySelector("select") as HTMLSelectElement).value).toBe("apt-1"));
+      fireEvent.click(screen.getByRole("button", { name: "Lisää asukas" }));
+
+      await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets/ticket-1/reporters"))).toBe(true));
+      const created = calls.find(request => request.method === "POST" && request.url.endsWith("/companies/demo-company/residents"));
+      expect(JSON.parse(created?.body ?? "{}")).toEqual({ name: "Uusi Asukas", email: "uusi@example.com", address: "Koivikkotie 10", apartmentNumber: "A 12" });
+      const linked = calls.find(request => request.url.endsWith("/tickets/ticket-1/reporters"));
+      expect(JSON.parse(linked?.body ?? "{}").residentId).toBe("resident-new");
+      await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Uusi asukas" })).toBeNull());
+    } finally {
+      delete responses["/tickets/ticket-1"];
+      delete responses["/companies/demo-company/apartments"];
+    }
+  });
+
   it("varoittaa ennen tehtävän poistamista ja poistaa vasta vahvistuksesta", async () => {
     const detail = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
     responses["/tickets/ticket-1"] = detail;

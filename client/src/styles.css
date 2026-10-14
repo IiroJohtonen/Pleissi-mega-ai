@@ -3709,3 +3709,30 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .reminder-overdue { background: #fbe3df; color: #9c2f1f; }
 .reminder-due { background: #fdf0cf; color: #7a5600; }
 .reminder-waiting { background: #e3edf8; color: #28548f; }
+
+/* Tehtävän linkittämätön lähettäjä ja pikanappi asukkaan lisäämiseen */
+.sender-contacts { display: grid; gap: 4px; }
+.sender-contacts > small { color: #747a80; font-size: 11px; }
+
+.sender-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.sender-contact > span { overflow-wrap: anywhere; }
+
+.sender-action {
+  flex: none;
+  padding: 2px 10px;
+  border: 1px solid #b9cbe0;
+  border-radius: 99px;
+  background: #eef4fb;
+  color: #28548f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sender-action:hover:not(:disabled) { border-color: #3f7fbf; background: #e2edf9; }
