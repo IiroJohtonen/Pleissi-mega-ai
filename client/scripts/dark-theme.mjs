@@ -19,7 +19,7 @@ const TARGET = path.join(here, "../src/styles-dark.css");
 const PREFIX = ':root[data-theme="dark"]';
 
 // Valmiiksi tumma kehys: näiden sääntöjen värit pysyvät samoina.
-const CHROME = /(^|[\s,>+~])(\.sidebar|nav\b|\.nav-company|\.settings-button|\.login-page|\.login-card|\.portal-header|\.portal-user|\.mobile-bar|\.mobile-menu|\.report-tooltip)/;
+const CHROME = /(^|[\s,>+~])(\.sidebar|nav\b|\.nav-company|\.settings-button|\.login-page|\.login-card|\.portal-header|\.portal-nav-|\.portal-footer|\.mobile-bar|\.mobile-menu|\.report-tooltip)/;
 
 // Tumman tilan perussävy: sininen, kevyesti kylläinen.
 const HUE = 214;

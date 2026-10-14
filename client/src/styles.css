@@ -2601,41 +2601,28 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .repeat-choice small { display: block; margin-top: 2px; color: #747a80; font-size: 12px; font-weight: 400; }
 .booking-notice { margin: 0; }
 
-/* Asukasportaali */
-.portal { min-height: 100vh; }
+/* Asukasportaali: tietokoneella sama rakenne kuin henkilökunnan puolella, eli tumma sivupalkki
+   vasemmalla ja sisältö sen vieressä. Puhelimella sivupalkin tilalla on yläpalkki ja alapalkki. */
+.portal { min-height: 100vh; display: flex; }
 
 .portal-header {
-  display: flex;
-  flex-wrap: wrap;
+  display: none;
   align-items: center;
-  gap: 14px 28px;
-  padding: 14px 32px;
+  gap: 12px;
   background: #171c22;
   color: #fff;
 }
 
-.portal-header img { height: 38px; }
-.portal-header nav { display: flex; gap: 6px; }
-.portal-header nav button { padding: 9px 14px; }
+.portal-header img { height: 30px; }
 
-.portal-user { margin-left: auto; display: grid; justify-items: end; gap: 1px; font-size: 12px; }
-.portal-user span { color: #aab0b6; font-size: 11px; }
+.portal-nav-group { display: grid; gap: 4px; }
+.portal-nav-group + .portal-nav-group { margin-top: 14px; }
+.portal-nav-label { padding: 0 11px 2px; color: #8d949b; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.portal-footer-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 
-.portal-user button {
-  margin-top: 5px;
-  padding: 7px 12px;
-  border: 1px solid #3a434d;
-  border-radius: 8px;
-  background: #242c35;
-  color: #9bd3ff;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.portal-user button:hover { background: #2e3843; border-color: #9bd3ff; }
-
-.portal-main { max-width: 1100px; margin: 0 auto; padding: 32px; display: grid; gap: 16px; }
-.portal-main h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+.portal-main { flex: 1; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 44px 46px 64px; display: grid; gap: 18px; align-content: start; }
+.portal-title .eyebrow { margin: 0 0 6px; }
+.portal-main h1 { margin: 0; font-size: 30px; letter-spacing: -.03em; }
 
 /* Asukkaan tiketit */
 .portal-tickets-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -3278,12 +3265,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .queue-summary > button, .queue-summary > div { min-width: 0; }
   .knowledge-base .residents-toolbar .toolbar-actions { width: 100%; }
 
-  /* Asukasportaali: välilehdet vierivät sivusuunnassa yhdellä rivillä. */
-  .portal-header { padding: 10px 14px; gap: 8px 12px; }
-  .portal-header img { height: 30px; }
-  .portal-header nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; scrollbar-width: none; }
-  .portal-header nav::-webkit-scrollbar { display: none; }
-  .portal-header nav button { flex: none; white-space: nowrap; }
+  /* Asukasportaali */
   .portal-main { padding: 18px 14px 40px; }
   .portal-main h1 { font-size: 23px; }
   .portal-tickets-head { flex-direction: column; align-items: stretch; }
@@ -3498,8 +3480,9 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .portal-sheet-actions button { min-height: 48px; font-size: 15px; }
 
 @media (max-width: 760px) {
-  .portal-header { position: sticky; top: 0; z-index: 30; flex-wrap: nowrap; padding: 10px 16px; }
-  .portal-header .portal-nav, .portal-header .portal-user { display: none; }
+  .portal { display: block; }
+  .portal .portal-sidebar { display: none; }
+  .portal-header { display: flex; position: sticky; top: 0; z-index: 30; padding: 10px 16px; }
   .portal-header-home { display: block; margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aab0b6; font-size: 12px; }
   .portal-main { padding: 18px 16px calc(96px + env(safe-area-inset-bottom)); }
 

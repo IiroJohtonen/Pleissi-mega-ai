@@ -25,24 +25,43 @@ const portalViews: { view: PortalView; label: string }[] = [
   { view: "meters", label: t("Kulutuslukemat") }
 ];
 
+// Työpöydän sivupalkin ryhmät: tiedotteet, vuorovaraukset ja asiointi isännöitsijän kanssa.
+const portalNavGroups: { label: string; views: PortalView[] }[] = [
+  { label: "", views: ["announcements"] },
+  { label: t("Varaukset"), views: ["sauna", "laundry"] },
+  { label: t("Asiointi"), views: ["tickets", "waitlist", "moves", "renovations", "meters"] }
+];
+
+const portalIcons: Record<PortalView, string> = {
+  announcements: "M4 5h16v11H8l-4 4zM8 9h8M8 12h5",
+  sauna: "M7 21c0-3 2-4 2-7M12 21c0-3 2-4 2-7M17 21c0-3 2-4 2-7M5 3c0 2 2 2 2 4M10 3c0 2 2 2 2 4M15 3c0 2 2 2 2 4",
+  laundry: "M5 3h14v18H5zM5 7h14M12 10a4 4 0 1 0 0 8a4 4 0 1 0 0-8M8 5h1",
+  tickets: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01",
+  waitlist: "M8 7a3 3 0 1 0 0-.01M3 20c0-3 2-5 5-5s5 2 5 5M16 8h5M16 12h5M16 16h3",
+  moves: "M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01",
+  renovations: "M14 4l6 6-9 9H5v-6zM12 6l6 6",
+  meters: "M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"
+};
+
 // Puhelimen alapalkin näkymät lyhyine nimineen; muut ovat Lisää-valikossa.
 const portalTabs: { view: PortalView; label: string; icon: string }[] = [
-  { view: "announcements", label: t("Tiedotteet"), icon: "M4 5h16v11H8l-4 4zM8 9h8M8 12h5" },
-  { view: "sauna", label: t("Sauna"), icon: "M7 21c0-3 2-4 2-7M12 21c0-3 2-4 2-7M17 21c0-3 2-4 2-7M5 3c0 2 2 2 2 4M10 3c0 2 2 2 2 4M15 3c0 2 2 2 2 4" },
-  { view: "laundry", label: t("Pyykkitupa"), icon: "M5 3h14v18H5zM5 7h14M12 10a4 4 0 1 0 0 8a4 4 0 1 0 0-8M8 5h1" },
-  { view: "tickets", label: t("Tehtävät"), icon: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" }
+  { view: "announcements", label: t("Tiedotteet"), icon: portalIcons.announcements },
+  { view: "sauna", label: t("Sauna"), icon: portalIcons.sauna },
+  { view: "laundry", label: t("Pyykkitupa"), icon: portalIcons.laundry },
+  { view: "tickets", label: t("Tehtävät"), icon: portalIcons.tickets }
 ];
 
 function PortalIcon({ path }: { path: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={path} />
     </svg>
   );
 }
 
 // Asukasportaali: asukas näkee vain oman taloyhtiönsä sauna- ja pyykkitupavuorot.
-// Puhelimella näkymät vaihdetaan alapalkista, ja harvemmin käytetyt ovat Lisää-valikossa.
+// Tietokoneella näkymät ovat sivupalkissa kuten henkilökunnan puolella. Puhelimella ne vaihdetaan
+// alapalkista, ja harvemmin käytetyt ovat Lisää-valikossa.
 export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
   const [view, setView] = useState<PortalView>("announcements");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -59,28 +78,47 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
     <div className="portal">
       <header className="portal-header">
         <img src="/pleissi-logo.svg" alt="Pleissi" />
-        <nav className="portal-nav">
-          {portalViews.map(item => (
-            <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => open(item.view)}>{item.label}</button>
-          ))}
-        </nav>
-        <div className="portal-user">
-          <strong>{resident.name}</strong>
-          <span>{resident.companyName} · {resident.apartmentNumber}</span>
-          <button
-            onClick={logout}
-          >
-            {t("Kirjaudu ulos")}
-          </button>
-          <LanguageToggle />
-        </div>
         <span className="portal-header-home">{resident.companyName} · {resident.apartmentNumber}</span>
       </header>
 
+      <aside className="sidebar portal-sidebar">
+        <div className="brand">
+          <img src="/pleissi-logo.svg" alt="Pleissi" />
+        </div>
+        <nav aria-label={t("Asukasportaalin valikko")}>
+          {portalNavGroups.map(group => (
+            <div key={group.label || "main"} className="portal-nav-group">
+              {group.label && <span className="portal-nav-label">{group.label}</span>}
+              {group.views.map(item => (
+                <button
+                  key={item}
+                  className={view === item ? "active" : ""}
+                  onClick={() => open(item)}
+                  aria-current={view === item ? "page" : undefined}
+                >
+                  <PortalIcon path={portalIcons[item]} />
+                  {portalViews.find(entry => entry.view === item)?.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="company">
+            <small>{resident.companyName} · {resident.apartmentNumber}</small>
+            <strong>{resident.name}</strong>
+            <div className="portal-footer-links">
+              <button className="logout" onClick={logout}>{t("Kirjaudu ulos")}</button>
+              <LanguageToggle className="logout" />
+            </div>
+          </div>
+        </div>
+      </aside>
+
       <main className="portal-main">
-        <div>
+        <div className="portal-title">
+          <p className="eyebrow">{resident.companyName} · {resident.apartmentNumber}</p>
           <h1>{title}</h1>
-          <p className="muted">{resident.companyName}</p>
         </div>
         {view === "announcements" ? <PortalAnnouncements />
           : view === "tickets" ? <PortalTickets resident={resident} />
