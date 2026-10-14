@@ -612,6 +612,14 @@
 :root[data-theme="dark"] .reply-from {
     color: #b1becd
 }
+:root[data-theme="dark"] .reply-from select {
+    border: 1px solid #374353;
+    background: #252f3c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 14px;
+    color: #d4d8de
+}
+:root[data-theme="dark"] .reply-from select:focus {
+    border-color: #29323d
+}
 :root[data-theme="dark"] .saved-indicator {
     color: #b1becd
 }
@@ -1525,6 +1533,15 @@
 }
 :root[data-theme="dark"] .reply-cc input:focus {
     border-color: #29323d
+}
+:root[data-theme="dark"] .reply-cc-add {
+    border: 1px solid #354150;
+    background: #283341;
+    color: #d4d8de
+}
+:root[data-theme="dark"] .reply-cc-add:hover {
+    border-color: #29323d;
+    background: #2d3a47
 }
 :root[data-theme="dark"] .reply-signature-toggle {
     color: #b1becd
