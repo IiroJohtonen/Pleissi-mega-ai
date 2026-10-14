@@ -10,6 +10,7 @@
   <link rel="preload" href="fonts/newsreader-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
   <!-- Tekstit ovat suomeksi tässä tiedostossa ja englanniksi data-en-attribuuteissa; kielen vaihtaa site.js.
@@ -18,10 +19,11 @@
     <div class="wrap top-bar">
       <a class="logo" href="/" aria-label="Pleissi"><img src="pleissi-logo.svg" alt="Pleissi" width="118" height="30"></a>
       <nav class="links" aria-label="Sivun osiot" data-en-aria-label="Page sections">
+        <a href="#kierros" data-en="Tour">Esittely</a>
         <a href="#toiminta" data-en="How it works">Miten se toimii</a>
         <a href="#asukkaat" data-en="For residents">Asukkaille</a>
         <a href="#tietoturva" data-en="Data security">Tietoturva</a>
-        <a href="#kayttoonotto" data-en="Getting started">Käyttöönotto</a>
+        <a href="#kysymykset" data-en="FAQ">Kysymykset</a>
       </nav>
       <div class="top-actions">
         <div class="lang" role="group" aria-label="Kieli" data-en-aria-label="Language">
@@ -46,13 +48,13 @@
         </div>
         <p class="fine" data-en="Works with Gmail, Microsoft 365 and other email services. Used in the browser, nothing to install.">Toimii Gmailin, Microsoft 365:n ja muiden sähköpostien kanssa. Käytetään selaimella, mitään ei asenneta.</p>
       </div>
-      <figure class="wrap hero-shot">
+      <figure class="wrap hero-shot" data-tilt>
         <img src="img/jono.webp" width="2000" height="1250" alt="Pleissin päätösjono: avoimet tehtävät, muistutukset ja tehtävät ilman käsittelijää" data-en-alt="The Pleissi decision queue: open tasks, reminders and unassigned tasks" fetchpriority="high">
       </figure>
     </section>
 
     <section class="story">
-      <div class="wrap story-grid">
+      <div class="wrap story-grid" data-reveal>
         <p class="story-quote" data-en="Monday morning, forty new emails. A leaking ceiling, three questions about sauna slots, and one matter a colleague already handled on Friday.">Maanantaiaamuna postilaatikossa on neljäkymmentä uutta viestiä. Vuotava katto, kolme kysymystä saunavuoroista ja yksi asia, jonka kollega hoiti jo perjantaina.</p>
         <div class="story-text">
           <p data-en="Pleissi sorts them for you. Emergencies go to the top and reach the responsible manager straight away. Recurring questions get a ready reply draft based on the housing company's own instructions. And every message belongs to exactly one person.">Pleissi järjestää ne puolestasi. Hätätapaukset nousevat jonon kärkeen ja menevät heti vastuuisännöitsijälle. Toistuviin kysymyksiin on valmis vastausluonnos taloyhtiön omien ohjeiden pohjalta. Ja jokainen viesti on täsmälleen yhden ihmisen vastuulla.</p>
@@ -61,14 +63,70 @@
       </div>
     </section>
 
+
+    <section class="section tour" id="kierros" aria-labelledby="kierros-otsikko">
+      <div class="wrap">
+        <header class="section-head" data-reveal>
+          <p class="eyebrow" data-en="Take a tour">Tutustu Pleissiin</p>
+          <h2 id="kierros-otsikko" data-en="One tool for the whole working day">Yksi työkalu koko työpäivään</h2>
+        </header>
+        <div class="tour-grid" data-tour>
+          <div class="tour-tabs" role="tablist" aria-label="Pleissin näkymät" data-en-aria-label="Pleissi views">
+            <button role="tab" id="tab-jono" aria-controls="kuva-jono" aria-selected="true">
+              <strong data-en="Decision queue">Päätösjono</strong>
+              <span data-en="Your open tasks, unassigned tasks and reminders at a glance every morning.">Omat avoimet tehtävät, käsittelijättömät ja muistutukset yhdellä silmäyksellä joka aamu.</span>
+              <i class="tour-progress" aria-hidden="true"></i>
+            </button>
+            <button role="tab" id="tab-tehtava" aria-controls="kuva-tehtava" aria-selected="false" tabindex="-1">
+              <strong data-en="Task and conversation">Tehtävä ja keskustelu</strong>
+              <span data-en="Details, the whole email thread and the reply form side by side.">Tiedot, koko sähköpostiketju ja vastauslomake rinnakkain.</span>
+              <i class="tour-progress" aria-hidden="true"></i>
+            </button>
+            <button role="tab" id="tab-muistutukset" aria-controls="kuva-muistutukset" aria-selected="false" tabindex="-1">
+              <strong data-en="Reminders">Muistutukset</strong>
+              <span data-en="Deadlines and residents waiting for a reply, collected in one list.">Lähestyvät määräajat ja vastausta odottavat asukkaat yhdellä listalla.</span>
+              <i class="tour-progress" aria-hidden="true"></i>
+            </button>
+            <button role="tab" id="tab-pyykkitupa" aria-controls="kuva-pyykkitupa" aria-selected="false" tabindex="-1">
+              <strong data-en="Bookings">Varaukset</strong>
+              <span data-en="Sauna and laundry room calendars that residents book themselves.">Sauna- ja pyykkituvan kalenterit, joihin asukkaat varaavat itse.</span>
+              <i class="tour-progress" aria-hidden="true"></i>
+            </button>
+            <button role="tab" id="tab-raportit" aria-controls="kuva-raportit" aria-selected="false" tabindex="-1">
+              <strong data-en="Reports">Raportit</strong>
+              <span data-en="Incoming tasks, response times and billing reports by housing company.">Saapuneet tehtävät, käsittelyajat ja laskutusraportit taloyhtiöittäin.</span>
+              <i class="tour-progress" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="tour-stage">
+            <figure role="tabpanel" id="kuva-jono" aria-labelledby="tab-jono" class="active">
+              <img src="img/tab-jono.webp" width="1800" height="1125" loading="lazy" alt="Päätösjono" data-en-alt="Decision queue">
+            </figure>
+            <figure role="tabpanel" id="kuva-tehtava" aria-labelledby="tab-tehtava">
+              <img src="img/tab-tehtava.webp" width="1800" height="1125" loading="lazy" alt="Tehtävä ja sen sähköpostiketju" data-en-alt="A task and its email thread">
+            </figure>
+            <figure role="tabpanel" id="kuva-muistutukset" aria-labelledby="tab-muistutukset">
+              <img src="img/tab-muistutukset.webp" width="1800" height="1125" loading="lazy" alt="Muistutuksiin suodatettu tehtävälista" data-en-alt="Task list filtered to reminders">
+            </figure>
+            <figure role="tabpanel" id="kuva-pyykkitupa" aria-labelledby="tab-pyykkitupa">
+              <img src="img/tab-pyykkitupa.webp" width="1800" height="1125" loading="lazy" alt="Pyykkituvan varauskalenteri" data-en-alt="Laundry room booking calendar">
+            </figure>
+            <figure role="tabpanel" id="kuva-raportit" aria-labelledby="tab-raportit">
+              <img src="img/tab-raportit.webp" width="1800" height="1125" loading="lazy" alt="Raportit: saapuneet tehtävät ja laskutus" data-en-alt="Reports: incoming tasks and billing">
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="toiminta">
       <div class="wrap">
-        <header class="section-head">
+        <header class="section-head" data-reveal>
           <p class="eyebrow" data-en="How it works">Miten se toimii</p>
           <h2 data-en="From email to a handled matter">Sähköpostista hoidetuksi asiaksi</h2>
         </header>
 
-        <article class="feature">
+        <article class="feature" data-reveal>
           <div class="feature-text">
             <h3 data-en="Every message becomes a task">Jokaisesta viestistä tulee tehtävä</h3>
             <p data-en="Pleissi reads the office's mailbox and recognises the resident and apartment from the sender. The whole conversation is in one timeline: incoming messages, sent replies, attachments and internal notes.">Pleissi lukee toimiston postilaatikkoa ja tunnistaa asukkaan ja asunnon lähettäjästä. Koko keskustelu on yhdellä aikajanalla: saapuneet viestit, lähetetyt vastaukset, liitteet ja sisäiset muistiinpanot.</p>
@@ -83,7 +141,7 @@
           </figure>
         </article>
 
-        <article class="feature reverse">
+        <article class="feature reverse" data-reveal>
           <div class="feature-text">
             <h3 data-en="Every matter has an owner and a deadline">Jokaisella asialla on omistaja ja määräaika</h3>
             <p data-en="A task shows at a glance who is handling it, how urgent it is and when it is due. When a deadline is approaching or a resident has waited too long, the task is flagged in the decision queue.">Tehtävästä näkee yhdellä silmäyksellä, kuka sitä hoitaa, kuinka kiireellinen se on ja milloin sen pitää olla valmis. Kun määräaika lähestyy tai asukas on odottanut liian kauan, tehtävä nousee muistutuksena päätösjonoon.</p>
@@ -98,7 +156,7 @@
           </figure>
         </article>
 
-        <div class="trio">
+        <div class="trio" data-reveal>
           <div>
             <h3 data-en="Replies from a familiar address">Vastaus tutusta osoitteesta</h3>
             <p data-en="The reply goes out from the mailbox the message arrived in, with your own signature. You can copy in the board or the maintenance company.">Vastaus lähtee siitä postilaatikosta, johon viesti saapui, ja siinä on oma allekirjoituksesi. Kopion voi lähettää hallitukselle tai huoltoyhtiölle.</p>
@@ -130,31 +188,83 @@
             <li data-en="Meter readings">Kulutuslukemat</li>
           </ul>
         </div>
-        <div class="phones">
+        <div class="phone-showcase" data-phone>
           <figure class="phone">
-            <img src="img/portaali-home.webp" width="780" height="1688" loading="lazy" alt="Asukasportaali puhelimessa: taloyhtiön tiedotteet" data-en-alt="The resident portal on a phone: housing company announcements">
+            <img class="active" src="img/puhelin-tiedotteet.webp" width="720" height="1558" loading="lazy" alt="Asukasportaali: taloyhtiön tiedotteet" data-en-alt="Resident portal: housing company announcements">
+            <img src="img/puhelin-sauna.webp" width="720" height="1558" loading="lazy" alt="Asukasportaali: saunavuorot" data-en-alt="Resident portal: sauna slots">
+            <img src="img/puhelin-pyykkitupa.webp" width="720" height="1558" loading="lazy" alt="Asukasportaali: pyykkitupavuorot" data-en-alt="Resident portal: laundry slots">
+            <img src="img/puhelin-tehtavat.webp" width="720" height="1558" loading="lazy" alt="Asukasportaali: omat ilmoitukset" data-en-alt="Resident portal: own reports">
           </figure>
-          <figure class="phone">
-            <img src="img/portaali-sauna.webp" width="780" height="1688" loading="lazy" alt="Asukasportaali puhelimessa: saunavuorojen varaus" data-en-alt="The resident portal on a phone: booking sauna slots">
-          </figure>
+          <div class="phone-picker" role="group" aria-label="Portaalin näkymät" data-en-aria-label="Portal views">
+            <button type="button" aria-pressed="true" data-en="Announcements">Tiedotteet</button>
+            <button type="button" aria-pressed="false" data-en="Sauna">Sauna</button>
+            <button type="button" aria-pressed="false" data-en="Laundry">Pyykkitupa</button>
+            <button type="button" aria-pressed="false" data-en="Reports">Ilmoitukset</button>
+          </div>
         </div>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap">
-        <header class="section-head">
+        <header class="section-head" data-reveal>
           <p class="eyebrow" data-en="Everyday housing matters">Taloyhtiön arki</p>
           <h2 data-en="Everything else in the same place">Kaikki muukin samassa paikassa</h2>
+          <p class="section-lead" data-en="Drag or scroll sideways to browse.">Vedä tai vieritä sivuttain selataksesi.</p>
         </header>
-        <dl class="index">
-          <div><dt data-en="Bookings and parking">Varaukset ja autopaikat</dt><dd data-en="Sauna and laundry slots, parking spaces, waiting lists and fees.">Sauna- ja pyykkivuorot, autopaikat, jonot ja maksut.</dd></div>
-          <div><dt data-en="Renovations and moves">Remontit ja muutot</dt><dd data-en="Renovation notices are approved with conditions, and move notices are recorded automatically.">Remontti-ilmoitukset hyväksytään ehtoineen, ja muuttoilmoitukset kirjautuvat itsestään.</dd></div>
-          <div><dt data-en="Key register">Avainrekisteri</dt><dd data-en="Who holds which key, and when it was handed over.">Kenellä mikin avain on ja milloin se on luovutettu.</dd></div>
-          <div><dt data-en="Meter readings">Mittarilukemat</dt><dd data-en="Water and electricity readings by apartment and by date.">Vesi- ja sähkölukemat asunnoittain ja päivämäärittäin.</dd></div>
-          <div><dt data-en="Instructions and documents">Ohjeet ja dokumentit</dt><dd data-en="The housing company's instructions in one knowledge base, kept separate from internal notes.">Taloyhtiön ohjeet yhdessä tietopankissa, erillään sisäisistä muistiinpanoista.</dd></div>
-          <div><dt data-en="Billing reports">Laskutusraportit</dt><dd data-en="Slot and parking fees straight from the platform for invoicing.">Vuoro- ja autopaikkamaksut suoraan alustalta laskutukseen.</dd></div>
-        </dl>
+        <div class="rail" data-rail>
+          <ul class="rail-track" tabindex="0" aria-label="Taloyhtiön arjen toiminnot" data-en-aria-label="Everyday housing company features">
+          <li class="card">
+            <figure><img src="img/kortti-tiedotteet.webp" loading="lazy" alt="Tiedotteet" data-en-alt="Announcements"></figure>
+            <h3 data-en="Announcements">Tiedotteet</h3>
+            <p data-en="An announcement for the whole housing company or one stairwell, also by email.">Tiedote koko taloyhtiölle tai yhdelle rapulle, myös sähköpostilla.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-avaimet.webp" loading="lazy" alt="Avainrekisteri" data-en-alt="Key register"></figure>
+            <h3 data-en="Key register">Avainrekisteri</h3>
+            <p data-en="Who holds which key, until when and for which apartment.">Kenellä mikin avain on, mihin asti ja mistä asunnosta.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-autopaikat.webp" loading="lazy" alt="Autopaikat" data-en-alt="Parking spaces"></figure>
+            <h3 data-en="Parking spaces">Autopaikat</h3>
+            <p data-en="Garages, indoor and outdoor spaces with their holders, plus waiting lists.">Autotallit, halli- ja ulkopaikat haltijoineen sekä jonot.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-lukemat.webp" loading="lazy" alt="Kulutuslukemat" data-en-alt="Meter readings"></figure>
+            <h3 data-en="Meter readings">Kulutuslukemat</h3>
+            <p data-en="Water and electricity readings by apartment, with usage since the last reading.">Vesi- ja sähkölukemat asunnoittain ja kulutus edelliseen verrattuna.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-remontit.webp" loading="lazy" alt="Remontti-ilmoitukset" data-en-alt="Renovation notices"></figure>
+            <h3 data-en="Renovation notices">Remontti-ilmoitukset</h3>
+            <p data-en="Notices from the resident portal, approved with conditions in one click.">Asukkaan ilmoitus portaalista, hyväksyntä ehtoineen yhdellä painalluksella.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-muutot.webp" loading="lazy" alt="Muuttoilmoitukset" data-en-alt="Move notices"></figure>
+            <h3 data-en="Move notices">Muuttoilmoitukset</h3>
+            <p data-en="New residents and door names are recorded once the notice is approved.">Uudet asukkaat ja ovinimet kirjautuvat, kun ilmoitus hyväksytään.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-asukkaat.webp" loading="lazy" alt="Asukkaat" data-en-alt="Residents"></figure>
+            <h3 data-en="Residents">Asukkaat</h3>
+            <p data-en="Residents and apartments by housing company, imported from CSV or Excel.">Asukkaat ja asunnot taloyhtiöittäin, tuonti CSV- tai Excel-tiedostosta.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-dokumentaatio.webp" loading="lazy" alt="Dokumentaatio" data-en-alt="Documentation"></figure>
+            <h3 data-en="Documentation">Dokumentaatio</h3>
+            <p data-en="The housing company's instructions that reply suggestions are based on.">Taloyhtiön ohjeet, joihin vastausehdotukset perustuvat.</p>
+          </li>
+          <li class="card">
+            <figure><img src="img/kortti-allekirjoitus.webp" loading="lazy" alt="Oma allekirjoitus" data-en-alt="Your own signature"></figure>
+            <h3 data-en="Your own signature">Oma allekirjoitus</h3>
+            <p data-en="Every user has their own email signature with a template.">Jokaisella käyttäjällä oma sähköpostiallekirjoitus pohjineen.</p>
+          </li>
+          </ul>
+          <div class="rail-controls">
+            <button type="button" class="rail-prev" aria-label="Edelliset" data-en-aria-label="Previous">←</button>
+            <button type="button" class="rail-next" aria-label="Seuraavat" data-en-aria-label="Next">→</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -165,7 +275,7 @@
           <h2 data-en="Residents' data stays under control">Asukkaiden tiedot pysyvät hallinnassa</h2>
           <p data-en="A property manager handles a lot of personal data. Pleissi is built so that data is only where it is needed and only for as long as it is needed.">Isännöitsijä käsittelee paljon henkilötietoja. Pleissi on rakennettu niin, että tiedot ovat vain siellä, missä niitä tarvitaan, ja vain niin kauan kuin niitä tarvitaan.</p>
         </div>
-        <ul class="security-list">
+        <ul class="security-list" data-reveal>
           <li><strong data-en="Server in Finland">Palvelin Suomessa</strong><span data-en="The platform and its database run on a server in Helsinki.">Alusta ja tietokanta toimivat helsinkiläisellä palvelimella.</span></li>
           <li><strong data-en="Access by role">Pääsy roolin mukaan</strong><span data-en="A manager sees only their own housing companies, and a resident only their own matters.">Isännöitsijä näkee vain omat taloyhtiönsä ja asukas vain omat asiansa.</span></li>
           <li><strong data-en="Retention periods">Säilytysajat</strong><span data-en="Closed tasks and logs are deleted automatically after the period you choose.">Suljetut tehtävät ja lokit poistuvat automaattisesti valitsemasi ajan jälkeen.</span></li>
@@ -178,12 +288,12 @@
 
     <section class="section" id="kayttoonotto">
       <div class="wrap">
-        <header class="section-head">
+        <header class="section-head" data-reveal>
           <p class="eyebrow" data-en="Getting started">Käyttöönotto</p>
           <h2 data-en="Up and running without installations">Käyttöön ilman asennuksia</h2>
           <p class="section-lead" data-en="We go through the setup with you, and the office can keep working as usual in the meantime.">Käymme käyttöönoton läpi yhdessä, ja toimisto voi jatkaa työtään normaalisti sillä välin.</p>
         </header>
-        <ol class="steps">
+        <ol class="steps" data-reveal>
           <li>
             <h3 data-en="Connect email">Yhdistä sähköposti</h3>
             <p data-en="The office's Gmail, Microsoft 365 or other mailbox. Each housing company and each manager can also have their own address.">Toimiston Gmail, Microsoft 365 tai muu postilaatikko. Taloyhtiöille ja isännöitsijöille voi yhdistää myös omat osoitteet.</p>
@@ -197,6 +307,42 @@
             <p data-en="The housing companies' instructions and documents, which reply suggestions draw on.">Taloyhtiöiden ohjeet ja dokumentit, joihin vastausehdotukset perustuvat.</p>
           </li>
         </ol>
+      </div>
+    </section>
+
+
+    <section class="section faq" id="kysymykset">
+      <div class="wrap faq-grid">
+        <header data-reveal>
+          <p class="eyebrow" data-en="Questions">Kysymyksiä</p>
+          <h2 data-en="Frequently asked">Usein kysyttyä</h2>
+        </header>
+        <div class="faq-list">
+          <details data-reveal>
+            <summary data-en="Do we need to change our email?">Pitääkö meidän vaihtaa sähköpostia?</summary>
+            <p data-en="No. Pleissi connects to your existing Gmail, Microsoft 365 or other mailbox, and residents keep emailing the same address as before.">Ei. Pleissi yhdistetään nykyiseen Gmail-, Microsoft 365- tai muuhun postilaatikkoon, ja asukkaat lähettävät viestinsä samaan osoitteeseen kuin ennenkin.</p>
+          </details>
+          <details data-reveal>
+            <summary data-en="What does AI do with residents' messages?">Mitä tekoäly tekee asukkaiden viesteillä?</summary>
+            <p data-en="AI is optional. On request it drafts a reply based on the housing company's own instructions, and if you wish it assesses how urgent an incoming message is. A person always reads and sends the reply.">Tekoäly on valinnainen. Pyydettäessä se laatii vastausluonnoksen taloyhtiön omien ohjeiden pohjalta, ja halutessanne se arvioi saapuvan viestin kiireellisyyden. Ihminen lukee ja lähettää vastauksen aina itse.</p>
+          </details>
+          <details data-reveal>
+            <summary data-en="Can each manager use their own email?">Voiko jokainen isännöitsijä käyttää omaa sähköpostiaan?</summary>
+            <p data-en="Yes. A manager can connect their own mailbox, so messages arriving there become their tasks and replies go out from their own address.">Kyllä. Isännöitsijä voi yhdistää oman postilaatikkonsa, jolloin siihen tulevista viesteistä syntyy hänelle tehtäviä ja vastaukset lähtevät hänen omasta osoitteestaan.</p>
+          </details>
+          <details data-reveal>
+            <summary data-en="Do residents need to install an app?">Pitääkö asukkaiden asentaa sovellus?</summary>
+            <p data-en="No. The resident portal works in the browser on a phone or computer, in Finnish and English.">Ei. Asukasportaali toimii puhelimen ja tietokoneen selaimessa suomeksi ja englanniksi.</p>
+          </details>
+          <details data-reveal>
+            <summary data-en="Where is the data stored?">Missä tiedot säilytetään?</summary>
+            <p data-en="The platform and database are on a server in Helsinki. You set the retention periods yourselves, and a resident's data can be exported and deleted on request.">Alusta ja tietokanta ovat palvelimella Helsingissä. Säilytysajat asetetaan itse, ja asukkaan tiedot voi viedä ja poistaa pyynnöstä.</p>
+          </details>
+          <details data-reveal>
+            <summary data-en="How do resident details get into Pleissi?">Miten asukastiedot saadaan Pleissiin?</summary>
+            <p data-en="Residents and apartments are imported from a CSV or Excel file, one housing company at a time. A new sender can also be added as a resident straight from a task.">Asukkaat ja asunnot tuodaan CSV- tai Excel-tiedostosta taloyhtiö kerrallaan. Uuden lähettäjän voi lisätä asukkaaksi myös suoraan tehtävältä.</p>
+          </details>
+        </div>
       </div>
     </section>
 
