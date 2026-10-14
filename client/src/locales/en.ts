@@ -955,6 +955,8 @@ export const en: Record<string, string> = {
   "Näytä myöhässä olevat tehtävät": "Show overdue tickets",
   "määräaika mennyt": "past due date",
   "+ Luo tehtävä": "+ Create ticket",
+  "oma tehtävä": "own ticket",
+  "omaa tehtävää": "own tickets",
   "Sulje haku": "Close search",
   "Hae sarakkeista": "Search the columns",
   "Hae…": "Search…",

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
-import { formatTicketNumber, priorityLabel, statusLabel, ticketAge, ticketStatuses } from "../format";
+import { priorityLabel, statusLabel, ticketStatuses } from "../format";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
 import { actorName, api, logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
@@ -35,6 +35,8 @@ const navGroups: { key: string; label: string; tabs: TicketTab[] }[] = [
 ];
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 const subTabs = navGroups.flatMap(group => group.tabs);
+// Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
+const ownTicketStatuses = ["waiting_manager", "waiting_third_party"];
 
 // Mitä alasivun laskuri tarkoittaa.
 const navCountTitles: Partial<Record<TicketTab, string>> = {
@@ -86,7 +88,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [skipTicketId, setSkipTicketId] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  // Tilasuodatin on käytössä vain Kaikki tehtävät -näkymässä; muut näkymät on jo rajattu tilan mukaan.
+  // Tilasuodatin on käytössä Kaikki tehtävät- ja Omat tehtävät -näkymissä; muut näkymät on jo rajattu tilan mukaan.
   const [statusFilter, setStatusFilter] = useState("all");
   // Määräaikasuodatin: "overdue" näyttää vain myöhässä olevat tehtävät.
   const [dueFilter, setDueFilter] = useState("all");
@@ -313,12 +315,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
     .filter(ticket => ticket.status === "open")
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
+  const statusFilterTab = tab === "tickets" || tab === "my-tickets";
   const sourceTickets = tab === "queue" ? queueTickets : tab === "my-tickets" ? myTickets : tab === "ai-handled" ? aiTickets : tickets;
   // Päätösjonossa ei ole suodattimia; ne koskevat vain tehtävälistoja.
   const visibleTickets = tab === "queue" ? queueTickets : sourceTickets.filter(ticket =>
     (priorityFilter === "all" || ticket.priority === priorityFilter)
     && (typeFilter === "all" || ticket.type === typeFilter)
-    && (tab !== "tickets" || statusFilter === "all" || ticket.status === statusFilter)
+    && (!statusFilterTab || statusFilter === "all" || ticket.status === statusFilter)
     && (dueFilter === "all" || isOverdue(ticket))
     && ticketColumns.every(column => {
       const search = (columnSearch[column.key] ?? "").trim().toLowerCase();
@@ -343,7 +346,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     ...(typeFilter !== "all"
       ? [{ key: "type", label: t("Tyyppi"), value: t(typeFilter), clear: () => setTypeFilter("all") }]
       : []),
-    ...(tab === "tickets" && statusFilter !== "all"
+    ...(statusFilterTab && statusFilter !== "all"
       ? [{ key: "status", label: t("Tila"), value: statusLabel(statusFilter), clear: () => setStatusFilter("all") }]
       : []),
     ...(dueFilter !== "all"
@@ -368,18 +371,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
 
   const filtersActive = priorityFilter !== "all" || typeFilter !== "all" || dueFilter !== "all"
-    || (tab === "tickets" && statusFilter !== "all");
+    || (statusFilterTab && statusFilter !== "all");
 
-  // Myöhässä olevat tehtävät kaikista yhtiöistä päätösjonon laskuria varten.
-  const overdueCount = allCompanyTickets.filter(isOverdue).length;
-
-  const statusCounts = ticketStatuses.map(status => ({
+  // Päätösjonon laskurit: käyttäjän omat tehtävät kaikista yhtiöistä tiloittain.
+  const ownStatusCounts = ownTicketStatuses.map(status => ({
     status,
-    count: allCompanyTickets.filter(ticket => ticket.status === status).length
+    count: allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && ticket.status === status).length
   }));
-  const oldestQueuedTicket = queueTickets.reduce<Ticket | null>((oldest, ticket) =>
-    !oldest || Date.parse(ticket.created_at) < Date.parse(oldest.created_at) ? ticket : oldest
-  , null);
   const ticketTypes = [...new Set(tickets.map(ticket => ticket.type))].sort((a, b) => a.localeCompare(b, "fi"));
   const activeCompany = companies.find(company => company.id === selectedCompany);
   const showResidentsLink = residentsOpen;
@@ -636,18 +634,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
               <a className="back-link" href="#/tickets">{t("← Kaikki tehtävät")}</a>
             )}
             {tab === "queue" && (
-              <div className="queue-summary">
+              <div className="queue-summary queue-summary-large">
                 <div>
                   <span>{t("Jonossa")}</span>
                   <strong>{queueTickets.length}</strong>
                   <small>{t("odottavaa tehtävää")}</small>
                 </div>
-                <div>
-                  <span>{t("Vanhin odottava")}</span>
-                  <strong>{oldestQueuedTicket ? ticketAge(oldestQueuedTicket.created_at, clock) : "—"}</strong>
-                  <small>{oldestQueuedTicket ? t("Tehtävä #{0}", formatTicketNumber(oldestQueuedTicket.ticket_number)) : t("Ei odottavia tehtäviä")}</small>
-                </div>
-                {statusCounts.map(({ status, count }) => (
+                {ownStatusCounts.map(({ status, count }) => (
                   <button
                     key={status}
                     title={t("Näytä nämä tehtävät")}
@@ -656,30 +649,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
                       setPriorityFilter("all");
                       setTypeFilter("all");
                       setDueFilter("all");
-                      setTab("tickets");
+                      setTab("my-tickets");
                     }}
                   >
                     <span>{statusLabel(status)}</span>
                     <strong>{count}</strong>
-                    <small>{count === 1 ? t("tehtävä") : t("tehtävää")}</small>
+                    <small>{count === 1 ? t("oma tehtävä") : t("omaa tehtävää")}</small>
                   </button>
                 ))}
-                <button
-                  className={overdueCount > 0 ? "overdue" : ""}
-                  title={t("Näytä myöhässä olevat tehtävät")}
-                  onClick={() => {
-                    setStatusFilter("all");
-                    setPriorityFilter("all");
-                    setTypeFilter("all");
-                    setDueFilter("overdue");
-                    setTab("tickets");
-                  }}
-                >
-                  <span>{t("Myöhässä")}</span>
-                  <strong>{overdueCount}</strong>
-                  <small>{t("määräaika mennyt")}</small>
-                </button>
-                <button className="create-ticket" onClick={() => setCreating(true)}>{t("+ Luo tehtävä")}</button>
               </div>
             )}
             {tab !== "queue" && filtersOpen && (
@@ -710,12 +687,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   {ticketTypes.map(type => <option key={type} value={type}>{t(type)}</option>)}
                 </select>
               </label>
-              {tab === "tickets" && (
+              {statusFilterTab && (
                 <label>
                   <span>{t("Tila")}</span>
                   <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
                     <option value="all">{t("Kaikki")}</option>
-                    {ticketStatuses.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
+                    {(tab === "my-tickets" ? ownTicketStatuses : ticketStatuses).map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
                   </select>
                 </label>
               )}
@@ -786,6 +763,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     <button onClick={filter.clear} title={t("Poista suodatin")} aria-label={t("Poista suodatin {0}", filter.label)}>×</button>
                   </span>
                 ))}
+                {tab === "tickets" && (
+                  <button className="create-ticket" onClick={() => setCreating(true)}>{t("+ Luo tehtävä")}</button>
+                )}
               </div>
             )}
             {!loading && tab !== "queue" && (
