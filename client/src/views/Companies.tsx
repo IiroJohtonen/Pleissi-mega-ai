@@ -6,7 +6,7 @@ import { BookingCalendar } from "./Bookings";
 import { KnowledgeBase } from "./Knowledge";
 import { ParkingSpaces } from "./Parking";
 import { Residents } from "./Residents";
-import { GmailAccountCard } from "./Settings";
+import { BookingSettings, GmailAccountCard } from "./Settings";
 import { t } from "../i18n";
 
 export function Companies({
@@ -74,6 +74,7 @@ export function Companies({
 
         <CompanyCard company={openCompany} onSaved={onChanged} />
         <GmailAccountCard target={openCompany.id} />
+        <BookingSettings key={openCompany.id} companyId={openCompany.id} />
 
         <div className="card-tabs">
           <button className={detailTab === "residents" ? "active" : ""} onClick={() => setDetailTab("residents")}>
@@ -171,6 +172,7 @@ export function Companies({
       {adding && (
         <div className="overlay">
           <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
             <button className="close" onClick={closeForm}>×</button>
             <h2>{t("Lisää taloyhtiö")}</h2>
             <p className="muted">{t("Taloyhtiö tulee valittavaksi tehtävänäkymiin ja asukastietokantaan.")}</p>

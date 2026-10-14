@@ -278,6 +278,10 @@ residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) 
       FROM parking_assignments pa JOIN parking_spaces p ON p.id = pa.parking_id
       WHERE pa.resident_id = ? ORDER BY pa.start_date
     `).all(resident.id),
+    booking_requests: db.prepare(`
+      SELECT resource, starts_at, ends_at, note, status, decision_note, created_at
+      FROM booking_requests WHERE resident_id = ? ORDER BY created_at
+    `).all(resident.id),
     waitlist: db.prepare("SELECT resource, parking_type, note, status, created_at FROM waitlist WHERE resident_id = ? ORDER BY created_at").all(resident.id),
     move_notices: db.prepare(`
       SELECT move_date, moves_out, new_residents, door_name, note, status, created_at
@@ -301,7 +305,7 @@ const ERASED_NAME = "Poistettu asukas";
 const ERASED_TEXT = "[Poistettu]";
 
 // Poistaa asukkaan henkilötiedot (tietosuoja-asetuksen mukainen poistopyyntö). Asukkaan rivi ja
-// tehtävät jäävät tilastoihin ilman nimeä: viestit, liitteet, tunnukset, tulevat vuorot, jonot sekä
+// tehtävät jäävät tilastoihin ilman nimeä: viestit, liitteet, tunnukset, tulevat vuorot, varaustoiveet, jonot sekä
 // muutto- ja remontti-ilmoitukset poistetaan. Jo laskutetuksi merkityt kuukaudet ovat kirjanpitoaineistoa ja säilyvät.
 residentsRouter.delete("/residents/:residentId", requireManager, async (req, res) => {
   const resident = getAuthorizedResident(req.params.residentId);
@@ -353,6 +357,7 @@ residentsRouter.delete("/residents/:residentId", requireManager, async (req, res
     db.prepare("DELETE FROM bookings WHERE resident_id = ? AND starts_at >= ?").run(resident.id, now());
     db.prepare("UPDATE bookings SET note = '' WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM waitlist WHERE resident_id = ?").run(resident.id);
+    db.prepare("DELETE FROM booking_requests WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM move_notices WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM renovation_notices WHERE resident_id = ?").run(resident.id);
     // Lukemat ovat asunnon tietoja ja avaimen luovutus jää rekisteriin; niistä poistetaan vain yhteys asukkaaseen.

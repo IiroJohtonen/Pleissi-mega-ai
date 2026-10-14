@@ -106,6 +106,8 @@ movesRouter.post("/moves/:id/approve", requireManager, (req, res) => {
           .run(residentId, moveStart).changes;
         db.prepare("UPDATE waitlist SET status = 'cancelled', closed_at = ? WHERE resident_id = ? AND status IN ('waiting', 'offered')")
           .run(now(), residentId);
+        db.prepare("UPDATE booking_requests SET status = 'cancelled' WHERE resident_id = ? AND status = 'pending' AND starts_at >= ?")
+          .run(residentId, moveStart);
         result.movedOut++;
       }
       syncParkingHolders();

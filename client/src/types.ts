@@ -109,7 +109,7 @@ export type TicketDetail = {
   attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string }[];
 };
 
-export type TicketTab = "queue" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log";
+export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log";
 
 export type Resident = {
   id: string;

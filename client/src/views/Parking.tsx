@@ -264,6 +264,7 @@ export function ParkingSpaces({
       {formOpen && (
         <div className="overlay">
           <aside className="drawer form-drawer resident-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
             <button className="close" onClick={closeForm}>×</button>
             <h2>{editing ? t("Autopaikka {0}", editing.label) : t("Lisää autopaikka")}</h2>
             <p className="muted">{editing ? companyName(editing.company_id) : t("Valitse taloyhtiö ja anna paikan tiedot.")}</p>

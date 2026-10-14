@@ -32,6 +32,12 @@ export function DownloadLink({ path, filename, className, title, children }: {
 
 // Paikkamerkkikuvakkeet näkymille (24×24, viivapiirros).
 const tabIcons: Record<TicketTab, string[]> = {
+  unassigned: [
+    "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
+    "M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0",
+    "M19 8v6",
+    "M22 11h-6"
+  ],
   queue: [
     "M22 12h-6l-2 3h-4l-2-3H2",
     "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
@@ -194,6 +200,21 @@ export function NavToggle({ open, label, onToggle }: { open: boolean; label: str
       </svg>
     </button>
   );
+}
+
+// Onko näyttö kapea (puhelin). Päivittyy, kun ikkunan koko muuttuu.
+export function useNarrowScreen(maxWidth = 760) {
+  const query = `(max-width: ${maxWidth}px)`;
+  const [narrow, setNarrow] = useState(() => typeof window.matchMedia === "function" && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(query);
+    const update = () => setNarrow(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [query]);
+  return narrow;
 }
 
 const PAGE_SIZE = 15;

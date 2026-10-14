@@ -32,7 +32,7 @@ describe("reitit vastaavat", () => {
       "/companies/demo-company/residents",
       "/companies/demo-company/parking", "/companies/demo-company/parking-prices",
       `/companies/demo-company/parking-billing?month=${month}`,
-      "/companies/demo-company/booking-settings",
+      "/companies/demo-company/booking-settings", "/companies/demo-company/booking-requests",
       `/companies/demo-company/bookings?resource=sauna&from=${from}&to=${to}`,
       `/companies/demo-company/billing-periods?kind=sauna&month=${month}`,
       "/companies/demo-company/work-orders",
@@ -50,7 +50,7 @@ describe("reitit vastaavat", () => {
   it("asukasportaalin lukureitit", async () => {
     const routes = [
       "/portal/me", "/portal/tickets", "/portal/booking-settings", "/portal/announcements", "/portal/moves", "/portal/waitlist",
-      "/portal/renovations", "/portal/meter-readings",
+      "/portal/renovations", "/portal/meter-readings", "/portal/booking-requests",
       `/portal/bookings?resource=sauna&from=${from}&to=${to}`
     ];
     for (const route of routes) {

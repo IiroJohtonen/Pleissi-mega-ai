@@ -536,6 +536,7 @@ function KnowledgeDetailDrawer({
   return (
     <div className="overlay">
       <aside className="drawer">
+        <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>
         <button className="close" onClick={onClose}>×</button>
         {failed ? <p className="send-error">{t("Tietojen lataus epäonnistui.")}</p>
           : !detail ? <p className="muted">{t("Ladataan…")}</p> : (
@@ -713,6 +714,7 @@ function KnowledgeFormModal({
   return (
     <div className="overlay">
       <aside className="drawer form-drawer">
+        <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>
         <button className="close" onClick={onClose}>×</button>
         <h2>{heading}</h2>
         <p className="muted">

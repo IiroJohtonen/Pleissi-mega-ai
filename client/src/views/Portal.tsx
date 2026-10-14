@@ -12,23 +12,57 @@ import { RENOVATION_WORK_TYPES, type RenovationNotice, renovationPeriod, renovat
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
 import { t } from "../i18n";
 
+type PortalView = "announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves" | "renovations" | "meters";
+
+const portalViews: { view: PortalView; label: string }[] = [
+  { view: "announcements", label: t("Tiedotteet") },
+  { view: "sauna", label: t("Saunavuorot") },
+  { view: "laundry", label: t("Pyykkitupavuorot") },
+  { view: "tickets", label: t("Tehtävät") },
+  { view: "waitlist", label: t("Jonot") },
+  { view: "moves", label: t("Muuttoilmoitus") },
+  { view: "renovations", label: t("Remontti-ilmoitus") },
+  { view: "meters", label: t("Kulutuslukemat") }
+];
+
+// Puhelimen alapalkin näkymät lyhyine nimineen; muut ovat Lisää-valikossa.
+const portalTabs: { view: PortalView; label: string; icon: string }[] = [
+  { view: "announcements", label: t("Tiedotteet"), icon: "M4 5h16v11H8l-4 4zM8 9h8M8 12h5" },
+  { view: "sauna", label: t("Sauna"), icon: "M7 21c0-3 2-4 2-7M12 21c0-3 2-4 2-7M17 21c0-3 2-4 2-7M5 3c0 2 2 2 2 4M10 3c0 2 2 2 2 4M15 3c0 2 2 2 2 4" },
+  { view: "laundry", label: t("Pyykkitupa"), icon: "M5 3h14v18H5zM5 7h14M12 10a4 4 0 1 0 0 8a4 4 0 1 0 0-8M8 5h1" },
+  { view: "tickets", label: t("Tehtävät"), icon: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" }
+];
+
+function PortalIcon({ path }: { path: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={path} />
+    </svg>
+  );
+}
+
 // Asukasportaali: asukas näkee vain oman taloyhtiönsä sauna- ja pyykkitupavuorot.
+// Puhelimella näkymät vaihdetaan alapalkista, ja harvemmin käytetyt ovat Lisää-valikossa.
 export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
-  const [view, setView] = useState<"announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves" | "renovations" | "meters">("announcements");
+  const [view, setView] = useState<PortalView>("announcements");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const title = portalViews.find(item => item.view === view)?.label ?? "";
+  const moreActive = !portalTabs.some(tab => tab.view === view);
+
+  function open(next: PortalView) {
+    setView(next);
+    setMenuOpen(false);
+    window.scrollTo({ top: 0 });
+  }
 
   return (
     <div className="portal">
       <header className="portal-header">
         <img src="/kotilo-logo.svg" alt="Kotilo" />
-        <nav>
-          <button className={view === "announcements" ? "active" : ""} onClick={() => setView("announcements")}>{t("Tiedotteet")}</button>
-          <button className={view === "sauna" ? "active" : ""} onClick={() => setView("sauna")}>{t("Saunavuorot")}</button>
-          <button className={view === "laundry" ? "active" : ""} onClick={() => setView("laundry")}>{t("Pyykkitupavuorot")}</button>
-          <button className={view === "tickets" ? "active" : ""} onClick={() => setView("tickets")}>{t("Tehtävät")}</button>
-          <button className={view === "waitlist" ? "active" : ""} onClick={() => setView("waitlist")}>{t("Jonot")}</button>
-          <button className={view === "moves" ? "active" : ""} onClick={() => setView("moves")}>{t("Muuttoilmoitus")}</button>
-          <button className={view === "renovations" ? "active" : ""} onClick={() => setView("renovations")}>{t("Remontti-ilmoitus")}</button>
-          <button className={view === "meters" ? "active" : ""} onClick={() => setView("meters")}>{t("Kulutuslukemat")}</button>
+        <nav className="portal-nav">
+          {portalViews.map(item => (
+            <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => open(item.view)}>{item.label}</button>
+          ))}
         </nav>
         <div className="portal-user">
           <strong>{resident.name}</strong>
@@ -40,11 +74,12 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           </button>
           <LanguageToggle />
         </div>
+        <span className="portal-header-home">{resident.companyName} · {resident.apartmentNumber}</span>
       </header>
 
       <main className="portal-main">
         <div>
-          <h1>{view === "announcements" ? t("Tiedotteet") : view === "sauna" ? t("Saunavuorot") : view === "laundry" ? t("Pyykkitupavuorot") : view === "waitlist" ? t("Jonot") : view === "moves" ? t("Muuttoilmoitus") : view === "renovations" ? t("Remontti-ilmoitus") : view === "meters" ? t("Kulutuslukemat") : t("Tehtävät")}</h1>
+          <h1>{title}</h1>
           <p className="muted">{resident.companyName}</p>
         </div>
         {view === "announcements" ? <PortalAnnouncements />
@@ -64,6 +99,45 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           />
         )}
       </main>
+
+      <nav className="portal-tabbar" aria-label={t("Asukasportaalin valikko")}>
+        {portalTabs.map(tab => (
+          <button
+            key={tab.view}
+            className={view === tab.view && !menuOpen ? "active" : ""}
+            onClick={() => open(tab.view)}
+            aria-current={view === tab.view ? "page" : undefined}
+          >
+            <PortalIcon path={tab.icon} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+        <button className={moreActive || menuOpen ? "active" : ""} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>
+          <PortalIcon path="M4 6h16M4 12h16M4 18h16" />
+          <span>{t("Lisää")}</span>
+        </button>
+      </nav>
+
+      {menuOpen && (
+        <div className="portal-sheet-backdrop" onClick={() => setMenuOpen(false)}>
+          <div className="portal-sheet" role="dialog" aria-label={t("Lisää")} onClick={event => event.stopPropagation()}>
+            <div className="portal-sheet-user">
+              <strong>{resident.name}</strong>
+              <span>{resident.companyName} · {resident.apartmentNumber}</span>
+            </div>
+            {portalViews.filter(item => !portalTabs.some(tab => tab.view === item.view)).map(item => (
+              <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => open(item.view)}>
+                {item.label}
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+            <div className="portal-sheet-actions">
+              <LanguageToggle className="secondary" />
+              <button className="secondary" onClick={logout}>{t("Kirjaudu ulos")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -344,7 +418,7 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
         : loadError ? <p className="send-error">{t("Tehtävien lataus epäonnistui.")}</p>
         : tickets.length === 0 ? <div className="empty">{t("Et ole vielä luonut tehtäviä.")}</div>
         : (
-          <div className="table-card">
+          <div className="table-card portal-cards">
             <table className="data-table">
               <thead>
                 <tr>
@@ -371,11 +445,11 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
                       }
                     }}
                   >
-                    <td>#{formatTicketNumber(ticket.ticket_number)}</td>
-                    <td><strong>{ticket.subject}</strong></td>
-                    <td>{t(ticket.type)}</td>
-                    <td>{ticket.status === "closed" ? t("Suljettu") : t("Käsittelyssä")}</td>
-                    <td>{formatDate(ticket.created_at)}</td>
+                    <td data-label={t("Numero")}>#{formatTicketNumber(ticket.ticket_number)}</td>
+                    <td data-label={t("Otsikko")}><strong>{ticket.subject}</strong></td>
+                    <td data-label={t("Tyyppi")}>{t(ticket.type)}</td>
+                    <td data-label={t("Tila")}>{ticket.status === "closed" ? t("Suljettu") : t("Käsittelyssä")}</td>
+                    <td data-label={t("Luotu")}>{formatDate(ticket.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -672,7 +746,7 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
       )}
 
       {notices.length > 0 && (
-        <div className="table-card">
+        <div className="table-card portal-cards">
           <table className="data-table report-topics">
             <thead>
               <tr>
@@ -685,10 +759,10 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
             <tbody>
               {notices.map(notice => (
                 <tr key={notice.id}>
-                  <td><strong>{formatDay(notice.move_date)}</strong></td>
-                  <td>{moveSummary(notice) || "–"}</td>
-                  <td>{moveStatusLabels[notice.status]}</td>
-                  <td>{formatDate(notice.created_at)}</td>
+                  <td data-label={t("Muuttopäivä")}><strong>{formatDay(notice.move_date)}</strong></td>
+                  <td data-label={t("Sisältö")}>{moveSummary(notice) || "–"}</td>
+                  <td data-label={t("Tila")}>{moveStatusLabels[notice.status]}</td>
+                  <td data-label={t("Ilmoitettu")}>{formatDate(notice.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -833,7 +907,7 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
       )}
 
       {notices.length === 0 ? <div className="empty">{t("Et ole vielä tehnyt remontti-ilmoituksia.")}</div> : (
-        <div className="table-card">
+        <div className="table-card portal-cards">
           <table className="data-table report-topics">
             <thead>
               <tr>
@@ -846,16 +920,16 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
             <tbody>
               {notices.map(notice => (
                 <tr key={notice.id}>
-                  <td>
+                  <td data-label={t("Työ")}>
                     <strong>{t(notice.work_type)}</strong>
                     <span>{notice.description}</span>
                   </td>
-                  <td>{renovationPeriod(notice)}</td>
-                  <td>
+                  <td data-label={t("Ajankohta")}>{renovationPeriod(notice)}</td>
+                  <td data-label={t("Tila")}>
                     <strong>{renovationStatusLabels[notice.status]}</strong>
                     {notice.decision_note && <span>{notice.decision_note}</span>}
                   </td>
-                  <td>{formatDate(notice.created_at)}</td>
+                  <td data-label={t("Ilmoitettu")}>{formatDate(notice.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -949,7 +1023,7 @@ function PortalMeters({ resident }: { resident: ResidentAccount }) {
       </form>
 
       {readings.length > 0 && (
-        <div className="table-card">
+        <div className="table-card portal-cards">
           <table className="data-table">
             <thead>
               <tr>
@@ -961,9 +1035,9 @@ function PortalMeters({ resident }: { resident: ResidentAccount }) {
             <tbody>
               {readings.map(reading => (
                 <tr key={reading.id}>
-                  <td><strong>{formatDay(reading.reading_date)}</strong></td>
-                  <td>{meterLabel(reading.meter_type)}</td>
-                  <td>{formatReading(reading.value, reading.meter_type)}</td>
+                  <td data-label={t("Lukupäivä")}><strong>{formatDay(reading.reading_date)}</strong></td>
+                  <td data-label={t("Mittari")}>{meterLabel(reading.meter_type)}</td>
+                  <td data-label={t("Lukema")}>{formatReading(reading.value, reading.meter_type)}</td>
                 </tr>
               ))}
             </tbody>

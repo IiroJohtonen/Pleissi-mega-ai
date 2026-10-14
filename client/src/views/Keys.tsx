@@ -273,6 +273,7 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
       {formOpen && (
         <div className="overlay">
           <aside className="drawer form-drawer resident-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm} disabled={saving}>{t("← Takaisin")}</button>
             <button className="close" onClick={closeForm} disabled={saving}>×</button>
             <h2>{open ? t("Avain {0}", open.code) : t("Lisää avain")}</h2>
             <p className="muted">{open ? `${companyName(open.company_id)} · ${keyState(open)}` : t("Valitse taloyhtiö ja anna avaimen tiedot.")}</p>

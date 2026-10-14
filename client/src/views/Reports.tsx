@@ -517,6 +517,7 @@ function TopicDrawer({
   return (
     <div className="overlay">
       <aside className="drawer form-drawer resident-drawer topic-drawer">
+        <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>
         <button className="close" onClick={onClose}>×</button>
         <span className="report-tag">{t("Toistuva aihe")}</span>
         <h2>{topic.title}</h2>

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
-import { formatTicketNumber, priorityLabel, statusLabel, ticketAge, ticketStatuses } from "../format";
+import { priorityLabel, statusLabel, ticketStatuses } from "../format";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
 import { actorName, api, logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
@@ -34,10 +34,18 @@ const navGroups: { key: string; label: string; tabs: TicketTab[] }[] = [
   { key: "notices", label: t("Ilmoitukset"), tabs: ["announcements", "renovations", "meters"] }
 ];
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
+// Sivupalkissa valittu taloyhtiö, jonka asukkaat, tilat ja ilmoitukset näytetään. Valinta säilyy selaimessa.
+const NAV_COMPANY_KEY = "kotilo.navCompany";
 const subTabs = navGroups.flatMap(group => group.tabs);
+// Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
+const ownTicketStatuses = ["waiting_manager", "waiting_third_party"];
+// Keskeneräisen tehtävän tilat.
+const openTicketStatuses = ["open", ...ownTicketStatuses];
 
 // Mitä alasivun laskuri tarkoittaa.
 const navCountTitles: Partial<Record<TicketTab, string>> = {
+  sauna: t("Varaustoiveita odottaa käsittelyä"),
+  laundry: t("Varaustoiveita odottaa käsittelyä"),
   moves: t("Odottaa käsittelyä"),
   renovations: t("Odottaa käsittelyä"),
   keys: t("Palautus myöhässä")
@@ -86,7 +94,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [skipTicketId, setSkipTicketId] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  // Tilasuodatin on käytössä vain Kaikki tehtävät -näkymässä; muut näkymät on jo rajattu tilan mukaan.
+  // Tilasuodatin on käytössä Kaikki tehtävät- ja Omat tehtävät -näkymissä; muut näkymät on jo rajattu tilan mukaan.
   const [statusFilter, setStatusFilter] = useState("all");
   // Määräaikasuodatin: "overdue" näyttää vain myöhässä olevat tehtävät.
   const [dueFilter, setDueFilter] = useState("all");
@@ -118,6 +126,31 @@ export function Workspace({ user }: { user: OfficeUser }) {
     }
   });
 
+  const [navCompanyId, setNavCompanyIdState] = useState(() => {
+    try {
+      return localStorage.getItem(NAV_COMPANY_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+  function setNavCompanyId(companyId: string) {
+    setNavCompanyIdState(companyId);
+    try {
+      localStorage.setItem(NAV_COMPANY_KEY, companyId);
+    } catch {
+      // Selaimen tallennustila ei ole käytössä; valinta säilyy vain tämän käynnin ajan.
+    }
+  }
+  const navCompany = companies.find(company => company.id === navCompanyId);
+  // Alasivut näyttävät vain valitun taloyhtiön tiedot.
+  const navCompanies = navCompany ? [navCompany] : companies;
+  const navCompanyKey = navCompany?.id ?? selectedCompany;
+
+  // Alasivulle tultaessa ilman valittua yhtiötä (esim. suoralla linkillä) valitaan tehtävänäkymän yhtiö.
+  useEffect(() => {
+    if (companies.length > 0 && subTabs.includes(tab) && !navCompany) setNavCompanyId(selectedCompany);
+  }, [tab, companies.length]);
+
   function toggleGroup(key: string) {
     const next = closedGroups.includes(key) ? closedGroups.filter(item => item !== key) : [...closedGroups, key];
     setClosedGroups(next);
@@ -130,7 +163,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   // Alavalikko aukeaa itsestään, kun sen näkymään siirrytään muuta kautta (esim. päätöksen jälkeen).
   useEffect(() => {
-    if (tab === "my-tickets" || tab === "ai-handled") setMyTicketsOpen(true);
+    if (tab === "my-tickets" || tab === "ai-handled" || tab === "unassigned") setMyTicketsOpen(true);
     if (tab === "knowledge-ai" || tab === "knowledge-internal") setKnowledgeOpen(true);
     if (subTabs.includes(tab)) setResidentsOpen(true);
     // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään.
@@ -138,17 +171,20 @@ export function Workspace({ user }: { user: OfficeUser }) {
     if (group) setClosedGroups(current => current.filter(key => key !== group.key));
   }, [tab]);
 
-  // Alavalikon laskurit: käsittelyä odottavat muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
+  // Alavalikon laskurit: käsittelyä odottavat varaustoiveet, muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
   async function refreshNavCounts() {
-    if (companies.length === 0) return;
-    const lists = <T,>(resource: string) => Promise.all(companies.map(company =>
+    if (!navCompany) return;
+    const lists = <T,>(resource: string) => Promise.all([navCompany].map(company =>
       api<T[]>(`/companies/${encodeURIComponent(company.id)}/${resource}`).catch(() => [] as T[]))).then(all => all.flat());
-    const [moves, renovations, keys] = await Promise.all([
+    const [moves, renovations, keys, bookingRequests] = await Promise.all([
       lists<{ status: string }>("moves"),
       lists<{ status: string }>("renovations"),
-      lists<{ loan_id: string | null; due_date: string | null }>("keys")
+      lists<{ loan_id: string | null; due_date: string | null }>("keys"),
+      lists<{ resource: string }>("booking-requests")
     ]);
     setNavCounts({
+      sauna: bookingRequests.filter(request => request.resource === "sauna").length,
+      laundry: bookingRequests.filter(request => request.resource === "laundry").length,
       moves: moves.filter(notice => notice.status === "pending").length,
       renovations: renovations.filter(notice => notice.status === "pending").length,
       keys: keys.filter(isKeyLate).length
@@ -158,7 +194,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   // Laskurit päivittyvät yhtiöiden latauduttua, näkymää vaihdettaessa ja minuutin välein.
   useEffect(() => {
     void refreshNavCounts();
-  }, [companies.length, tab, clock]);
+  }, [navCompany?.id, tab, clock]);
 
   // silent = taustapäivitys: listaa ei vaihdeta hetkeksi "Ladataan…"-tilaan.
   async function load(companyId = selectedCompany, companyList = companies, silent = false) {
@@ -309,16 +345,22 @@ export function Workspace({ user }: { user: OfficeUser }) {
     return response;
   }
 
+  // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät.
   const queueTickets = allCompanyTickets
-    .filter(ticket => ticket.status === "open")
+    .filter(ticket => ticket.status === "open" && ticket.assignee_id === user.id)
+    .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
+  // Kaikkien yhtiöiden keskeneräiset tehtävät, joita ei ole vielä annettu kenenkään käsiteltäväksi.
+  const unassignedTickets = allCompanyTickets
+    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id)
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
-  const sourceTickets = tab === "queue" ? queueTickets : tab === "my-tickets" ? myTickets : tab === "ai-handled" ? aiTickets : tickets;
+  const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unassigned";
+  const sourceTickets = tab === "queue" ? queueTickets : tab === "unassigned" ? unassignedTickets : tab === "my-tickets" ? myTickets : tab === "ai-handled" ? aiTickets : tickets;
   // Päätösjonossa ei ole suodattimia; ne koskevat vain tehtävälistoja.
   const visibleTickets = tab === "queue" ? queueTickets : sourceTickets.filter(ticket =>
     (priorityFilter === "all" || ticket.priority === priorityFilter)
     && (typeFilter === "all" || ticket.type === typeFilter)
-    && (tab !== "tickets" || statusFilter === "all" || ticket.status === statusFilter)
+    && (!statusFilterTab || statusFilter === "all" || ticket.status === statusFilter)
     && (dueFilter === "all" || isOverdue(ticket))
     && ticketColumns.every(column => {
       const search = (columnSearch[column.key] ?? "").trim().toLowerCase();
@@ -343,7 +385,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     ...(typeFilter !== "all"
       ? [{ key: "type", label: t("Tyyppi"), value: t(typeFilter), clear: () => setTypeFilter("all") }]
       : []),
-    ...(tab === "tickets" && statusFilter !== "all"
+    ...(statusFilterTab && statusFilter !== "all"
       ? [{ key: "status", label: t("Tila"), value: statusLabel(statusFilter), clear: () => setStatusFilter("all") }]
       : []),
     ...(dueFilter !== "all"
@@ -368,18 +410,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
 
   const filtersActive = priorityFilter !== "all" || typeFilter !== "all" || dueFilter !== "all"
-    || (tab === "tickets" && statusFilter !== "all");
+    || (statusFilterTab && statusFilter !== "all");
 
-  // Myöhässä olevat tehtävät kaikista yhtiöistä päätösjonon laskuria varten.
-  const overdueCount = allCompanyTickets.filter(isOverdue).length;
-
-  const statusCounts = ticketStatuses.map(status => ({
+  // Päätösjonon laskurit: käyttäjän omat tehtävät kaikista yhtiöistä tiloittain.
+  const ownStatusCounts = ownTicketStatuses.map(status => ({
     status,
-    count: allCompanyTickets.filter(ticket => ticket.status === status).length
+    count: allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && ticket.status === status).length
   }));
-  const oldestQueuedTicket = queueTickets.reduce<Ticket | null>((oldest, ticket) =>
-    !oldest || Date.parse(ticket.created_at) < Date.parse(oldest.created_at) ? ticket : oldest
-  , null);
   const ticketTypes = [...new Set(tickets.map(ticket => ticket.type))].sort((a, b) => a.localeCompare(b, "fi"));
   const activeCompany = companies.find(company => company.id === selectedCompany);
   const showResidentsLink = residentsOpen;
@@ -415,10 +452,15 @@ export function Workspace({ user }: { user: OfficeUser }) {
               <TabIcon tab="tickets" />
               {t("Kaikki tehtävät")}
             </button>
-            <NavToggle open={myTicketsOpen} label={t("omat tehtävät ja AI tehtävät")} onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
+            <NavToggle open={myTicketsOpen} label={t("ilman käsittelijää, omat tehtävät ja AI tehtävät")} onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
           </div>
           {myTicketsOpen && (
             <>
+              <button className={`nav-sub ${tab === "unassigned" ? "active" : ""}`} onClick={() => setTab("unassigned")}>
+                <TabIcon tab="unassigned" />
+                {t("Ilman käsittelijää")}
+                <b>{unassignedTickets.length}</b>
+              </button>
               <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => setTab("my-tickets")}>
                 <TabIcon tab="my-tickets" />
                 {t("Omat tehtävät")}
@@ -463,7 +505,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
           </div>
           {showResidentsLink && (
             <div className="nav-subs">
-              {navGroups.map(group => {
+              <label className="nav-company">
+                <span>{t("Taloyhtiö")}</span>
+                <select value={navCompany?.id ?? ""} onChange={event => setNavCompanyId(event.target.value)}>
+                  <option value="" disabled>{t("Valitse taloyhtiö")}</option>
+                  {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+                </select>
+              </label>
+              {navCompany && navGroups.map(group => {
                 const open = !closedGroups.includes(group.key);
                 // Suljetun ryhmän otsikossa näkyy sen laskurien summa, jotta odottavat asiat eivät jää piiloon.
                 const hiddenCount = open ? 0 : group.tabs.reduce((sum, item) => sum + (navCounts[item] ?? 0), 0);
@@ -549,7 +598,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
         {!openTicketId && (
         <header>
           <div>
-            <p className="eyebrow">{t("KOTILO / ISÄNNÖITSIJÄ")}</p>
+            {/* Toimiston nimi tulee isännöitsijätoimiston asetuksista ja päivittyy tallennettaessa. */}
+            <p className="eyebrow">KOTILO / {MANAGEMENT_OFFICE.name}</p>
             <h1>{tabTitles[tab]}</h1>
           </div>
         </header>
@@ -570,34 +620,35 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <AuditLog />
           )
           : tab === "parking" ? (
-            <ParkingSpaces companies={companies} defaultCompanyId={selectedCompany} />
+            <ParkingSpaces key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "announcements" ? (
-            <Announcements companies={companies} defaultCompanyId={selectedCompany} />
+            <Announcements key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "moves" ? (
-            <MoveNotices companies={companies} onChanged={() => void refreshNavCounts()} />
+            <MoveNotices key={navCompanyKey} companies={navCompanies} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "renovations" ? (
-            <RenovationNotices companies={companies} onChanged={() => void refreshNavCounts()} />
+            <RenovationNotices key={navCompanyKey} companies={navCompanies} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "keys" ? (
-            <KeyRegister companies={companies} defaultCompanyId={selectedCompany} onChanged={() => void refreshNavCounts()} />
+            <KeyRegister key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "meters" ? (
-            <MeterReadings companies={companies} defaultCompanyId={selectedCompany} />
+            <MeterReadings key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "waitlist" ? (
-            <Waitlists companies={companies} />
+            <Waitlists key={navCompanyKey} companies={navCompanies} />
           )
           : tab === "sauna" || tab === "laundry" ? (
             <BookingCalendar
               // Avain vaihtaa kalenterin tilan, kun siirrytään saunasta pyykkitupaan.
-              key={tab}
+              key={`${tab}-${navCompanyKey}`}
               resource={tab}
-              companyId={selectedCompany}
-              companies={companies}
-              onCompanyChange={changeCompany}
+              companyId={navCompanyKey}
+              companies={navCompanies}
+              onCompanyChange={setNavCompanyId}
+              onRequestsChanged={() => void refreshNavCounts()}
             />
           )
           : tab === "reports" ? (
@@ -619,9 +670,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "residents" ? (
             <Residents
-              companyId={selectedCompany}
-              companies={companies}
-              onCompanyChange={changeCompany}
+              key={navCompanyKey}
+              companyId={navCompanyKey}
+              companies={navCompanies}
               onChanged={async () => setCompanies(await api<Company[]>("/companies"))}
             />
           )
@@ -632,22 +683,26 @@ export function Workspace({ user }: { user: OfficeUser }) {
             />
           ) : (
           <section className="content">
-            {(tab === "my-tickets" || tab === "ai-handled") && (
+            {(tab === "my-tickets" || tab === "ai-handled" || tab === "unassigned") && (
               <a className="back-link" href="#/tickets">{t("← Kaikki tehtävät")}</a>
             )}
             {tab === "queue" && (
-              <div className="queue-summary">
-                <div>
+              <div className="queue-summary queue-summary-large">
+                <button
+                  title={t("Näytä tehtävät, joilla ei ole käsittelijää")}
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setPriorityFilter("all");
+                    setTypeFilter("all");
+                    setDueFilter("all");
+                    setTab("unassigned");
+                  }}
+                >
                   <span>{t("Jonossa")}</span>
-                  <strong>{queueTickets.length}</strong>
-                  <small>{t("odottavaa tehtävää")}</small>
-                </div>
-                <div>
-                  <span>{t("Vanhin odottava")}</span>
-                  <strong>{oldestQueuedTicket ? ticketAge(oldestQueuedTicket.created_at, clock) : "—"}</strong>
-                  <small>{oldestQueuedTicket ? t("Tehtävä #{0}", formatTicketNumber(oldestQueuedTicket.ticket_number)) : t("Ei odottavia tehtäviä")}</small>
-                </div>
-                {statusCounts.map(({ status, count }) => (
+                  <strong>{unassignedTickets.length}</strong>
+                  <small>{t("tehtävää ilman käsittelijää")}</small>
+                </button>
+                {ownStatusCounts.map(({ status, count }) => (
                   <button
                     key={status}
                     title={t("Näytä nämä tehtävät")}
@@ -656,31 +711,21 @@ export function Workspace({ user }: { user: OfficeUser }) {
                       setPriorityFilter("all");
                       setTypeFilter("all");
                       setDueFilter("all");
-                      setTab("tickets");
+                      setTab("my-tickets");
                     }}
                   >
                     <span>{statusLabel(status)}</span>
                     <strong>{count}</strong>
-                    <small>{count === 1 ? t("tehtävä") : t("tehtävää")}</small>
+                    <small>{count === 1 ? t("oma tehtävä") : t("omaa tehtävää")}</small>
                   </button>
                 ))}
-                <button
-                  className={overdueCount > 0 ? "overdue" : ""}
-                  title={t("Näytä myöhässä olevat tehtävät")}
-                  onClick={() => {
-                    setStatusFilter("all");
-                    setPriorityFilter("all");
-                    setTypeFilter("all");
-                    setDueFilter("overdue");
-                    setTab("tickets");
-                  }}
-                >
-                  <span>{t("Myöhässä")}</span>
-                  <strong>{overdueCount}</strong>
-                  <small>{t("määräaika mennyt")}</small>
-                </button>
-                <button className="create-ticket" onClick={() => setCreating(true)}>{t("+ Luo tehtävä")}</button>
               </div>
+            )}
+            {tab === "queue" && (
+              <h2 className="queue-subheading">
+                {t("Avoimet tehtäväsi")}
+                <b>{queueTickets.length}</b>
+              </h2>
             )}
             {tab !== "queue" && filtersOpen && (
             <div className="ticket-filters">
@@ -710,12 +755,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   {ticketTypes.map(type => <option key={type} value={type}>{t(type)}</option>)}
                 </select>
               </label>
-              {tab === "tickets" && (
+              {statusFilterTab && (
                 <label>
                   <span>{t("Tila")}</span>
                   <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
                     <option value="all">{t("Kaikki")}</option>
-                    {ticketStatuses.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
+                    {(tab === "my-tickets" ? ownTicketStatuses : tab === "unassigned" ? openTicketStatuses : ticketStatuses).map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
                   </select>
                 </label>
               )}
@@ -786,6 +831,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     <button onClick={filter.clear} title={t("Poista suodatin")} aria-label={t("Poista suodatin {0}", filter.label)}>×</button>
                   </span>
                 ))}
+                {tab === "tickets" && (
+                  <button className="create-ticket" onClick={() => setCreating(true)}>{t("+ Luo tehtävä")}</button>
+                )}
               </div>
             )}
             {!loading && tab !== "queue" && (

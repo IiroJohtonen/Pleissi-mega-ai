@@ -526,8 +526,6 @@ function OfficeSettings({
         </div>
       </form>
 
-      <BookingSettings defaultCompanyId={company?.id ?? ""} />
-
       <ContactRequests />
 
       <a className="settings-card settings-link" href="#/log">
@@ -547,9 +545,8 @@ function OfficeSettings({
 }
 
 // Asetukset: saako taloyhtiön saunaan ja pyykkitupaan varata yksittäisiä ja viikoittaisia vuoroja.
-function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [companyId, setCompanyId] = useState(defaultCompanyId);
+// Taloyhtiön vuorovaraus- ja autopaikka-asetukset; näytetään taloyhtiön tiedoissa.
+export function BookingSettings({ companyId }: { companyId: string }) {
   const [rules, setRules] = useState<BookingRules | null>(null);
   const [parkingPrices, setParkingPrices] = useState<Record<string, number> | null>(null);
   const [error, setError] = useState("");
@@ -560,15 +557,6 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
   function toggleCollapsed(key: string) {
     setCollapsed(current => current.includes(key) ? current.filter(item => item !== key) : [...current, key]);
   }
-
-  useEffect(() => {
-    api<Company[]>("/companies")
-      .then(list => {
-        setCompanies(list);
-        setCompanyId(current => current || list[0]?.id || "");
-      })
-      .catch(() => setError(t("Taloyhtiöiden lataus epäonnistui.")));
-  }, []);
 
   useEffect(() => {
     if (!companyId) return;
@@ -679,15 +667,8 @@ function BookingSettings({ defaultCompanyId }: { defaultCompanyId: string }) {
   return (
     <div className="settings-card booking-settings">
       {collapseHead("card", t("Vuorovaraukset ja autopaikat"), "h2")}
-      <p className="muted">{t("Valitse taloyhtiökohtaisesti, millaisia vuoroja saa varata ja mitä vuorot ja autopaikat maksavat. Pois kytkettyä vuorotyyppiä ei voi varata asukas eikä isännöitsijä.")}</p>
+      <p className="muted">{t("Valitse, millaisia vuoroja taloyhtiössä saa varata ja mitä vuorot ja autopaikat maksavat. Pois kytkettyä vuorotyyppiä ei voi varata asukas eikä isännöitsijä.")}</p>
       {readOnly && <p className="reply-hint">{t("Vain pääkäyttäjä voi muuttaa näitä asetuksia.")}</p>}
-
-      <label className="booking-settings-company">
-        <span>{t("Taloyhtiö")}</span>
-        <select value={companyId} onChange={event => setCompanyId(event.target.value)}>
-          {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-        </select>
-      </label>
 
       {sections.map(section => (
         <div className="booking-settings-section" key={section.resource}>
@@ -944,6 +925,7 @@ function OfficeUsers() {
       {(editing || creating) && (
         <div className="overlay">
           <aside className="drawer form-drawer resident-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
             <button className="close" onClick={closeForm}>×</button>
             <h2>{editing ? editing.name : t("Lisää käyttäjä")}</h2>
             <p className="muted">

@@ -5,7 +5,8 @@ const company = { id: "demo-company", name: "As Oy Koivikko", email_address: "",
 const overdueTicket = {
   id: "ticket-1", ticket_number: 1, company_id: "demo-company", type: "Kysymys", priority: "normal", status: "open",
   subject: "Saunavuoron varaus", summary: "Asukas kysyy saunavuorosta.", source_channel: "email", ai_action: "pending_decision",
-  ai_reason: "", due_date: "2026-01-01", created_at: "2025-12-27T08:00:00.000Z", updated_at: "2025-12-27T08:00:00.000Z"
+  ai_reason: "", due_date: "2026-01-01", created_at: "2025-12-27T08:00:00.000Z", updated_at: "2025-12-27T08:00:00.000Z",
+  assignee_id: "user-1"
 };
 
 // Vastaukset rajapinnan lukukutsuihin; muut polut palauttavat tyhjän listan.
@@ -62,6 +63,33 @@ describe("sovellus", () => {
     expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
     expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
     expect(screen.getByText("As Oy Koivikko")).toBeTruthy();
+  });
+
+  it("näyttää päätösjonossa vain omat tehtävät ja Jonossa-laatikosta käsittelijättömät", async () => {
+    const unassigned = { ...overdueTicket, id: "ticket-2", ticket_number: 2, subject: "Käsittelijätön tehtävä", assignee_id: null };
+    const others = { ...overdueTicket, id: "ticket-3", ticket_number: 3, subject: "Toisen tehtävä", assignee_id: "user-2" };
+    const original = responses["/tickets?companyId=demo-company"];
+    responses["/tickets?companyId=demo-company"] = [overdueTicket, unassigned, others];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
+      expect(screen.queryByText("Käsittelijätön tehtävä")).toBeNull();
+      expect(screen.queryByText("Toisen tehtävä")).toBeNull();
+
+      fireEvent.click(screen.getByTitle("Näytä tehtävät, joilla ei ole käsittelijää"));
+      expect(await screen.findByText("Käsittelijätön tehtävä")).toBeTruthy();
+      expect(window.location.hash).toBe("#/unassigned");
+      expect(screen.queryByText("Saunavuoron varaus")).toBeNull();
+      expect(screen.queryByText("Toisen tehtävä")).toBeNull();
+    } finally {
+      responses["/tickets?companyId=demo-company"] = original;
+    }
+  });
+
+  it("näyttää sivun yläotsikossa isännöitsijätoimiston nimen asetuksista", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/queue");
+    await screen.findByText("Saunavuoron varaus");
+    expect(await screen.findByText("KOTILO / Testitoimisto Oy")).toBeTruthy();
   });
 
   it("lukee vanhalla nimellä tallennetun istunnon", async () => {
@@ -139,12 +167,23 @@ describe("sovellus", () => {
       await renderApp(staff("Isännöitsijä"), "#/moves");
       expect(await screen.findByText("Odottava Asukas")).toBeTruthy();
       expect(screen.queryByText("Hyväksytty Asukas")).toBeNull();
-      expect(screen.getByTitle("Odottaa käsittelyä").textContent).toBe("1");
+      expect((await screen.findByTitle("Odottaa käsittelyä")).textContent).toBe("1");
       // Yhden taloyhtiön toimistolla Taloyhtiö-saraketta ei näytetä.
       expect(screen.queryByRole("columnheader", { name: "Taloyhtiö" })).toBeNull();
     } finally {
       delete responses["/companies/demo-company/moves"];
     }
+  });
+
+  it("näyttää taloyhtiön alasivut vasta, kun taloyhtiö on valittu", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/companies");
+    fireEvent.click(await screen.findByTitle("Näytä taloyhtiöiden alasivut"));
+    const picker = screen.getByRole("combobox", { name: "Taloyhtiö" }) as HTMLSelectElement;
+    expect(picker.value).toBe("");
+    expect(screen.queryByText("Pyykkitupa")).toBeNull();
+    fireEvent.change(picker, { target: { value: "demo-company" } });
+    expect(screen.getByText("Pyykkitupa")).toBeTruthy();
+    expect(localStorage.getItem("kotilo.navCompany")).toBe("demo-company");
   });
 
   it("sulkee ja avaa alavalikon ryhmän ja muistaa valinnan", async () => {
