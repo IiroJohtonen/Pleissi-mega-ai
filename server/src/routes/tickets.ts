@@ -23,6 +23,11 @@ export function assignToCompanyManager(ticketId: string, companyId: string) {
 export async function deleteTicket(ticketId: string) {
   const files = db.prepare("SELECT id FROM attachments WHERE ticket_id = ?").all(ticketId) as { id: string }[];
   db.transaction(() => {
+    // Tehtävän sähköpostit merkitään poistetuiksi, jotta postin tarkistus ei tuo niitä uudelleen.
+    db.prepare(`
+      INSERT OR IGNORE INTO deleted_mail_messages (message_id, deleted_at)
+      SELECT gmail_message_id, ? FROM gmail_imports WHERE ticket_id = ?
+    `).run(now(), ticketId);
     for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log"]) {
       db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
     }

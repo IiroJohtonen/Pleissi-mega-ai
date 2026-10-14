@@ -107,6 +107,13 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TEXT NOT NULL
 );
 
+-- Poistettujen tehtävien sähköpostien tunnisteet: postin tarkistus ei tuo niitä uudelleen.
+-- Viestien sisältöä ei säilytetä. Rivit poistetaan 90 päivän kuluttua.
+CREATE TABLE IF NOT EXISTS deleted_mail_messages (
+  message_id TEXT PRIMARY KEY,
+  deleted_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS gmail_imports (
   gmail_message_id TEXT PRIMARY KEY,
   ticket_id TEXT NOT NULL,

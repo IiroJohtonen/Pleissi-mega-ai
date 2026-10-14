@@ -118,6 +118,28 @@ describe("tehtävät ja määräajat", () => {
     assert.ok(audit.some(row => row.action === "ticket_deleted" && !row.ticket_id));
   });
 
+  it("poistetun tehtävän sähköpostia ei tuoda uudelleen", async () => {
+    const email = {
+      companyId: "demo-company", senderName: "Roskaposti", senderEmail: "mainos@example.com",
+      subject: "Tarjous", body: "Osta nyt!", sourceMessageId: "<poistettava-1@example.com>"
+    };
+    const created = await call(server, admin, "POST", "/inbound/messages", email);
+    assert.equal(created.status, 201);
+    const manager = await login(server, MANAGER_EMAIL);
+    assert.equal((await call(server, manager, "DELETE", `/tickets/${created.data.ticketId}`)).status, 200);
+
+    // Postin tarkistus yrittää tuoda saman viestin uudelleen: tehtävää ei synny.
+    const again = await call(server, admin, "POST", "/inbound/messages", email);
+    assert.equal(again.data.duplicate, true);
+    assert.equal(again.data.deleted, true);
+    const tickets = (await call(server, admin, "GET", "/tickets?companyId=demo-company")).data as { subject: string }[];
+    assert.ok(!tickets.some(row => row.subject === "Tarjous"));
+
+    // Uusi viesti samalta lähettäjältä tuodaan normaalisti.
+    const fresh = await call(server, admin, "POST", "/inbound/messages", { ...email, sourceMessageId: "<uusi-1@example.com>" });
+    assert.equal(fresh.status, 201);
+  });
+
   it("toiselle annettu avoin tehtävä poistuu päätösjonosta tämän omiin tehtäviin ja näkyy kaikissa tehtävissä", async () => {
     const created = await call(server, admin, "POST", "/inbound/messages", {
       companyId: "demo-company", senderName: "Tuntematon", subject: "Annettava", body: "Tämä annetaan toiselle."

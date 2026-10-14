@@ -76,6 +76,13 @@ async function sendReminderDigests() {
 // Säilytysaika: kun pääkäyttäjä on asettanut säilytysajan, sitä kauemmin suljettuna olleet tehtävät
 // poistetaan viesteineen ja liitteineen, samoin sitä vanhemmat lokimerkinnät. 0 = ei poisteta.
 // ---------------------------------------------------------------------------------------------
+// Poistettujen tehtävien sähköpostitunnisteita tarvitaan vain, kunnes viestit ovat vanhempia kuin
+// postin tarkistuksen aikaikkuna; 90 päivää riittää reilusti.
+function purgeDeletedMailIds() {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  db.prepare("DELETE FROM deleted_mail_messages WHERE deleted_at < ?").run(cutoff);
+}
+
 async function purgeExpiredData() {
   const { retention_months: months } = db.prepare("SELECT retention_months FROM office_settings WHERE id = 1").get() as
     { retention_months: number };
@@ -107,6 +114,7 @@ async function backupDaily() {
 export function startMaintenanceJobs() {
   const run = () => {
     sendReminderDigests().catch(error => console.error("Muistutusten käsittely epäonnistui:", error?.message ?? error));
+    purgeDeletedMailIds();
     purgeExpiredData().catch(error => console.error("Säilytysajan poistot epäonnistuivat:", error?.message ?? error));
     backupDaily().catch(error => console.error("Varmuuskopiointi epäonnistui:", error?.message ?? error));
   };
