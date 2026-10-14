@@ -3,6 +3,7 @@ import { formatDate, formatDuration, formatTicketNumber } from "../format";
 import { api, errorMessage } from "../session";
 import type { TicketDetail, WorkOrder } from "../types";
 import { t } from "../i18n";
+import { workOrderDescription } from "./ticket-utils";
 
 // Tehtävän työtilaukset: tilaus huoltoyhtiölle ja sen kuittaus tehdyksi.
 export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; onChanged: () => Promise<void> }) {
@@ -44,7 +45,7 @@ export function TicketWorkOrders({ detail, onChanged }: { detail: TicketDetail; 
 
   function openForm() {
     // Kuvaus pohjautuu tehtävän otsikkoon ja tiivistelmään; käsittelijä muokkaa sen tilaukseksi.
-    setDescription([detail.ticket.subject, detail.ticket.summary].filter(Boolean).join("\n\n"));
+    setDescription(workOrderDescription(detail.ticket.subject ?? "", detail.ticket.summary ?? ""));
     setAttachmentIds([]);
     setSendEmail(Boolean(contractorEmail));
     setError("");
