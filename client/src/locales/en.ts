@@ -942,7 +942,6 @@ export const en: Record<string, string> = {
   "Muutot": "Moves",
   "Remontit": "Renovations",
   "Avaimet": "Keys",
-  "KOTILO / ISÄNNÖITSIJÄ": "KOTILO / PROPERTY MANAGER",
   "odottavaa tehtävää": "tickets waiting",
   "Vanhin odottava": "Oldest waiting",
   "Tehtävä #{0}": "Ticket #{0}",

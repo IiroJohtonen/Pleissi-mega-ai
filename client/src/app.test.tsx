@@ -86,6 +86,12 @@ describe("sovellus", () => {
     }
   });
 
+  it("näyttää sivun yläotsikossa isännöitsijätoimiston nimen asetuksista", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/queue");
+    await screen.findByText("Saunavuoron varaus");
+    expect(await screen.findByText("KOTILO / Testitoimisto Oy")).toBeTruthy();
+  });
+
   it("lukee vanhalla nimellä tallennetun istunnon", async () => {
     localStorage.clear();
     localStorage.setItem("kiito.session", JSON.stringify(staff("Pääkäyttäjä")));

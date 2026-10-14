@@ -598,7 +598,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
         {!openTicketId && (
         <header>
           <div>
-            <p className="eyebrow">{t("KOTILO / ISÄNNÖITSIJÄ")}</p>
+            {/* Toimiston nimi tulee isännöitsijätoimiston asetuksista ja päivittyy tallennettaessa. */}
+            <p className="eyebrow">KOTILO / {MANAGEMENT_OFFICE.name}</p>
             <h1>{tabTitles[tab]}</h1>
           </div>
         </header>
