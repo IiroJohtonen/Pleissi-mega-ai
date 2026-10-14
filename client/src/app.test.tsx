@@ -138,6 +138,24 @@ describe("sovellus", () => {
     }
   });
 
+  it("käyttäjä voi yhdistää oman sähköpostinsa omista asetuksistaan", async () => {
+    responses["/mail/status?target=me"] = { connected: false, own: true };
+    responses["/mail/providers"] = { gmail: true, microsoft: true, imap: true };
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/settings");
+      expect(await screen.findByText("Oma sähköpostitili")).toBeTruthy();
+      expect(screen.getByText(/Yhdistä oma työsähköpostisi/)).toBeTruthy();
+      await vi.waitFor(() => expect((screen.getByRole("button", { name: "Microsoft 365 / Outlook" }) as HTMLButtonElement).disabled).toBe(false));
+      fireEvent.click(screen.getByRole("button", { name: "Microsoft 365 / Outlook" }));
+      await vi.waitFor(() => expect(calls.some(request => request.url.endsWith("/mail/microsoft/connect"))).toBe(true));
+      expect(JSON.parse(calls.find(request => request.url.endsWith("/mail/microsoft/connect"))!.body)).toEqual({ target: "me" });
+    } finally {
+      delete responses["/mail/status?target=me"];
+      delete responses["/mail/providers"];
+    }
+  });
+
   it("lukee vanhalla nimellä tallennetun istunnon", async () => {
     localStorage.clear();
     localStorage.setItem("kiito.session", JSON.stringify(staff("Pääkäyttäjä")));

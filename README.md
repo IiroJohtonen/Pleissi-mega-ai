@@ -65,6 +65,8 @@ Saapuva ja lähtevä posti kulkee toimiston tai taloyhtiön sähköpostitilin ka
 - **Microsoft 365 / Outlook:** rekisteröi sovellus Azure-portaaliin ja aseta `MS_CLIENT_ID` ja `MS_CLIENT_SECRET`.
 - **Muu sähköposti (IMAP/SMTP):** ei vaadi palvelimen asetuksia; palvelimet ja salasana annetaan asetuksissa.
 
+Lisäksi jokainen toimiston käyttäjä voi yhdistää oman postilaatikkonsa kohdassa Asetukset → Käyttäjän asetukset → Oma sähköpostitili. Siihen tulevista viesteistä tehdään tehtäviä, jotka annetaan postilaatikon omistajalle, ja vastaukset lähtevät samasta osoitteesta. Taloyhtiö päätellään lähettäjästä (asukkaan taloyhtiö); tuntemattoman lähettäjän viesti kirjataan isännöitsijän omalle yhtiölle, jos hän on yhden yhtiön vastuuisännöitsijä, ja muuten oletusyhtiölle.
+
 Ohjeet ovat tiedostossa [deploy/server/README.md](deploy/server/README.md), kohta "Sähköposti". Tiedostot `credentials.json` ja `token.json` sekä data-kansion `mail-secret.key` ovat salaisuuksia eivätkä kuulu repoon.
 
 ## Käännökset

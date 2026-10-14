@@ -305,7 +305,8 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
       body: parsed.data.body,
       sourceMessageId: gmailImport?.gmail_message_id,
       attachments: outgoing,
-      companyId: ticket.company_id
+      companyId: ticket.company_id,
+      accountId: ticket.mail_account_id ?? undefined
     });
     sentMessageId = sent.id;
   } catch (error: any) {

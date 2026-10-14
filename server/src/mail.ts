@@ -10,7 +10,7 @@ import { pollMicrosoftAccount, sendViaMicrosoft } from "./mail-microsoft.js";
 // Sähköpostin julkinen rajapinta muulle sovellukselle. Taloyhtiön posti kulkee sen omalla tilillä tai
 // toimiston tilillä, ja tilin palvelu (Gmail, Microsoft 365 tai IMAP/SMTP) valitsee toteutuksen.
 export {
-  mailAccountFor, mailEnabled, OFFICE_ACCOUNT, type OutgoingAttachment, type OutgoingEmail, parseSender
+  mailAccountFor, mailEnabled, OFFICE_ACCOUNT, userAccountId, type OutgoingAttachment, type OutgoingEmail, parseSender
 } from "./mail-common.js";
 
 const POLL_INTERVAL_MS = 20_000;
@@ -21,7 +21,7 @@ function providerOf(accountId: string): MailProvider {
 }
 
 export async function sendEmail(input: OutgoingEmail): Promise<{ id: string }> {
-  const accountId = mailAccountFor(input.companyId);
+  const accountId = input.accountId && getMailAccount(input.accountId) ? input.accountId : mailAccountFor(input.companyId);
   const provider = providerOf(accountId);
   if (provider === "imap") return sendViaImap(accountId, input);
   if (provider === "microsoft") return sendViaMicrosoft(accountId, input);
