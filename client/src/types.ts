@@ -22,6 +22,8 @@ export type Ticket = {
   due_date?: string | null;
   // 1, kun asukas on vastannut eikä hänelle ole vielä vastattu.
   has_new_reply?: number;
+  // Milloin asukas alkoi odottaa vastausta; tyhjä, kun toimisto on vastannut viimeisimpään viestiin.
+  waiting_since?: string | null;
   // 1, kun tehtävälle on pyydetty AI-ehdotus.
   ai_suggested?: number;
   knowledge_source_id?: string | null;
@@ -119,6 +121,8 @@ export type TicketDetail = {
   attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string; message_id?: string | null }[];
   // Postitilit, joilta vastauksen voi lähettää; ensimmäinen on oletus (tili, johon viesti saapui).
   replyAccounts: ReplyAccount[];
+  // Käyttäjän allekirjoitus, joka lisätään vastauksen loppuun; tyhjä, jos sitä ei ole.
+  signature: string;
 };
 
 export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log";

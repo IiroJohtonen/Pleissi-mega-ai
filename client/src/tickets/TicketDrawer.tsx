@@ -232,6 +232,9 @@ export function TicketDrawer({
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
   // Valittu lähettäjätili; oletuksena tili, johon tehtävän viesti saapui.
   const [fromChoice, setFromChoice] = useState("");
+  // Kopion saajat ja allekirjoituksen lisääminen vastaukseen.
+  const [cc, setCc] = useState("");
+  const [useSignature, setUseSignature] = useState(true);
   const fromAccountId = detail.replyAccounts.some(account => account.id === fromChoice)
     ? fromChoice
     : detail.replyAccounts[0]?.id ?? "";
@@ -250,7 +253,8 @@ export function TicketDrawer({
 
   const recipient = (replyTarget ?? lastInbound)?.sender.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
     || detail.reporters.map(r => r.email?.trim()).filter(Boolean).join(", ");
-  const canReply = ticket.status === "waiting_manager" || ticket.status === "waiting_third_party";
+  // Vastata voi kaikkiin keskeneräisiin tehtäviin; suljettu tehtävä avataan ensin uudelleen.
+  const canReply = ticket.status !== "closed";
 
   useEffect(() => {
     setDraft(ticket.draft || "");
@@ -539,6 +543,8 @@ export function TicketDrawer({
           actor: actorName(),
           messageId: replyTarget?.id,
           fromAccountId: fromAccountId || undefined,
+          cc: cc.trim() || undefined,
+          signature: useSignature,
           attachments: await Promise.all(replyFiles.map(async file => ({
             filename: file.name,
             mimeType: file.type || "application/octet-stream",
@@ -549,6 +555,7 @@ export function TicketDrawer({
       setDraft("");
       setReplyFiles([]);
       setReplyTargetId(null);
+      setCc("");
       setSentTo(result.to);
       await onChanged();
     } catch (error) {
@@ -888,6 +895,29 @@ export function TicketDrawer({
               </select>
             </label>
           )}
+          {canReply && (
+            <div className="reply-cc">
+              <label>
+                <span>{t("Kopio (Cc)")}</span>
+                <input
+                  type="text"
+                  value={cc}
+                  onChange={event => setCc(event.target.value)}
+                  placeholder={t("esim. hallitus@yhtio.fi, useampi pilkulla eroteltuna")}
+                />
+              </label>
+              {detail.contractor?.email && !cc.toLowerCase().includes(detail.contractor.email.toLowerCase()) && (
+                <button
+                  type="button"
+                  className="reply-cc-add"
+                  onClick={() => setCc(current => [current.trim(), detail.contractor!.email].filter(Boolean).join(", "))}
+                  title={detail.contractor.email}
+                >
+                  {t("+ Huoltoyhtiö")}
+                </button>
+              )}
+            </div>
+          )}
           <textarea
             ref={draftEditor}
             className="draft-editor"
@@ -900,6 +930,17 @@ export function TicketDrawer({
               setSentTo("");
             }}
           />
+          {canReply && (
+            <div className="reply-signature">
+              <label className="reply-signature-toggle">
+                <input type="checkbox" checked={useSignature} onChange={event => setUseSignature(event.target.checked)} />
+                {t("Lisää allekirjoitus")}
+              </label>
+              {useSignature && (detail.signature
+                ? <pre>{detail.signature}</pre>
+                : <p className="reply-hint">{t("Sinulla ei ole allekirjoitusta.")}{" "}<a href="#/settings">{t("Lisää se omista asetuksistasi.")}</a></p>)}
+            </div>
+          )}
           {canReply && (
             <div className="reply-attachments">
               <label className="attach-button">

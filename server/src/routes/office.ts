@@ -10,7 +10,7 @@ export const officeRouter: Router = express.Router();
 const OFFICE_SELECT = `
   SELECT name, business_id AS businessId, address, phone,
          reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority,
-         ai_relevance AS aiRelevance
+         ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays
   FROM office_settings WHERE id = 1
 `;
 
@@ -45,7 +45,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     reminderEmails: z.boolean().optional(),
     retentionMonths: z.number().int().min(0).max(240).optional(),
     aiPriority: z.boolean().optional(),
-    aiRelevance: z.boolean().optional()
+    aiRelevance: z.boolean().optional(),
+    replyReminderDays: z.number().int().min(1).max(30).optional(),
+    dueReminderDays: z.number().int().min(0).max(30).optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
   db.prepare("UPDATE office_settings SET name = ?, business_id = ?, address = ?, phone = ? WHERE id = 1")
@@ -58,6 +60,12 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   }
   if (parsed.data.aiPriority !== undefined) {
     db.prepare("UPDATE office_settings SET ai_priority = ? WHERE id = 1").run(parsed.data.aiPriority ? 1 : 0);
+  }
+  if (parsed.data.replyReminderDays !== undefined) {
+    db.prepare("UPDATE office_settings SET reply_reminder_days = ? WHERE id = 1").run(parsed.data.replyReminderDays);
+  }
+  if (parsed.data.dueReminderDays !== undefined) {
+    db.prepare("UPDATE office_settings SET due_reminder_days = ? WHERE id = 1").run(parsed.data.dueReminderDays);
   }
   if (parsed.data.aiRelevance !== undefined) {
     db.prepare("UPDATE office_settings SET ai_relevance = ? WHERE id = 1").run(parsed.data.aiRelevance ? 1 : 0);

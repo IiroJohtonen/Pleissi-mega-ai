@@ -99,6 +99,127 @@ export function Settings(props: { onSaved: () => Promise<void> }) {
 }
 
 // Kirjautuneen käyttäjän omat tiedot, salasana ja kieli.
+type SignatureSettings = { title: string; phone: string; template: string; defaultTemplate: string; preview: string };
+
+const SIGNATURE_FIELDS = ["nimi", "titteli", "puhelin", "sähköposti", "toimisto"];
+
+// Sama täyttö kuin palvelimella: paikkamerkit korvataan, ja rivi, jonka paikkamerkit jäävät tyhjiksi, jätetään pois.
+export function fillSignature(template: string, values: Record<string, string>): string {
+  return template.replace(/\r\n/g, "\n").split("\n").flatMap(line => {
+    const hasField = /\{[^{}]+\}/.test(line);
+    const filled = line.replace(/\{([^{}]+)\}/g, (match, key: string) => {
+      const field = key.trim().toLowerCase();
+      return field in values ? values[field] : match;
+    });
+    return hasField && !filled.trim() ? [] : [filled.trimEnd()];
+  }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// Sähköpostin allekirjoitus, joka lisätään käyttäjän lähettämien vastausten loppuun.
+function SignatureCard() {
+  const user = session?.user;
+  const [settings, setSettings] = useState<SignatureSettings | null>(null);
+  const [title, setTitle] = useState("");
+  const [phone, setPhone] = useState("");
+  const [template, setTemplate] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api<SignatureSettings>("/me/signature")
+      .then(loaded => {
+        setSettings(loaded);
+        setTitle(loaded.title ?? "");
+        setPhone(loaded.phone ?? "");
+        setTemplate(loaded.template ?? "");
+      })
+      .catch(() => setError(t("Allekirjoituksen lataus epäonnistui.")));
+  }, []);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      const updated = await api<SignatureSettings>("/me/signature", {
+        method: "PUT",
+        body: JSON.stringify({ title, phone, template })
+      });
+      setSettings(updated);
+      setSaved(true);
+    } catch (saveError) {
+      setError(errorMessage(saveError, t("Allekirjoituksen tallennus epäonnistui.")));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const preview = fillSignature(template, {
+    nimi: user?.name ?? "",
+    titteli: title.trim(),
+    puhelin: phone.trim(),
+    "sähköposti": user?.email ?? "",
+    toimisto: MANAGEMENT_OFFICE.name
+  });
+  const change = (setter: (value: string) => void) => (value: string) => {
+    setter(value);
+    setSaved(false);
+  };
+
+  return (
+    <form className="settings-card ticket-form signature-card" onSubmit={save}>
+      <CollapseSection id="signature" title={t("Sähköpostin allekirjoitus")}>
+      <p className="muted">{t("Allekirjoitus lisätään tehtäviltä lähettämiesi vastausten loppuun. Sen voi jättää pois yksittäisestä vastauksesta.")}</p>
+      <div className="signature-fields">
+        <label>
+          <span>{t("Titteli")}</span>
+          <input value={title} onChange={event => change(setTitle)(event.target.value)} placeholder={t("esim. Isännöitsijä")} maxLength={100} />
+        </label>
+        <label>
+          <span>{t("Puhelinnumero")}</span>
+          <input value={phone} onChange={event => change(setPhone)(event.target.value)} placeholder="040 123 4567" maxLength={40} />
+        </label>
+      </div>
+      <label>
+        <span>{t("Allekirjoituspohja")}</span>
+        <textarea rows={7} value={template} onChange={event => change(setTemplate)(event.target.value)} maxLength={2000} disabled={!settings} />
+      </label>
+      <p className="reply-hint">
+        {t("Paikkamerkit:")}{" "}
+        {SIGNATURE_FIELDS.map(field => (
+          <button
+            key={field}
+            type="button"
+            className="signature-field"
+            onClick={() => change(setTemplate)(`${template.trimEnd()}\n{${field}}`)}
+            title={t("Lisää pohjan loppuun")}
+          >
+            {`{${field}}`}
+          </button>
+        ))}
+        {" "}{t("Rivi jätetään pois, jos sen tieto puuttuu. Tyhjä pohja = ei allekirjoitusta.")}
+      </p>
+      <div className="signature-preview">
+        <span>{t("Esikatselu")}</span>
+        {preview ? <pre>{preview}</pre> : <p className="muted">{t("Ei allekirjoitusta.")}</p>}
+      </div>
+      {error && <p className="send-error">{error}</p>}
+      <div className="draft-actions">
+        <button className="primary" type="submit" disabled={saving || !settings}>
+          {saving ? t("Tallennetaan…") : t("Tallenna allekirjoitus")}
+        </button>
+        {settings && template !== settings.defaultTemplate && (
+          <button type="button" onClick={() => change(setTemplate)(settings.defaultTemplate)}>{t("Palauta oletuspohja")}</button>
+        )}
+        {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
+      </div>
+      </CollapseSection>
+    </form>
+  );
+}
+
 function UserSettings() {
   const user = session?.user;
   const [name, setName] = useState(user?.name ?? "");
@@ -174,6 +295,8 @@ function UserSettings() {
 
       <MailAccountCard target="me" />
 
+      <SignatureCard />
+
       <div className="settings-card ticket-form">
         <CollapseSection id="language" title={t("Kieli")}>
         <Dropdown label={t("Käyttöliittymän kieli")} value={language} options={LANGUAGES} onChange={value => setLanguage(value as Language)} />
@@ -188,6 +311,8 @@ function UserSettings() {
 export type OfficeInfo = {
   name: string; businessId: string; address: string; phone: string;
   reminderEmails?: number; retentionMonths?: number;
+  // Muistutusten rajat päivinä: asukas odottanut vastausta / määräaikaan jäljellä enintään.
+  replyReminderDays?: number; dueReminderDays?: number;
   // aiPriority: 1 = AI arvioi saapuvan tehtävän prioriteetin. aiAvailable: palvelimella on AI-avain.
   aiPriority?: number; aiAvailable?: boolean;
   // aiRelevance: 1 = AI tarkistaa, koskeeko saapuva sähköposti taloyhtiön asioita.
@@ -301,7 +426,7 @@ export function MailAccountCard({ target }: { target: string }) {
 
   async function removeOwn() {
     if (!window.confirm(personal
-      ? t("Poistetaanko oma sähköpostitilisi Kotilosta? Postilaatikkoon tulevista viesteistä ei enää tehdä tehtäviä.")
+      ? t("Poistetaanko oma sähköpostitilisi Pleissistä? Postilaatikkoon tulevista viesteistä ei enää tehdä tehtäviä.")
       : t("Poistetaanko taloyhtiön oma sähköpostitili? Taloyhtiön posti kulkee sen jälkeen toimiston tilin kautta."))) return;
     setBusy(true);
     setError("");
@@ -337,7 +462,7 @@ export function MailAccountCard({ target }: { target: string }) {
             {personal
               ? t("Tähän osoitteeseen tulevista viesteistä tehdään tehtäviä, jotka annetaan sinulle. Vastaukset lähtevät tästä osoitteesta.")
               : office
-              ? t("Kotilo lukee saapuvat viestit tämän tilin postilaatikosta ja lähettää vastaukset siitä. Taloyhtiö, jolla on oma tili, käyttää omaansa.")
+              ? t("Pleissi lukee saapuvat viestit tämän tilin postilaatikosta ja lähettää vastaukset siitä. Taloyhtiö, jolla on oma tili, käyttää omaansa.")
               : own
                 ? t("Tämän taloyhtiön viestit saapuvat tähän postilaatikkoon ja lähtevät siitä.")
                 : t("Taloyhtiöllä ei ole omaa tiliä, joten sen posti kulkee toimiston tilin kautta. Voit yhdistää taloyhtiölle oman sähköpostitilin.")}
@@ -445,6 +570,8 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [reminderEmails, setReminderEmails] = useState(false);
+  const [replyReminderDays, setReplyReminderDays] = useState(2);
+  const [dueReminderDays, setDueReminderDays] = useState(1);
   const [aiPriority, setAiPriority] = useState(false);
   const [aiRelevance, setAiRelevance] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
@@ -460,6 +587,8 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         setAddress(office.address);
         setPhone(office.phone);
         setReminderEmails(Boolean(office.reminderEmails));
+        setReplyReminderDays(office.replyReminderDays ?? 2);
+        setDueReminderDays(office.dueReminderDays ?? 1);
         setAiPriority(Boolean(office.aiPriority));
         setAiRelevance(Boolean(office.aiRelevance));
         setAiAvailable(office.aiAvailable !== false);
@@ -486,7 +615,9 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
     try {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
-        body: JSON.stringify({ name, businessId, address, phone, reminderEmails, retentionMonths, aiPriority, aiRelevance })
+        body: JSON.stringify({
+          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance
+        })
       });
       MANAGEMENT_OFFICE.name = office.name;
       setStoredRetention(office.retentionMonths ?? 0);
@@ -539,7 +670,7 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         <label className="switch-row">
           <span>
             <strong>{t("Muistutus sähköpostilla")}</strong>
-            <small>{t("Käsittelijä saa enintään kerran päivässä koosteen myöhässä olevista tehtävistään.")}</small>
+            <small>{t("Käsittelijä saa enintään kerran päivässä koosteen tehtävistään, jotka vaativat huomiota.")}</small>
           </span>
           <input
             type="checkbox"
@@ -549,8 +680,30 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
           />
           <i aria-hidden="true" />
         </label>
+        <div className="signature-fields">
+          <label>
+            <span>{t("Muistuta, kun asukas on odottanut vastausta (päivää)")}</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={replyReminderDays}
+              onChange={event => { setReplyReminderDays(Math.min(30, Math.max(1, Number(event.target.value) || 1))); setSaved(false); }}
+            />
+          </label>
+          <label>
+            <span>{t("Muistuta määräajasta (päivää ennen)")}</span>
+            <input
+              type="number"
+              min={0}
+              max={30}
+              value={dueReminderDays}
+              onChange={event => { setDueReminderDays(Math.min(30, Math.max(0, Number(event.target.value) || 0))); setSaved(false); }}
+            />
+          </label>
+        </div>
         <p className="reply-hint">
-          {t("Koosteessa ovat tehtävät, joiden määräaika on mennyt tai joissa asukkaan viesti on odottanut vastausta yli kaksi päivää. Viesti lähtee toimiston sähköpostitililtä käyttäjän kirjautumisosoitteeseen. Myöhässä olevat tehtävät näkyvät sovelluksessa aina.")}
+          {t("Muistutukset näkyvät aina päätösjonon kärjessä. Sähköpostikooste lähtee toimiston sähköpostitililtä käyttäjän kirjautumisosoitteeseen, kun se on kytketty päälle.")}
         </p>
 
         </CollapseSection>

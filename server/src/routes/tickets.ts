@@ -6,8 +6,9 @@ import { companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket } from ".
 import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { replyAccountsFor } from "../mail.js";
+import { renderSignature } from "../signature.js";
 import { alertEmergency } from "../notify.js";
-import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now } from "../util.js";
+import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL } from "../util.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -48,7 +49,7 @@ ticketsRouter.get("/tickets", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
@@ -138,7 +139,7 @@ ticketsRouter.get("/my-tickets", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
@@ -156,7 +157,7 @@ ticketsRouter.get("/decision-queue", (req, res) => {
   const companyId = companyIdFromContext(req.query.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
     FROM tickets t
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
@@ -255,7 +256,10 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
   // Tilit, joilta vastauksen voi lähettää; ensimmäinen on oletus.
   const replyAccounts = replyAccountsFor(ticket as { id: string; company_id: string; mail_account_id?: string | null }, res.locals.user?.id);
 
-  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts });
+  // Allekirjoitus, joka lisätään vastauksen loppuun; näytetään vastauslomakkeessa.
+  const signature = renderSignature(res.locals.user?.id);
+
+  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature });
 });
 
 ticketsRouter.put("/tickets/:id/fields", (req, res) => {

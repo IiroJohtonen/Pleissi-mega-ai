@@ -291,6 +291,7 @@ export async function sendViaMicrosoft(accountId: string, input: OutgoingEmail):
     subject: input.subject,
     body: { contentType: "Text", content: input.body },
     toRecipients: recipientsOf(input.to),
+    ccRecipients: recipientsOf(input.cc),
     bccRecipients: recipientsOf(input.bcc)
   };
 

@@ -467,6 +467,7 @@ authRouter.delete("/users/:id", requireAdmin, (req, res) => {
     db.prepare("DELETE FROM password_resets WHERE kind = 'user' AND subject_id = ?").run(user.id);
     db.prepare("DELETE FROM reminder_log WHERE user_id = ?").run(user.id);
     db.prepare("DELETE FROM gmail_accounts WHERE id = ?").run(`user:${user.id}`);
+    db.prepare("DELETE FROM user_signatures WHERE user_id = ?").run(user.id);
     db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
       `audit-${crypto.randomUUID()}`, null, actor.name, "user_deleted",

@@ -16,6 +16,14 @@ export const NEW_REPLY_SQL = `(
   AND (SELECT m.direction FROM messages m WHERE m.ticket_id = t.id ORDER BY m.created_at DESC LIMIT 1) = 'inbound'
 )`;
 
+// Milloin asukas alkoi odottaa vastausta: ensimmäinen saapunut viesti toimiston viimeisimmän vastauksen
+// jälkeen. NULL, kun toimisto on vastannut viimeisimpään viestiin.
+export const WAITING_SINCE_SQL = `(
+  SELECT MIN(m.created_at) FROM messages m
+  WHERE m.ticket_id = t.id AND m.direction = 'inbound'
+    AND m.created_at > COALESCE((SELECT MAX(o.created_at) FROM messages o WHERE o.ticket_id = t.id AND o.direction = 'outbound'), '')
+)`;
+
 // 1, kun tehtävälle on pyydetty AI-ehdotus; vasta silloin näytetään ehdotettu dokumentti.
 export const AI_SUGGESTED_SQL = `EXISTS(
   SELECT 1 FROM audit_log al WHERE al.ticket_id = t.id AND al.action = 'ai_suggested'

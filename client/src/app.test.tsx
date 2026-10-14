@@ -60,8 +60,10 @@ describe("sovellus", () => {
 
   it("näyttää päätösjonon ja merkitsee myöhässä olevan tehtävän", async () => {
     await renderApp(staff("Asiakaspalvelu"));
-    expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
+    // Myöhässä oleva oma tehtävä on sekä muistutuksissa että avoimissa tehtävissä.
+    expect((await screen.findAllByText("Saunavuoron varaus")).length).toBe(2);
     expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
+    expect(screen.getByText("Määräaika ylittynyt 1.1.2026")).toBeTruthy();
     expect(screen.getByText("As Oy Koivikko")).toBeTruthy();
   });
 
@@ -72,7 +74,7 @@ describe("sovellus", () => {
     responses["/tickets?companyId=demo-company"] = [overdueTicket, unassigned, others];
     try {
       await renderApp(staff("Isännöitsijä"), "#/queue");
-      expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
+      expect((await screen.findAllByText("Saunavuoron varaus")).length).toBeGreaterThan(0);
       expect(screen.queryByText("Käsittelijätön tehtävä")).toBeNull();
       expect(screen.queryByText("Toisen tehtävä")).toBeNull();
 
@@ -86,10 +88,29 @@ describe("sovellus", () => {
     }
   });
 
+  it("nostaa päätösjonon kärkeen tehtävät, joissa asukas on odottanut vastausta", async () => {
+    const waiting = {
+      ...overdueTicket, id: "ticket-4", ticket_number: 4, subject: "Odottava kysymys", due_date: null, status: "waiting_manager",
+      waiting_since: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    };
+    const fresh = { ...waiting, id: "ticket-5", ticket_number: 5, subject: "Tuore kysymys", waiting_since: new Date().toISOString() };
+    const original = responses["/tickets?companyId=demo-company"];
+    responses["/tickets?companyId=demo-company"] = [waiting, fresh];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      const reminders = await screen.findByRole("region", { name: "Muistutukset" });
+      expect(reminders.textContent).toContain("Odottava kysymys");
+      expect(reminders.textContent).toContain("Asukas odottanut vastausta 3 päivää");
+      expect(reminders.textContent).not.toContain("Tuore kysymys");
+    } finally {
+      responses["/tickets?companyId=demo-company"] = original;
+    }
+  });
+
   it("näyttää sivun yläotsikossa isännöitsijätoimiston nimen asetuksista", async () => {
     await renderApp(staff("Isännöitsijä"), "#/queue");
-    await screen.findByText("Saunavuoron varaus");
-    expect(await screen.findByText("KOTILO / Testitoimisto Oy")).toBeTruthy();
+    await screen.findAllByText("Saunavuoron varaus");
+    expect(await screen.findByText("PLEISSI / Testitoimisto Oy")).toBeTruthy();
   });
 
   it("yhdistää muun sähköpostin IMAP-tiedoilla toimiston asetuksista", async () => {
@@ -204,7 +225,7 @@ describe("sovellus", () => {
 
   it("näyttää käyttöliittymän englanniksi, kun kieli on valittu", async () => {
     await renderApp(staff("Asiakaspalvelu"), "", "en");
-    expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
+    expect((await screen.findAllByText("Saunavuoron varaus")).length).toBeGreaterThan(0);
     expect(screen.getByText("Sign out")).toBeTruthy();
     expect(screen.getAllByText("Decision queue").length).toBeGreaterThan(0);
     expect(screen.getByText("Overdue 1/1/2026")).toBeTruthy();
@@ -440,7 +461,7 @@ describe("sovellus", () => {
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {
     const calls = mockApi();
     await renderApp(staff("Pääkäyttäjä"));
-    await screen.findByText("Saunavuoron varaus");
+    await screen.findAllByText("Saunavuoron varaus");
     expect(calls.length).toBeGreaterThan(0);
     for (const request of calls) {
       expect(request.url).not.toContain("testitunniste");

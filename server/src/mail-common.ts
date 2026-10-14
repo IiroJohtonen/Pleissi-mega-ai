@@ -43,6 +43,8 @@ export type OutgoingAttachment = { filename: string; mimeType: string; content: 
 
 export type OutgoingEmail = {
   to?: string;
+  // Kopion saajat näkyvät muille vastaanottajille.
+  cc?: string;
   // Piilokopion saajat eivät näe toistensa osoitteita.
   bcc?: string;
   subject: string;

@@ -203,6 +203,7 @@ export async function sendViaImap(accountId: string, input: OutgoingEmail): Prom
   const composer = new MailComposer({
     from: name ? { name, address: account.email } : account.email,
     to: input.to,
+    cc: input.cc,
     bcc: input.bcc,
     subject: input.subject,
     text: input.body,
@@ -217,7 +218,7 @@ export async function sendViaImap(accountId: string, input: OutgoingEmail): Prom
   const messageId = compiled.messageId();
   const raw = await compiled.build();
 
-  const recipients = [input.to, input.bcc]
+  const recipients = [input.to, input.cc, input.bcc]
     .filter((value): value is string => Boolean(value))
     .flatMap(value => addressparser(value, { flatten: true }) as { address?: string }[])
     .map(item => item.address)

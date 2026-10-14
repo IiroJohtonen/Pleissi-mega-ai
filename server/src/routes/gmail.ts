@@ -91,16 +91,16 @@ async function connectCallback(req: Request, res: Response, provider: ConnectSta
   const label = provider === "gmail" ? "Gmail" : "Microsoft 365";
   const escape = (text: string) => text.replace(/[&<>"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char] as string));
   const page = (title: string, text: string, returnTo = "") => res.status(200).type("html").send(
-    `<!doctype html><meta charset="utf-8"><title>Kotilo</title>
+    `<!doctype html><meta charset="utf-8"><title>Pleissi</title>
 <body style="font-family:system-ui,sans-serif;background:#171c22;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0">
 <div style="background:#fff;color:#1d2329;border-radius:16px;padding:32px;max-width:440px">
 <h1 style="font-size:20px;margin:0 0 10px">${escape(title)}</h1><p style="margin:0 0 18px;line-height:1.5">${escape(text)}</p>
-${returnTo ? `<a href="${escape(returnTo)}/#/settings" style="color:#2f6ba8;font-weight:700">Palaa Kotiloon</a>` : ""}</div></body>`
+${returnTo ? `<a href="${escape(returnTo)}/#/settings" style="color:#2f6ba8;font-weight:700">Palaa Pleissiin</a>` : ""}</div></body>`
   );
   const state = typeof req.query.state === "string" ? connectStates.get(req.query.state) : undefined;
   if (typeof req.query.state === "string") connectStates.delete(req.query.state);
   if (!state || state.expiresAt < Date.now() || state.provider !== provider) {
-    return page("Yhdistäminen epäonnistui", "Kirjautumispyyntö on vanhentunut tai virheellinen. Aloita yhdistäminen uudelleen Kotilon asetuksista.");
+    return page("Yhdistäminen epäonnistui", "Kirjautumispyyntö on vanhentunut tai virheellinen. Aloita yhdistäminen uudelleen Pleissin asetuksista.");
   }
   if (typeof req.query.code !== "string") {
     return page("Yhdistäminen peruttiin", `${label}-tiliä ei yhdistetty.`, state.returnTo);
