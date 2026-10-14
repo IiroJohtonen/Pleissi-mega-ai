@@ -545,8 +545,8 @@ p { margin: 0; text-wrap: pretty; }
   position: absolute;
   top: 0;
   left: 50%;
-  width: min(400px, 78vw);
-  margin-left: calc(min(400px, 78vw) / -2);
+  width: min(780px, 88vw);
+  margin-left: calc(min(780px, 88vw) / -2);
   box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .7);
   transition: opacity .3s ease, filter .3s ease;
   will-change: transform;
@@ -554,6 +554,43 @@ p { margin: 0; text-wrap: pretty; }
 
 .coverflow .card:hover { transform: none; }
 .coverflow .card:not(.is-active) { cursor: pointer; }
+.coverflow .card.is-active figure { cursor: zoom-in; }
+.coverflow .card h3 { font-size: 22px; }
+.coverflow .card p { font-size: 16px; }
+
+/* Karusellin kuva isona */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 12, 18, .86);
+  cursor: zoom-out;
+}
+
+.lightbox img {
+  max-width: min(1600px, 100%);
+  max-height: calc(100vh - 96px);
+  border-radius: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+}
+
+.lightbox button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 99px;
+  background: rgba(8, 12, 18, .8);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
 .coverflow .card.is-active { border-color: var(--frame); }
 .coverflow .rail-track.dragging,
 .coverflow .rail-track.dragging .card { cursor: grabbing; }

@@ -149,7 +149,34 @@
     }
     function nearestIndex(i) { return target + wrapOffset(i - target); }
 
-    function spacing() { return Math.min(260, track.clientWidth * 0.3); }
+    function spacing() { return Math.min(250, track.clientWidth * 0.3); }
+
+    // Eteen tuodun kortin kuva avautuu isona; Esc, klikkaus tai sulkupainike sulkee sen.
+    function openLightbox(img) {
+      var box = document.createElement("div");
+      box.className = "lightbox";
+      box.setAttribute("role", "dialog");
+      box.setAttribute("aria-modal", "true");
+      box.setAttribute("aria-label", img.alt);
+      var large = document.createElement("img");
+      large.src = img.src;
+      large.alt = img.alt;
+      var close = document.createElement("button");
+      close.type = "button";
+      close.textContent = "×";
+      close.setAttribute("aria-label", document.documentElement.lang === "en" ? "Close" : "Sulje");
+      box.appendChild(large);
+      box.appendChild(close);
+      function remove() {
+        box.remove();
+        document.removeEventListener("keydown", onKey);
+      }
+      function onKey(event) { if (event.key === "Escape") remove(); }
+      box.addEventListener("click", remove);
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+      close.focus();
+    }
 
     function layout() {
       var gap = spacing();
@@ -211,7 +238,8 @@
       stopAuto();
       cancelAnimationFrame(animating);
       animating = 0;
-      drag = { x: event.clientX, start: position, moved: false, time: performance.now(), lastX: event.clientX, velocity: 0 };
+      // Kohde otetaan talteen nyt: kaappauksen jälkeen irrotuksen kohteena on koko karuselli.
+      drag = { x: event.clientX, start: position, moved: false, time: performance.now(), lastX: event.clientX, velocity: 0, target: event.target };
       track.setPointerCapture(event.pointerId);
     });
     track.addEventListener("pointermove", function (event) {
@@ -229,17 +257,23 @@
       target = position;
       layout();
     });
-    function endDrag(event) {
+    function endDrag() {
       if (!drag) return;
       var wasDrag = drag.moved;
       var velocity = drag.velocity;
+      var pressed = drag.target;
       drag = null;
       track.classList.remove("dragging");
       if (!wasDrag) {
         // Klikkaus sivukorttiin tuo sen eteen.
-        var card = event.target.closest && event.target.closest(".card");
+        var card = pressed.closest && pressed.closest(".card");
         var index = cards.indexOf(card);
-        if (index >= 0) goTo(nearestIndex(index));
+        if (index >= 0 && card.classList.contains("is-active")) {
+          var image = card.querySelector("img");
+          if (image && pressed.closest("figure")) openLightbox(image);
+        } else if (index >= 0) {
+          goTo(nearestIndex(index));
+        }
         return;
       }
       var next = Math.round(position);
