@@ -838,6 +838,9 @@ export function TicketDrawer({
             </button>
             {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
             {sentTo && <span className="saved-indicator">{t("Lähetetty:")}{" "}{sentTo}</span>}
+            {canReply && detail.replyFrom && !sentTo && (
+              <span className="reply-from">{t("Lähettäjä: {0}", detail.replyFrom)}</span>
+            )}
           </div>
           {canReply && (
             <p className="reply-hint">

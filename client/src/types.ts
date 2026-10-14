@@ -114,6 +114,8 @@ export type TicketDetail = {
   // Taloyhtiön huoltoyhtiö, jolle työtilaus lähetetään.
   contractor: { name: string; email: string; phone: string } | null;
   attachments: { id: string; filename: string; mime_type: string; size: number; created_at: string; direction?: string }[];
+  // Sähköpostiosoite, josta vastaus lähtee; tyhjä, jos postitiliä ei ole yhdistetty.
+  replyFrom?: string;
 };
 
 export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log";
