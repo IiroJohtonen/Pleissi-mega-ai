@@ -8,7 +8,7 @@ import { attachmentsDir, db } from "../db.js";
 import { replyAccountsFor } from "../mail.js";
 import { renderSignature } from "../signature.js";
 import { alertEmergency } from "../notify.js";
-import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL } from "../util.js";
+import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL, TICKET_STATUSES } from "../util.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -150,8 +150,8 @@ ticketsRouter.get("/my-tickets", (req, res) => {
     LEFT JOIN apartments a ON a.id = t.apartment_id
     LEFT JOIN users u ON u.id = t.assignee_id
     WHERE t.company_id = ?
-      -- Myös kolmatta osapuolta (esim. huoltoyhtiötä) odottava tehtävä pysyy käsittelijänsä omissa.
-      AND t.status IN ('waiting_manager', 'waiting_third_party')
+      -- Omissa ovat käsittelijän kaikki aloitetut tehtävät, myös vastatut ja kolmatta osapuolta odottavat.
+      AND t.status IN ('active', 'waiting_manager', 'answered', 'waiting_third_party')
       AND t.assignee_id = ?
     ORDER BY t.updated_at DESC
   `).all(companyId, res.locals.user?.id ?? "");
@@ -168,7 +168,7 @@ ticketsRouter.get("/decision-queue", (req, res) => {
     LEFT JOIN apartments a ON a.id = t.apartment_id
     LEFT JOIN users u ON u.id = t.assignee_id
     WHERE t.company_id = ?
-      AND t.status = 'open'
+      AND t.status IN ('open', 'active')
     ORDER BY t.priority = 'emergency' DESC, t.created_at DESC
   `).all(companyId);
   res.json(rows);
@@ -275,6 +275,8 @@ ticketsRouter.put("/tickets/:id/fields", (req, res) => {
     assigneeId: z.string().nullable().optional(),
     // Määräaika VVVV-KK-PP, null = ei määräaikaa.
     dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    // Tilan voi vaihtaa käsin mihin tahansa tilaan.
+    status: z.enum(TICKET_STATUSES).optional(),
     actor: z.string().default("isannoitsija")
   });
   const parsed = schema.safeParse(req.body);
@@ -305,6 +307,15 @@ ticketsRouter.put("/tickets/:id/fields", (req, res) => {
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
       id("audit"), req.params.id, res.locals.user?.name ?? parsed.data.actor, "ticket_assigned",
       JSON.stringify({ to: assignee?.name ?? null }), assignedAt
+    );
+  }
+
+  if (parsed.data.status && parsed.data.status !== ticket.status) {
+    const changedAt = now();
+    db.prepare("UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?").run(parsed.data.status, changedAt, req.params.id);
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+      id("audit"), req.params.id, res.locals.user?.name ?? parsed.data.actor, "status_changed",
+      JSON.stringify({ from: ticket.status, to: parsed.data.status }), changedAt
     );
   }
 

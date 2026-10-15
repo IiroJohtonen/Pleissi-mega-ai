@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { DownloadLink, usePaged } from "../components/common";
+import { DownloadLink, FactDropdown, usePaged } from "../components/common";
 import { formatDate, formatDateOnly, formatDay } from "../format";
 import { api, API, errorMessage, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
@@ -33,6 +33,10 @@ function knowledgeStateShort(state: string) {
 
 const kindLabel = (kind: string) => kind === "document" ? t("Dokumentti") : t("Vakiotieto");
 const audienceLabel = (audience: string) => audience === "internal" ? t("Sisäinen") : t("AI");
+const audienceOptions = [
+  { value: "ai", label: t("AI"), pillClass: "knowledge-audience ai" },
+  { value: "internal", label: t("Sisäinen"), pillClass: "knowledge-audience internal" }
+];
 
 function validityLabel(entry: KnowledgeEntry) {
   if (entry.valid_from && entry.valid_until) return t("Voimassa {0}–{1}", formatDay(entry.valid_from), formatDay(entry.valid_until));
@@ -136,6 +140,7 @@ export function KnowledgeBase({
   const [form, setForm] = useState<KnowledgeFormState | null>(null);
   const [openEntryId, setOpenEntryId] = useState<string | null>(initialEntryId);
   const [notice, setNotice] = useState("");
+  const [moveListError, setMoveListError] = useState("");
   const [question, setQuestion] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
@@ -201,9 +206,25 @@ export function KnowledgeBase({
     setSort(current => current.key === key ? { key, descending: !current.descending } : { key, descending: false });
   }
 
-  // Rajatussa näkymässä Käyttö-saraketta ei tarvita, koska kaikki rivit ovat samaa.
-  const columns = knowledgeColumns.filter(column => !audience || column.key !== "audience");
-  const colsClass = `knowledge-cols ${audience ? "" : "with-audience"}`;
+  // Käyttö-sarake näkyy aina, jotta tietueen voi siirtää suoraan listasta toiseen dokumentaatioon.
+  const columns = knowledgeColumns;
+  const colsClass = "knowledge-cols with-audience";
+
+  // Siirtää tietueen AI-dokumentaation ja sisäisen dokumentaation välillä suoraan listasta.
+  async function changeAudience(entry: KnowledgeEntry, next: KnowledgeAudience) {
+    if (next === entry.audience) return;
+    setNotice("");
+    setMoveListError("");
+    try {
+      await api(`/knowledge/${entry.id}/audience`, { method: "PUT", body: JSON.stringify({ audience: next }) });
+      await loadEntries();
+      setNotice(next === "internal"
+        ? t("\u201d{0}\u201d siirrettiin sisäiseen dokumentaatioon.", entry.title)
+        : t("\u201d{0}\u201d siirrettiin AI:n käyttöön.", entry.title));
+    } catch (error) {
+      setMoveListError(errorMessage(error, t("Siirto epäonnistui.")));
+    }
+  }
   const inAudience = entries.filter(entry => !audience || entry.audience === audience);
   const searches = Object.entries(columnSearch).filter(([, value]) => value?.trim()) as [KnowledgeSortKey, string][];
   const visible = inAudience
@@ -261,7 +282,8 @@ export function KnowledgeBase({
         </form>
       )}
 
-      {notice && <p className="send-error">{notice}</p>}
+      {notice && <p className="portal-sent knowledge-notice" role="status">{notice}</p>}
+      {moveListError && <p className="send-error">{moveListError}</p>}
 
       {filtersOpen && (
         <div className="ticket-filters">
@@ -446,7 +468,15 @@ export function KnowledgeBase({
               <span>{entry.kind === "document" && entry.file_name ? `${entry.file_name} · ` : ""}{entry.content || t("Ei luettua tekstiä.")}</span>
             </div>
             <span className="type">{kindLabel(entry.kind)}</span>
-            {!audience && <span className={`knowledge-audience ${entry.audience}`}>{audienceLabel(entry.audience)}</span>}
+            {isManager() ? (
+              <span className="knowledge-audience-pick" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                <FactDropdown
+                  value={entry.audience}
+                  options={audienceOptions}
+                  onChange={next => void changeAudience(entry, next as KnowledgeAudience)}
+                />
+              </span>
+            ) : <span className={`knowledge-audience ${entry.audience}`}>{audienceLabel(entry.audience)}</span>}
             <span className={`knowledge-state ${entry.state}`}>{knowledgeStateShort(entry.state)}</span>
             <span className="ticket-row-contact">{validityShort(entry)}</span>
             <time className="date">{formatDateOnly(entry.created_at)}</time>
@@ -555,7 +585,19 @@ function KnowledgeDetailDrawer({
               </div>
               <div>
                 <dt>{t("Käyttö")}</dt>
-                <dd>{detail.audience === "internal" ? t("Sisäinen dokumentaatio") : t("AI dokumentaatio")}</dd>
+                <dd>
+                  {isCurrent && isManager() ? (
+                    <FactDropdown
+                      value={detail.audience}
+                      options={[
+                        { value: "ai", label: t("AI dokumentaatio") },
+                        { value: "internal", label: t("Sisäinen dokumentaatio") }
+                      ]}
+                      disabled={moving}
+                      onChange={next => void moveTo(next as KnowledgeAudience)}
+                    />
+                  ) : detail.audience === "internal" ? t("Sisäinen dokumentaatio") : t("AI dokumentaatio")}
+                </dd>
               </div>
               <div>
                 <dt>{t("Voimassaolo")}</dt>

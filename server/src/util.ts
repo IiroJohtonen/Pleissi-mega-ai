@@ -30,6 +30,19 @@ export const AI_SUGGESTED_SQL = `EXISTS(
 )`;
 
 // Ehto asukkaalle, joka asuu yhtiössä tänään (ei ole muuttanut pois).
+// Tehtävän tilat. open = Uusi (saapunut, ei vielä käsittelyssä; päätösjonossa), active = Avoin,
+// waiting_manager = Käsittelyssä, answered = Vastattu (toimisto on vastannut), waiting_third_party =
+// Kolmannella osapuolella, closed = Suljettu.
+export const TICKET_STATUSES = ["open", "active", "waiting_manager", "answered", "waiting_third_party", "closed"] as const;
+
+// Asukkaan vastaus tehtävään: suljettu tehtävä avautuu uudelleen uutena ja vastattu muuttuu avoimeksi,
+// jotta se palaa käsittelijän päätösjonoon. Muut tilat säilyvät.
+export function statusAfterResidentReply(status: string) {
+  if (status === "closed") return "open";
+  if (status === "answered") return "active";
+  return status;
+}
+
 export const ACTIVE_RESIDENT = "(r.moved_out_at IS NULL OR r.moved_out_at > date('now', 'localtime'))";
 
 export function today() {

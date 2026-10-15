@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
-import { priorityLabel, statusLabel, ticketStatuses } from "../format";
+import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
-import { actorName, api, logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
+import { actorName, api, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
   assignableUsers, canAssignTickets, compareQueue, compareTickets, fetchTicketDetail, isOverdue, type ReminderSettings, ticketColumns,
   ticketColumnText, ticketReminders, type TicketSort, type TicketSortKey
@@ -24,6 +24,8 @@ import { ParkingSpaces } from "./Parking";
 import { RenovationNotices } from "./Renovations";
 import { Reports } from "./Reports";
 import { Residents } from "./Residents";
+import { Topbar } from "../components/Topbar";
+import { type HistoryEntry, readHistory, rememberTicket } from "../history";
 import { type SearchResponse, SearchResults, ticketNumberQuery } from "./Search";
 import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
@@ -40,7 +42,9 @@ const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 const NAV_COMPANY_KEY = "kotilo.navCompany";
 const subTabs = navGroups.flatMap(group => group.tabs);
 // Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
-const ownTicketStatuses = ["waiting_manager", "waiting_third_party"];
+const ownTicketStatuses = ["active", "waiting_manager", "answered", "waiting_third_party"];
+// Päätösjonon yhteenvedon laatikot: omat tehtävät näissä tiloissa.
+const summaryTicketStatuses = ["waiting_manager", "answered", "waiting_third_party"];
 // Keskeneräisen tehtävän tilat.
 const openTicketStatuses = ["open", ...ownTicketStatuses];
 
@@ -125,6 +129,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
     setNavPinned(pinned);
     saveNavPinned(pinned);
   }
+  // Viimeksi avatut tehtävät yläpalkin Historia-valikkoon.
+  const [history, setHistory] = useState<HistoryEntry[]>(readHistory);
+  useEffect(() => {
+    if (!selected) return;
+    setHistory(rememberTicket({
+      id: selected.ticket.id,
+      number: selected.ticket.ticket_number ?? null,
+      subject: selected.ticket.subject,
+      companyName: selected.ticket.company_name ?? companies.find(company => company.id === selected.ticket.company_id)?.name ?? ""
+    }));
+  }, [selected?.ticket.id]);
   const [searchText, setSearchText] = useState(() => parseRoute().tab === "search" ? parseRoute().param ?? "" : "");
   async function submitSearch() {
     const query = searchText.trim();
@@ -182,10 +197,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const navCompanies = navCompany ? [navCompany] : companies;
   const navCompanyKey = navCompany?.id ?? selectedCompany;
 
-  // Alasivulle tultaessa ilman valittua yhtiötä (esim. suoralla linkillä) valitaan tehtävänäkymän yhtiö.
+  // Yläpalkin taloyhtiövalinnalla on aina arvo: oletuksena tehtävänäkymän yhtiö tai ensimmäinen yhtiö.
   useEffect(() => {
-    if (companies.length > 0 && subTabs.includes(tab) && !navCompany) setNavCompanyId(selectedCompany);
-  }, [tab, companies.length]);
+    if (companies.length > 0 && !navCompany) {
+      setNavCompanyId(companies.some(company => company.id === selectedCompany) ? selectedCompany : companies[0].id);
+    }
+  }, [tab, companies.length, navCompany?.id]);
 
   function toggleGroup(key: string) {
     const next = closedGroups.includes(key) ? closedGroups.filter(item => item !== key) : [...closedGroups, key];
@@ -392,7 +409,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät käyttäjän valitsemassa järjestyksessä.
   const queueTickets = allCompanyTickets
-    .filter(ticket => ticket.status === "open" && ticket.assignee_id === user.id)
+    .filter(ticket => queueTicketStatuses.includes(ticket.status) && ticket.assignee_id === user.id)
     .sort((a, b) => compareQueue(a, b, queueSort));
   // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
   const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
@@ -471,7 +488,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     || (statusFilterTab && statusFilter !== "all");
 
   // Päätösjonon laskurit: käyttäjän omat tehtävät kaikista yhtiöistä tiloittain.
-  const ownStatusCounts = ownTicketStatuses.map(status => ({
+  const ownStatusCounts = summaryTicketStatuses.map(status => ({
     status,
     count: allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && ticket.status === status).length
   }));
@@ -480,62 +497,48 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   return (
     <div className={`app ${navOpen ? "nav-open" : ""} ${navPinned ? "" : "nav-collapsed"}`}>
-      <div className="mobile-bar">
-        <button className="mobile-menu" onClick={() => setNavOpen(true)} aria-label={t("Avaa valikko")} aria-expanded={navOpen}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-            <path d="M4 6h16" />
-            <path d="M4 12h16" />
-            <path d="M4 18h16" />
-          </svg>
-        </button>
-        <img src="/pleissi-logo.svg" alt="Pleissi" />
-        <strong>{tabTitles[tab]}</strong>
-      </div>
+      <Topbar
+        user={user}
+        companies={companies}
+        companyId={navCompany?.id ?? ""}
+        onCompanyChange={setNavCompanyId}
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
+        onSearch={() => void submitSearch()}
+        history={history}
+        onOpenTicket={ticketId => navigate("tickets", ticketId)}
+        onOpenSettings={() => setTab("settings")}
+        onOpenMenu={() => setNavOpen(true)}
+      />
       {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
       <aside className="sidebar">
         <button className="mobile-nav-close" onClick={() => setNavOpen(false)} aria-label={t("Sulje valikko")}>×</button>
-        <a className="brand" href="#/queue" title={t("Päätösjonoon")}>
-          <img src="/pleissi-logo.svg" alt="Pleissi" />
-        </a>
-        <button
-          type="button"
-          className={`nav-pin ${navPinned ? "pinned" : ""}`}
-          onClick={event => {
-            changeNavPinned(!navPinned);
-            // Painike ei jää kohdistetuksi, jotta pienennetty palkki sulkeutuu heti hiiren poistuessa.
-            event.currentTarget.blur();
-          }}
-          title={navPinned ? t("Pienennä valikko") : t("Kiinnitä valikko auki")}
-          aria-label={navPinned ? t("Pienennä valikko") : t("Kiinnitä valikko auki")}
-          aria-pressed={navPinned}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M9 4h6l-1 5 3 3v2H7v-2l3-3z" />
-            <path d="M12 14v7" />
-          </svg>
-        </button>
-
-        {/* Haku: #123 avaa tehtävän numerolla, muu teksti avaa hakutulokset kaikesta alustan tiedosta. */}
-        <form className="nav-search" role="search" onSubmit={event => { event.preventDefault(); void submitSearch(); }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
-            type="search"
-            value={searchText}
-            onChange={event => setSearchText(event.target.value)}
-            placeholder={t("Hae tai #numero")}
-            aria-label={t("Hae alustalta")}
-          />
-        </form>
-
         <nav>
-          <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>
-            <TabIcon tab="queue" />
-            {t("Päätösjono")}
-            <b>{queueTickets.length}</b>
-          </button>
+          {/* Päätösjonon vieressä on sivupalkin kiinnitys: kiinnittämätön palkki kutistuu kuvakeriviksi. */}
+          <div className="nav-group nav-queue-row">
+            <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>
+              <TabIcon tab="queue" />
+              {t("Päätösjono")}
+              <b>{queueTickets.length}</b>
+            </button>
+            <button
+              type="button"
+              className={`nav-pin ${navPinned ? "pinned" : ""}`}
+              onClick={event => {
+                changeNavPinned(!navPinned);
+                // Painike ei jää kohdistetuksi, jotta pienennetty palkki sulkeutuu heti hiiren poistuessa.
+                event.currentTarget.blur();
+              }}
+              title={navPinned ? t("Pienennä valikko") : t("Kiinnitä valikko auki")}
+              aria-label={navPinned ? t("Pienennä valikko") : t("Kiinnitä valikko auki")}
+              aria-pressed={navPinned}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 4h6l-1 5 3 3v2H7v-2l3-3z" />
+                <path d="M12 14v7" />
+              </svg>
+            </button>
+          </div>
           <div className="nav-group">
             <button className={tab === "tickets" ? "active" : ""} onClick={() => setTab("tickets")}>
               <TabIcon tab="tickets" />
@@ -594,13 +597,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
           </div>
           {showResidentsLink && (
             <div className="nav-subs">
-              <label className="nav-company">
-                <span>{t("Taloyhtiö")}</span>
-                <select value={navCompany?.id ?? ""} onChange={event => setNavCompanyId(event.target.value)}>
-                  <option value="" disabled>{t("Valitse taloyhtiö")}</option>
-                  {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-                </select>
-              </label>
+              {navCompany && <p className="nav-company-name" title={t("Taloyhtiön voi vaihtaa yläpalkista.")}>{navCompany.name}</p>}
               {navCompany && navGroups.map(group => {
                 const open = !closedGroups.includes(group.key);
                 // Suljetun ryhmän otsikossa näkyy sen laskurien summa, jotta odottavat asiat eivät jää piiloon.
@@ -642,26 +639,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )}
         </nav>
 
-        <div className="sidebar-footer">
-          <button
-            className={`settings-button ${tab === "settings" ? "active" : ""}`}
-            onClick={() => setTab("settings")}
-            title={t("Asetukset")}
-            aria-label={t("Asetukset")}
-          >
-            <TabIcon tab="settings" />
-          </button>
-          <div className="company">
-            <small>{MANAGEMENT_OFFICE.name}</small>
-            <strong>{user.name}</strong>
-            <button
-              className="logout"
-              onClick={logout}
-            >
-              {t("Kirjaudu ulos")}
-            </button>
-          </div>
-        </div>
       </aside>
 
       <main className="main">

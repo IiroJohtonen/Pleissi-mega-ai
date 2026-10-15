@@ -1104,7 +1104,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   min-width: 0;
   overflow-y: auto;
   padding: 34px;
-  background: #eef1f5;
+  background: #fff;
 }
 
 /* Tikettinäkymän yläpalkki: tiketin numero ja tila vasemmalla, toimintonapit oikealla. */
@@ -1119,8 +1119,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   min-height: 34px;
   margin: -34px -34px 6px;
   padding: 12px 34px;
-  background: #eef1f5;
-  border-bottom: 1px solid #d9dde2;
+  background: #fff;
+  border-bottom: 1px solid #e3e7eb;
 }
 
 .drawer-topbar-number { color: #4b535d; font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -1165,8 +1165,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   min-width: 0;
   overflow-y: auto;
   padding: 34px 28px;
-  background: #fff;
-  border-left: 1px solid #dfe3e7;
+  background: #eef4fb;
+  border-left: 1px solid #d6e2ef;
 }
 
 .drawer-timeline h3 { margin: 0 0 12px; font-size: 13px; }
@@ -1494,9 +1494,9 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .ticket-description h3 {
   margin: 0 0 6px;
-  color: #4f6680;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: #2b3540;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .ticket-description p {
@@ -1732,16 +1732,17 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   column-gap: 12px;
   min-height: 44px;
   padding: 4px 0;
-  border-bottom: 1px solid #dde2e8;
+  border-bottom: 1px solid #e8ebef;
 }
 
+/* Otsikot lähes mustina normaalipainolla, arvot lihavoituna: ero näkyy painosta, ei haaleasta väristä. */
 .ticket-facts dt {
-  color: #4f6680;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: #2b3540;
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.ticket-facts dd { margin: 0; color: #1d2329; font-size: 13.5px; font-weight: 600; }
+.ticket-facts dd { margin: 0; color: #111820; font-size: 13.5px; font-weight: 650; }
 
 .reporter, .attachment {
   display: flex;
@@ -3100,6 +3101,10 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .knowledge-state.internal { background: #eceef0; color: #4b535d; }
 .knowledge-audience { border-radius: 99px; padding: 3px 9px; font-weight: 700; background: #e6f1fb; color: #24527f; }
 .knowledge-audience.internal { background: #eceef0; color: #4b535d; }
+.knowledge-audience-pick { justify-self: start; }
+.knowledge-audience-pick .fact-dropdown-trigger.knowledge-audience { padding: 3px 9px; border: 1px solid transparent; font-size: 11px; font-weight: 700; }
+.knowledge-audience-pick .fact-dropdown-trigger.knowledge-audience:hover { border-color: #8fb3d9; }
+.knowledge-notice { margin: 0 0 4px; }
 
 @media (max-width: 1000px) {
   .knowledge-cols,
@@ -3800,35 +3805,36 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .ticket-card .meta span:not([class]) { background: #eef1f5; color: #3e4c5c; }
 .ticket-card .meta .reminder-chip { padding: 4px 10px; font-size: 12px; }
 
-/* Sivupalkin kiinnitys. Kiinnitettynä palkki on aina auki; kiinnittämättä se kutistuu kuvakeriviksi,
-   jolloin sisältö saa enemmän tilaa, ja aukeaa sisällön päälle, kun hiiri tai näppäimistö on siinä. */
+/* Sivupalkin kiinnitys. Nasta on päätösjonon vieressä. Kiinnitettynä palkki on aina auki;
+   kiinnittämättä se kutistuu kuvakeriviksi, jolloin sisältö saa enemmän tilaa, ja aukeaa sisällön
+   päälle, kun hiiri tai näppäimistö on siinä. */
+.nav-queue-row { align-items: center; }
 .nav-pin {
-  position: absolute;
-  top: 30px;
-  right: 14px;
-  z-index: 2;
+  flex: none;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: #8d949b;
   transition: background .15s ease, color .15s ease;
 }
-.nav-pin svg { width: 17px; height: 17px; transform: rotate(45deg); transition: transform .15s ease; }
+.nav-pin svg { width: 16px; height: 16px; transform: rotate(45deg); transition: transform .15s ease; }
 .nav-pin.pinned svg { transform: none; fill: currentColor; }
-.nav-pin:hover { background: #242c35; color: #fff; }
+.nav-pin:hover { background: #242c35; color: #fff; transform: none; }
+.nav-company-name { margin: 2px 0 4px 25px; overflow: hidden; color: #9bd3ff; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 
 @media (min-width: 761px) {
   .app.nav-collapsed { padding-left: 68px; }
   .app.nav-collapsed .sidebar {
     position: fixed;
-    inset: 0 auto 0 0;
+    inset: var(--topbar-height) auto 0 0;
     z-index: 50;
     width: 68px;
+    height: auto;
     padding-left: 10px;
     padding-right: 10px;
     transition: width .16s ease, box-shadow .16s ease;
@@ -3840,49 +3846,194 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
     padding-right: 18px;
     box-shadow: 18px 0 40px rgba(13, 16, 20, .28);
   }
-  /* Kapeana näkyvät vain kuvakkeet; tekstit, alavalikot ja alaosan tiedot piilotetaan. */
-  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .brand { visibility: hidden; }
-  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-pin { right: 19px; }
+  /* Kapeana näkyvät vain kuvakkeet; tekstit ja alavalikot piilotetaan. Nasta on päätösjonon alla. */
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button { justify-content: center; padding-left: 0; padding-right: 0; font-size: 0; position: relative; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button .tab-icon { width: 19px; height: 19px; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav b { position: absolute; top: 3px; right: 3px; min-width: 16px; padding: 0 4px; font-size: 9px; line-height: 15px; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button.nav-toggle,
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-subs,
-  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button.nav-sub,
-  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-company,
-  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .company,
-  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-search { display: none; }
-  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .sidebar-footer { justify-content: center; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button.nav-sub { display: none; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-group { display: block; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-group > button:first-child { width: 100%; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-queue-row { display: grid; justify-items: center; gap: 6px; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) > nav { margin-right: 0; padding-right: 0; }
 }
 
-@media (max-width: 760px) {
-  .nav-pin { display: none; }
-}
-
-/* Sivupalkin haku */
-.nav-search {
-  position: relative;
+/* Yläpalkki: matala tumma palkki koko leveydeltä. Logo on sivupalkin levyisellä alueella. */
+:root { --topbar-height: 56px; }
+.app { padding-top: var(--topbar-height); }
+.topbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 70;
   display: flex;
   align-items: center;
-  margin: -18px 0 18px;
+  justify-content: flex-start;
+  gap: 10px;
+  height: var(--topbar-height);
+  margin: 0;
+  padding: 0 14px 0 0;
+  border-bottom: 1px solid #262d35;
+  background: #12171d;
+  color: #fff;
 }
-.nav-search svg { position: absolute; left: 11px; width: 15px; height: 15px; color: #8d949b; pointer-events: none; }
-.nav-search input {
-  width: 100%;
+.topbar svg { width: 17px; height: 17px; flex: none; }
+.topbar-hamburger { display: none; }
+.topbar-brand { display: flex; align-items: center; flex: none; width: 250px; height: 100%; padding: 0 0 0 28px; box-sizing: border-box; }
+.topbar-brand img { display: block; height: 30px; }
+.topbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #d4d9de;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.topbar-button:hover, .topbar-button[aria-expanded="true"] { background: #242c35; color: #fff; }
+.topbar-button svg:last-child { width: 13px; height: 13px; opacity: .7; }
+.topbar-office { padding-left: 12px; border-left: 1px solid #2f3843; color: #aab3bd; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; min-width: 0; }
+.topbar-search { position: relative; display: flex; align-items: center; }
+.topbar-search svg { position: absolute; left: 11px; width: 15px; height: 15px; color: #8d949b; pointer-events: none; }
+.topbar-search input {
+  width: 260px;
   height: 36px;
   padding: 0 10px 0 33px;
   border: 1px solid #343d47;
   border-radius: 9px;
-  background: #242c35;
+  background: #1e252d;
   color: #fff;
   font: inherit;
   font-size: 13px;
 }
-.nav-search input::placeholder { color: #8d949b; }
-.nav-search input:focus { outline: 2px solid #9bd3ff; outline-offset: 0; border-color: #4a5868; }
+.topbar-search input::placeholder { color: #8d949b; }
+.topbar-search input:focus { outline: 2px solid #9bd3ff; outline-offset: 0; border-color: #4a5868; }
+.topbar-company { position: relative; display: flex; align-items: center; }
+.topbar-company svg { position: absolute; left: 10px; width: 15px; height: 15px; color: #9bd3ff; pointer-events: none; }
+.topbar-company select {
+  max-width: 240px;
+  height: 36px;
+  padding: 0 30px 0 32px;
+  border: 1px solid #343d47;
+  border-radius: 9px;
+  background: #1e252d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab3bd' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  appearance: none;
+  cursor: pointer;
+}
+.topbar-company select:focus { outline: 2px solid #9bd3ff; outline-offset: 0; }
+.topbar-company option { background: #fff; color: #1d2329; }
+.topbar-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding: 0 6px 0 3px;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: #aab3bd;
+}
+.topbar-profile:hover, .topbar-profile[aria-expanded="true"] { background: #242c35; color: #fff; }
+.topbar-profile .user-avatar { width: 34px; height: 34px; background: #2c3946; color: #9bd3ff; font-size: 12px; }
+.topbar-profile svg { width: 13px; height: 13px; }
+
+/* Yläpalkin pudotusvalikot */
+.topbar-menu { position: relative; }
+.topbar-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  z-index: 80;
+  display: grid;
+  gap: 2px;
+  min-width: 300px;
+  padding: 8px;
+  border: 1px solid #e2e4e6;
+  border-radius: 12px;
+  background: #fff;
+  color: #1d2329;
+  box-shadow: 0 18px 40px rgba(13, 16, 20, .18);
+}
+.topbar-dropdown svg { width: 17px; height: 17px; color: #5c6f86; }
+.topbar-dropdown > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+}
+.topbar-dropdown > button:hover { background: #f1f4f7; }
+.topbar-dropdown-title { margin: 2px 10px 6px; color: #5c6f86; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.topbar-dropdown-empty { margin: 4px 10px 8px; color: #5c6f86; font-size: 13px; }
+.history-dropdown { left: 0; width: 380px; }
+.history-number { flex: none; min-width: 48px; color: #6e7680; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.history-text { display: grid; min-width: 0; }
+.history-text strong { overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.history-text small { color: #5c6f86; font-size: 12px; font-weight: 500; }
+.profile-dropdown { right: 0; width: 320px; }
+.profile-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; padding: 8px 10px 12px; border-bottom: 1px solid #eceef1; }
+.profile-head .user-avatar { flex: none; width: 44px; height: 44px; font-size: 15px; }
+.profile-head > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.profile-head strong { font-size: 15px; }
+.profile-head small { overflow: hidden; color: #5c6f86; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; font-size: 13.5px; font-weight: 600; }
+.profile-row > span:nth-of-type(1) { flex: 1; }
+.topbar-dropdown label.profile-row.switch-row { justify-content: flex-start; padding: 7px 10px; }
+.profile-segment { display: inline-flex; flex: none !important; padding: 2px; border-radius: 8px; background: #eef1f5; }
+.profile-segment button { padding: 5px 10px; border: 0; border-radius: 6px; background: transparent; color: #4b535d; font: inherit; font-size: 12.5px; font-weight: 600; }
+.profile-segment button.active { background: #fff; color: #1d2329; box-shadow: 0 1px 3px rgba(16, 24, 40, .12); }
+.topbar-dropdown > button.profile-logout { margin-top: 4px; border-top: 1px solid #eceef1; border-radius: 0 0 8px 8px; color: #9c2b1f; }
+.profile-logout svg { color: #9c2b1f; }
+
+/* Sivupalkki alkaa yläpalkin alta. */
+@media (min-width: 761px) {
+  .sidebar { top: var(--topbar-height); height: calc(100vh - var(--topbar-height)); padding-top: 18px; }
+}
+
+@media (max-width: 1100px) {
+  .topbar-office { display: none; }
+  .topbar-search input { width: 200px; }
+}
+
+@media (max-width: 760px) {
+  :root { --topbar-height: auto; }
+  .app { padding-top: 0; }
+  .topbar { position: sticky; top: 0; z-index: 40; flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
+  .topbar-hamburger { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: #242c35; color: #fff; }
+  .topbar-brand { width: auto; padding: 0; }
+  .topbar-brand img { height: 26px; }
+  .topbar-office { display: none; }
+  .topbar-button { padding: 0 8px; }
+  .topbar-right { display: contents; }
+  .topbar-right > .topbar-menu { margin-left: auto; order: 2; }
+  .topbar-search { order: 3; flex: 1 1 100%; }
+  .topbar-search input { width: 100%; }
+  .topbar-company { order: 4; flex: 1 1 100%; }
+  .topbar-company select { max-width: none; width: 100%; }
+  .history-dropdown { width: min(380px, calc(100vw - 24px)); }
+  .profile-dropdown { width: min(320px, calc(100vw - 24px)); }
+  /* Puhelimella valikko on liukuva paneeli, joten kiinnitystä ei tarvita; sulkuruksi on ylhäällä. */
+  .nav-pin { display: none !important; }
+  .sidebar > nav { margin-top: 44px; }
+}
 
 /* Hakutulokset otsikoittain */
 .search-results { display: grid; gap: 22px; max-width: 980px; }
@@ -3912,3 +4063,90 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .search-hit-snippet { color: #4b535d; font-size: 13px; line-height: 1.5; }
 .search-hit mark { padding: 0 2px; border-radius: 3px; background: #fde9a6; color: inherit; }
 .search-more { margin: 2px 0 0; color: #5c6f86; font-size: 12.5px; }
+
+/* Ilmoitus näytön yläreunassa: sininen pohja, sulkuruksi vasemmassa yläkulmassa ja kuluva aikapalkki. */
+.toast {
+  position: fixed;
+  top: calc(var(--topbar-height) + 14px);
+  left: 50%;
+  z-index: 90;
+  width: min(560px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid #c5d5e7;
+  border-radius: 12px;
+  background: #e7f0ff;
+  color: #1f4673;
+  box-shadow: 0 16px 40px rgba(13, 16, 20, .18);
+  transform: translateX(-50%);
+  animation: toast-in .2s ease;
+}
+.toast-close {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #28548f;
+  font-size: 20px;
+  line-height: 1;
+}
+.toast-close:hover { background: rgba(40, 84, 143, .12); }
+.toast-body { display: grid; gap: 4px; padding: 13px 18px 15px 44px; }
+.toast-body strong { font-size: 13.5px; line-height: 1.45; }
+.toast-body p { margin: 0; font-size: 13px; line-height: 1.5; }
+.toast-timer {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: #3f7fbf;
+  transform-origin: left;
+  animation-name: toast-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.toast:hover .toast-timer { animation-play-state: paused; }
+@keyframes toast-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (max-width: 760px) {
+  .toast { top: 12px; }
+}
+
+/* Tehtävän tilojen värit: merkit listoissa ja korteissa sekä tehtäväsivun Tila-valinta. */
+.status-badge.status-open, .status-pill.status-open { background: #e3eefc; color: #1f4f8f; }
+.status-badge.status-active, .status-pill.status-active { background: #fdf0cf; color: #7a5600; }
+.status-badge.status-waiting_manager, .status-pill.status-waiting_manager { background: #ebe7fb; color: #4b3a9c; }
+.status-badge.status-answered, .status-pill.status-answered { background: #dcf3e4; color: #1f6b3d; }
+.status-badge.status-waiting_third_party, .status-pill.status-waiting_third_party { background: #fde7d6; color: #8a4512; }
+.status-badge.status-closed, .status-pill.status-closed { background: #eceef0; color: #4b535d; }
+.fact-dropdown-trigger.status-pill { padding: 6px 12px; border-color: transparent; border-radius: 99px; font-weight: 700; }
+
+/* Tehtäväsivun tiedot isompina: kentät saavat viedä enemmän tilaa ja ovat helpompia lukea ja klikata. */
+.drawer-main .ticket-facts { gap: 0 28px; margin-top: 22px; }
+.drawer-main .ticket-facts > div { grid-template-columns: 104px minmax(0, 1fr); min-height: 56px; padding: 6px 0; }
+.drawer-main .fact-dropdown-trigger { white-space: nowrap; }
+.drawer-main .ticket-facts dt { font-size: 14px; }
+.drawer-main .ticket-facts dd { font-size: 15px; }
+.drawer-main .fact-dropdown-trigger,
+.drawer-main .fact-due input { padding: 8px 12px; font-size: 15px; }
+.drawer-main .fact-dropdown-trigger.priority,
+.drawer-main .fact-dropdown-trigger.status-pill { padding: 7px 14px; font-size: 13px; }
+.drawer-main .fact-search input { flex-basis: 300px; padding: 8px 40px 8px 12px; font-size: 15px; }
+.drawer-main .fact-search-button { width: 30px; height: 30px; margin-left: -38px; }
+.drawer-main .ticket-description h3 { font-size: 14px; }
+.drawer-main .ticket-description p, .drawer-main .ticket-description textarea { font-size: 15px; }
+@media (max-width: 1100px) {
+  .drawer-main .ticket-facts { grid-template-columns: minmax(0, 1fr); }
+  .drawer-main .ticket-facts > div { grid-template-columns: 132px minmax(0, 1fr); }
+}
+
+/* Päätösjonon yhteenvedossa on viisi laatikkoa, jotka mahtuvat samalle riville. */
+.queue-summary-large > div,
+.queue-summary-large > button { min-width: 168px; padding: 26px 26px 24px; }
+.queue-summary.queue-summary-large span,
+.queue-summary.queue-summary-large small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; }

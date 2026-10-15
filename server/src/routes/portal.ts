@@ -7,7 +7,7 @@ import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
-import { id, now, unsafeFileMessage } from "../util.js";
+import { id, now, unsafeFileMessage, statusAfterResidentReply } from "../util.js";
 import {
   BOOKING_RESOURCES, bookingKindError, bookingRules, bookingTimes, createBookings, deleteBooking,
   MAX_BOOKING_OCCURRENCES
@@ -188,9 +188,10 @@ portalRouter.post("/portal/tickets/:id/messages", async (req, res) => {
     resident.email ? `${resident.name} <${resident.email}>` : resident.name,
     ticket.subject, parsed.data.body, timestamp, "portal"
   );
-  // Suljettu tehtävä avataan uudelleen päätösjonoon, kuten sähköpostivastauksessakin.
-  const reopened = ticket.status === "closed";
-  db.prepare("UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?").run(reopened ? "open" : ticket.status, timestamp, ticket.id);
+  // Suljettu tai vastattu tehtävä palaa päätösjonoon, kuten sähköpostivastauksessakin.
+  const nextStatus = statusAfterResidentReply(ticket.status);
+  const reopened = nextStatus !== ticket.status;
+  db.prepare("UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?").run(nextStatus, timestamp, ticket.id);
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), ticket.id, resident.name, reopened ? "reply_received_reopened" : "portal_message",
     JSON.stringify({ attachments: parsed.data.attachments.length }), timestamp

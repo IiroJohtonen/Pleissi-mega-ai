@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, FactDropdown } from "../components/common";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatFileSize, formatTicketNumber,
-  MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
+  MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
 import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUser } from "../session";
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
@@ -11,6 +11,7 @@ import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
 import { storedAiPrompt } from "../preferences";
+import { Toast } from "../components/Toast";
 import { t } from "../i18n";
 
 type Attachment = TicketDetail["attachments"][number];
@@ -279,13 +280,15 @@ export function TicketDrawer({
 
   // AI-ehdotuksen voi pyytää tehtävälle vain kerran; aiempi pyyntö näkyy lokissa.
   const suggestionUsed = Boolean(suggestion) || detail.audit.some(a => a.action === "ai_suggested");
-  const aiReason = suggestion ? suggestion.reason : ticket.ai_reason;
   // Dokumenttia ehdotetaan vasta, kun tehtävälle on pyydetty AI-ehdotus.
   const aiSource = suggestion
     ? suggestion.source
     : suggestionUsed && ticket.knowledge_source_id && ticket.knowledge_source_title
       ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title }
       : null;
+
+  const [suggestionToast, setSuggestionToast] = useState<{ title: string; message: string } | null>(null);
+  useEffect(() => setSuggestionToast(null), [ticket.id]);
 
   // AI-ehdotus pyydetään ikkunasta, johon voi kirjoittaa lisätietoa tehtävästä.
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
@@ -312,6 +315,12 @@ export function TicketDrawer({
         usedAi: boolean;
       }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
+      setSuggestionToast({
+        title: result.usedAi
+          ? t("AI on luonut ehdotuksen tälle tehtävälle. Tarkista ja muokkaa tekstiä ennen lähettämistä.")
+          : t("AI ei ollut käytettävissä, joten ehdotus tehtiin avainsanahaulla dokumentaatiosta."),
+        message: result.reason
+      });
       setDraft(result.draft);
       setSaved(false);
       setSentTo("");
@@ -383,7 +392,7 @@ export function TicketDrawer({
     : residents;
   // Tietokenttien muutokset kerätään tähän ja tallennetaan vasta Tallenna-painikkeesta. Tehtävän
   // taustapäivitys ei koske niihin, joten keskeneräinen muokkaus säilyy.
-  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string };
+  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string };
   const [edits, setEdits] = useState<FieldEdits>({});
   const [saveError, setSaveError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -402,7 +411,8 @@ export function TicketDrawer({
     priority: ticket.priority,
     assigneeId: ticket.assignee_id ?? null,
     dueDate: ticket.due_date ?? null,
-    reporterId: reporter?.id ?? ""
+    reporterId: reporter?.id ?? "",
+    status: ticket.status
   };
   // Näytettävät arvot: tallennettu arvo, ellei kenttää ole muutettu.
   const shown = { ...savedFields, ...edits };
@@ -663,7 +673,7 @@ export function TicketDrawer({
                   onAssign={assigneeId => updateFields({ assigneeId })}
                 />
               )}
-              {ticket.status === "open" && (
+              {(ticket.status === "open" || ticket.status === "active") && (
                 <button className="primary" onClick={() => onDecision("human")}>{t("Osoita minulle")}</button>
               )}
               <button onClick={() => onDecision("skip")}>{t("Sulje")}</button>
@@ -724,9 +734,17 @@ export function TicketDrawer({
                 : t("Yhteiset tilat")}
             </dd>
           </div>
-          <div>
+          <div className={edits.status !== undefined ? "changed" : ""}>
             <dt>{t("Tila")}</dt>
-            <dd>{statusLabel(ticket.status)}</dd>
+            <dd>
+              <FactDropdown
+                value={shown.status}
+                options={(manualTicketStatuses.includes(ticket.status) ? manualTicketStatuses : [ticket.status, ...manualTicketStatuses])
+                  .map(status => ({ value: status, label: statusLabel(status), pillClass: `status-pill status-${status}` }))}
+                disabled={updatingFields}
+                onChange={status => edit("status", status)}
+              />
+            </dd>
           </div>
           <div className={edits.assigneeId !== undefined ? "changed" : ""}>
             <dt>{t("Käsittelijä")}</dt>
@@ -930,10 +948,14 @@ export function TicketDrawer({
               {suggesting ? t("AI kirjoittaa…") : suggestionUsed ? t("AI-ehdotus pyydetty") : t("Pyydä AI-ehdotus")}
             </button>
           </div>
-          {suggestion?.usedAi && (
-            <p className="ai-reason created">{t("AI on luonut ehdotuksen tälle tehtävälle. Tarkista ja muokkaa tekstiä ennen lähettämistä.")}</p>
+          {/* Ehdotuksen valmistuminen ja sen peruste näytetään hetken ilmoituksena näytön yläreunassa. */}
+          {suggestionToast && (
+            <Toast
+              title={suggestionToast.title}
+              message={suggestionToast.message}
+              onClose={() => setSuggestionToast(null)}
+            />
           )}
-          {aiSource && <p className="ai-reason found">{aiReason}</p>}
           {aiSource ? (
             <p>
               <a
@@ -947,11 +969,6 @@ export function TicketDrawer({
               </a>
             </p>
           ) : null}
-          {suggestion && !suggestion.usedAi && (
-            <p className="reply-hint">
-              {t("AI ei ollut käytettävissä, joten ehdotus tehtiin avainsanahaulla dokumentaatiosta.")}
-            </p>
-          )}
           {suggestion && draft !== (ticket.draft || "") && (
             <p className="reply-hint">{t("Ehdotusta ei ole vielä tallennettu. Muokkaa tekstiä ja tallenna luonnos.")}</p>
           )}

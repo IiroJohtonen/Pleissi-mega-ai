@@ -11,13 +11,21 @@ export function priorityLabel(priority: string) {
   }[priority] || priority;
 }
 
-export const ticketStatuses = ["open", "waiting_manager", "waiting_third_party", "closed"];
+// Tehtävän tilat. open = Uusi (saapunut), active = Avoin, waiting_manager = Käsittelyssä,
+// answered = Vastattu (toimisto on vastannut), waiting_third_party = Kolmannella osapuolella.
+export const ticketStatuses = ["open", "active", "waiting_manager", "answered", "waiting_third_party", "closed"];
+// Tilat, jotka käsittelijä voi valita itse tehtäväsivulla. Uusi-tila tulee vain saapuneelle tehtävälle.
+export const manualTicketStatuses = ["active", "waiting_manager", "answered", "waiting_third_party", "closed"];
+// Tilat, joissa tehtävä odottaa käsittelijän toimia päätösjonossa.
+export const queueTicketStatuses = ["open", "active"];
 
 export function statusLabel(status: string) {
   return {
-    open: t("Avoin"),
-    waiting_manager: t("Odottaa isännöitsijää"),
-    waiting_third_party: t("Odottaa kolmatta osapuolta"),
+    open: t("Uusi"),
+    active: t("Avoin"),
+    waiting_manager: t("Käsittelyssä"),
+    answered: t("Vastattu"),
+    waiting_third_party: t("Kolmannella osapuolella"),
     closed: t("Suljettu")
   }[status] || status;
 }

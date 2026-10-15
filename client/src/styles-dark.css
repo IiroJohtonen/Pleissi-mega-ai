@@ -381,11 +381,11 @@
     background: #283341
 }
 :root[data-theme="dark"] .drawer-main {
-    background: #2e3a49
+    background: #283341
 }
 :root[data-theme="dark"] .drawer-topbar {
-    background: #2e3a49;
-    border-bottom: 1px solid #364251
+    background: #283341;
+    border-bottom: 1px solid #394555
 }
 :root[data-theme="dark"] .drawer-topbar-number {
     color: #c8ced6
@@ -421,8 +421,8 @@
     border-color: #333e4d
 }
 :root[data-theme="dark"] .drawer-timeline {
-    background: #283341;
-    border-left: 1px solid #374353
+    background: #2e3a47;
+    border-left: 1px solid #3d5671
 }
 :root[data-theme="dark"] .message.inbound,
 :root[data-theme="dark"] .message.outbound {
@@ -555,7 +555,7 @@
     color: #a8e2bb
 }
 :root[data-theme="dark"] .ticket-description h3 {
-    color: #afbdce
+    color: #d7dbe1
 }
 :root[data-theme="dark"] .ticket-description p {
     border: 1px solid #333e4d;
@@ -656,13 +656,13 @@
     background: #47412e
 }
 :root[data-theme="dark"] .ticket-facts > div {
-    border-bottom: 1px solid #374353
+    border-bottom: 1px solid #3a4657
 }
 :root[data-theme="dark"] .ticket-facts dt {
-    color: #afbdce
+    color: #d7dbe1
 }
 :root[data-theme="dark"] .ticket-facts dd {
-    color: #e0e3e7
+    color: #bac9da
 }
 :root[data-theme="dark"] .reporter span,
 :root[data-theme="dark"] .attachment span {
@@ -1262,6 +1262,9 @@
     background: #1c242e;
     color: #c8ced6
 }
+:root[data-theme="dark"] .knowledge-audience-pick .fact-dropdown-trigger.knowledge-audience:hover {
+    border-color: #3d5671
+}
 :root[data-theme="dark"] .unsaved-mark {
     background: #4b4430;
     color: #eed799
@@ -1613,6 +1616,52 @@
     background: #2e3a49;
     color: #ccd1d8
 }
+:root[data-theme="dark"] .topbar-dropdown {
+    border: 1px solid #384454;
+    background: #283341;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .topbar-dropdown svg {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .topbar-dropdown > button:hover {
+    background: #2e3b48
+}
+:root[data-theme="dark"] .topbar-dropdown-title {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .topbar-dropdown-empty {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .history-number {
+    color: #b7bfc9
+}
+:root[data-theme="dark"] .history-text small {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .profile-head {
+    border-bottom: 1px solid #3b4758
+}
+:root[data-theme="dark"] .profile-head small {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .profile-segment {
+    background: #2e3a49
+}
+:root[data-theme="dark"] .profile-segment button {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .profile-segment button.active {
+    background: #283341;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .topbar-dropdown > button.profile-logout {
+    border-top: 1px solid #3b4758;
+    color: #ea9e96
+}
+:root[data-theme="dark"] .profile-logout svg {
+    color: #ea9e96
+}
 :root[data-theme="dark"] .search-summary {
     color: #afbdce
 }
@@ -1641,4 +1690,42 @@
 }
 :root[data-theme="dark"] .search-more {
     color: #bac2cb
+}
+:root[data-theme="dark"] .toast {
+    border: 1px solid #3d5571;
+    background: #2e3848;
+    color: #a0c0e6
+}
+:root[data-theme="dark"] .toast-close {
+    color: #9dbbe4
+}
+:root[data-theme="dark"] .status-badge.status-open,
+:root[data-theme="dark"] .status-pill.status-open {
+    background: #2f3b4a;
+    color: #99bbe9
+}
+:root[data-theme="dark"] .status-badge.status-active,
+:root[data-theme="dark"] .status-pill.status-active {
+    background: #4e4632;
+    color: #efd69b
+}
+:root[data-theme="dark"] .status-badge.status-waiting_manager,
+:root[data-theme="dark"] .status-pill.status-waiting_manager {
+    background: #342f49;
+    color: #aaa0dc
+}
+:root[data-theme="dark"] .status-badge.status-answered,
+:root[data-theme="dark"] .status-pill.status-answered {
+    background: #314d3b;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .status-badge.status-waiting_third_party,
+:root[data-theme="dark"] .status-pill.status-waiting_third_party {
+    background: #4c3d31;
+    color: #eebc96
+}
+:root[data-theme="dark"] .status-badge.status-closed,
+:root[data-theme="dark"] .status-pill.status-closed {
+    background: #1c242e;
+    color: #c8ced6
 }
