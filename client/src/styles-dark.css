@@ -1604,13 +1604,8 @@
 :root[data-theme="dark"] .queue-sort {
     color: #afbdce
 }
-:root[data-theme="dark"] .queue-sort select {
-    border: 1px solid #35404f;
-    background: #283341 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
+:root[data-theme="dark"] .queue-sort .fact-dropdown-trigger {
     color: #e0e3e7
-}
-:root[data-theme="dark"] .queue-sort select:hover {
-    border-color: #3d5671
 }
 :root[data-theme="dark"] .ticket-card .meta span:not([class]) {
     background: #2e3a49;
@@ -1728,4 +1723,22 @@
 :root[data-theme="dark"] .status-pill.status-closed {
     background: #1c242e;
     color: #c8ced6
+}
+:root[data-theme="dark"] .ticket-card .meta span.meta-apartment {
+    background: #2f3b4a;
+    color: #99bbe9
+}
+:root[data-theme="dark"] .ticket-card .meta span.meta-resident {
+    background: #304c3d;
+    color: #a3e4c4
+}
+:root[data-theme="dark"] .ticket-card .meta span.meta-unknown {
+    background: #4e4632;
+    color: #efd69b
+}
+:root[data-theme="dark"] .knowledge-company {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .knowledge-company svg {
+    color: #99bbdd
 }

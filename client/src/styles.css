@@ -3397,6 +3397,11 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 /* Kortti peittää myös puhelimen yläpalkin ja valikon, jotta otsikko ja sulkupainike näkyvät. */
 .overlay { z-index: 70; }
+/* Avatut tietueet ja ikkunat avautuvat yläpalkin alle, jotta yläpalkki näkyy ja on käytössä aina. */
+@media (min-width: 761px) {
+  .overlay { top: var(--topbar-height); z-index: 65; }
+  .overlay.skip-overlay { z-index: 68; }
+}
 .overlay.skip-overlay { z-index: 75; }
 /* Asetukset: kotisivun yhteydenottopyynnöt */
 .contact-requests ul { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
@@ -3778,20 +3783,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .queue-heading-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 14px 0 0; }
 .queue-heading-row .queue-subheading { margin: 0; }
 .queue-sort { display: flex; align-items: center; gap: 8px; color: #4f6680; font-size: 12.5px; font-weight: 600; }
-.queue-sort select {
-  height: 32px;
-  padding: 0 30px 0 10px;
-  border: 1px solid #d3d9e0;
-  border-radius: 8px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
-  color: #1c232a;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  appearance: none;
-  cursor: pointer;
-}
-.queue-sort select:hover { border-color: #8fb3d9; }
+.queue-sort .fact-dropdown-trigger { padding: 6px 12px; font-size: 13.5px; font-weight: 600; color: #1c232a; }
+.queue-sort .fact-dropdown ul { left: auto; right: 0; min-width: 190px; }
 
 /* Päätösjonon korttien tägit isompina ja selkeämpinä kuin tiiviissä listassa. */
 .ticket-card .ticket-top { gap: 8px; }
@@ -4150,3 +4143,16 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .queue-summary-large > button { min-width: 168px; padding: 26px 26px 24px; }
 .queue-summary.queue-summary-large span,
 .queue-summary.queue-summary-large small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; }
+
+/* Päätösjonon kortin asunto- ja asukastägit. Tunnistamaton asunto tai asukas näkyy varoitusvärillä. */
+.ticket-card .meta span.meta-apartment { background: #e3eefc; color: #1f4f8f; }
+.ticket-card .meta span.meta-resident { background: #e2f3ea; color: #1f6b45; }
+.ticket-card .meta span.meta-unknown { background: #fdf0cf; color: #7a5600; font-style: italic; }
+
+/* Dokumentaatiolistan otsikkona taloyhtiön nimi. */
+.knowledge-company { display: flex; align-items: center; gap: 8px; margin: 0; color: #1d2329; font-size: 20px; }
+.knowledge-company svg { width: 20px; height: 20px; color: #3f7fbf; }
+
+/* Määräaikakentän Myöhässä-merkintä kentän alla. */
+.fact-due { flex-direction: column; align-items: flex-start; gap: 4px; }
+.fact-due .new-reply.overdue { padding: 2px 9px; font-size: 11.5px; white-space: nowrap; }

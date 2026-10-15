@@ -590,7 +590,6 @@ export const en: Record<string, string> = {
   "Uusi salasana uudelleen": "New password again",
   "Vaihda salasana": "Change password",
   "Kirjaudu sisään": "Sign in",
-  "· henkilökunta ja asukkaat": "· staff and residents",
   "Salasana": "Password",
   "Kirjaudutaan…": "Signing in…",
   "Kirjaudu": "Sign in",
@@ -1383,4 +1382,7 @@ export const en: Record<string, string> = {
   "Uusi": "New",
   "Vastattu": "Answered",
   "Kolmannella osapuolella": "With third party",
+  "Muokkaa": "Edit",
+  "Muokkaa dokumenttia": "Edit document",
+  "Muokkaa vakiotietoa": "Edit fact",
 };

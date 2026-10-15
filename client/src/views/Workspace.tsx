@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { NavToggle, TabIcon, usePaged } from "../components/common";
+import { FactDropdown, NavToggle, TabIcon, usePaged } from "../components/common";
 import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
@@ -194,7 +194,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
   const navCompany = companies.find(company => company.id === navCompanyId);
   // Alasivut näyttävät vain valitun taloyhtiön tiedot.
-  const navCompanies = navCompany ? [navCompany] : companies;
   const navCompanyKey = navCompany?.id ?? selectedCompany;
 
   // Yläpalkin taloyhtiövalinnalla on aina arvo: oletuksena tehtävänäkymän yhtiö tai ensimmäinen yhtiö.
@@ -354,6 +353,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
   function closeTicket() {
     if (openTicketId) navigate(tab);
   }
+
+  // Taulukot näyttävät oletuksena yläpalkissa valitun taloyhtiön tiedot. Taulukon oma suodatin vaihtaa
+  // yhtiön vain siinä näkymässä; sivua vaihdettaessa palataan yläpalkin valintaan.
+  useEffect(() => {
+    if (!navCompany || navCompany.id === selectedCompany) return;
+    setSelectedCompany(navCompany.id);
+    load(navCompany.id).catch(console.error);
+  }, [tab, navCompany?.id]);
 
   function changeCompany(companyId: string) {
     closeTicket();
@@ -695,34 +702,34 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <AuditLog />
           )
           : tab === "parking" ? (
-            <ParkingSpaces key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
+            <ParkingSpaces key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "announcements" ? (
-            <Announcements key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
+            <Announcements key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "moves" ? (
-            <MoveNotices key={navCompanyKey} companies={navCompanies} onChanged={() => void refreshNavCounts()} />
+            <MoveNotices key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "renovations" ? (
-            <RenovationNotices key={navCompanyKey} companies={navCompanies} onChanged={() => void refreshNavCounts()} />
+            <RenovationNotices key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "keys" ? (
-            <KeyRegister key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
+            <KeyRegister key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "meters" ? (
-            <MeterReadings key={navCompanyKey} companies={navCompanies} defaultCompanyId={navCompanyKey} />
+            <MeterReadings key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "waitlist" ? (
-            <Waitlists key={navCompanyKey} companies={navCompanies} />
+            <Waitlists key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "sauna" || tab === "laundry" ? (
             <BookingCalendar
               // Avain vaihtaa kalenterin tilan, kun siirrytään saunasta pyykkitupaan.
               key={`${tab}-${navCompanyKey}`}
               resource={tab}
-              companyId={navCompanyKey}
-              companies={navCompanies}
-              onCompanyChange={setNavCompanyId}
+              companyId={selectedCompany}
+              companies={companies}
+              onCompanyChange={changeCompany}
               onRequestsChanged={() => void refreshNavCounts()}
             />
           )
@@ -747,7 +754,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <Residents
               key={navCompanyKey}
               companyId={navCompanyKey}
-              companies={navCompanies}
+              companies={companies}
+              onCompanyChange={() => undefined}
               onChanged={async () => setCompanies(await api<Company[]>("/companies"))}
             />
           )
@@ -816,15 +824,20 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   {t("Avoimet tehtäväsi")}
                   <b>{queueTickets.length}</b>
                 </h2>
-                <label className="queue-sort">
+                {/* Sama pyöristetty valikko kuin tehtäväsivun kentissä. */}
+                <div className="queue-sort">
                   <span>{t("Järjestys")}</span>
-                  <select value={queueSort} onChange={event => changeQueueSort(event.target.value as QueueSort)}>
-                    <option value="oldest">{t("Vanhin ensin")}</option>
-                    <option value="newest">{t("Uusin ensin")}</option>
-                    <option value="priority">{t("Kiireellisin ensin")}</option>
-                    <option value="due">{t("Määräaika ensin")}</option>
-                  </select>
-                </label>
+                  <FactDropdown
+                    value={queueSort}
+                    options={[
+                      { value: "oldest", label: t("Vanhin ensin") },
+                      { value: "newest", label: t("Uusin ensin") },
+                      { value: "priority", label: t("Kiireellisin ensin") },
+                      { value: "due", label: t("Määräaika ensin") }
+                    ]}
+                    onChange={value => changeQueueSort(value as QueueSort)}
+                  />
+                </div>
               </div>
             )}
             {tab !== "queue" && filtersOpen && (
@@ -986,7 +999,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <TicketCard
                   key={ticket.id}
                   ticket={ticket}
-                  reminders={ticketReminders(ticket, reminderSettings).filter(reminder => reminder.kind !== "overdue")}
+                  // Päätösjonon korteissa ei ole määräaikatägejä (määräaika näkyy tehtäväsivulla); odotusmuistutus näkyy.
+                  reminders={ticketReminders(ticket, reminderSettings).filter(reminder =>
+                    tab === "queue" ? reminder.kind === "waiting" : reminder.kind !== "overdue")}
                   compact={tab !== "queue"}
                   companyName={companies.find(company => company.id === ticket.company_id)?.name}
                   users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}

@@ -56,7 +56,7 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
   const [keys, setKeys] = useState<BuildingKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [companyFilter, setCompanyFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
   const [stateFilter, setStateFilter] = useState("all");
   // Lomake: openId = avattu avain, creating = uusi avain.
   const [openId, setOpenId] = useState<string | null>(null);

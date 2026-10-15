@@ -271,17 +271,13 @@ export function TicketCard({
         <div>
           <h2>{ticket.subject}</h2>
           <div className="meta">
-            <span>{ticket.apartment_number || t("Asuntoa ei tunnistettu")}</span>
-            <span>{ticket.resident_name || t("Asukasta ei tunnistettu")}</span>
+            {/* Asunto ja asukas omilla väreillään; tunnistamaton näkyy varoitusvärillä. */}
+            <span className={ticket.apartment_number ? "meta-apartment" : "meta-unknown"}>{ticket.apartment_number || t("Asuntoa ei tunnistettu")}</span>
+            <span className={ticket.resident_name ? "meta-resident" : "meta-unknown"}>{ticket.resident_name || t("Asukasta ei tunnistettu")}</span>
             <span className="assignee-pill">{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
             {hasDraft && <span className="draft-pill">{t("Luonnos tallennettu")}</span>}
             {ticket.has_new_reply ? <span className="new-reply">{t("Uusi viesti")}</span> : null}
             {reminders.map(reminder => <span key={reminder.kind} className={`reminder-chip reminder-${reminder.kind}`}>{reminder.text}</span>)}
-            {ticket.due_date && !reminders.some(reminder => reminder.kind === "due") && (
-              <span className={isOverdue(ticket) ? "new-reply overdue" : "assignee-pill"}>
-                {isOverdue(ticket) ? t("Myöhässä") : t("Määräaika")} {formatDay(ticket.due_date)}
-              </span>
-            )}
           </div>
         </div>
 

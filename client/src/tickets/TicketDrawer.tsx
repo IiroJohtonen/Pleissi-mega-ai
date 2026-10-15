@@ -4,7 +4,7 @@ import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
-import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUser } from "../session";
+import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUser, session } from "../session";
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
@@ -549,6 +549,8 @@ export function TicketDrawer({
     api<OfficeUser[]>("/users").then(setOfficeUsers).catch(() => setOfficeUsers([]));
   }, []);
 
+  const myId = session?.user.id ?? "";
+
   async function updateFields(fields: { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null }) {
     setUpdatingFields(true);
     try {
@@ -673,9 +675,15 @@ export function TicketDrawer({
                   onAssign={assigneeId => updateFields({ assigneeId })}
                 />
               )}
-              {(ticket.status === "open" || ticket.status === "active") && (
+              {/* Toiselle osoitetun tehtävän voi ottaa itselleen; tila säilyy. Käsittelijätön uusi tai avoin
+                  tehtävä otetaan käsittelyyn kuten ennenkin. */}
+              {myId && ticket.assignee_id && ticket.assignee_id !== myId ? (
+                <button className="primary" onClick={() => void updateFields({ assigneeId: myId })} disabled={updatingFields}>
+                  {t("Osoita minulle")}
+                </button>
+              ) : !ticket.assignee_id && (ticket.status === "open" || ticket.status === "active") ? (
                 <button className="primary" onClick={() => onDecision("human")}>{t("Osoita minulle")}</button>
-              )}
+              ) : null}
               <button onClick={() => onDecision("skip")}>{t("Sulje")}</button>
             </div>
           )}
@@ -779,6 +787,7 @@ export function TicketDrawer({
           </div>
           <div className={edits.dueDate !== undefined ? "changed" : ""}>
             <dt>{t("Määräaika")}</dt>
+            {/* Myöhässä-merkintä on kentän alla, jotta se ei ahda kenttää. */}
             <dd className="fact-due">
               <input
                 type="date"

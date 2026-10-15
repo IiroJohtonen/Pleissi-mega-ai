@@ -245,8 +245,19 @@ export function KnowledgeBase({
   ];
   const filtersActive = activeFilters.length > 0;
 
+  // Listan otsikkona taloyhtiö, jonka dokumentaatiota näytetään.
+  const companyName = companies?.find(company => company.id === companyId)?.name;
+
   return (
     <div className="knowledge-base">
+      {companyName && (
+        <h2 className="knowledge-company">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M10 21v-5h4v5" />
+          </svg>
+          {companyName}
+        </h2>
+      )}
       <p className="muted knowledge-intro">
         {audience === "ai"
           ? t("Yhtiön dokumentit ja vakiotiedot, joiden pohjalta AI tekee luonnokset. AI ei käytä muita lähteitä yhtiön tiedoista, eikä näitä tietoja käytetä muiden yhtiöiden luonnoksissa.")
@@ -488,6 +499,7 @@ export function KnowledgeBase({
       {openEntryId && !form && (
         <KnowledgeDetailDrawer
           entryId={openEntryId}
+          companies={companies}
           onOpenVersion={setOpenEntryId}
           onClose={() => setOpenEntryId(null)}
           onEdit={(mode, entry) => setForm(mode === "validity" ? { mode, entry } : { mode: entry.kind, replaces: entry })}
@@ -523,9 +535,11 @@ function KnowledgeDetailDrawer({
   onClose,
   onEdit,
   onRemove,
-  onChanged
+  onChanged,
+  companies = []
 }: {
   entryId: string;
+  companies?: Company[];
   onOpenVersion: (entryId: string) => void;
   onClose: () => void;
   onEdit: (mode: "validity" | "replace", entry: KnowledgeEntry) => void;
@@ -561,7 +575,25 @@ function KnowledgeDetailDrawer({
     }
   }
 
+  // Siirtää tietueen versioineen toiselle taloyhtiölle.
+  async function moveCompany(companyId: string) {
+    setMoving(true);
+    setMoveError("");
+    try {
+      await api(`/knowledge/${entryId}/company`, { method: "PUT", body: JSON.stringify({ companyId }) });
+      setDetail(await api<KnowledgeDetail>(`/knowledge/${entryId}`));
+      await onChanged();
+    } catch (error) {
+      setMoveError(errorMessage(error, t("Siirto epäonnistui.")));
+    } finally {
+      setMoving(false);
+    }
+  }
+
   const isCurrent = detail?.status === "active";
+  const canEdit = isCurrent && isManager();
+  // Voimassa olevan tietueen tilaksi voi valita AI:n käytön tai sisäisen dokumentaation.
+  const stateEditable = canEdit && (detail?.state === "in_use" || detail?.state === "internal");
 
   return (
     <div className="overlay">
@@ -577,28 +609,51 @@ function KnowledgeDetailDrawer({
             <dl className="ticket-facts">
               <div>
                 <dt>{t("Taloyhtiö")}</dt>
-                <dd>{detail.company_name || "-"}</dd>
+                <dd>
+                  {canEdit && companies.length > 1 ? (
+                    <FactDropdown
+                      value={detail.company_id}
+                      options={companies.map(company => ({ value: company.id, label: company.name }))}
+                      disabled={moving}
+                      onChange={companyId => void moveCompany(companyId)}
+                    />
+                  ) : detail.company_name || "-"}
+                </dd>
               </div>
               <div>
                 <dt>{t("Tila")}</dt>
-                <dd><span className={`knowledge-state ${detail.state}`}>{knowledgeStateLabel(detail.state)}</span></dd>
-              </div>
-              <div>
-                <dt>{t("Käyttö")}</dt>
                 <dd>
-                  {isCurrent && isManager() ? (
+                  {stateEditable ? (
                     <FactDropdown
                       value={detail.audience}
                       options={[
-                        { value: "ai", label: t("AI dokumentaatio") },
-                        { value: "internal", label: t("Sisäinen dokumentaatio") }
+                        { value: "ai", label: knowledgeStateLabel("in_use"), pillClass: "knowledge-state in_use" },
+                        { value: "internal", label: knowledgeStateLabel("internal"), pillClass: "knowledge-state internal" }
                       ]}
                       disabled={moving}
                       onChange={next => void moveTo(next as KnowledgeAudience)}
                     />
-                  ) : detail.audience === "internal" ? t("Sisäinen dokumentaatio") : t("AI dokumentaatio")}
+                  ) : <span className={`knowledge-state ${detail.state}`}>{knowledgeStateLabel(detail.state)}</span>}
                 </dd>
               </div>
+              {!stateEditable && (
+                <div>
+                  <dt>{t("Käyttö")}</dt>
+                  <dd>
+                    {isCurrent && isManager() ? (
+                      <FactDropdown
+                        value={detail.audience}
+                        options={[
+                          { value: "ai", label: t("AI dokumentaatio") },
+                          { value: "internal", label: t("Sisäinen dokumentaatio") }
+                        ]}
+                        disabled={moving}
+                        onChange={next => void moveTo(next as KnowledgeAudience)}
+                      />
+                    ) : detail.audience === "internal" ? t("Sisäinen dokumentaatio") : t("AI dokumentaatio")}
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt>{t("Voimassaolo")}</dt>
                 <dd>{validityLabel(detail)}</dd>
@@ -634,10 +689,7 @@ function KnowledgeDetailDrawer({
             {isCurrent && isManager() && (
               <div className="knowledge-entry-actions">
                 <button onClick={() => onEdit("validity", detail)}>{t("Voimassaoloaika")}</button>
-                <button onClick={() => onEdit("replace", detail)}>{t("Korvaa")}</button>
-                <button onClick={() => void moveTo(detail.audience === "internal" ? "ai" : "internal")} disabled={moving}>
-                  {detail.audience === "internal" ? t("Siirrä AI:n käyttöön") : t("Siirrä sisäiseksi")}
-                </button>
+                <button onClick={() => onEdit("replace", detail)}>{t("Muokkaa")}</button>
                 <button className="danger" onClick={() => onRemove(detail)}>{t("Poista")}</button>
               </div>
             )}
@@ -699,8 +751,8 @@ function KnowledgeFormModal({
   const [error, setError] = useState("");
 
   const heading = form.mode === "validity" ? t("Merkitse voimassaoloaika")
-    : form.mode === "document" ? (form.replaces ? t("Korvaa dokumentti") : t("Lataa dokumentti"))
-    : (form.replaces ? t("Korvaa vakiotieto") : t("Lisää vakiotieto"));
+    : form.mode === "document" ? (form.replaces ? t("Muokkaa dokumenttia") : t("Lataa dokumentti"))
+    : (form.replaces ? t("Muokkaa vakiotietoa") : t("Lisää vakiotieto"));
 
   const canSubmit = form.mode === "validity" ? true
     : form.mode === "document" ? Boolean(file)

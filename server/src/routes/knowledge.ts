@@ -277,6 +277,21 @@ knowledgeRouter.put("/knowledge/:id/audience", requireManager, (req, res) => {
   res.json({ ok: true });
 });
 
+// Siirtää tietueen toiselle taloyhtiölle. Mukana siirtyvät myös sen aiemmat versiot, jotta historia
+// pysyy yhdessä. Käyttäjällä pitää olla oikeus molempiin taloyhtiöihin.
+knowledgeRouter.put("/knowledge/:id/company", requireManager, (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row || row.status !== "active") return res.status(404).json({ error: "Knowledge not found" });
+
+  const parsed = z.object({ companyId: z.string().min(1) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse taloyhtiö." });
+  const companyId = companyIdFromContext(parsed.data.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+
+  db.prepare("UPDATE knowledge SET company_id = ? WHERE group_id = ?").run(companyId, row.group_id);
+  res.json({ ok: true });
+});
+
 knowledgeRouter.delete("/knowledge/:id", requireManager, (req, res) => {
   const row = getAuthorizedKnowledge(req.params.id);
   if (!row || row.status !== "active") return res.status(404).json({ error: "Knowledge not found" });

@@ -45,12 +45,12 @@ export function isUnconfirmed(notice: Pick<RenovationNotice, "status" | "end_dat
 }
 
 // Toimiston näkymä: asukkaiden remontti-ilmoitukset, jotka isännöitsijä hyväksyy tai hylkää.
-export function RenovationNotices({ companies, onChanged }: { companies: Company[]; onChanged?: () => void }) {
+export function RenovationNotices({ companies, defaultCompanyId = "", onChanged }: { companies: Company[]; defaultCompanyId?: string; onChanged?: () => void }) {
   const [notices, setNotices] = useState<RenovationNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [companyFilter, setCompanyFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
   // Oletuksena näytetään vain käsittelyä odottavat.
   const [statusFilter, setStatusFilter] = useState("pending");
   const [note, setNote] = useState("");

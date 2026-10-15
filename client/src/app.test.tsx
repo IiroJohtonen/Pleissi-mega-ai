@@ -61,7 +61,8 @@ describe("sovellus", () => {
   it("näyttää päätösjonon ja merkitsee myöhässä olevan tehtävän", async () => {
     await renderApp(staff("Asiakaspalvelu"));
     expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();
-    expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
+    // Päätösjonon kortissa ei ole määräaikatägiä.
+    expect(screen.queryByText("Myöhässä 1.1.2026")).toBeNull();
     expect(document.querySelector(".ticket-company")?.textContent).toContain("As Oy Koivikko");
   });
 
@@ -101,8 +102,8 @@ describe("sovellus", () => {
       const box = await screen.findByTitle("Näytä omat tehtävät, jotka vaativat huomiota");
       // Odottava kysymys ja myöhässä oleva tehtävä; tuore kysymys ei vielä.
       await vi.waitFor(() => expect(box.querySelector("strong")?.textContent).toBe("2"));
-      // Avoimen tehtävän kortissa näkyy myöhästyminen.
-      expect(screen.getByText("Myöhässä 1.1.2026")).toBeTruthy();
+      // Päätösjonon kortissa ei näytetä määräaikaa.
+      expect(screen.queryByText("Myöhässä 1.1.2026")).toBeNull();
 
       fireEvent.click(box);
       expect(window.location.hash).toBe("#/my-tickets");
@@ -251,7 +252,7 @@ describe("sovellus", () => {
     fireEvent.click(screen.getByRole("button", { name: "Profile" }));
     expect(screen.getByText("Sign out")).toBeTruthy();
     expect(screen.getAllByText("Decision queue").length).toBeGreaterThan(0);
-    expect(screen.getByText("Overdue 1/1/2026")).toBeTruthy();
+    expect(screen.getAllByText("Saunavuoron varaus").length).toBeGreaterThan(0);
     expect(screen.queryByText("Kirjaudu ulos")).toBeNull();
     expect(document.documentElement.lang).toBe("en");
   });
@@ -630,6 +631,44 @@ describe("sovellus", () => {
       await vi.waitFor(() => expect(calls.some(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"))).toBe(true));
       const put = calls.find(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"));
       expect(JSON.parse(put!.body).status).toBe("answered");
+    } finally {
+      delete responses["/tickets/ticket-1"];
+    }
+  });
+
+  it("dokumentaation tietokortissa on Muokkaa ja tilan valinta, ei Siirrä sisäiseksi -painiketta", async () => {
+    const entry = { id: "k1", company_id: "demo-company", title: "Saunavuorot", content: "Sauna varataan portaalista.", kind: "fact",
+      audience: "ai", state: "in_use", status: "active", version: 1, valid_from: null, valid_until: null, created_at: "2026-10-01T08:00:00.000Z",
+      tags: "", file_name: null, content_length: 27 };
+    responses["/companies/demo-company/knowledge"] = [entry];
+    responses["/knowledge/k1"] = { ...entry, company_name: "As Oy Koivikko", versions: [entry] };
+    try {
+      mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/knowledge/k1");
+      expect(await screen.findByRole("button", { name: "Muokkaa" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Siirrä sisäiseksi" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Korvaa" })).toBeNull();
+      const stateRow = screen.getByText("Tila", { selector: "dt" }).parentElement!;
+      expect(stateRow.querySelector("button")?.textContent).toContain("AI:n käytössä");
+    } finally {
+      delete responses["/companies/demo-company/knowledge"];
+      delete responses["/knowledge/k1"];
+    }
+  });
+
+  it("toiselle osoitetun tehtävän voi ottaa itselleen tehtäväsivulta", async () => {
+    responses["/tickets/ticket-1"] = { ticket: { ...overdueTicket, assignee_id: "user-2", status: "answered", company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Asiakaspalvelu"), "#/tickets/ticket-1");
+      fireEvent.click(await screen.findByRole("button", { name: "Osoita minulle" }));
+      await vi.waitFor(() => expect(calls.some(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"))).toBe(true));
+      const put = calls.find(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"));
+      expect(JSON.parse(put!.body).assigneeId).toBe("user-1");
+      // Tallennuksen jälkeen tehtävä ladataan uudelleen; odotetaan se, jotta pyyntö ei jää testin jälkeen kesken.
+      const putIndex = calls.indexOf(put!);
+      await vi.waitFor(() => expect(calls.slice(putIndex).some(request => request.method === "GET" && request.url.endsWith("/tickets/ticket-1"))).toBe(true));
+      await new Promise(resolve => setTimeout(resolve, 50));
     } finally {
       delete responses["/tickets/ticket-1"];
     }

@@ -65,4 +65,16 @@ describe("AI-dokumentaatio ja sisäinen dokumentaatio", () => {
     const plain = await call(server, admin, "POST", "/companies/demo-company/knowledge/facts", { question: "Milloin piha aurataan?", answer: "Aamuisin." });
     assert.equal((await entries()).find(row => row.id === plain.data.knowledgeId).audience, "ai");
   });
+
+  it("tietueen voi siirtää toiselle taloyhtiölle versioineen", async () => {
+    const other = (await call(server, admin, "POST", "/companies", { name: "As Oy Siirto" })).data.companyId;
+    const created = await call(server, admin, "POST", "/companies/demo-company/knowledge/facts", { question: "Missä on kerhohuone?", answer: "Kellarissa." });
+    const id = created.data.knowledgeId;
+    assert.equal((await call(server, service, "PUT", `/knowledge/${id}/company`, { companyId: other })).status, 403);
+    assert.equal((await call(server, admin, "PUT", `/knowledge/${id}/company`, { companyId: "ei-ole" })).status, 403);
+    assert.equal((await call(server, admin, "PUT", `/knowledge/${id}/company`, { companyId: other })).status, 200);
+    const moved = (await call(server, admin, "GET", `/companies/${other}/knowledge`)).data as any[];
+    assert.ok(moved.some(row => row.id === id));
+    assert.ok(!(await entries()).some(row => row.id === id));
+  });
 });
