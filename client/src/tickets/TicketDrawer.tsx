@@ -10,6 +10,7 @@ import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { storedAiPrompt } from "../preferences";
 import { t } from "../i18n";
 
 type Attachment = TicketDetail["attachments"][number];
@@ -294,7 +295,9 @@ export function TicketDrawer({
       && !window.confirm(t("Luonnoksessa on tallentamattomia muutoksia. Korvataanko se AI:n ehdotuksella?"))) {
       return;
     }
-    setAiPromptOpen(true);
+    // Lisätietoikkunan voi ottaa asetuksista pois, jolloin ehdotus pyydetään suoraan.
+    if (storedAiPrompt()) setAiPromptOpen(true);
+    else void requestSuggestion("");
   }
 
   async function requestSuggestion(context: string) {
@@ -961,39 +964,42 @@ export function TicketDrawer({
               <button onClick={() => setReplyTargetId(null)} title={t("Peru valinta")} aria-label={t("Peru valinta")}>×</button>
             </p>
           )}
-          {canReply && detail.replyAccounts.length > 0 && (
-            <label className="reply-from">
-              <span>{t("Lähettäjä")}</span>
-              <select value={fromAccountId} onChange={event => setFromChoice(event.target.value)}>
-                {detail.replyAccounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {replyAccountLabel(account)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           {canReply && (
-            <div className="reply-cc">
-              <label>
-                <span>{t("Kopio (Cc)")}</span>
-                <input
-                  type="text"
-                  value={cc}
-                  onChange={event => setCc(event.target.value)}
-                  placeholder={t("esim. hallitus@yhtio.fi, useampi pilkulla eroteltuna")}
-                />
-              </label>
-              {detail.contractor?.email && !cc.toLowerCase().includes(detail.contractor.email.toLowerCase()) && (
-                <button
-                  type="button"
-                  className="reply-cc-add"
-                  onClick={() => setCc(current => [current.trim(), detail.contractor!.email].filter(Boolean).join(", "))}
-                  title={detail.contractor.email}
-                >
-                  {t("+ Huoltoyhtiö")}
-                </button>
+            // Lähettäjä ja kopio yhtenä kompaktina otsakkeena tekstikentän yläpuolella, kuten sähköpostiohjelmassa.
+            <div className="reply-header">
+              {detail.replyAccounts.length > 0 && (
+                <label className="reply-from">
+                  <span>{t("Lähettäjä")}</span>
+                  <select value={fromAccountId} onChange={event => setFromChoice(event.target.value)}>
+                    {detail.replyAccounts.map(account => (
+                      <option key={account.id} value={account.id}>
+                        {replyAccountLabel(account)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               )}
+              <div className="reply-cc">
+                <label>
+                  <span>{t("Kopio (Cc)")}</span>
+                  <input
+                    type="text"
+                    value={cc}
+                    onChange={event => setCc(event.target.value)}
+                    placeholder={t("esim. hallitus@yhtio.fi, useampi pilkulla eroteltuna")}
+                  />
+                </label>
+                {detail.contractor?.email && !cc.toLowerCase().includes(detail.contractor.email.toLowerCase()) && (
+                  <button
+                    type="button"
+                    className="reply-cc-add"
+                    onClick={() => setCc(current => [current.trim(), detail.contractor!.email].filter(Boolean).join(", "))}
+                    title={detail.contractor.email}
+                  >
+                    {t("+ Huoltoyhtiö")}
+                  </button>
+                )}
+              </div>
             </div>
           )}
           <textarea

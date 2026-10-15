@@ -112,6 +112,17 @@ export function compareTickets(a: Ticket, b: Ticket, key: TicketSortKey) {
   }
 }
 
+// Päätösjonon järjestys. Tasatilanteessa vanhempi tehtävä on ensin; määräajattomat ovat viimeisinä.
+export function compareQueue(a: Ticket, b: Ticket, sort: "oldest" | "newest" | "priority" | "due") {
+  const oldest = compareTickets(a, b, "created");
+  switch (sort) {
+    case "oldest": return oldest;
+    case "newest": return -oldest;
+    case "priority": return compareTickets(a, b, "priority") || oldest;
+    case "due": return (a.due_date || "\uffff").localeCompare(b.due_date || "\uffff") || oldest;
+  }
+}
+
 // Sarakkeessa näkyvä teksti, josta sarakekohtainen haku etsii.
 export function ticketColumnText(ticket: Ticket, key: TicketSortKey) {
   switch (key) {

@@ -3,7 +3,8 @@ import { formatDay, formatTicketNumber } from "./format";
 import { t } from "./i18n";
 import { en } from "./locales/en";
 import { downloadFile } from "./session";
-import { isOverdue, splitQuotedReply } from "./tickets/ticket-utils";
+import { compareQueue, isOverdue, splitQuotedReply } from "./tickets/ticket-utils";
+import { ticketNumberQuery } from "./views/Search";
 import type { Ticket } from "./types";
 import { parseCsv, tableToResidents } from "./views/Residents";
 
@@ -107,5 +108,27 @@ describe("työtilauksen kuvaus", () => {
     expect(workOrderDescription("Vesivuoto", "Keittiön hana tippuu")).toBe("Vesivuoto\n\nKeittiön hana tippuu");
     expect(workOrderDescription("Kuivausrumpu ei lämpene", "Kuivausrumpu ei lämpene: pyykit märkiä")).toBe("Kuivausrumpu ei lämpene: pyykit märkiä");
     expect(workOrderDescription("Otsikko", "")).toBe("Otsikko");
+  });
+});
+
+describe("päätösjonon järjestys ja haku", () => {
+  const base = { company_id: "c", type: "Muu", status: "open", subject: "", summary: "", source_channel: "email", ai_action: "", ai_reason: "" };
+  const old = { ...base, id: "old", priority: "low", created_at: "2026-10-01T08:00:00Z", due_date: null } as unknown as Ticket;
+  const urgent = { ...base, id: "urgent", priority: "emergency", created_at: "2026-10-05T08:00:00Z", due_date: "2026-10-20" } as unknown as Ticket;
+  const fresh = { ...base, id: "fresh", priority: "normal", created_at: "2026-10-09T08:00:00Z", due_date: "2026-10-10" } as unknown as Ticket;
+  const order = (sort: Parameters<typeof compareQueue>[2]) => [fresh, old, urgent].sort((a, b) => compareQueue(a, b, sort)).map(ticket => ticket.id);
+
+  it("järjestää valinnan mukaan", () => {
+    expect(order("oldest")).toEqual(["old", "urgent", "fresh"]);
+    expect(order("newest")).toEqual(["fresh", "urgent", "old"]);
+    expect(order("priority")).toEqual(["urgent", "fresh", "old"]);
+    expect(order("due")).toEqual(["fresh", "urgent", "old"]);
+  });
+
+  it("tunnistaa tehtävänumerohaun", () => {
+    expect(ticketNumberQuery("#12")).toBe(12);
+    expect(ticketNumberQuery(" # 7 ")).toBe(7);
+    expect(ticketNumberQuery("12")).toBeNull();
+    expect(ticketNumberQuery("#12 sauna")).toBeNull();
   });
 });

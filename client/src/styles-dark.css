@@ -627,16 +627,21 @@
 :root[data-theme="dark"] .send-error {
     color: #e4a096
 }
+:root[data-theme="dark"] .reply-header {
+    border: 1px solid #374353;
+    background: #252f3c
+}
 :root[data-theme="dark"] .reply-from {
-    color: #b1becd
+    color: #afbdce
 }
 :root[data-theme="dark"] .reply-from select {
-    border: 1px solid #374353;
-    background: #252f3c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 14px;
     color: #e0e3e7
 }
+:root[data-theme="dark"] .reply-from select:hover {
+    background-color: #2e3b48
+}
 :root[data-theme="dark"] .reply-from select:focus {
-    border-color: #29323d
+    outline: 2px solid #3d5a71
 }
 :root[data-theme="dark"] .saved-indicator {
     color: #b1becd
@@ -1523,16 +1528,21 @@
 :root[data-theme="dark"] .ticket-row.priority-low {
     border-left-color: #29323e
 }
+:root[data-theme="dark"] .reply-from + .reply-cc {
+    border-top: 1px solid #394656
+}
 :root[data-theme="dark"] .reply-cc label {
-    color: #b1becd
+    color: #afbdce
 }
 :root[data-theme="dark"] .reply-cc input {
-    border: 1px solid #374353;
-    background: #252f3c;
     color: #e0e3e7
 }
+:root[data-theme="dark"] .reply-cc input:hover {
+    background: #2e3b48
+}
 :root[data-theme="dark"] .reply-cc input:focus {
-    border-color: #29323d
+    outline: 2px solid #3d5a71;
+    background: #283341
 }
 :root[data-theme="dark"] .reply-cc-add {
     border: 1px solid #354150;
@@ -1587,4 +1597,48 @@
 }
 :root[data-theme="dark"] .sender-action:hover:not(:disabled) {
     background: #303c4a
+}
+:root[data-theme="dark"] .queue-sort {
+    color: #afbdce
+}
+:root[data-theme="dark"] .queue-sort select {
+    border: 1px solid #35404f;
+    background: #283341 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .queue-sort select:hover {
+    border-color: #3d5671
+}
+:root[data-theme="dark"] .ticket-card .meta span:not([class]) {
+    background: #2e3a49;
+    color: #ccd1d8
+}
+:root[data-theme="dark"] .search-summary {
+    color: #afbdce
+}
+:root[data-theme="dark"] .search-section h2 b {
+    background: #d6dbe1;
+    color: #19222e
+}
+:root[data-theme="dark"] .search-hit {
+    border: 1px solid #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .search-hit:hover {
+    border-color: #3d5671
+}
+:root[data-theme="dark"] .search-hit-head strong {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .search-hit-meta {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .search-hit-snippet {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .search-hit mark {
+    background: #564f37
+}
+:root[data-theme="dark"] .search-more {
+    color: #bac2cb
 }

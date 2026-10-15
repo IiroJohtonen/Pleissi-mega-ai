@@ -1660,33 +1660,46 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   font-weight: 700;
 }
 
-/* Lähettäjä ja kopio: otsikko kentän yläpuolella, kentät samannäköisinä kuin lomakkeen muut kentät. */
+/* Lähettäjä ja kopio: kompakti otsake tekstikentän yläpuolella. Otsikko on rivin alussa ja kenttä
+   sen vieressä ilman omaa reunusta; koko otsake on yksi kehys. */
+.reply-header {
+  margin: 0 0 8px;
+  border: 1px solid #dfe3e7;
+  border-radius: 10px;
+  background: #fafbfc;
+  overflow: hidden;
+}
+
 .reply-from {
   display: grid;
-  gap: 4px;
-  margin: 0 0 10px;
-  color: #4d627a;
-  font-size: 12px;
-  font-weight: 700;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: center;
+  min-height: 36px;
+  padding: 0 4px 0 12px;
+  color: #4f6680;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .reply-from select {
   width: 100%;
   min-width: 0;
-  height: 38px;
-  padding: 0 36px 0 12px;
-  border: 1px solid #dfe3e7;
-  border-radius: 10px;
-  background: #fafbfc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 14px;
+  height: 34px;
+  padding: 0 30px 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
   color: #1c232a;
   font: inherit;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
   appearance: none;
   cursor: pointer;
 }
 
-.reply-from select:focus { outline: 2px solid rgba(111, 130, 152, .2); border-color: #9aa8b8; }
+.reply-from select:hover { background-color: #eef2f6; }
+.reply-from select:focus { outline: 2px solid #9bd3ff; outline-offset: -2px; }
 
 .saved-indicator {
   color: #4d627a;
@@ -3617,36 +3630,48 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Vastauslomakkeen kopio ja allekirjoitus */
 .reply-cc {
   display: flex;
-  align-items: end;
-  gap: 8px;
-  margin: 0 0 8px;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 4px 0 12px;
 }
 
-.reply-cc label { flex: 1; min-width: 0; display: grid; gap: 4px; color: #4d627a; font-size: 12px; font-weight: 700; }
+.reply-from + .reply-cc { border-top: 1px solid #e6e9ed; }
+.reply-cc label {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: center;
+  color: #4f6680;
+  font-size: 12.5px;
+  font-weight: 600;
+}
 .reply-cc input {
   width: 100%;
-  height: 38px;
-  padding: 0 12px;
-  border: 1px solid #dfe3e7;
-  border-radius: 10px;
-  background: #fafbfc;
+  height: 34px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: #1c232a;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
 }
 
-.reply-cc input:focus { outline: 2px solid rgba(111, 130, 152, .2); border-color: #9aa8b8; }
+.reply-cc input:hover { background: #eef2f6; }
+.reply-cc input:focus { outline: 2px solid #9bd3ff; outline-offset: -2px; background: #fff; }
 .reply-cc-add {
   flex: none;
-  height: 38px;
-  padding: 0 14px;
+  height: 26px;
+  padding: 0 10px;
   border: 1px solid #d9dcdf;
-  border-radius: 10px;
+  border-radius: 99px;
   background: #fff;
   color: #1d2329;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   transition: border-color .15s ease, background .15s ease;
 }
 
@@ -3743,3 +3768,147 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 
 .sender-action:hover:not(:disabled) { border-color: #3f7fbf; background: #e2edf9; }
+
+/* Päätösjonon otsikkorivi: otsikko ja järjestyksen valinta. */
+.queue-heading-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 14px 0 0; }
+.queue-heading-row .queue-subheading { margin: 0; }
+.queue-sort { display: flex; align-items: center; gap: 8px; color: #4f6680; font-size: 12.5px; font-weight: 600; }
+.queue-sort select {
+  height: 32px;
+  padding: 0 30px 0 10px;
+  border: 1px solid #d3d9e0;
+  border-radius: 8px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747a80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
+  color: #1c232a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  appearance: none;
+  cursor: pointer;
+}
+.queue-sort select:hover { border-color: #8fb3d9; }
+
+/* Päätösjonon korttien tägit isompina ja selkeämpinä kuin tiiviissä listassa. */
+.ticket-card .ticket-top { gap: 8px; }
+.ticket-card .ticket-top .priority,
+.ticket-card .ticket-top .type,
+.ticket-card .ticket-top .status-badge { padding: 4px 10px; font-size: 11.5px; font-weight: 700; }
+.ticket-card .ticket-top .ticket-number { font-size: 12.5px; }
+.ticket-card .ticket-top .date { font-size: 12px; }
+.ticket-card .meta { gap: 6px 8px; }
+.ticket-card .meta span { padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+.ticket-card .meta span:not([class]) { background: #eef1f5; color: #3e4c5c; }
+.ticket-card .meta .reminder-chip { padding: 4px 10px; font-size: 12px; }
+
+/* Sivupalkin kiinnitys. Kiinnitettynä palkki on aina auki; kiinnittämättä se kutistuu kuvakeriviksi,
+   jolloin sisältö saa enemmän tilaa, ja aukeaa sisällön päälle, kun hiiri tai näppäimistö on siinä. */
+.nav-pin {
+  position: absolute;
+  top: 30px;
+  right: 14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8d949b;
+  transition: background .15s ease, color .15s ease;
+}
+.nav-pin svg { width: 17px; height: 17px; transform: rotate(45deg); transition: transform .15s ease; }
+.nav-pin.pinned svg { transform: none; fill: currentColor; }
+.nav-pin:hover { background: #242c35; color: #fff; }
+
+@media (min-width: 761px) {
+  .app.nav-collapsed { padding-left: 68px; }
+  .app.nav-collapsed .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: 68px;
+    padding-left: 10px;
+    padding-right: 10px;
+    transition: width .16s ease, box-shadow .16s ease;
+  }
+  .app.nav-collapsed .sidebar:hover,
+  .app.nav-collapsed .sidebar:focus-within {
+    width: 250px;
+    padding-left: 18px;
+    padding-right: 18px;
+    box-shadow: 18px 0 40px rgba(13, 16, 20, .28);
+  }
+  /* Kapeana näkyvät vain kuvakkeet; tekstit, alavalikot ja alaosan tiedot piilotetaan. */
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .brand { visibility: hidden; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-pin { right: 19px; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button { justify-content: center; padding-left: 0; padding-right: 0; font-size: 0; position: relative; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button .tab-icon { width: 19px; height: 19px; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav b { position: absolute; top: 3px; right: 3px; min-width: 16px; padding: 0 4px; font-size: 9px; line-height: 15px; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button.nav-toggle,
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-subs,
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button.nav-sub,
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-company,
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .company,
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-search { display: none; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .sidebar-footer { justify-content: center; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-group { display: block; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-group > button:first-child { width: 100%; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) > nav { margin-right: 0; padding-right: 0; }
+}
+
+@media (max-width: 760px) {
+  .nav-pin { display: none; }
+}
+
+/* Sivupalkin haku */
+.nav-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: -18px 0 18px;
+}
+.nav-search svg { position: absolute; left: 11px; width: 15px; height: 15px; color: #8d949b; pointer-events: none; }
+.nav-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px 0 33px;
+  border: 1px solid #343d47;
+  border-radius: 9px;
+  background: #242c35;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+.nav-search input::placeholder { color: #8d949b; }
+.nav-search input:focus { outline: 2px solid #9bd3ff; outline-offset: 0; border-color: #4a5868; }
+
+/* Hakutulokset otsikoittain */
+.search-results { display: grid; gap: 22px; max-width: 980px; }
+.search-summary { margin: -10px 0 0; color: #4f6680; font-size: 14px; }
+.search-section { display: grid; gap: 8px; }
+.search-section h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 18px; }
+.search-section h2 b { padding: 1px 9px; border-radius: 99px; background: #171c22; color: #fff; font-size: 12px; }
+.search-hit {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e2e4e6;
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.search-hit:hover { border-color: #8fb3d9; box-shadow: 0 4px 14px rgba(16, 24, 40, .06); }
+.search-hit-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.search-hit-head strong { font-size: 14.5px; color: #1d2329; }
+.search-hit-head .priority, .search-hit-head .type, .search-hit-head .status-badge { font-size: 11px; padding: 3px 9px; }
+.search-hit-meta { color: #5c6f86; font-size: 12.5px; }
+.search-hit-snippet { color: #4b535d; font-size: 13px; line-height: 1.5; }
+.search-hit mark { padding: 0 2px; border-radius: 3px; background: #fde9a6; color: inherit; }
+.search-more { margin: 2px 0 0; color: #5c6f86; font-size: 12.5px; }

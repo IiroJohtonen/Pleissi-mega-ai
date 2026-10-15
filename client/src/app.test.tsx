@@ -552,6 +552,48 @@ describe("sovellus", () => {
     expect(screen.getByRole("button", { name: "Sulje" })).toBeTruthy();
   });
 
+  it("haku: #numero avaa tehtävän ja muu haku näyttää tulokset otsikoittain", async () => {
+    const found = {
+      query: "", tickets: [{ id: "ticket-1", ticket_number: 1, subject: "Saunavuoron varaus", status: "open", priority: "normal",
+        created_at: "2025-12-27T08:00:00.000Z", company_id: "demo-company", company_name: "As Oy Koivikko", resident_name: null,
+        apartment_number: null, snippet: "Asukas kysyy saunavuorosta." }], ticketCount: 1,
+      knowledge: [{ id: "k1", title: "Saunavuorot", audience: "ai", company_id: "demo-company", company_name: "As Oy Koivikko", snippet: "Sauna on auki" }],
+      knowledgeCount: 1, residents: [], residentCount: 0, announcements: [], announcementCount: 0
+    };
+    responses["/search?q=%231"] = found;
+    responses["/search?q=sauna"] = found;
+    responses["/tickets/ticket-1"] = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
+    try {
+      mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      const search = await screen.findByLabelText("Hae alustalta");
+      fireEvent.change(search, { target: { value: "#1" } });
+      fireEvent.submit(search.closest("form")!);
+      await vi.waitFor(() => expect(window.location.hash).toBe("#/tickets/ticket-1"));
+
+      fireEvent.change(screen.getByLabelText("Hae alustalta"), { target: { value: "sauna" } });
+      fireEvent.submit(screen.getByLabelText("Hae alustalta").closest("form")!);
+      await vi.waitFor(() => expect(window.location.hash).toBe("#/search/sauna"));
+      expect(await screen.findByRole("heading", { name: /Tehtävät/ })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: /Dokumentaatio/ })).toBeTruthy();
+      expect(screen.getByText(/löytyi 2 osumaa/)).toBeTruthy();
+    } finally {
+      delete responses["/search?q=%231"];
+      delete responses["/search?q=sauna"];
+      delete responses["/tickets/ticket-1"];
+    }
+  });
+
+  it("sivupalkin voi pienentää ja valinta muistetaan", async () => {
+    mockApi();
+    await renderApp(staff("Isännöitsijä"), "#/queue");
+    fireEvent.click(await screen.findByRole("button", { name: "Pienennä valikko" }));
+    expect(document.querySelector(".app.nav-collapsed")).toBeTruthy();
+    expect(localStorage.getItem("kotilo.navPinned")).toBe("off");
+    fireEvent.click(screen.getByRole("button", { name: "Kiinnitä valikko auki" }));
+    expect(document.querySelector(".app.nav-collapsed")).toBeNull();
+  });
+
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {
     const calls = mockApi();
     await renderApp(staff("Pääkäyttäjä"));
