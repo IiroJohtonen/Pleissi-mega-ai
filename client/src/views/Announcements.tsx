@@ -27,7 +27,8 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [open, setOpen] = useState<Announcement | null>(null);
-  const [companyFilter, setCompanyFilter] = useState("all");
+  // Oletuksena yläpalkissa valitun taloyhtiön tiedotteet; suodattimesta voi valita toisen tai kaikki.
+  const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
   const [creating, setCreating] = useState(false);
   const [formCompany, setFormCompany] = useState(defaultCompanyId);
   const [audience, setAudience] = useState<AnnouncementAudience | null>(null);

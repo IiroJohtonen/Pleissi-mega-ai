@@ -47,12 +47,12 @@ export function moveSummary(notice: MoveNotice) {
 }
 
 // Toimiston näkymä: asukkaiden muuttoilmoitukset, jotka hyväksytään tai hylätään.
-export function MoveNotices({ companies, onChanged }: { companies: Company[]; onChanged?: () => void }) {
+export function MoveNotices({ companies, defaultCompanyId = "", onChanged }: { companies: Company[]; defaultCompanyId?: string; onChanged?: () => void }) {
   const [notices, setNotices] = useState<MoveNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [companyFilter, setCompanyFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
   // Oletuksena näytetään vain käsittelyä odottavat.
   const [statusFilter, setStatusFilter] = useState("pending");
   const [saving, setSaving] = useState(false);

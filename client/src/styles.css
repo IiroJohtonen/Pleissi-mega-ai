@@ -3397,6 +3397,11 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 /* Kortti peittää myös puhelimen yläpalkin ja valikon, jotta otsikko ja sulkupainike näkyvät. */
 .overlay { z-index: 70; }
+/* Koko sivun kokoiset näkymät (esim. dokumentin tietokortti) avautuvat yläpalkin alle, jotta yläpalkki
+   pysyy käytössä. Pienet ikkunat peittävät koko näytön. */
+@media (min-width: 761px) {
+  .overlay:not(.skip-overlay) { top: var(--topbar-height); z-index: 65; }
+}
 .overlay.skip-overlay { z-index: 75; }
 /* Asetukset: kotisivun yhteydenottopyynnöt */
 .contact-requests ul { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }

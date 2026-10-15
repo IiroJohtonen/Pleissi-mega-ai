@@ -32,7 +32,7 @@ export function ParkingSpaces({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [typeFilter, setTypeFilter] = useState("all");
-  const [companyFilter, setCompanyFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Lomake: editing = muokattava paikka, creating = uusi paikka.

@@ -635,6 +635,26 @@ describe("sovellus", () => {
     }
   });
 
+  it("dokumentaation tietokortissa on Muokkaa ja tilan valinta, ei Siirrä sisäiseksi -painiketta", async () => {
+    const entry = { id: "k1", company_id: "demo-company", title: "Saunavuorot", content: "Sauna varataan portaalista.", kind: "fact",
+      audience: "ai", state: "in_use", status: "active", version: 1, valid_from: null, valid_until: null, created_at: "2026-10-01T08:00:00.000Z",
+      tags: "", file_name: null, content_length: 27 };
+    responses["/companies/demo-company/knowledge"] = [entry];
+    responses["/knowledge/k1"] = { ...entry, company_name: "As Oy Koivikko", versions: [entry] };
+    try {
+      mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/knowledge/k1");
+      expect(await screen.findByRole("button", { name: "Muokkaa" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Siirrä sisäiseksi" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Korvaa" })).toBeNull();
+      const stateRow = screen.getByText("Tila", { selector: "dt" }).parentElement!;
+      expect(stateRow.querySelector("button")?.textContent).toContain("AI:n käytössä");
+    } finally {
+      delete responses["/companies/demo-company/knowledge"];
+      delete responses["/knowledge/k1"];
+    }
+  });
+
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {
     const calls = mockApi();
     await renderApp(staff("Pääkäyttäjä"));

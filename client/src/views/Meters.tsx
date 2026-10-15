@@ -51,7 +51,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
   const [readings, setReadings] = useState<MeterReading[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [companyFilter, setCompanyFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dropdown, usePaged } from "../components/common";
+import { Dropdown, NoticeFilters, usePaged } from "../components/common";
 import { formatDate } from "../format";
 import { api, errorMessage } from "../session";
 import type { Company } from "../types";
@@ -29,7 +29,9 @@ export function waitlistLabel(entry: Pick<WaitlistEntry, "resource" | "parking_t
 }
 
 // Toimiston näkymä: jonot ilmoittautumisjärjestyksessä. Vapaan autopaikan voi antaa suoraan jonottajalle.
-export function Waitlists({ companies }: { companies: Company[] }) {
+export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Company[]; defaultCompanyId?: string }) {
+  // Oletuksena yläpalkissa valitun taloyhtiön jonot; suodattimesta voi valita toisen tai kaikki.
+  const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -85,19 +87,21 @@ export function Waitlists({ companies }: { companies: Company[] }) {
     }
   }
 
-  const paged = usePaged(entries, "");
+  const visible = entries.filter(entry => companyFilter === "all" || entry.company_id === companyFilter);
+  const paged = usePaged(visible, companyFilter);
 
   return (
     <section className="content">
       <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="residents-toolbar">
-        <span>{entries.length}{" "}{t("jonottajaa")}</span>
+        <span>{visible.length}{" "}{t("jonottajaa")}</span>
       </div>
+      <NoticeFilters companies={companies} company={companyFilter} onCompany={setCompanyFilter} />
 
       {loading ? <div className="empty">{t("Ladataan…")}</div>
         : loadError ? <p className="send-error">{t("Jonojen lataus epäonnistui.")}</p>
-        : entries.length === 0 ? <div className="empty">{t("Jonoissa ei ole ketään. Asukas ilmoittautuu jonoon asukasportaalissa.")}</div>
+        : visible.length === 0 ? <div className="empty">{t("Jonoissa ei ole ketään. Asukas ilmoittautuu jonoon asukasportaalissa.")}</div>
         : (
           <div className="table-card">
             <table className="data-table report-topics">

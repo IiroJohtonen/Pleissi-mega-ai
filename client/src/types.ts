@@ -72,6 +72,7 @@ export type KnowledgeEntry = {
 
 export type KnowledgeDetail = KnowledgeEntry & {
   status: string;
+  company_id: string;
   company_name: string;
   versions: KnowledgeEntry[];
 };

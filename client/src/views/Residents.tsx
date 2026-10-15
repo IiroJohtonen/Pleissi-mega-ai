@@ -21,7 +21,8 @@ export function Residents({
   const companyName = companies.find(company => company.id === companyId)?.name ?? t("Taloyhtiö");
   const [residents, setResidents] = useState<Resident[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [companyFilter, setCompanyFilter] = useState("all");
+  // Kaikkien yhtiöiden näkymässä oletuksena yläpalkissa valittu taloyhtiö.
+  const [companyFilter, setCompanyFilter] = useState(allCompanies && companies.some(company => company.id === companyId) ? companyId : "all");
   const [emailFilter, setEmailFilter] = useState("all");
   const [search, setSearch] = useState("");
   // Uuden asukkaan taloyhtiö, kun näkymässä on kaikki yhtiöt.

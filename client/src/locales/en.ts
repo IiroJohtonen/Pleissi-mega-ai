@@ -1383,4 +1383,7 @@ export const en: Record<string, string> = {
   "Uusi": "New",
   "Vastattu": "Answered",
   "Kolmannella osapuolella": "With third party",
+  "Muokkaa": "Edit",
+  "Muokkaa dokumenttia": "Edit document",
+  "Muokkaa vakiotietoa": "Edit fact",
 };
