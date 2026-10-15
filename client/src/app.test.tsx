@@ -665,6 +665,10 @@ describe("sovellus", () => {
       await vi.waitFor(() => expect(calls.some(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"))).toBe(true));
       const put = calls.find(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"));
       expect(JSON.parse(put!.body).assigneeId).toBe("user-1");
+      // Tallennuksen jälkeen tehtävä ladataan uudelleen; odotetaan se, jotta pyyntö ei jää testin jälkeen kesken.
+      const putIndex = calls.indexOf(put!);
+      await vi.waitFor(() => expect(calls.slice(putIndex).some(request => request.method === "GET" && request.url.endsWith("/tickets/ticket-1"))).toBe(true));
+      await new Promise(resolve => setTimeout(resolve, 50));
     } finally {
       delete responses["/tickets/ticket-1"];
     }
