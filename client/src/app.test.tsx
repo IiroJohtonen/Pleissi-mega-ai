@@ -513,7 +513,7 @@ describe("sovellus", () => {
       const calls = mockApi();
       await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
       fireEvent.click(await screen.findByRole("button", { name: "Poista" }));
-      expect(screen.getByText("Poistetaanko tehtävä #0001?")).toBeTruthy();
+      expect(await screen.findByText("Poistetaanko tehtävä #0001?")).toBeTruthy();
       expect(screen.getByText(/Poistoa ei voi perua/)).toBeTruthy();
       expect(calls.some(request => request.method === "DELETE")).toBe(false);
 

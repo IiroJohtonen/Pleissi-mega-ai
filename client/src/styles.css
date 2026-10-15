@@ -1104,7 +1104,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   min-width: 0;
   overflow-y: auto;
   padding: 34px;
-  background: #eef1f5;
+  background: #fff;
 }
 
 /* Tikettinäkymän yläpalkki: tiketin numero ja tila vasemmalla, toimintonapit oikealla. */
@@ -1119,8 +1119,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   min-height: 34px;
   margin: -34px -34px 6px;
   padding: 12px 34px;
-  background: #eef1f5;
-  border-bottom: 1px solid #d9dde2;
+  background: #fff;
+  border-bottom: 1px solid #e3e7eb;
 }
 
 .drawer-topbar-number { color: #4b535d; font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -1165,8 +1165,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   min-width: 0;
   overflow-y: auto;
   padding: 34px 28px;
-  background: #fff;
-  border-left: 1px solid #dfe3e7;
+  background: #eef4fb;
+  border-left: 1px solid #d6e2ef;
 }
 
 .drawer-timeline h3 { margin: 0 0 12px; font-size: 13px; }
@@ -1494,9 +1494,9 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .ticket-description h3 {
   margin: 0 0 6px;
-  color: #4f6680;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: #2b3540;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .ticket-description p {
@@ -1732,16 +1732,17 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   column-gap: 12px;
   min-height: 44px;
   padding: 4px 0;
-  border-bottom: 1px solid #dde2e8;
+  border-bottom: 1px solid #e8ebef;
 }
 
+/* Otsikot lähes mustina normaalipainolla, arvot lihavoituna: ero näkyy painosta, ei haaleasta väristä. */
 .ticket-facts dt {
-  color: #4f6680;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: #2b3540;
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.ticket-facts dd { margin: 0; color: #1d2329; font-size: 13.5px; font-weight: 600; }
+.ticket-facts dd { margin: 0; color: #111820; font-size: 13.5px; font-weight: 650; }
 
 .reporter, .attachment {
   display: flex;
