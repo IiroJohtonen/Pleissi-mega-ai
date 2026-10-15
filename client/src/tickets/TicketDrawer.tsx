@@ -8,8 +8,9 @@ import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUse
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
-import { CreateResidentModal } from "./TicketModals";
+import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { storedAiPrompt } from "../preferences";
 import { t } from "../i18n";
 
 type Attachment = TicketDetail["attachments"][number];
@@ -286,11 +287,21 @@ export function TicketDrawer({
       ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title }
       : null;
 
-  async function requestSuggestion() {
+  // AI-ehdotus pyydetään ikkunasta, johon voi kirjoittaa lisätietoa tehtävästä.
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+
+  function openSuggestionPrompt() {
     if (draft.trim() && draft !== (ticket.draft || "")
       && !window.confirm(t("Luonnoksessa on tallentamattomia muutoksia. Korvataanko se AI:n ehdotuksella?"))) {
       return;
     }
+    // Lisätietoikkunan voi ottaa asetuksista pois, jolloin ehdotus pyydetään suoraan.
+    if (storedAiPrompt()) setAiPromptOpen(true);
+    else void requestSuggestion("");
+  }
+
+  async function requestSuggestion(context: string) {
+    setAiPromptOpen(false);
     setSuggesting(true);
     setSuggestError("");
     try {
@@ -299,7 +310,7 @@ export function TicketDrawer({
         reason: string;
         source: { id: string; title: string } | null;
         usedAi: boolean;
-      }>(`/tickets/${ticket.id}/suggest`, { method: "POST" });
+      }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
       setDraft(result.draft);
       setSaved(false);
@@ -397,6 +408,12 @@ export function TicketDrawer({
   const shown = { ...savedFields, ...edits };
   const dirty = Object.keys(edits).length > 0;
   const shownReporter = reporterOptions.find(r => r.id === shown.reporterId);
+  // Asunto ja osoite seuraavat valittua ilmoittajaa heti, jo ennen tallennusta.
+  const reporterEdited = edits.reporterId !== undefined;
+  const pendingResident = reporterEdited ? residents.find(r => r.id === edits.reporterId) : undefined;
+  const shownApartments: { apartment_number: string; address: string }[] = !reporterEdited ? detail.apartments
+    : pendingResident ? [{ apartment_number: pendingResident.apartment_number, address: pendingResident.address }]
+    : [];
 
   // Kirjaa kentän muutoksen; alkuperäiseen arvoon palaaminen poistaa sen muutoksista.
   function edit<K extends keyof FieldEdits>(key: K, value: (typeof savedFields)[K]) {
@@ -683,9 +700,9 @@ export function TicketDrawer({
             <dt>{t("Yhtiö")}</dt>
             <dd>{ticket.company_name || "-"}</dd>
           </div>
-          <div>
+          <div className={reporterEdited ? "changed" : ""}>
             <dt>{t("Osoite")}</dt>
-            <dd>{[...new Set(detail.apartments.map(a => a.address).filter(Boolean))].join(", ") || "-"}</dd>
+            <dd>{[...new Set(shownApartments.map(a => a.address).filter(Boolean))].join(", ") || "-"}</dd>
           </div>
           <div className={edits.type !== undefined ? "changed" : ""}>
             <dt>{t("Tyyppi")}</dt>
@@ -699,11 +716,11 @@ export function TicketDrawer({
               />
             </dd>
           </div>
-          <div>
-            <dt>{detail.apartments.length > 1 ? t("Asunnot") : t("Asunto")}</dt>
+          <div className={reporterEdited ? "changed" : ""}>
+            <dt>{shownApartments.length > 1 ? t("Asunnot") : t("Asunto")}</dt>
             <dd>
-              {detail.apartments.length > 0
-                ? detail.apartments.map(a => a.apartment_number).join(", ")
+              {shownApartments.length > 0
+                ? shownApartments.map(a => a.apartment_number).join(", ")
                 : t("Yhteiset tilat")}
             </dd>
           </div>
@@ -826,7 +843,7 @@ export function TicketDrawer({
             <dt>{t("Muokattu")}</dt>
             <dd>{formatDate(ticket.updated_at || ticket.created_at)}</dd>
           </div>
-          <div>
+          <div className={reporterEdited ? "changed" : ""}>
             <dt>{t("Sähköposti")}</dt>
             <dd>
               {shownReporter
@@ -866,6 +883,8 @@ export function TicketDrawer({
           </div>
         </dl>
 
+        {aiPromptOpen && <AiSuggestModal onClose={() => setAiPromptOpen(false)} onSubmit={context => void requestSuggestion(context)} />}
+
         {newResidentFrom && (
           <CreateResidentModal
             companyId={ticket.company_id}
@@ -901,7 +920,7 @@ export function TicketDrawer({
             <h3>{t("Vastaus asukkaalle")}</h3>
             <button
               className="ai-button"
-              onClick={requestSuggestion}
+              onClick={openSuggestionPrompt}
               disabled={suggesting || suggestionUsed}
               title={suggestionUsed ? t("AI-ehdotuksen voi pyytää tehtävälle vain kerran.") : undefined}
             >
@@ -945,39 +964,42 @@ export function TicketDrawer({
               <button onClick={() => setReplyTargetId(null)} title={t("Peru valinta")} aria-label={t("Peru valinta")}>×</button>
             </p>
           )}
-          {canReply && detail.replyAccounts.length > 0 && (
-            <label className="reply-from">
-              <span>{t("Lähettäjä")}</span>
-              <select value={fromAccountId} onChange={event => setFromChoice(event.target.value)}>
-                {detail.replyAccounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {replyAccountLabel(account)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           {canReply && (
-            <div className="reply-cc">
-              <label>
-                <span>{t("Kopio (Cc)")}</span>
-                <input
-                  type="text"
-                  value={cc}
-                  onChange={event => setCc(event.target.value)}
-                  placeholder={t("esim. hallitus@yhtio.fi, useampi pilkulla eroteltuna")}
-                />
-              </label>
-              {detail.contractor?.email && !cc.toLowerCase().includes(detail.contractor.email.toLowerCase()) && (
-                <button
-                  type="button"
-                  className="reply-cc-add"
-                  onClick={() => setCc(current => [current.trim(), detail.contractor!.email].filter(Boolean).join(", "))}
-                  title={detail.contractor.email}
-                >
-                  {t("+ Huoltoyhtiö")}
-                </button>
+            // Lähettäjä ja kopio yhtenä kompaktina otsakkeena tekstikentän yläpuolella, kuten sähköpostiohjelmassa.
+            <div className="reply-header">
+              {detail.replyAccounts.length > 0 && (
+                <label className="reply-from">
+                  <span>{t("Lähettäjä")}</span>
+                  <select value={fromAccountId} onChange={event => setFromChoice(event.target.value)}>
+                    {detail.replyAccounts.map(account => (
+                      <option key={account.id} value={account.id}>
+                        {replyAccountLabel(account)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               )}
+              <div className="reply-cc">
+                <label>
+                  <span>{t("Kopio (Cc)")}</span>
+                  <input
+                    type="text"
+                    value={cc}
+                    onChange={event => setCc(event.target.value)}
+                    placeholder={t("esim. hallitus@yhtio.fi, useampi pilkulla eroteltuna")}
+                  />
+                </label>
+                {detail.contractor?.email && !cc.toLowerCase().includes(detail.contractor.email.toLowerCase()) && (
+                  <button
+                    type="button"
+                    className="reply-cc-add"
+                    onClick={() => setCc(current => [current.trim(), detail.contractor!.email].filter(Boolean).join(", "))}
+                    title={detail.contractor.email}
+                  >
+                    {t("+ Huoltoyhtiö")}
+                  </button>
+                )}
+              </div>
             </div>
           )}
           <textarea

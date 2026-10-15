@@ -187,6 +187,7 @@ export function TicketCard({
   companyName,
   users,
   canAssign,
+  assignToMe = true,
   allUsers,
   onAssign,
   onOpen,
@@ -200,6 +201,7 @@ export function TicketCard({
   // Käyttäjät, joille tehtävän voi antaa, ja saako kirjautunut käyttäjä antaa sen eteenpäin.
   users: OfficeUser[];
   canAssign: boolean;
+  assignToMe?: boolean;
   allUsers: OfficeUser[];
   onAssign: (assigneeId: string) => Promise<void>;
   onOpen: () => void;
@@ -262,7 +264,7 @@ export function TicketCard({
         <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
         <span className="type">{t(ticket.type)}</span>
         <span className="status-badge">{statusLabel(ticket.status)}</span>
-        <span className="date">{formatDate(ticket.updated_at || ticket.created_at)}</span>
+        <span className="date" title={t("Päivitetty {0}", formatDate(ticket.updated_at || ticket.created_at))}>{t("Saapunut {0}", formatDate(ticket.created_at))}</span>
       </div>
 
       <div className="ticket-main">
@@ -297,7 +299,8 @@ export function TicketCard({
       {ticket.status === "open" && (
         <div className="actions" onClick={e => e.stopPropagation()}>
           {canAssign && <AssignPicker users={users} assigneeId={ticket.assignee_id ?? null} onAssign={onAssign} />}
-          <button className="primary" onClick={() => onDecision("human")}>{t("Osoita minulle")}</button>
+          {/* Päätösjonossa tehtävät on jo osoitettu käyttäjälle, joten painiketta ei siellä näytetä. */}
+          {assignToMe && <button className="primary" onClick={() => onDecision("human")}>{t("Osoita minulle")}</button>}
           <button onClick={() => onDecision("skip")}>{t("Sulje")}</button>
         </div>
       )}

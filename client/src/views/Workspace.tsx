@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
 import { priorityLabel, statusLabel, ticketStatuses } from "../format";
+import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
 import { actorName, api, logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
-  assignableUsers, canAssignTickets, compareTickets, fetchTicketDetail, isOverdue, type ReminderSettings, ticketColumns,
+  assignableUsers, canAssignTickets, compareQueue, compareTickets, fetchTicketDetail, isOverdue, type ReminderSettings, ticketColumns,
   ticketColumnText, ticketReminders, type TicketSort, type TicketSortKey
 } from "../tickets/ticket-utils";
 import { TicketCard } from "../tickets/TicketCard";
@@ -23,6 +24,7 @@ import { ParkingSpaces } from "./Parking";
 import { RenovationNotices } from "./Renovations";
 import { Reports } from "./Reports";
 import { Residents } from "./Residents";
+import { type SearchResponse, SearchResults, ticketNumberQuery } from "./Search";
 import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
 import { t } from "../i18n";
@@ -117,6 +119,38 @@ export function Workspace({ user }: { user: OfficeUser }) {
   useEffect(() => {
     setNavOpen(false);
   }, [tab, routeParam]);
+  // Kiinnittämätön sivupalkki näkyy kapeana kuvakerivinä ja aukeaa, kun hiiri viedään sen päälle.
+  const [navPinned, setNavPinned] = useState(storedNavPinned);
+  function changeNavPinned(pinned: boolean) {
+    setNavPinned(pinned);
+    saveNavPinned(pinned);
+  }
+  const [searchText, setSearchText] = useState(() => parseRoute().tab === "search" ? parseRoute().param ?? "" : "");
+  async function submitSearch() {
+    const query = searchText.trim();
+    if (!query) return;
+    // #123 avaa tehtävän suoraan, jos numerolla löytyy täsmälleen yksi tehtävä.
+    const number = ticketNumberQuery(query);
+    if (number !== null) {
+      try {
+        const found = await api<SearchResponse>(`/search?q=${encodeURIComponent(query)}`);
+        const exact = found.tickets.filter(ticket => ticket.ticket_number === number);
+        if (exact.length === 1) {
+          setSearchText("");
+          navigate("tickets", exact[0].id);
+          return;
+        }
+      } catch {
+        // Näytetään hakusivu, joka kertoo virheestä.
+      }
+    }
+    navigate("search", query);
+  }
+  const [queueSort, setQueueSort] = useState<QueueSort>(storedQueueSort);
+  function changeQueueSort(sort: QueueSort) {
+    setQueueSort(sort);
+    saveQueueSort(sort);
+  }
   const [navCounts, setNavCounts] = useState<Partial<Record<TicketTab, number>>>({});
   // Suljetut alavalikon ryhmät; valinta säilyy selaimessa.
   const [closedGroups, setClosedGroups] = useState<string[]>(() => {
@@ -356,10 +390,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
     return response;
   }
 
-  // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät.
+  // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät käyttäjän valitsemassa järjestyksessä.
   const queueTickets = allCompanyTickets
     .filter(ticket => ticket.status === "open" && ticket.assignee_id === user.id)
-    .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
+    .sort((a, b) => compareQueue(a, b, queueSort));
   // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
   const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
   const reminderTickets = allCompanyTickets
@@ -417,6 +451,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const listedTickets = ticketSort && tab !== "queue"
     ? [...visibleTickets].sort((a, b) =>
         compareTickets(a, b, ticketSort.key) * (ticketSort.descending ? -1 : 1))
+    // Omat tehtävät näytetään oletuksena vanhimmasta uusimpaan.
+    : tab === "my-tickets" ? [...visibleTickets].sort((a, b) => compareTickets(a, b, "created"))
     : visibleTickets;
 
   const pagedTickets = usePaged(listedTickets, [
@@ -443,7 +479,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const showResidentsLink = residentsOpen;
 
   return (
-    <div className={`app ${navOpen ? "nav-open" : ""}`}>
+    <div className={`app ${navOpen ? "nav-open" : ""} ${navPinned ? "" : "nav-collapsed"}`}>
       <div className="mobile-bar">
         <button className="mobile-menu" onClick={() => setNavOpen(true)} aria-label={t("Avaa valikko")} aria-expanded={navOpen}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
@@ -461,6 +497,38 @@ export function Workspace({ user }: { user: OfficeUser }) {
         <a className="brand" href="#/queue" title={t("Päätösjonoon")}>
           <img src="/pleissi-logo.svg" alt="Pleissi" />
         </a>
+        <button
+          type="button"
+          className={`nav-pin ${navPinned ? "pinned" : ""}`}
+          onClick={event => {
+            changeNavPinned(!navPinned);
+            // Painike ei jää kohdistetuksi, jotta pienennetty palkki sulkeutuu heti hiiren poistuessa.
+            event.currentTarget.blur();
+          }}
+          title={navPinned ? t("Pienennä valikko") : t("Kiinnitä valikko auki")}
+          aria-label={navPinned ? t("Pienennä valikko") : t("Kiinnitä valikko auki")}
+          aria-pressed={navPinned}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 4h6l-1 5 3 3v2H7v-2l3-3z" />
+            <path d="M12 14v7" />
+          </svg>
+        </button>
+
+        {/* Haku: #123 avaa tehtävän numerolla, muu teksti avaa hakutulokset kaikesta alustan tiedosta. */}
+        <form className="nav-search" role="search" onSubmit={event => { event.preventDefault(); void submitSearch(); }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
+          <input
+            type="search"
+            value={searchText}
+            onChange={event => setSearchText(event.target.value)}
+            placeholder={t("Hae tai #numero")}
+            aria-label={t("Hae alustalta")}
+          />
+        </form>
 
         <nav>
           <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>
@@ -637,6 +705,15 @@ export function Workspace({ user }: { user: OfficeUser }) {
             onCompanyChange={changeCompany}
           />
         )
+          : tab === "search" ? (
+            <SearchResults
+              query={routeParam ?? ""}
+              onOpenTicket={ticketId => navigate("tickets", ticketId)}
+              onOpenKnowledge={(companyId, entryId) => { changeCompany(companyId); navigate("knowledge", entryId); }}
+              onOpenResidents={companyId => { setNavCompanyId(companyId); navigate("residents"); }}
+              onOpenAnnouncements={companyId => { setNavCompanyId(companyId); navigate("announcements"); }}
+            />
+          )
           : tab === "log" ? (
             <AuditLog />
           )
@@ -757,10 +834,21 @@ export function Workspace({ user }: { user: OfficeUser }) {
               </div>
             )}
             {tab === "queue" && (
-              <h2 className="queue-subheading">
-                {t("Avoimet tehtäväsi")}
-                <b>{queueTickets.length}</b>
-              </h2>
+              <div className="queue-heading-row">
+                <h2 className="queue-subheading">
+                  {t("Avoimet tehtäväsi")}
+                  <b>{queueTickets.length}</b>
+                </h2>
+                <label className="queue-sort">
+                  <span>{t("Järjestys")}</span>
+                  <select value={queueSort} onChange={event => changeQueueSort(event.target.value as QueueSort)}>
+                    <option value="oldest">{t("Vanhin ensin")}</option>
+                    <option value="newest">{t("Uusin ensin")}</option>
+                    <option value="priority">{t("Kiireellisin ensin")}</option>
+                    <option value="due">{t("Määräaika ensin")}</option>
+                  </select>
+                </label>
+              </div>
             )}
             {tab !== "queue" && filtersOpen && (
             <div className="ticket-filters">
@@ -927,6 +1015,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}
                   allUsers={officeUsers}
                   canAssign={canAssignTickets(companies.find(company => company.id === ticket.company_id))}
+                  assignToMe={tab !== "queue"}
                   onAssign={assigneeId => assignTicket(ticket.id, assigneeId)}
                   onOpen={() => openTicket(ticket.id)}
                   onDecision={(d) => requestDecision(ticket.id, d)}

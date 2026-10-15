@@ -507,14 +507,91 @@ describe("sovellus", () => {
     }
   });
 
-  it("Osoita minulle ei vie pois päätösjonosta", async () => {
-    const calls = mockApi();
+  it("ilmoittajan vaihto päivittää asunnon heti ja AI-ehdotukseen voi antaa lisätietoa", async () => {
+    responses["/tickets/ticket-1"] = {
+      ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [],
+      reporters: [{ id: "r1", name: "Matti Meikäläinen", email: "matti@example.com", apartment_number: "A 1" }],
+      apartments: [{ id: "a1", apartment_number: "A 1", address: "Koivikkotie 1" }],
+      notes: [], workOrders: [], contractor: null, attachments: []
+    };
+    responses["/companies/demo-company/residents"] = [
+      { id: "r1", name: "Matti Meikäläinen", email: "matti@example.com", apartment_number: "A 1", address: "Koivikkotie 1" },
+      { id: "r2", name: "Liisa Mallikas", email: "liisa@example.com", apartment_number: "B 34", address: "Koivikkotie 3" }
+    ];
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      expect(await screen.findByText("Koivikkotie 1")).toBeTruthy();
+
+      const reporterInput = screen.getByDisplayValue("Matti Meikäläinen");
+      fireEvent.focus(reporterInput);
+      fireEvent.change(reporterInput, { target: { value: "Liisa" } });
+      fireEvent.mouseDown(await screen.findByText("Liisa Mallikas"));
+      expect(screen.getByText("Koivikkotie 3")).toBeTruthy();
+      expect(screen.getByText("B 34")).toBeTruthy();
+      expect(calls.some(request => request.url.includes("/reporters"))).toBe(false);
+
+      fireEvent.click(screen.getByRole("button", { name: /Pyydä AI-ehdotus/ }));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.change(dialog.querySelector("textarea")!, { target: { value: "Huoltomies käy torstaina." } });
+      fireEvent.click(screen.getByRole("button", { name: "Pyydä ehdotus" }));
+      await vi.waitFor(() => expect(calls.some(request => request.url.endsWith("/tickets/ticket-1/suggest"))).toBe(true));
+      const suggest = calls.find(request => request.url.endsWith("/tickets/ticket-1/suggest"));
+      expect(JSON.parse(suggest!.body).context).toBe("Huoltomies käy torstaina.");
+    } finally {
+      delete responses["/tickets/ticket-1"];
+      delete responses["/companies/demo-company/residents"];
+    }
+  });
+
+  it("päätösjonossa ei ole Osoita minulle -painiketta, koska tehtävät on jo osoitettu käyttäjälle", async () => {
+    mockApi();
     await renderApp(staff("Asiakaspalvelu"), "#/queue");
-    fireEvent.click(await screen.findByRole("button", { name: "Osoita minulle" }));
-    await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets/ticket-1/decision"))).toBe(true));
-    await vi.waitFor(() => expect(calls.filter(request => request.url.includes("/tickets?companyId=")).length).toBeGreaterThan(1));
-    expect(window.location.hash).toBe("#/queue");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Päätösjono");
+    await screen.findAllByText("Saunavuoron varaus");
+    expect(screen.queryByRole("button", { name: "Osoita minulle" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Sulje" })).toBeTruthy();
+  });
+
+  it("haku: #numero avaa tehtävän ja muu haku näyttää tulokset otsikoittain", async () => {
+    const found = {
+      query: "", tickets: [{ id: "ticket-1", ticket_number: 1, subject: "Saunavuoron varaus", status: "open", priority: "normal",
+        created_at: "2025-12-27T08:00:00.000Z", company_id: "demo-company", company_name: "As Oy Koivikko", resident_name: null,
+        apartment_number: null, snippet: "Asukas kysyy saunavuorosta." }], ticketCount: 1,
+      knowledge: [{ id: "k1", title: "Saunavuorot", audience: "ai", company_id: "demo-company", company_name: "As Oy Koivikko", snippet: "Sauna on auki" }],
+      knowledgeCount: 1, residents: [], residentCount: 0, announcements: [], announcementCount: 0
+    };
+    responses["/search?q=%231"] = found;
+    responses["/search?q=sauna"] = found;
+    responses["/tickets/ticket-1"] = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
+    try {
+      mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      const search = await screen.findByLabelText("Hae alustalta");
+      fireEvent.change(search, { target: { value: "#1" } });
+      fireEvent.submit(search.closest("form")!);
+      await vi.waitFor(() => expect(window.location.hash).toBe("#/tickets/ticket-1"));
+
+      fireEvent.change(screen.getByLabelText("Hae alustalta"), { target: { value: "sauna" } });
+      fireEvent.submit(screen.getByLabelText("Hae alustalta").closest("form")!);
+      await vi.waitFor(() => expect(window.location.hash).toBe("#/search/sauna"));
+      expect(await screen.findByRole("heading", { name: /Tehtävät/ })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: /Dokumentaatio/ })).toBeTruthy();
+      expect(screen.getByText(/löytyi 2 osumaa/)).toBeTruthy();
+    } finally {
+      delete responses["/search?q=%231"];
+      delete responses["/search?q=sauna"];
+      delete responses["/tickets/ticket-1"];
+    }
+  });
+
+  it("sivupalkin voi pienentää ja valinta muistetaan", async () => {
+    mockApi();
+    await renderApp(staff("Isännöitsijä"), "#/queue");
+    fireEvent.click(await screen.findByRole("button", { name: "Pienennä valikko" }));
+    expect(document.querySelector(".app.nav-collapsed")).toBeTruthy();
+    expect(localStorage.getItem("kotilo.navPinned")).toBe("off");
+    fireEvent.click(screen.getByRole("button", { name: "Kiinnitä valikko auki" }));
+    expect(document.querySelector(".app.nav-collapsed")).toBeNull();
   });
 
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {

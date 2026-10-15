@@ -8,6 +8,7 @@ import {
 import type { MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { PARKING_TYPES } from "./Parking";
+import { saveAiPrompt, storedAiPrompt } from "../preferences";
 import { t } from "../i18n";
 import { setTheme, storedTheme } from "../theme";
 
@@ -118,6 +119,34 @@ function AppearanceCard() {
             onChange={event => {
               setDark(event.target.checked);
               setTheme(event.target.checked ? "dark" : "light");
+            }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">{t("Valinta tallentuu tähän selaimeen.")}</p>
+      </CollapseSection>
+    </div>
+  );
+}
+
+// AI-ehdotuksen lisätietoikkuna: pois päältä ehdotus pyydetään suoraan ilman ikkunaa.
+function AiPromptCard() {
+  const [enabled, setEnabled] = useState(storedAiPrompt);
+  return (
+    <div className="settings-card ticket-form">
+      <CollapseSection id="ai-prompt" title={t("AI-ehdotukset")}>
+        <label className="switch-row">
+          <span>
+            <strong>{t("Kysy lisätietoa ennen AI-ehdotusta")}</strong>
+            <small>{t("Pyydä AI-ehdotus avaa ikkunan, johon voi kirjoittaa tehtävästä lisätietoa AI:n huomioitavaksi. Pois päältä ehdotus tehdään heti.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={enabled}
+            onChange={event => {
+              setEnabled(event.target.checked);
+              saveAiPrompt(event.target.checked);
             }}
           />
           <i aria-hidden="true" />
@@ -327,6 +356,7 @@ function UserSettings() {
       <SignatureCard />
 
       <AppearanceCard />
+      <AiPromptCard />
 
       <div className="settings-card ticket-form">
         <CollapseSection id="language" title={t("Kieli")}>

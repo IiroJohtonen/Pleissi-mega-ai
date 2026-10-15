@@ -327,3 +327,62 @@ export function CreateResidentModal({
     </div>
   );
 }
+
+// AI-ehdotuksen pyyntö: käsittelijä voi kertoa tehtävästä lisätietoa, jonka AI ottaa luonnoksessa
+// huomioon, esimerkiksi sovitun huoltokäynnin tai jo tehdyt toimenpiteet.
+export function AiSuggestModal({
+  onClose,
+  onSubmit
+}: {
+  onClose: () => void;
+  onSubmit: (context: string) => void;
+}) {
+  const [context, setContext] = useState("");
+
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [onClose]);
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    onSubmit(context.trim());
+  }
+
+  return (
+    <div className="overlay skip-overlay" onClick={onClose}>
+      <aside
+        className="drawer skip-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-suggest-title"
+        onClick={event => event.stopPropagation()}
+      >
+        <button className="close" onClick={onClose} aria-label={t("Sulje")}>×</button>
+        <h2 id="ai-suggest-title">{t("Pyydä AI-ehdotus")}</h2>
+        <p className="muted">
+          {t("AI kirjoittaa vastausluonnoksen tehtävän viestien ja taloyhtiön dokumentaation perusteella. Voit kertoa lisätietoa, jonka AI ottaa huomioon.")}
+        </p>
+        <form className="ticket-form" onSubmit={handleSubmit}>
+          <label>
+            <span>{t("Lisätietoa AI:lle (valinnainen)")}</span>
+            <textarea
+              value={context}
+              onChange={event => setContext(event.target.value)}
+              rows={5}
+              maxLength={2000}
+              autoFocus
+              placeholder={t("Esim. Huoltomies käy torstaina klo 10. Asukkaan ei tarvitse olla paikalla.")}
+            />
+          </label>
+          <p className="reply-hint">{t("AI-ehdotuksen voi pyytää tehtävälle vain kerran. Lisätieto ei näy asukkaalle sellaisenaan.")}</p>
+          <div className="draft-actions">
+            <button className="primary" type="submit">{t("Pyydä ehdotus")}</button>
+            <button type="button" onClick={onClose}>{t("Peruuta")}</button>
+          </div>
+        </form>
+      </aside>
+    </div>
+  );
+}

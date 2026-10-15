@@ -41,6 +41,16 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
           }));
           return;
         }
+        if (String(body.system).includes("reply draft")) {
+          const suggestion = { draft: "Huoltomies tulee torstaina.", reason: "Käsittelijän lisätieto.", sourceId: null };
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            id: "msg_test", type: "message", role: "assistant", model: body.model,
+            content: [{ type: "text", text: JSON.stringify(suggestion) }],
+            stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 }
+          }));
+          return;
+        }
         const assessment = message.includes("jäykkä") ? { priority: "normal", reason: "Jäykkä lukko ei vaadi välittömiä toimia." }
           : message.includes("tippuu") ? { priority: "emergency", reason: "Katosta tuleva vesi vahingoittaa rakenteita." }
           : { priority: "low", reason: "Viesti on palautetta." };
@@ -196,5 +206,20 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     } finally {
       failing = false;
     }
+  });
+
+  it("AI-ehdotus ottaa huomioon käsittelijän lisätiedon", async () => {
+    const created = await call(server, admin, "POST", "/inbound/messages", { companyId: "demo-company", senderName: "Asukas", subject: "Ilmanvaihto", body: "Ilmanvaihto pitää kovaa ääntä.", channel: "email" });
+    const ticketId = created.data.ticketId as string;
+
+    const tooLong = await call(server, admin, "POST", `/tickets/${ticketId}/suggest`, { context: "x".repeat(2001) });
+    assert.equal(tooLong.status, 400);
+
+    const suggested = await call(server, admin, "POST", `/tickets/${ticketId}/suggest`, { context: "Huoltomies käy torstaina klo 10." });
+    assert.equal(suggested.status, 200);
+    assert.equal(suggested.data.draft, "Huoltomies tulee torstaina.");
+    assert.equal(suggested.data.usedAi, true);
+    const request = requests.at(-1);
+    assert.match(JSON.stringify(request.body.messages), /Manager's notes:\\nHuoltomies käy torstaina klo 10\./);
   });
 });

@@ -12,6 +12,7 @@ import { requestUser } from "./access.js";
 import { authRouter, INTERNAL_TOKEN, requireAuth, type User } from "./auth.js";
 import { db } from "./db.js";
 import { signatureRouter } from "./signature.js";
+import { searchRouter } from "./routes/search.js";
 import { startMailPolling } from "./mail.js";
 import { startMaintenanceJobs } from "./jobs.js";
 import { announcementsRouter } from "./routes/announcements.js";
@@ -111,7 +112,7 @@ for (const router of [
   authRouter, passwordResetRouter, officeRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingRequestsRouter, billingRouter, portalRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter, contactRouter
+  metersRouter, contactRouter, searchRouter
 ]) {
   app.use("/api", router);
 }
