@@ -507,6 +507,43 @@ describe("sovellus", () => {
     }
   });
 
+  it("ilmoittajan vaihto päivittää asunnon heti ja AI-ehdotukseen voi antaa lisätietoa", async () => {
+    responses["/tickets/ticket-1"] = {
+      ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [],
+      reporters: [{ id: "r1", name: "Matti Meikäläinen", email: "matti@example.com", apartment_number: "A 1" }],
+      apartments: [{ id: "a1", apartment_number: "A 1", address: "Koivikkotie 1" }],
+      notes: [], workOrders: [], contractor: null, attachments: []
+    };
+    responses["/companies/demo-company/residents"] = [
+      { id: "r1", name: "Matti Meikäläinen", email: "matti@example.com", apartment_number: "A 1", address: "Koivikkotie 1" },
+      { id: "r2", name: "Liisa Mallikas", email: "liisa@example.com", apartment_number: "B 34", address: "Koivikkotie 3" }
+    ];
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      expect(await screen.findByText("Koivikkotie 1")).toBeTruthy();
+
+      const reporterInput = screen.getByDisplayValue("Matti Meikäläinen");
+      fireEvent.focus(reporterInput);
+      fireEvent.change(reporterInput, { target: { value: "Liisa" } });
+      fireEvent.mouseDown(await screen.findByText("Liisa Mallikas"));
+      expect(screen.getByText("Koivikkotie 3")).toBeTruthy();
+      expect(screen.getByText("B 34")).toBeTruthy();
+      expect(calls.some(request => request.url.includes("/reporters"))).toBe(false);
+
+      fireEvent.click(screen.getByRole("button", { name: /Pyydä AI-ehdotus/ }));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.change(dialog.querySelector("textarea")!, { target: { value: "Huoltomies käy torstaina." } });
+      fireEvent.click(screen.getByRole("button", { name: "Pyydä ehdotus" }));
+      await vi.waitFor(() => expect(calls.some(request => request.url.endsWith("/tickets/ticket-1/suggest"))).toBe(true));
+      const suggest = calls.find(request => request.url.endsWith("/tickets/ticket-1/suggest"));
+      expect(JSON.parse(suggest!.body).context).toBe("Huoltomies käy torstaina.");
+    } finally {
+      delete responses["/tickets/ticket-1"];
+      delete responses["/companies/demo-company/residents"];
+    }
+  });
+
   it("päätösjonossa ei ole Osoita minulle -painiketta, koska tehtävät on jo osoitettu käyttäjälle", async () => {
     mockApi();
     await renderApp(staff("Asiakaspalvelu"), "#/queue");

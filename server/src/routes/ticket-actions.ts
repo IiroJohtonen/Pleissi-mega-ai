@@ -101,6 +101,10 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     return res.status(409).json({ error: "AI-ehdotus on jo pyydetty tälle tehtävälle." });
   }
 
+  // Käsittelijän valinnainen lisätieto, jonka AI ottaa huomioon luonnoksessa.
+  const options = z.object({ context: z.string().trim().max(2000).optional() }).safeParse(req.body ?? {});
+  if (!options.success) return res.status(400).json({ error: "Lisätieto saa olla enintään 2000 merkkiä." });
+
   const messages = db.prepare(
     "SELECT direction, body FROM messages WHERE ticket_id = ? ORDER BY created_at"
   ).all(req.params.id) as { direction: string; body: string }[];
@@ -112,7 +116,7 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     : ticket.summary;
 
   const knowledge = getKnowledge(ticket.company_id);
-  const suggestion = await suggestReply(ticket.subject, conversation, knowledge);
+  const suggestion = await suggestReply(ticket.subject, conversation, knowledge, options.data.context ?? "");
   const source = knowledge.find(item => item.id === suggestion.sourceId) ?? null;
   const timestamp = now();
 

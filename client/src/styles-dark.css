@@ -259,10 +259,17 @@
 :root[data-theme="dark"] .meta .new-reply {
     color: #ffffff
 }
-:root[data-theme="dark"] .fact-due input:hover:not(:disabled),
-:root[data-theme="dark"] .fact-due input:focus {
-    border-color: #333e4d;
+:root[data-theme="dark"] .fact-due input {
+    border: 1px solid #35404f;
     background: #283341
+}
+:root[data-theme="dark"] .fact-due input:hover:not(:disabled) {
+    border-color: #3d5671;
+    background: #242d3a
+}
+:root[data-theme="dark"] .fact-due input:focus {
+    border-color: #3d5671;
+    outline: 2px solid #3d5a71
 }
 :root[data-theme="dark"] .privacy-actions {
     border-top: 1px solid #394555
@@ -509,9 +516,14 @@
         border-top: 1px solid #374353
     }
 }
-:root[data-theme="dark"] .fact-dropdown-trigger:hover,
+:root[data-theme="dark"] .fact-dropdown-trigger {
+    border: 1px solid #35404f;
+    background: #283341
+}
+:root[data-theme="dark"] .fact-dropdown-trigger:hover:not(:disabled),
 :root[data-theme="dark"] .fact-dropdown-trigger[aria-expanded="true"] {
-    border-color: #333e4d
+    border-color: #3d5671;
+    background: #242d3a
 }
 :root[data-theme="dark"] .fact-dropdown ul {
     background: #2e3a49;
@@ -543,17 +555,23 @@
     color: #a8e2bb
 }
 :root[data-theme="dark"] .ticket-description h3 {
-    color: #acb5c0
+    color: #afbdce
 }
 :root[data-theme="dark"] .ticket-description p {
     border: 1px solid #333e4d;
     color: #e0e3e7
 }
-:root[data-theme="dark"] .fact-search input:hover {
-    border-color: #364251
+:root[data-theme="dark"] .fact-search input {
+    border: 1px solid #35404f;
+    background: #283341
+}
+:root[data-theme="dark"] .fact-search input:hover:not(:disabled) {
+    border-color: #3d5671;
+    background: #242d3a
 }
 :root[data-theme="dark"] .fact-search input:focus {
-    border-color: #364251;
+    border-color: #3d5671;
+    background: #283341;
     outline: 2px solid #3d5a71
 }
 :root[data-theme="dark"] .fact-search-button {
@@ -632,8 +650,14 @@
 :root[data-theme="dark"] .message.note {
     background: #47412e
 }
+:root[data-theme="dark"] .ticket-facts > div {
+    border-bottom: 1px solid #374353
+}
 :root[data-theme="dark"] .ticket-facts dt {
-    color: #acb5c0
+    color: #afbdce
+}
+:root[data-theme="dark"] .ticket-facts dd {
+    color: #e0e3e7
 }
 :root[data-theme="dark"] .reporter span,
 :root[data-theme="dark"] .attachment span {

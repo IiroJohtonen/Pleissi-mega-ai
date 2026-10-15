@@ -807,16 +807,19 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .fact-due { display: flex; align-items: center; gap: 4px; }
 .fact-due input {
-  margin: -4px 0 -4px -7px;
-  padding: 3px 6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  margin: 0;
+  padding: 5px 9px;
+  border: 1px solid #d3d9e0;
+  border-radius: 8px;
+  background: #fff;
   font: inherit;
   color: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, .04);
 }
-.fact-due input:hover:not(:disabled),
-.fact-due input:focus { border-color: #cfd4d9; background: #fff; outline: 0; }
+.fact-due input:hover:not(:disabled) { border-color: #8fb3d9; background: #f6f9fc; }
+.fact-due input:focus { border-color: #8fb3d9; outline: 2px solid #9bd3ff; outline-offset: 0; }
+.fact-due input:disabled { padding-left: 0; border-color: transparent; background: transparent; box-shadow: none; cursor: default; }
 
 /* Asukkaan tietojen vienti ja poisto lomakkeen lopussa, erillään tavallisesta tallennuksesta. */
 .privacy-actions { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e6e7e9; }
@@ -1382,31 +1385,37 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Muokattavat tietokentät (tyyppi, prioriteetti) näyttävät tekstiltä, kunnes niihin osoittaa. */
 .fact-dropdown { position: relative; display: inline-block; }
 
+/* Muokattavat kentät näyttävät painikkeilta: reunus, tausta ja nuoli kertovat, että arvoa voi vaihtaa. */
 .fact-dropdown-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin: -4px 0 -4px -7px;
-  padding: 3px 6px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
+  gap: 7px;
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid #d3d9e0;
+  border-radius: 8px;
+  background: #fff;
   color: inherit;
   font: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, .04);
 }
 
-.fact-dropdown-trigger:hover,
-.fact-dropdown-trigger[aria-expanded="true"] { border-color: #cdd3da; }
+.fact-dropdown-trigger:hover:not(:disabled),
+.fact-dropdown-trigger[aria-expanded="true"] { border-color: #8fb3d9; background: #f6f9fc; }
+.fact-dropdown-trigger:disabled { padding-left: 0; border-color: transparent; background: transparent; box-shadow: none; cursor: default; }
+.fact-dropdown-trigger:disabled svg { display: none; }
 
 .fact-dropdown-trigger.priority {
   margin-left: 0;
-  padding: 4px 8px;
+  padding: 5px 10px;
+  border-color: transparent;
   border-radius: 99px;
   font-size: 11px;
   font-weight: 700;
 }
 
-.fact-dropdown-trigger svg { width: 12px; height: 12px; opacity: .6; transition: transform .15s ease; }
+.fact-dropdown-trigger svg { width: 12px; height: 12px; opacity: .75; transition: transform .15s ease; }
 .fact-dropdown-trigger svg.up { transform: rotate(180deg); }
 
 /* Avautuva lista: tiketin taustan värinen, pyöristetty ja kevyesti varjostettu. */
@@ -1484,12 +1493,10 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .ticket-description { margin: 18px 0 4px; }
 
 .ticket-description h3 {
-  margin: 0 0 5px;
-  color: #898f95;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  margin: 0 0 6px;
+  color: #4f6680;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .ticket-description p {
@@ -1516,19 +1523,21 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .fact-search { position: relative; display: flex; align-items: center; gap: 4px; }
 
 .fact-search input {
-  flex: 0 1 220px;
+  flex: 0 1 260px;
   min-width: 0;
-  margin: -4px 0 -4px -7px;
-  padding: 3px 6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  margin: 0;
+  padding: 5px 36px 5px 10px;
+  border: 1px solid #d3d9e0;
+  border-radius: 8px;
+  background: #fff;
   color: inherit;
   font: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, .04);
 }
 
-.fact-search input:hover { border-color: #d9dde2; }
-.fact-search input:focus { border-color: #d9dde2; outline: 2px solid #9bd3ff; outline-offset: 0; }
+.fact-search input:hover:not(:disabled) { border-color: #8fb3d9; background: #f6f9fc; }
+.fact-search input:focus { border-color: #8fb3d9; background: #fff; outline: 2px solid #9bd3ff; outline-offset: 0; cursor: text; }
 
 .fact-search-button {
   flex: none;
@@ -1536,7 +1545,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   place-items: center;
   width: 26px;
   height: 26px;
-  margin: -4px 0;
+  margin: 0 0 0 -36px;
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -1695,22 +1704,31 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .message.note { border-left-color: #d9b44a; background: #fdf9ec; padding-right: 12px; border-radius: 0 8px 8px 0; }
 .message p { white-space: pre-wrap; margin: 4px 0 0; }
 
+/* Tehtävän tiedot riveinä: otsikko vasemmalla ja arvo sen vieressä. */
 .ticket-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 20px;
+  gap: 0 32px;
   margin: 18px 0 0;
 }
 
-.ticket-facts dt {
-  color: #898f95;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+.ticket-facts > div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  min-height: 44px;
+  padding: 4px 0;
+  border-bottom: 1px solid #dde2e8;
 }
 
-.ticket-facts dd { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
+.ticket-facts dt {
+  color: #4f6680;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ticket-facts dd { margin: 0; color: #1d2329; font-size: 13.5px; font-weight: 600; }
 
 .reporter, .attachment {
   display: flex;
