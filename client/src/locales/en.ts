@@ -1380,4 +1380,7 @@ export const en: Record<string, string> = {
   "”{0}” siirrettiin sisäiseen dokumentaatioon.": "“{0}” was moved to internal documentation.",
   "”{0}” siirrettiin AI:n käyttöön.": "“{0}” is now used by the AI.",
   "Sulje ilmoitus": "Close notification",
+  "Uusi": "New",
+  "Vastattu": "Answered",
+  "Kolmannella osapuolella": "With third party",
 };

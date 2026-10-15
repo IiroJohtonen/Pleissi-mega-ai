@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { NavToggle, TabIcon, usePaged } from "../components/common";
-import { priorityLabel, statusLabel, ticketStatuses } from "../format";
+import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
 import { actorName, api, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
@@ -42,7 +42,9 @@ const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 const NAV_COMPANY_KEY = "kotilo.navCompany";
 const subTabs = navGroups.flatMap(group => group.tabs);
 // Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
-const ownTicketStatuses = ["waiting_manager", "waiting_third_party"];
+const ownTicketStatuses = ["active", "waiting_manager", "answered", "waiting_third_party"];
+// Päätösjonon yhteenvedon laatikot: omat tehtävät näissä tiloissa.
+const summaryTicketStatuses = ["waiting_manager", "answered", "waiting_third_party"];
 // Keskeneräisen tehtävän tilat.
 const openTicketStatuses = ["open", ...ownTicketStatuses];
 
@@ -407,7 +409,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät käyttäjän valitsemassa järjestyksessä.
   const queueTickets = allCompanyTickets
-    .filter(ticket => ticket.status === "open" && ticket.assignee_id === user.id)
+    .filter(ticket => queueTicketStatuses.includes(ticket.status) && ticket.assignee_id === user.id)
     .sort((a, b) => compareQueue(a, b, queueSort));
   // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
   const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
@@ -486,7 +488,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     || (statusFilterTab && statusFilter !== "all");
 
   // Päätösjonon laskurit: käyttäjän omat tehtävät kaikista yhtiöistä tiloittain.
-  const ownStatusCounts = ownTicketStatuses.map(status => ({
+  const ownStatusCounts = summaryTicketStatuses.map(status => ({
     status,
     count: allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && ticket.status === status).length
   }));

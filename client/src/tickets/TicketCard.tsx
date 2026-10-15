@@ -246,7 +246,7 @@ export function TicketCard({
         <span className="type">{t(ticket.type)}</span>
         <span className="ticket-row-contact">{ticket.resident_name || ticket.apartment_number || t("Ei yhteyshenkilöä")}</span>
         <span className={`ticket-row-assignee ${assignee ? "" : "none"}`}>{assignee ? assignee.name : t("Ei käsittelijää")}</span>
-        <span className="status-badge">{statusLabel(ticket.status)}</span>
+        <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
         <time className="date">{formatDate(ticket.created_at)}</time>
         <time className="date">{formatDate(ticket.updated_at || ticket.created_at)}</time>
       </article>
@@ -263,7 +263,7 @@ export function TicketCard({
         <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
         <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
         <span className="type">{t(ticket.type)}</span>
-        <span className="status-badge">{statusLabel(ticket.status)}</span>
+        <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
         <span className="date" title={t("Päivitetty {0}", formatDate(ticket.updated_at || ticket.created_at))}>{t("Saapunut {0}", formatDate(ticket.created_at))}</span>
       </div>
 
@@ -296,7 +296,7 @@ export function TicketCard({
         </div>
       </div>
 
-      {ticket.status === "open" && (
+      {(ticket.status === "open" || ticket.status === "active") && (
         <div className="actions" onClick={e => e.stopPropagation()}>
           {canAssign && <AssignPicker users={users} assigneeId={ticket.assignee_id ?? null} onAssign={onAssign} />}
           {/* Päätösjonossa tehtävät on jo osoitettu käyttäjälle, joten painiketta ei siellä näytetä. */}

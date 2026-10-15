@@ -617,6 +617,24 @@ describe("sovellus", () => {
     expect(document.querySelector(".app.nav-collapsed")).toBeNull();
   });
 
+  it("tehtävän tilan voi vaihtaa tehtäväsivulla", async () => {
+    responses["/tickets/ticket-1"] = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      const save = await screen.findByRole("button", { name: "Tallenna" });
+      const statusRow = screen.getByText("Tila", { selector: "dt" }).parentElement!;
+      fireEvent.click(statusRow.querySelector("button")!);
+      fireEvent.click(await screen.findByRole("option", { name: "Vastattu" }).catch(() => screen.getByRole("button", { name: "Vastattu" })));
+      fireEvent.click(save);
+      await vi.waitFor(() => expect(calls.some(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"))).toBe(true));
+      const put = calls.find(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/fields"));
+      expect(JSON.parse(put!.body).status).toBe("answered");
+    } finally {
+      delete responses["/tickets/ticket-1"];
+    }
+  });
+
   it("lähettää istuntotunnisteen otsakkeessa eikä osoitteessa", async () => {
     const calls = mockApi();
     await renderApp(staff("Pääkäyttäjä"));

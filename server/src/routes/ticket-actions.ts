@@ -378,9 +378,10 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     `).run(attachmentId, req.params.id, attachment.filename, attachment.mimeType, attachment.content.length, timestamp);
   }
 
+  // Lähetetty vastaus siirtää tehtävän Vastattu-tilaan.
   db.prepare(`
     UPDATE tickets
-    SET draft = '', updated_at = ?
+    SET draft = '', status = 'answered', updated_at = ?
     WHERE id = ?
   `).run(timestamp, req.params.id);
 

@@ -486,7 +486,7 @@ function PortalTickets({ resident }: { resident: ResidentAccount }) {
                     <td data-label={t("Numero")}>#{formatTicketNumber(ticket.ticket_number)}</td>
                     <td data-label={t("Otsikko")}><strong>{ticket.subject}</strong></td>
                     <td data-label={t("Tyyppi")}>{t(ticket.type)}</td>
-                    <td data-label={t("Tila")}>{ticket.status === "closed" ? t("Suljettu") : t("Käsittelyssä")}</td>
+                    <td data-label={t("Tila")}>{ticket.status === "closed" ? t("Suljettu") : ticket.status === "answered" ? t("Vastattu") : t("Käsittelyssä")}</td>
                     <td data-label={t("Luotu")}>{formatDate(ticket.created_at)}</td>
                   </tr>
                 ))}

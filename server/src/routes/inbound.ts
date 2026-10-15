@@ -4,7 +4,7 @@ import { companyIdForRecipients, companyIdFromContext, getAuthorizedTicket } fro
 import { triage } from "../ai.js";
 import { db } from "../db.js";
 import { alertEmergency } from "../notify.js";
-import { id, now } from "../util.js";
+import { id, now, statusAfterResidentReply } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
 import { aiPriorityEnabled, aiRelevanceEnabled } from "./office.js";
 import { findResident } from "./residents.js";
@@ -71,8 +71,10 @@ if (input.sourceMessageId) {
 
     if (existingTicket) {
       const timestamp = now();
-      // Suljettu tehtävä avataan uudelleen päätösjonoon; muuten se pysyy nykyisellä käsittelijällään.
-      const reopened = existingTicket.status === "closed";
+      // Suljettu tehtävä avataan uudelleen päätösjonoon ja vastattu muuttuu avoimeksi; muuten se pysyy
+      // nykyisellä käsittelijällään ennallaan.
+      const nextStatus = statusAfterResidentReply(existingTicket.status);
+      const reopened = nextStatus !== existingTicket.status;
 
       const appendedMessageId = id("message");
       db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
@@ -87,7 +89,7 @@ if (input.sourceMessageId) {
       );
 
       db.prepare("UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?").run(
-        reopened ? "open" : existingTicket.status,
+        nextStatus,
         timestamp,
         existingTicket.id
       );

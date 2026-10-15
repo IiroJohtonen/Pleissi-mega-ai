@@ -1699,3 +1699,33 @@
 :root[data-theme="dark"] .toast-close {
     color: #9dbbe4
 }
+:root[data-theme="dark"] .status-badge.status-open,
+:root[data-theme="dark"] .status-pill.status-open {
+    background: #2f3b4a;
+    color: #99bbe9
+}
+:root[data-theme="dark"] .status-badge.status-active,
+:root[data-theme="dark"] .status-pill.status-active {
+    background: #4e4632;
+    color: #efd69b
+}
+:root[data-theme="dark"] .status-badge.status-waiting_manager,
+:root[data-theme="dark"] .status-pill.status-waiting_manager {
+    background: #342f49;
+    color: #aaa0dc
+}
+:root[data-theme="dark"] .status-badge.status-answered,
+:root[data-theme="dark"] .status-pill.status-answered {
+    background: #314d3b;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .status-badge.status-waiting_third_party,
+:root[data-theme="dark"] .status-pill.status-waiting_third_party {
+    background: #4c3d31;
+    color: #eebc96
+}
+:root[data-theme="dark"] .status-badge.status-closed,
+:root[data-theme="dark"] .status-pill.status-closed {
+    background: #1c242e;
+    color: #c8ced6
+}

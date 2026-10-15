@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, FactDropdown } from "../components/common";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatFileSize, formatTicketNumber,
-  MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
+  MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
 import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUser } from "../session";
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
@@ -392,7 +392,7 @@ export function TicketDrawer({
     : residents;
   // Tietokenttien muutokset kerätään tähän ja tallennetaan vasta Tallenna-painikkeesta. Tehtävän
   // taustapäivitys ei koske niihin, joten keskeneräinen muokkaus säilyy.
-  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string };
+  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string };
   const [edits, setEdits] = useState<FieldEdits>({});
   const [saveError, setSaveError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -411,7 +411,8 @@ export function TicketDrawer({
     priority: ticket.priority,
     assigneeId: ticket.assignee_id ?? null,
     dueDate: ticket.due_date ?? null,
-    reporterId: reporter?.id ?? ""
+    reporterId: reporter?.id ?? "",
+    status: ticket.status
   };
   // Näytettävät arvot: tallennettu arvo, ellei kenttää ole muutettu.
   const shown = { ...savedFields, ...edits };
@@ -672,7 +673,7 @@ export function TicketDrawer({
                   onAssign={assigneeId => updateFields({ assigneeId })}
                 />
               )}
-              {ticket.status === "open" && (
+              {(ticket.status === "open" || ticket.status === "active") && (
                 <button className="primary" onClick={() => onDecision("human")}>{t("Osoita minulle")}</button>
               )}
               <button onClick={() => onDecision("skip")}>{t("Sulje")}</button>
@@ -733,9 +734,17 @@ export function TicketDrawer({
                 : t("Yhteiset tilat")}
             </dd>
           </div>
-          <div>
+          <div className={edits.status !== undefined ? "changed" : ""}>
             <dt>{t("Tila")}</dt>
-            <dd>{statusLabel(ticket.status)}</dd>
+            <dd>
+              <FactDropdown
+                value={shown.status}
+                options={(manualTicketStatuses.includes(ticket.status) ? manualTicketStatuses : [ticket.status, ...manualTicketStatuses])
+                  .map(status => ({ value: status, label: statusLabel(status), pillClass: `status-pill status-${status}` }))}
+                disabled={updatingFields}
+                onChange={status => edit("status", status)}
+              />
+            </dd>
           </div>
           <div className={edits.assigneeId !== undefined ? "changed" : ""}>
             <dt>{t("Käsittelijä")}</dt>

@@ -87,7 +87,7 @@ export function SearchResults({
                 <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
                 <strong><Highlight text={ticket.subject} query={query} /></strong>
                 <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
-                <span className="status-badge">{statusLabel(ticket.status)}</span>
+                <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
               </span>
               <span className="search-hit-meta">
                 {[ticket.company_name, ticket.apartment_number, ticket.resident_name, formatDate(ticket.created_at)].filter(Boolean).join(" · ")}
