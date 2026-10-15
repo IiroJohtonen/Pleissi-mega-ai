@@ -356,10 +356,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
     return response;
   }
 
-  // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät.
+  // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät vanhimmasta uusimpaan.
   const queueTickets = allCompanyTickets
     .filter(ticket => ticket.status === "open" && ticket.assignee_id === user.id)
-    .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
+    .sort((a, b) => compareTickets(a, b, "created"));
   // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
   const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
   const reminderTickets = allCompanyTickets
@@ -417,6 +417,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const listedTickets = ticketSort && tab !== "queue"
     ? [...visibleTickets].sort((a, b) =>
         compareTickets(a, b, ticketSort.key) * (ticketSort.descending ? -1 : 1))
+    // Omat tehtävät näytetään oletuksena vanhimmasta uusimpaan.
+    : tab === "my-tickets" ? [...visibleTickets].sort((a, b) => compareTickets(a, b, "created"))
     : visibleTickets;
 
   const pagedTickets = usePaged(listedTickets, [
@@ -927,6 +929,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}
                   allUsers={officeUsers}
                   canAssign={canAssignTickets(companies.find(company => company.id === ticket.company_id))}
+                  assignToMe={tab !== "queue"}
                   onAssign={assigneeId => assignTicket(ticket.id, assigneeId)}
                   onOpen={() => openTicket(ticket.id)}
                   onDecision={(d) => requestDecision(ticket.id, d)}

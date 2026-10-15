@@ -103,6 +103,8 @@ export const en: Record<string, string> = {
   "Lisätty": "Added",
   "Asukkaalta": "From resident",
   "Saapunut": "Received",
+  "Saapunut {0}": "Received {0}",
+  "Päivitetty {0}": "Updated {0}",
   "Lisätään…": "Adding…",
   "+ Lisää liite": "+ Add attachment",
   "Uusi viesti": "New message",
