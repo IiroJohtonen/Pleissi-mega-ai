@@ -787,6 +787,7 @@ export function TicketDrawer({
           </div>
           <div className={edits.dueDate !== undefined ? "changed" : ""}>
             <dt>{t("Määräaika")}</dt>
+            {/* Myöhässä-merkintä on kentän alla, jotta se ei ahda kenttää. */}
             <dd className="fact-due">
               <input
                 type="date"

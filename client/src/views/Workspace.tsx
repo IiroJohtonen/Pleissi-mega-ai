@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { NavToggle, TabIcon, usePaged } from "../components/common";
+import { FactDropdown, NavToggle, TabIcon, usePaged } from "../components/common";
 import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
@@ -824,15 +824,20 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   {t("Avoimet tehtäväsi")}
                   <b>{queueTickets.length}</b>
                 </h2>
-                <label className="queue-sort">
+                {/* Sama pyöristetty valikko kuin tehtäväsivun kentissä. */}
+                <div className="queue-sort">
                   <span>{t("Järjestys")}</span>
-                  <select value={queueSort} onChange={event => changeQueueSort(event.target.value as QueueSort)}>
-                    <option value="oldest">{t("Vanhin ensin")}</option>
-                    <option value="newest">{t("Uusin ensin")}</option>
-                    <option value="priority">{t("Kiireellisin ensin")}</option>
-                    <option value="due">{t("Määräaika ensin")}</option>
-                  </select>
-                </label>
+                  <FactDropdown
+                    value={queueSort}
+                    options={[
+                      { value: "oldest", label: t("Vanhin ensin") },
+                      { value: "newest", label: t("Uusin ensin") },
+                      { value: "priority", label: t("Kiireellisin ensin") },
+                      { value: "due", label: t("Määräaika ensin") }
+                    ]}
+                    onChange={value => changeQueueSort(value as QueueSort)}
+                  />
+                </div>
               </div>
             )}
             {tab !== "queue" && filtersOpen && (

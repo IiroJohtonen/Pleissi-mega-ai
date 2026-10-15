@@ -245,8 +245,19 @@ export function KnowledgeBase({
   ];
   const filtersActive = activeFilters.length > 0;
 
+  // Listan otsikkona taloyhtiö, jonka dokumentaatiota näytetään.
+  const companyName = companies?.find(company => company.id === companyId)?.name;
+
   return (
     <div className="knowledge-base">
+      {companyName && (
+        <h2 className="knowledge-company">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M10 21v-5h4v5" />
+          </svg>
+          {companyName}
+        </h2>
+      )}
       <p className="muted knowledge-intro">
         {audience === "ai"
           ? t("Yhtiön dokumentit ja vakiotiedot, joiden pohjalta AI tekee luonnokset. AI ei käytä muita lähteitä yhtiön tiedoista, eikä näitä tietoja käytetä muiden yhtiöiden luonnoksissa.")
