@@ -994,7 +994,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <TicketCard
                   key={ticket.id}
                   ticket={ticket}
-                  reminders={ticketReminders(ticket, reminderSettings).filter(reminder => reminder.kind !== "overdue")}
+                  // Päätösjonon korteissa ei ole määräaikatägejä (määräaika näkyy tehtäväsivulla); odotusmuistutus näkyy.
+                  reminders={ticketReminders(ticket, reminderSettings).filter(reminder =>
+                    tab === "queue" ? reminder.kind === "waiting" : reminder.kind !== "overdue")}
                   compact={tab !== "queue"}
                   companyName={companies.find(company => company.id === ticket.company_id)?.name}
                   users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}

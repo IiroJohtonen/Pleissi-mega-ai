@@ -3397,10 +3397,10 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 /* Kortti peittää myös puhelimen yläpalkin ja valikon, jotta otsikko ja sulkupainike näkyvät. */
 .overlay { z-index: 70; }
-/* Koko sivun kokoiset näkymät (esim. dokumentin tietokortti) avautuvat yläpalkin alle, jotta yläpalkki
-   pysyy käytössä. Pienet ikkunat peittävät koko näytön. */
+/* Avatut tietueet ja ikkunat avautuvat yläpalkin alle, jotta yläpalkki näkyy ja on käytössä aina. */
 @media (min-width: 761px) {
-  .overlay:not(.skip-overlay) { top: var(--topbar-height); z-index: 65; }
+  .overlay { top: var(--topbar-height); z-index: 65; }
+  .overlay.skip-overlay { z-index: 68; }
 }
 .overlay.skip-overlay { z-index: 75; }
 /* Asetukset: kotisivun yhteydenottopyynnöt */
@@ -4155,3 +4155,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .queue-summary-large > button { min-width: 168px; padding: 26px 26px 24px; }
 .queue-summary.queue-summary-large span,
 .queue-summary.queue-summary-large small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; }
+
+/* Päätösjonon kortin asunto- ja asukastägit. Tunnistamaton asunto tai asukas näkyy varoitusvärillä. */
+.ticket-card .meta span.meta-apartment { background: #e3eefc; color: #1f4f8f; }
+.ticket-card .meta span.meta-resident { background: #e2f3ea; color: #1f6b45; }
+.ticket-card .meta span.meta-unknown { background: #fdf0cf; color: #7a5600; font-style: italic; }

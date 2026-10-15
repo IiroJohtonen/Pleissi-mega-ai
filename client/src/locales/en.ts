@@ -590,7 +590,6 @@ export const en: Record<string, string> = {
   "Uusi salasana uudelleen": "New password again",
   "Vaihda salasana": "Change password",
   "Kirjaudu sisään": "Sign in",
-  "· henkilökunta ja asukkaat": "· staff and residents",
   "Salasana": "Password",
   "Kirjaudutaan…": "Signing in…",
   "Kirjaudu": "Sign in",

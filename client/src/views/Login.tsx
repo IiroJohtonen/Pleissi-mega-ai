@@ -145,7 +145,7 @@ export function Login() {
       <form className="login-card" onSubmit={handleSubmit}>
         <img src="/pleissi-logo-dark.svg" alt="Pleissi" />
         <h1>{t("Kirjaudu sisään")}</h1>
-        <p>{MANAGEMENT_OFFICE.name}{" "}{t("· henkilökunta ja asukkaat")}</p>
+        <p>{MANAGEMENT_OFFICE.name}</p>
 
         <label>
           <span>{t("Sähköposti")}</span>

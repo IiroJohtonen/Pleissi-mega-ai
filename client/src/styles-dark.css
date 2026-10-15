@@ -1729,3 +1729,15 @@
     background: #1c242e;
     color: #c8ced6
 }
+:root[data-theme="dark"] .ticket-card .meta span.meta-apartment {
+    background: #2f3b4a;
+    color: #99bbe9
+}
+:root[data-theme="dark"] .ticket-card .meta span.meta-resident {
+    background: #304c3d;
+    color: #a3e4c4
+}
+:root[data-theme="dark"] .ticket-card .meta span.meta-unknown {
+    background: #4e4632;
+    color: #efd69b
+}

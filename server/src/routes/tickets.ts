@@ -293,7 +293,9 @@ ticketsRouter.put("/tickets/:id/fields", (req, res) => {
     // Tehtävän saa antaa toiselle taloyhtiön vastuuisännöitsijä tai pääkäyttäjä. Jos taloyhtiöllä ei
     // ole vastuuisännöitsijää, jakaminen on sallittu kaikille, jotta tehtävät eivät jää jumiin.
     const company = db.prepare("SELECT manager_id FROM companies WHERE id = ?").get(ticket.company_id) as { manager_id: string | null };
-    if (company.manager_id && company.manager_id !== res.locals.user?.id && !isAdmin(res)) {
+    // Tehtävän voi aina ottaa itselleen ("Osoita minulle").
+    const takingForSelf = Boolean(parsed.data.assigneeId) && parsed.data.assigneeId === res.locals.user?.id;
+    if (company.manager_id && company.manager_id !== res.locals.user?.id && !isAdmin(res) && !takingForSelf) {
       return res.status(403).json({ error: "Vain taloyhtiön vastuuisännöitsijä voi antaa tehtävän toiselle." });
     }
     const assignedAt = now();
