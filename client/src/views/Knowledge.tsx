@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { DownloadLink, FactDropdown, usePaged } from "../components/common";
 import { formatDate, formatDateOnly, formatDay } from "../format";
-import { api, API, errorMessage, isManager, session } from "../session";
+import { api, API, errorMessage, isAdmin, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
 import { locale, t } from "../i18n";
 import { KnowledgeChunks } from "./KnowledgeChunks";
@@ -657,22 +657,26 @@ function KnowledgeDetailDrawer({
   }
 
   const isCurrent = detail?.status === "active";
+  // Mitä AI poimi tästä näkyy vain pääkäyttäjälle.
+  const showChunks = Boolean(detail && isAdmin() && detail.kind === "document" && detail.state !== "unreadable" && detail.status !== "pending");
   const canEdit = isCurrent && isManager();
   // Voimassa olevan tietueen tilaksi voi valita AI:n käytön tai sisäisen dokumentaation.
   const stateEditable = canEdit && (detail?.state === "in_use" || detail?.state === "internal");
 
   return (
     <div className="overlay">
-      <aside className="drawer">
+      <aside className={`drawer knowledge-drawer${showChunks ? " wide" : ""}`}>
         <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>
         <button className="close" onClick={onClose}>×</button>
         {failed ? <p className="send-error">{t("Tietojen lataus epäonnistui.")}</p>
           : !detail ? <p className="muted">{t("Ladataan…")}</p> : (
           <>
-            <span className="type">{detail.kind === "document" ? t("Dokumentti") : t("Vakiotieto")}</span>
-            <h2>{detail.title}</h2>
+            <div className="knowledge-head">
+              <span className="type">{detail.kind === "document" ? t("Dokumentti") : t("Vakiotieto")}</span>
+              <h2>{detail.title}</h2>
+            </div>
 
-            <dl className="ticket-facts">
+            <dl className="ticket-facts knowledge-meta">
               <div>
                 <dt>{t("Taloyhtiö")}</dt>
                 <dd>
@@ -783,23 +787,25 @@ function KnowledgeDetailDrawer({
               />
             )}
 
-            {detail.kind === "document" && detail.state !== "unreadable" && detail.status !== "pending" && (
-              <KnowledgeChunks
-                detail={detail}
-                highlightChunkId={highlightChunkId}
-                onValidityChanged={async () => {
-                  setDetail(await api<KnowledgeDetail>(`/knowledge/${entryId}`));
-                  await onChanged();
-                }}
-              />
-            )}
-
-            <section className="drawer-section">
-              <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>
-              <p className="knowledge-content">
-                {detail.content || t("Tekstiä ei saatu luettua, joten AI ei voi käyttää tätä dokumenttia.")}
-              </p>
-            </section>
+            {/* Pääkäyttäjälle AI:n poimimat tiedot ja dokumentista luettu teksti vierekkäin. */}
+            <div className={`knowledge-columns${showChunks ? "" : " single"}`}>
+              {showChunks && (
+                <KnowledgeChunks
+                  detail={detail}
+                  highlightChunkId={highlightChunkId}
+                  onValidityChanged={async () => {
+                    setDetail(await api<KnowledgeDetail>(`/knowledge/${entryId}`));
+                    await onChanged();
+                  }}
+                />
+              )}
+              <section className="drawer-section knowledge-text">
+                <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>
+                <p className="knowledge-content">
+                  {detail.content || t("Tekstiä ei saatu luettua, joten AI ei voi käyttää tätä dokumenttia.")}
+                </p>
+              </section>
+            </div>
 
             <section className="drawer-section">
               <h3>{t("Versiohistoria")}</h3>

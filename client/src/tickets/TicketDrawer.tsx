@@ -14,6 +14,7 @@ import { RenovationPanel } from "../views/Renovations";
 import { storedAiPrompt } from "../preferences";
 import { Toast } from "../components/Toast";
 import { t } from "../i18n";
+import { OpenResidentButton } from "../components/Reporter";
 
 type Attachment = TicketDetail["attachments"][number];
 
@@ -805,7 +806,10 @@ export function TicketDrawer({
             <dd>{formatDate(ticket.created_at)}</dd>
           </div>
           <div className={edits.reporterId !== undefined ? "changed" : ""}>
-            <dt>{t("Ilmoittaja")}</dt>
+            <dt className="fact-label-action">
+              {t("Ilmoittaja")}
+              {shownReporter && !reporterEdited && <OpenResidentButton residentId={shownReporter.id} name={shownReporter.name} className="fact-open-resident" />}
+            </dt>
             <dd className="fact-search">
               <input
                 ref={reporterInput}

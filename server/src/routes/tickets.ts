@@ -388,6 +388,9 @@ ticketsRouter.post("/tickets/:id/reporters", (req, res) => {
         updated_at = ?
     WHERE id = ?
   `).run(resident.id, resident.apartment_id, timestamp, req.params.id);
+  // Remonttitehtävän ilmoittaja on myös remontti-ilmoituksen ilmoittaja.
+  db.prepare("UPDATE renovation_notices SET resident_id = ?, apartment_id = ? WHERE ticket_id = ?")
+    .run(resident.id, resident.apartment_id, req.params.id);
 
   if (result.changes > 0) {
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(

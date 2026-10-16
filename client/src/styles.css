@@ -4467,3 +4467,235 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .version-review .chunk-buttons { margin-top: 16px; }
 .version-banner { margin-top: 16px; }
 .knowledge-expiring .back-link { font-size: 13px; }
+
+/* Ilmoittaja tietueilla: nimi, asunto ja yhteystiedot kortissa, siirtymä asukkaan tietueelle */
+.reporter-card {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #cfdcea;
+  border-radius: 12px;
+  background: #f4f8fc;
+}
+.reporter-label { color: #4a5868; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.reporter-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.reporter-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #2c64a3;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.reporter-avatar.empty { background: #d6dde5; color: #4a5868; }
+.reporter-text { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.reporter-text strong { color: #17202b; font-size: 15px; }
+.reporter-text span { color: #3f4b58; font-size: 13px; overflow-wrap: anywhere; }
+.reporter-text .reporter-email { color: #234f86; user-select: all; }
+.reporter-text .muted { color: #6b7684; font-size: 12px; }
+.reporter-search input { background: #fff; }
+.open-resident {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #b9cde3;
+  border-radius: 9px;
+  background: #fff;
+  color: #234f86;
+}
+.open-resident:hover { border-color: #2c64a3; background: #e6eff9; }
+.open-resident svg { width: 18px; height: 18px; }
+.fact-search .fact-open-resident { width: 30px; height: 30px; }
+.fact-search .fact-open-resident svg { width: 16px; height: 16px; }
+.holder-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 9px; background: #f4f8fc; font-size: 13px; color: #3f4b58; }
+
+.reporter-cell { display: grid; gap: 1px; }
+.reporter-cell strong { color: #17202b; }
+.data-table td .reporter-cell small { color: #5d6875; font-size: 12px; overflow-wrap: anywhere; }
+
+.confirm-overlay { z-index: 90; }
+.confirm-dialog { max-width: 420px; }
+.confirm-dialog h2 { margin: 0 0 6px; font-size: 18px; }
+.confirm-dialog .muted { margin: 0 0 16px; }
+
+/* Sauna- ja pyykkitupakalenteri: tilakohtainen väri, aina näkyvät suodattimet ja viikkonavigaatio */
+.booking-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  background: #fff;
+}
+.booking-week { display: flex; align-items: center; gap: 6px; }
+.booking-week > button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #d9dde2;
+  border-radius: 10px;
+  background: #fff;
+  color: #2b333c;
+}
+.booking-week > button svg { width: 18px; height: 18px; }
+.booking-week > button:hover { border-color: #8fb3d9; background: #f3f7fb; }
+.booking-week strong {
+  display: grid;
+  min-width: 170px;
+  padding: 0 6px;
+  text-align: center;
+  color: #191f25;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.booking-week strong small { color: #6b7380; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.booking-week .booking-today { width: auto; padding: 0 14px; font-size: 13px; font-weight: 700; }
+.booking-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.booking-filters .dropdown { min-width: 120px; }
+.booking-show { display: grid; gap: 5px; }
+.booking-segmented { display: inline-flex; padding: 3px; border-radius: 10px; background: #eef1f4; }
+.booking-segmented button {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #4b535d;
+  font-size: 13px;
+  font-weight: 600;
+}
+.booking-segmented button.active { background: #fff; color: #191f25; box-shadow: 0 1px 2px rgba(23, 32, 43, .15); }
+.booking-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.booking-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.booking-stat b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.booking-stat.free { background: #e3f4e9; color: #1f6b3d; }
+.booking-stat.queued { background: #fdf0cf; color: #7a5600; }
+
+.booking-page .calendar { gap: 6px; padding: 16px; border-radius: 16px; box-shadow: 0 1px 2px rgba(23, 32, 43, .04); }
+.booking-page .calendar-day { padding: 6px 0 10px; border-bottom-width: 3px; border-radius: 10px 10px 0 0; }
+.booking-page .calendar-day strong { font-size: 13px; }
+.booking-page .calendar-slot { min-height: 50px; border-radius: 10px; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+.booking-page .calendar-slot.free:hover:not(:disabled) { transform: translateY(-1px); }
+.booking-page .calendar-slot strong { font-size: 12px; }
+
+/* Sauna: lämmin oranssi */
+.booking-sauna .booking-stat.booked { background: #fdebdc; color: #9a4313; }
+.booking-sauna .calendar-day.today { border-bottom-color: #d4691f; background: #fff6ef; }
+.booking-sauna .calendar-day.today strong { color: #a84c14; }
+.booking-sauna .calendar-slot.booked { border-color: #f1c9a6; border-left: 4px solid #d4691f; background: #fdebdc; color: #3d2414; }
+.booking-sauna .calendar-slot.booked:hover { border-color: #d4691f; background: #fbe0c9; }
+.booking-sauna .calendar-slot.booked span { color: #8a5634; }
+.booking-sauna .calendar-slot.free:hover:not(:disabled) { border-color: #d4691f; background: #fff3ea; color: #a84c14; }
+.booking-sauna .calendar-days button.active { border-color: #d4691f; background: #d4691f; }
+
+/* Pyykkitupa: raikas turkoosi */
+.booking-laundry .booking-stat.booked { background: #dcf1f4; color: #135d69; }
+.booking-laundry .calendar-day.today { border-bottom-color: #1d8a9a; background: #eff9fa; }
+.booking-laundry .calendar-day.today strong { color: #156b78; }
+.booking-laundry .calendar-slot.booked { border-color: #a9dae2; border-left: 4px solid #1d8a9a; background: #dcf1f4; color: #133a40; }
+.booking-laundry .calendar-slot.booked:hover { border-color: #1d8a9a; background: #ccebef; }
+.booking-laundry .calendar-slot.booked span { color: #3d6d75; }
+.booking-laundry .calendar-slot.free:hover:not(:disabled) { border-color: #1d8a9a; background: #edf8f9; color: #156b78; }
+.booking-laundry .calendar-days button.active { border-color: #1d8a9a; background: #1d8a9a; }
+
+/* Jonossa oleva varaus erottuu kummassakin tilassa keltaisella reunalla. */
+.booking-page .calendar-slot.booked.requested { border-left-color: #c48a12; }
+.booking-page .calendar-slot.booked.other { border-color: #e2e4e6; border-left-color: #b8bdc2; background: #f1f2f3; color: #747a80; }
+
+@media (max-width: 760px) {
+  .booking-toolbar { padding: 12px; }
+  .booking-week { width: 100%; justify-content: space-between; }
+  .booking-week strong { min-width: 0; flex: 1; }
+  .booking-filters { width: 100%; }
+  .booking-filters .dropdown { flex: 1 1 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .booking-page .calendar-slot { transition: none; }
+  .booking-page .calendar-slot.free:hover:not(:disabled) { transform: none; }
+}
+
+/* Dokumentaation tietue: tiivis otsikko ja tietorivi, AI:n poiminnat ja luettu teksti vierekkäin */
+.drawer.knowledge-drawer.wide { width: min(1320px, 96vw); }
+.knowledge-head { display: grid; gap: 4px; margin-top: 4px; }
+.knowledge-head .type { justify-self: start; }
+.knowledge-head h2 { margin: 0; font-size: 22px; line-height: 1.25; }
+.ticket-facts.knowledge-meta {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.ticket-facts.knowledge-meta > div {
+  grid-template-columns: 1fr;
+  align-content: start;
+  row-gap: 3px;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 1px solid #e3e7ec;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.ticket-facts.knowledge-meta dt { color: #5b6672; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+.ticket-facts.knowledge-meta dd { font-size: 13px; }
+.knowledge-drawer .knowledge-entry-actions { margin-top: 12px; }
+.knowledge-drawer .drawer-section h3 { font-size: 14px; margin: 0 0 6px; }
+
+.knowledge-columns { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 16px; }
+.knowledge-columns.single { grid-template-columns: minmax(0, 1fr); }
+.knowledge-columns > .drawer-section { margin: 0; padding: 14px 16px; border: 1px solid #e3e7ec; border-radius: 12px; border-top: 1px solid #e3e7ec; }
+.knowledge-text { position: sticky; top: 0; max-height: 75vh; overflow-y: auto; background: #fbfcfd; }
+.knowledge-columns.single .knowledge-text { position: static; max-height: none; }
+.knowledge-text .knowledge-content { font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; }
+
+.chunk-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.chunk-header h3 { margin: 0; }
+.knowledge-chunks .chunk-summary { margin: 2px 0 10px; font-size: 12px; }
+.chunk-row { padding: 7px 0; }
+.chunk-status { display: inline-flex; align-items: center; gap: 8px; }
+.chunk-verify {
+  padding: 4px 10px;
+  border: 1px solid #9fd0b3;
+  border-radius: 99px;
+  background: #eef9f2;
+  color: #1f6b3d;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chunk-verify:hover:not(:disabled) { border-color: #1f7a45; background: #dff3e7; }
+.chunk-verify:disabled { opacity: .55; }
+.chunk-status.verified { font-weight: 600; }
+
+@media (max-width: 1000px) {
+  .knowledge-columns { grid-template-columns: minmax(0, 1fr); }
+  .knowledge-text { position: static; max-height: none; }
+}
+.ticket-facts dt.fact-label-action { display: flex; align-items: center; gap: 6px; }
+.ticket-facts .fact-open-resident { width: 26px; height: 26px; border-radius: 7px; }
+.ticket-facts .fact-open-resident svg { width: 14px; height: 14px; }
+.reporter-search input { flex: 1 1 320px; font-size: 13px; font-weight: 500; padding-top: 7px; padding-bottom: 7px; }
+.knowledge-columns .chunk-head { gap: 6px 8px; }
+.knowledge-columns .chunk-title { flex: 1 1 100%; font-size: 13.5px; }
+.knowledge-columns .chunk-head .knowledge-entry-actions { margin-left: auto; gap: 6px; }
+.knowledge-columns .chunk-head .knowledge-entry-actions button { padding: 4px 9px; font-size: 11.5px; }
+.knowledge-columns .chunk-row { padding: 9px 0; }
+.knowledge-drawer .chunk-head .knowledge-entry-actions { margin-top: 0; }

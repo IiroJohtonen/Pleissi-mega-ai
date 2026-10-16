@@ -15,7 +15,7 @@ export const waitlistRouter: Router = express.Router();
 const WAITLIST_RESOURCES = ["parking", "sauna"] as const;
 
 const WAITLIST_SELECT = `
-  SELECT w.*, r.name AS resident_name, r.email AS resident_email, a.apartment_number,
+  SELECT w.*, r.name AS resident_name, r.email AS resident_email, a.apartment_number, a.address,
          (SELECT COUNT(*) FROM waitlist earlier
           WHERE earlier.company_id = w.company_id AND earlier.resource = w.resource
             AND earlier.status IN ('waiting', 'offered') AND earlier.created_at < w.created_at) + 1 AS position

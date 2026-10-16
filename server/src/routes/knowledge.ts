@@ -475,6 +475,14 @@ knowledgeRouter.put("/knowledge-chunks/:id", requireManager, (req, res) => {
   res.json({ ok: true });
 });
 
+// Tarkistettu: isännöitsijä on lukenut AI:n poimiman tiedon ja todennut sen oikeaksi. Sisältö ei muutu.
+knowledgeRouter.post("/knowledge-chunks/:id/verify", requireManager, (req, res) => {
+  const chunk = getAuthorizedChunk(req.params.id);
+  if (!chunk) return res.status(404).json({ error: "Tietoa ei löytynyt." });
+  db.prepare("UPDATE knowledge_chunks SET verified = 1, needs_review = 0, updated_at = ? WHERE id = ?").run(now(), chunk.id);
+  res.json({ ok: true });
+});
+
 knowledgeRouter.delete("/knowledge-chunks/:id", requireManager, (req, res) => {
   const chunk = getAuthorizedChunk(req.params.id);
   if (!chunk) return res.status(404).json({ error: "Tietoa ei löytynyt." });

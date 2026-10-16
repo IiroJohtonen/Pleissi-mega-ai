@@ -34,6 +34,7 @@ import { parkingRouter } from "./routes/parking.js";
 import { passwordResetRouter } from "./routes/password-reset.js";
 import { portalRouter } from "./routes/portal.js";
 import { renovationsRouter } from "./routes/renovations.js";
+import { reportersRouter } from "./routes/reporters.js";
 import { reportsRouter } from "./routes/reports.js";
 import { residentsRouter } from "./routes/residents.js";
 import { ticketActionsRouter } from "./routes/ticket-actions.js";
@@ -114,7 +115,7 @@ for (const router of [
   authRouter, passwordResetRouter, officeRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingQueueRouter, billingRouter, portalRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter, contactRouter, searchRouter, boardRouter
+  metersRouter, contactRouter, searchRouter, boardRouter, reportersRouter
 ]) {
   app.use("/api", router);
 }

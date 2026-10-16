@@ -33,9 +33,19 @@ export type QueueEntry = {
   position: number | null;
   created_at: string;
   resident_name?: string | null;
+  resident_email?: string | null;
   apartment_number?: string | null;
   current_holder?: string | null;
 };
+
+// ISO-viikkonumero (maanantaista alkava viikko).
+function weekNumber(date: Date) {
+  const day = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const weekday = day.getUTCDay() || 7;
+  day.setUTCDate(day.getUTCDate() + 4 - weekday);
+  const yearStart = new Date(Date.UTC(day.getUTCFullYear(), 0, 1));
+  return Math.ceil(((day.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+}
 
 // Jonoon voi liittyä viimeistään kolme tuntia ennen vuoron alkua (sama raja tarkistetaan palvelimella).
 export const QUEUE_JOIN_CUTOFF_MS = 3 * 60 * 60 * 1000;
@@ -134,7 +144,6 @@ export function BookingCalendar({
   const [formError, setFormError] = useState("");
   const [repeat, setRepeat] = useState<"once" | "weekly">("once");
   // Suodattimet: näytettävä kellonaikaväli ja se, näytetäänkö vapaat, varatut vai kaikki vuorot.
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [fromHour, setFromHour] = useState(config.firstHour);
   const [toHour, setToHour] = useState(config.lastHour);
   const [show, setShow] = useState<"all" | "free" | "booked">("all");
@@ -359,12 +368,37 @@ export function BookingCalendar({
     return { start, booking, past, hidden, clickable: Boolean(clickable), state, label, action, title };
   }
 
+  // Viikon yhteenveto: tulevat vapaat vuorot ja jonottajat näkyvillä tunneilla.
+  const weekStats = { free: 0, queued: 0 };
+  for (const day of days) {
+    for (const hour of visibleHours) {
+      const cell = cellAt(day, hour);
+      if (!cell.booking && !cell.past && !bookingDisabled) weekStats.free++;
+      weekStats.queued += cell.booking?.queue_count ?? 0;
+    }
+  }
+
   return (
-    <section className="content">
+    <section className={`content booking-page booking-${resource}`}>
       {!portal && !embedded && <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>}
 
-      {filtersOpen && (
-        <div className="ticket-filters">
+      {/* Viikkonavigaatio ja suodattimet ovat aina näkyvissä yhdessä palkissa. */}
+      <div className="booking-toolbar">
+        <div className="booking-week" role="group" aria-label={t("Viikko")}>
+          <button type="button" onClick={() => shiftWeek(-1)} aria-label={t("Edellinen viikko")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.400" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+          </button>
+          <strong>
+            <small>{t("Viikko {0}", weekNumber(days[0]))}</small>
+            {days[0].toLocaleDateString(locale, { day: "numeric", month: "numeric" })}–{days[6].toLocaleDateString(locale, { day: "numeric", month: "numeric", year: "numeric" })}
+          </strong>
+          <button type="button" onClick={() => shiftWeek(1)} aria-label={t("Seuraava viikko")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.400" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+          </button>
+          <button type="button" className="booking-today" onClick={() => setWeekStart(startOfWeek(new Date()))}>{t("Tämä viikko")}</button>
+        </div>
+
+        <div className="booking-filters">
           {!portal && !embedded && (
             <Dropdown
               label={t("Taloyhtiö")}
@@ -374,74 +408,48 @@ export function BookingCalendar({
             />
           )}
           <Dropdown
-            label={t("Kellonaika alkaen")}
+            label={t("Alkaen")}
             value={String(fromHour)}
             options={hours.filter(hour => hour < toHour).map(hour => ({ value: String(hour), label: hourLabel(hour) }))}
             onChange={value => setFromHour(Number(value))}
           />
           <Dropdown
-            label={t("Kellonaika asti")}
+            label={t("Asti")}
             value={String(toHour)}
             options={hours.map(hour => hour + config.slotHours).filter(hour => hour > fromHour)
               .map(hour => ({ value: String(hour), label: hourLabel(hour) }))}
             onChange={value => setToHour(Number(value))}
           />
-          <Dropdown
-            label={t("Näytä")}
-            value={show}
-            options={[
-              { value: "all", label: t("Kaikki vuorot") },
-              { value: "free", label: t("Vain vapaat") },
-              { value: "booked", label: t("Vain varatut") }
-            ]}
-            onChange={value => setShow(value as typeof show)}
-          />
+          <div className="booking-show">
+            <span className="dropdown-label">{t("Näytä")}</span>
+            <div className="booking-segmented" role="group" aria-label={t("Näytä")}>
+              {([["all", t("Kaikki")], ["free", t("Vapaat")], ["booked", t("Varatut")]] as const).map(([value, label]) => (
+                <button key={value} type="button" aria-pressed={show === value} className={show === value ? "active" : ""} onClick={() => setShow(value)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           {calendarFiltered && (
-            <button className="clear-filters" onClick={() => {
+            <button type="button" className="clear-filters" onClick={() => {
               setFromHour(config.firstHour);
               setToHour(config.lastHour);
               setShow("all");
             }}>{t("Tyhjennä suodattimet")}</button>
           )}
         </div>
-      )}
+      </div>
 
-      <div className="calendar-toolbar">
-        <button
-          className={`filter-toggle ${filtersOpen || calendarFiltered ? "active" : ""}`}
-          onClick={() => setFiltersOpen(!filtersOpen)}
-          title={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
-          aria-label={filtersOpen ? t("Piilota suodattimet") : t("Näytä suodattimet")}
-          aria-expanded={filtersOpen}
-        >
-          <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.200"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M3 5h18l-7 8.500V19l-4 2v-7.500z" />
-            </svg>
-          {calendarFiltered && <i />}
-        </button>
-        {!portal && !embedded && <strong className="calendar-company">{companies.find(company => company.id === companyId)?.name}</strong>}
-        <div className="calendar-week">
-          <button onClick={() => shiftWeek(-1)} aria-label={t("Edellinen viikko")}>←</button>
-          <strong>
-            {days[0].toLocaleDateString(locale, { day: "numeric", month: "numeric" })}–
-            {days[6].toLocaleDateString(locale, { day: "numeric", month: "numeric", year: "numeric" })}
-          </strong>
-          <button onClick={() => shiftWeek(1)} aria-label={t("Seuraava viikko")}>→</button>
-          <button className="calendar-today" onClick={() => setWeekStart(startOfWeek(new Date()))}>{t("Tämä viikko")}</button>
-        </div>
-        <span className="calendar-count">
-          {portal
-            ? t("{0} omaa varausta tällä viikolla", bookings.filter(item => item.mine).length)
-            : t("{0} varausta tällä viikolla", bookings.length)}
-        </span>
+      <div className="booking-stats" aria-live="polite">
+        {portal ? (
+          <span className="booking-stat booked"><b>{bookings.filter(item => item.mine).length}</b>{t("omaa varausta tällä viikolla")}</span>
+        ) : (
+          <>
+            <span className="booking-stat booked"><b>{bookings.length}</b>{t("varausta")}</span>
+            <span className="booking-stat free"><b>{weekStats.free}</b>{t("vapaata vuoroa jäljellä")}</span>
+            {weekStats.queued > 0 && <span className="booking-stat queued"><b>{weekStats.queued}</b>{t("jonossa")}</span>}
+          </>
+        )}
       </div>
 
       {loadError && <div className="empty">{t("Varausten lataus epäonnistui.")}</div>}

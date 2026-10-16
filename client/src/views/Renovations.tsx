@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Dropdown, NoticeFilters, usePaged } from "../components/common";
+import { ReporterCell } from "../components/Reporter";
 import { formatDateOnly, formatDay, formatTicketNumber, noticeStatusClass } from "../format";
 import { navigate } from "../routing";
 import { api, errorMessage, isManager } from "../session";
@@ -516,7 +517,7 @@ export function RenovationNotices({ companies, defaultCompanyId = "", onChanged 
                   >
                     <td>#{formatTicketNumber(notice.ticket_number)}</td>
                     <td>
-                      <strong>{notice.resident_name || t("Ei ilmoittajaa")}</strong>
+                      <ReporterCell name={notice.resident_name} email={notice.resident_email} fallback={t("Ei ilmoittajaa")} />
                       {notice.description && <span>{notice.description.length > 110 ? `${notice.description.slice(0, 110)}…` : notice.description}</span>}
                     </td>
                     {showCompany && <td>{companyName(notice.company_id)}</td>}

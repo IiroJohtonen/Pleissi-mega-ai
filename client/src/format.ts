@@ -71,6 +71,7 @@ export function actionLabel(action: string) {
     ticket_deleted: t("Tehtävä poistettu"),
     user_deleted: t("Käyttäjä poistettu"),
     board_member_created: t("Hallituksen tunnus luotu"),
+    reporter_changed: t("Ilmoittaja vaihdettu"),
     board_member_deleted: t("Hallituksen tunnus poistettu"),
     resident_erased: t("Asukkaan henkilötiedot poistettu"),
     retention_purge: t("Säilytysajan ylittäneet tiedot poistettu"),
