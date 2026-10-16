@@ -4407,3 +4407,7 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .key-codes { display: flex; flex-wrap: wrap; gap: 6px; }
 .key-code { border: 1px solid #d2ddea; background: #f3f6f9; border-radius: 6px; padding: 2px 8px; font-size: 13px; }
 .key-code:hover { border-color: #9bb8d8; }
+
+/* Jonot-sivun toinen osio: vuorojen jonot. */
+.content > .section-heading { margin: 18px 0 0; font-size: 18px; }
+.content > .section-heading + .muted { margin: -4px 0 0; }

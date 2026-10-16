@@ -3,8 +3,9 @@ import { Dropdown, NoticeFilters, usePaged } from "../components/common";
 import { formatDate } from "../format";
 import { api, errorMessage } from "../session";
 import type { Company } from "../types";
+import type { QueueEntry } from "./Bookings";
 import type { ParkingSpace } from "./Parking";
-import { t } from "../i18n";
+import { locale, t } from "../i18n";
 
 export type WaitlistEntry = {
   id: string;
@@ -24,7 +25,7 @@ export type WaitlistEntry = {
 };
 
 export function waitlistLabel(entry: Pick<WaitlistEntry, "resource" | "parking_type">) {
-  if (entry.resource === "sauna") return t("Saunavuoro");
+  if (entry.resource === "sauna") return t("Saunan vakiovuoro");
   return entry.parking_type ? `${t("Autopaikka")} · ${t(entry.parking_type)}` : t("Autopaikka");
 }
 
@@ -40,14 +41,20 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
   const [parkingId, setParkingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Sauna- ja pyykkitupavuorojen jonot: jonottajat vuoroittain sijoineen.
+  const [slotEntries, setSlotEntries] = useState<(QueueEntry & { company_id: string })[]>([]);
+  const [slotError, setSlotError] = useState("");
 
   const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
 
   async function loadEntries() {
     try {
-      const lists = await Promise.all(companies.map(company =>
-        api<WaitlistEntry[]>(`/companies/${encodeURIComponent(company.id)}/waitlist`)));
+      const [lists, slotLists] = await Promise.all([
+        Promise.all(companies.map(company => api<WaitlistEntry[]>(`/companies/${encodeURIComponent(company.id)}/waitlist`))),
+        Promise.all(companies.map(company => api<(QueueEntry & { company_id: string })[]>(`/companies/${encodeURIComponent(company.id)}/booking-queue`)))
+      ]);
       setEntries(lists.flat());
+      setSlotEntries(slotLists.flat().sort((a, b) => a.starts_at.localeCompare(b.starts_at) || (a.position ?? 0) - (b.position ?? 0)));
       setLoadError(false);
     } catch {
       setLoadError(true);
@@ -87,15 +94,31 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
     }
   }
 
+  async function removeFromSlotQueue(entryId: string) {
+    setSlotError("");
+    try {
+      await api(`/booking-queue/${encodeURIComponent(entryId)}`, { method: "DELETE" });
+      await loadEntries();
+    } catch (removeError) {
+      setSlotError(errorMessage(removeError, t("Jonosta poistaminen epäonnistui.")));
+    }
+  }
+
   const visible = entries.filter(entry => companyFilter === "all" || entry.company_id === companyFilter);
   const paged = usePaged(visible, companyFilter);
+  const visibleSlots = slotEntries.filter(entry => companyFilter === "all" || entry.company_id === companyFilter);
+  const pagedSlots = usePaged(visibleSlots, `slots|${companyFilter}`);
+  const slotTime = (entry: QueueEntry) => {
+    const time = (value: string) => new Date(value).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+    return `${new Date(entry.starts_at).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "numeric" })} ${t("klo")} ${time(entry.starts_at)}–${time(entry.ends_at)}`;
+  };
 
   return (
     <section className="content">
       <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="residents-toolbar">
-        <span>{visible.length}{" "}{t("jonottajaa")}</span>
+        <span>{visible.length + visibleSlots.length}{" "}{t("jonottajaa")}</span>
       </div>
       <NoticeFilters companies={companies} company={companyFilter} onCompany={setCompanyFilter} />
 
@@ -150,6 +173,48 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
           </div>
         )}
       {paged.pager}
+
+      <h2 className="section-heading">{t("Sauna- ja pyykkitupavuorojen jonot")}</h2>
+      <p className="muted">{t("Asukas liittyy varatun vuoron jonoon kalenterista. Kun varaaja peruu vuoron, se siirtyy automaattisesti sijalla 1 olevalle.")}</p>
+      {!loading && !loadError && (visibleSlots.length === 0 ? (
+        <div className="empty">{t("Vuorojen jonoissa ei ole ketään.")}</div>
+      ) : (
+        <div className="table-card">
+          <table className="data-table report-topics">
+            <thead>
+              <tr>
+                <th>{t("Vuoro")}</th>
+                <th>{t("Sija")}</th>
+                <th>{t("Asukas")}</th>
+                <th>{t("Asunto")}</th>
+                <th>{t("Taloyhtiö")}</th>
+                <th>{t("Nyt varattu")}</th>
+                <th>{t("Jonossa alkaen")}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {pagedSlots.items.map(entry => (
+                <tr key={entry.id}>
+                  <td>
+                    <strong>{entry.resource === "sauna" ? t("Sauna") : t("Pyykkitupa")}</strong>
+                    <span>{slotTime(entry)}</span>
+                  </td>
+                  <td><strong>{entry.position}.</strong></td>
+                  <td>{entry.resident_name || t("Tuntematon asukas")}</td>
+                  <td>{entry.apartment_number || "–"}</td>
+                  <td>{companyName(entry.company_id)}</td>
+                  <td>{entry.current_holder || "–"}</td>
+                  <td>{formatDate(entry.created_at)}</td>
+                  <td><button className="link-button" onClick={() => void removeFromSlotQueue(entry.id)}>{t("Poista jonosta")}</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      {pagedSlots.pager}
+      {slotError && <p className="send-error">{slotError}</p>}
 
       {open && (
         <div className="overlay">

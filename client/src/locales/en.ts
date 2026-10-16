@@ -1600,4 +1600,10 @@ export const en: Record<string, string> = {
   "Asukas voi liittyä varatun vuoron jonoon kalenterista. Kun varaaja peruu vuoron, se siirtyy jonon ensimmäiselle.": "Residents can join the queue for a booked slot in the calendar. When the booker cancels, the slot passes to the first person in the queue.",
   "Jonopaikkoja yhdellä vuorolla": "Queue places per slot",
   "Kun jono on täynnä, kalenterissa näkyy Jono täynnä.": "When the queue is full, the calendar shows Queue full.",
+  "Saunan vakiovuoro": "Regular sauna slot",
+  "Jonosta poistaminen epäonnistui.": "Removing from the queue failed.",
+  "Sauna- ja pyykkitupavuorojen jonot": "Sauna and laundry slot queues",
+  "Asukas liittyy varatun vuoron jonoon kalenterista. Kun varaaja peruu vuoron, se siirtyy automaattisesti sijalla 1 olevalle.": "Residents join the queue for a booked slot in the calendar. When the booker cancels, the slot passes automatically to the person in position 1.",
+  "Vuorojen jonoissa ei ole ketään.": "No one is in the slot queues.",
+  "Vuoro": "Slot",
 };
