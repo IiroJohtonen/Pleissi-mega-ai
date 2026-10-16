@@ -446,7 +446,8 @@ if (!companyColumns.some(existing => existing.name === "managed")) {
 }
 
 // Tietopankin tietue on joko dokumentti tai vakiotieto. Uusi versio saa saman group_id:n,
-// ja vanha jää historiaan tilaan 'replaced'. Poistettu tietue jää tilaan 'deleted'.
+// ja vanha jää historiaan tilaan 'replaced'. Poistettu tietue jää tilaan 'deleted'. Dokumentin uusi versio
+// odottaa tilassa 'pending', kunnes isännöitsijä hyväksyy muutokset; vasta silloin vanha korvataan.
 const knowledgeColumns = db.prepare("PRAGMA table_info(knowledge)").all() as { name: string }[];
 for (const [column, definition] of [
   ["kind", "TEXT NOT NULL DEFAULT 'fact'"],
@@ -462,15 +463,53 @@ for (const [column, definition] of [
   // Pilkuilla erotetut avainsanat, joiden avulla tietue löytyy samantapaisille tehtäville.
   ["tags", "TEXT NOT NULL DEFAULT ''"],
   // Kenelle tietue on: 'ai' = AI käyttää sitä vastausehdotuksissa, 'internal' = vain henkilökunnan luettavaksi.
-  ["audience", "TEXT NOT NULL DEFAULT 'ai'"]
+  ["audience", "TEXT NOT NULL DEFAULT 'ai'"],
+  // Dokumentin pilkonta taustalla: 'processing' | 'ready' | 'failed'.
+  ["processing_state", "TEXT NOT NULL DEFAULT 'ready'"],
+  // PDF:n teksti sivuittain (JSON-taulukko), jotta tiedon sivu säilyy ja sivun voi lukea uudelleen.
+  ["pages", "TEXT"],
+  // Odottavan uuden version vertailu edelliseen (JSON), lasketaan kerran pilkonnan valmistuttua.
+  ["comparison", "TEXT"]
 ]) {
   if (!knowledgeColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE knowledge ADD COLUMN ${column} ${definition}`);
   }
 }
 
+// Tietopalat: dokumentti tai vakiotieto pilkottuna aiheittain. AI saa vastausehdotukseen vain kysymykseen
+// osuvat palat, ei koko tietopankkia. Voimassaolo, kohde (AI/sisäinen) ja taloyhtiö tulevat tietueelta;
+// company_id on palalla tallessa, jotta jokainen haku rajautuu yhtiöön myös palatasolla.
+// origin: 'ai' = AI pilkkoi, 'local' = paikallinen kappalejako, 'manual' = isännöitsijän kirjoittama.
+// status: 'active' | 'archived' (vanhan version pala) | 'deleted'.
+db.exec(`
+CREATE TABLE IF NOT EXISTS knowledge_chunks (
+  id TEXT PRIMARY KEY,
+  knowledge_id TEXT NOT NULL,
+  company_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  page INTEGER,
+  tags TEXT NOT NULL DEFAULT '',
+  origin TEXT NOT NULL DEFAULT 'local',
+  verified INTEGER NOT NULL DEFAULT 0,
+  needs_review INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'active',
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(knowledge_id) REFERENCES knowledge(id)
+);
+CREATE INDEX IF NOT EXISTS knowledge_chunks_knowledge ON knowledge_chunks(knowledge_id);
+CREATE INDEX IF NOT EXISTS knowledge_chunks_company ON knowledge_chunks(company_id, status);
+`);
+// AI:n dokumentista löytämä päättymispäivä. Näytetään vain ehdotuksena, eikä sitä aseteta tietueelle
+// ilman isännöitsijän hyväksyntää.
+if (!(db.prepare("PRAGMA table_info(knowledge_chunks)").all() as { name: string }[]).some(column => column.name === "suggested_valid_until")) {
+  db.exec("ALTER TABLE knowledge_chunks ADD COLUMN suggested_valid_until TEXT");
+}
+
 const ticketSourceColumns = db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];
-for (const column of ["knowledge_source_id", "knowledge_source_title"]) {
+for (const column of ["knowledge_source_id", "knowledge_source_title", "knowledge_source_chunk_id", "knowledge_source_page"]) {
   if (!ticketSourceColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE tickets ADD COLUMN ${column} TEXT`);
   }
@@ -505,6 +544,33 @@ for (const column of ["single_price", "monthly_price"]) {
     db.exec(`ALTER TABLE booking_settings ADD COLUMN ${column} REAL NOT NULL DEFAULT 0`);
   }
 }
+
+// Vuorokohtainen jono: onko jono käytössä tilassa ja montako jonopaikkaa yhdellä vuorolla on.
+if (!bookingSettingColumns.some(column => column.name === "queue_enabled")) {
+  db.exec("ALTER TABLE booking_settings ADD COLUMN queue_enabled INTEGER NOT NULL DEFAULT 0");
+}
+if (!bookingSettingColumns.some(column => column.name === "queue_size")) {
+  db.exec("ALTER TABLE booking_settings ADD COLUMN queue_size INTEGER NOT NULL DEFAULT 3");
+}
+
+// Jonopaikat varatuille sauna- ja pyykkitupavuoroille. Kun varaus perutaan, vuoro siirtyy jonon
+// ensimmäiselle. status: waiting (jonossa), granted (sai vuoron), left (poistui itse),
+// cancelled (poistettu, esim. muutto). Jonosija lasketaan liittymisjärjestyksestä.
+db.exec(`
+CREATE TABLE IF NOT EXISTS booking_queue (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  starts_at TEXT NOT NULL,
+  ends_at TEXT NOT NULL,
+  resident_id TEXT,
+  status TEXT NOT NULL DEFAULT 'waiting',
+  created_at TEXT NOT NULL,
+  closed_at TEXT,
+  booking_id TEXT
+);
+CREATE INDEX IF NOT EXISTS booking_queue_slot ON booking_queue(company_id, resource, starts_at, status);
+`);
 
 // Postilaatikko, jonka kautta tehtävä saapui (esim. isännöitsijän oma tili "user:<id>"). Vastaukset
 // lähetetään samasta laatikosta, jotta asukas saa ne siltä, jolle hän kirjoitti.
@@ -690,6 +756,62 @@ BEGIN
   WHERE id = NEW.id;
 END;
 `);
+
+// Remontti-ilmoitus on tehtävä (tickets.kind = 'renovation'), ja ilmoituksen tiedot ovat
+// renovation_notices-rivillä, joka viittaa tehtävään. Kaikki muutostyöilmoituksen kentät ovat
+// valinnaisia, joten vanhan taulun NOT NULL -sarakkeet muutetaan kerran valinnaisiksi. Toimiston
+// kirjaamalla ilmoituksella ei välttämättä ole asukasta, ja asukkaan tietojen poisto jättää
+// ilmoituksen taloyhtiön historiaan ilman asukasta.
+if (!ticketColumns.some(column => column.name === "kind")) {
+  db.exec("ALTER TABLE tickets ADD COLUMN kind TEXT NOT NULL DEFAULT 'ticket'");
+}
+{
+  const columns = db.prepare("PRAGMA table_info(renovation_notices)").all() as { name: string; notnull: number }[];
+  if (columns.find(column => column.name === "resident_id")?.notnull) {
+    db.transaction(() => {
+      db.exec(`
+        ALTER TABLE renovation_notices RENAME TO renovation_notices_old;
+        CREATE TABLE renovation_notices (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          apartment_id TEXT,
+          resident_id TEXT,
+          work_type TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          start_date TEXT,
+          end_date TEXT,
+          contractor TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'pending',
+          decision_note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          decided_by TEXT,
+          decided_at TEXT,
+          completed_at TEXT
+        );
+        INSERT INTO renovation_notices
+          (id, company_id, apartment_id, resident_id, work_type, description, start_date, end_date, contractor,
+           status, decision_note, created_at, decided_by, decided_at, completed_at)
+        SELECT id, company_id, apartment_id, resident_id, work_type, description, start_date, end_date, contractor,
+               status, decision_note, created_at, decided_by, decided_at, completed_at
+        FROM renovation_notices_old;
+        DROP TABLE renovation_notices_old;
+      `);
+    })();
+  }
+  // Työn tyypit vastaavat nyt muutostyöilmoituksen luokittelua.
+  db.prepare("UPDATE renovation_notices SET work_type = 'Sähkö' WHERE work_type = 'Sähkötyöt'").run();
+  db.prepare("UPDATE renovation_notices SET work_type = 'LVI' WHERE work_type = 'Vesi- ja viemärityöt'").run();
+  const renovationColumns = (db.prepare("PRAGMA table_info(renovation_notices)").all() as { name: string }[]).map(column => column.name);
+  // ticket_id: remonttitehtävä. Muut: asunto-osakeyhtiölain 4. luvun muutostyöilmoituksen tiedot.
+  for (const column of [
+    "ticket_id", "reporter_name", "contractor_contact", "supervisor", "impact_structures", "impact_water",
+    "impact_sewer", "impact_electric", "impact_ventilation", "waterproofing", "hazmat_survey", "started_at", "inspected_at"
+  ]) {
+    if (!renovationColumns.includes(column)) {
+      db.exec(`ALTER TABLE renovation_notices ADD COLUMN ${column} TEXT${column === "ticket_id" || column.endsWith("_at") ? "" : " NOT NULL DEFAULT ''"}`);
+    }
+  }
+}
 
 function backfillKnowledge() {
   db.prepare("UPDATE knowledge SET group_id = id WHERE group_id IS NULL").run();

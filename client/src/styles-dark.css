@@ -77,6 +77,10 @@
     background: #4b4430;
     color: #eed799
 }
+:root[data-theme="dark"] .knowledge-state.processing {
+    background: #2f3b49;
+    color: #9abde8
+}
 :root[data-theme="dark"] .knowledge-entry-actions button {
     border: 1px solid #354150;
     background: #283341
@@ -1941,4 +1945,90 @@
     background: #d6dbe1;
     border-color: #a6b1bf;
     color: #19222e
+}
+:root[data-theme="dark"] .ticket-form .field-hint {
+    color: #bfc6cf
+}
+:root[data-theme="dark"] .status-badge.renovation-started {
+    background: #303c4c;
+    color: #9fc1e4
+}
+:root[data-theme="dark"] .status-badge.renovation-inspected {
+    background: #314d3b;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .timeline-event .event-note {
+    color: #cfd4db
+}
+:root[data-theme="dark"] .key-code {
+    border: 1px solid #3d5571;
+    background: #2d3a47
+}
+:root[data-theme="dark"] .key-code:hover {
+    border-color: #3d5571
+}
+:root[data-theme="dark"] .chunk-row {
+    border-top: 1px solid #3a4758
+}
+:root[data-theme="dark"] .chunk-row.highlight,
+:root[data-theme="dark"] .chunk-row.hit {
+    background: #232c38
+}
+:root[data-theme="dark"] .chunk-status {
+    color: #b8c0ca
+}
+:root[data-theme="dark"] .chunk-status.verified {
+    color: #9ee6bd
+}
+:root[data-theme="dark"] .chunk-status.review {
+    color: #eeca96
+}
+:root[data-theme="dark"] .chunk-panel input,
+:root[data-theme="dark"] .chunk-panel textarea,
+:root[data-theme="dark"] .chunk-editor input,
+:root[data-theme="dark"] .chunk-editor textarea {
+    border: 1px solid #374353;
+    background: #242d3a;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .chunk-buttons button {
+    border: 1px solid #354150
+}
+:root[data-theme="dark"] .chunk-buttons button.primary {
+    background: #d6dbe1;
+    border-color: #a6b1bf;
+    color: #19222e
+}
+:root[data-theme="dark"] .chunk-buttons button.danger {
+    color: #e4a096
+}
+:root[data-theme="dark"] .chunk-suggestion {
+    background: #4b4430;
+    color: #efd69c
+}
+:root[data-theme="dark"] .knowledge-state.pending {
+    background: #4b4430;
+    color: #eed799
+}
+:root[data-theme="dark"] .version-count {
+    background: #1c242e;
+    color: #c8ced6
+}
+:root[data-theme="dark"] .version-count.conflict {
+    background: #49342f;
+    color: #ea9e96
+}
+:root[data-theme="dark"] .version-count.changed {
+    background: #4b4430;
+    color: #eed799
+}
+:root[data-theme="dark"] .version-count.new {
+    background: #304b3a;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .version-item {
+    border-top: 1px solid #3a4758
+}
+:root[data-theme="dark"] .version-chunk small {
+    color: #b7bec9
 }

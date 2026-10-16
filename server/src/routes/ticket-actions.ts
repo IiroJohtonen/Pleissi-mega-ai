@@ -4,12 +4,12 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
+import { selectKnowledgeChunks } from "../knowledge-chunks.js";
 import { attachmentsDir, db } from "../db.js";
 import { type OutgoingAttachment, parseSender, replyAccountsFor, sendEmail } from "../mail.js";
 import { notifyResident } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
 import { id, now, unsafeFileMessage } from "../util.js";
-import { getKnowledge } from "./knowledge.js";
 
 export const ticketActionsRouter: Router = express.Router();
 
@@ -115,30 +115,35 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
         .join("\n\n")
     : ticket.summary;
 
-  const knowledge = getKnowledge(ticket.company_id);
-  const suggestion = await suggestReply(ticket.subject, conversation, knowledge, options.data.context ?? "");
-  const source = knowledge.find(item => item.id === suggestion.sourceId) ?? null;
+  // AI saa vain tehtävään osuvat palat: haku otsikon, viimeisimpien viestien ja lisätiedon perusteella.
+  const chunks = selectKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? ""].join("\n"));
+  const suggestion = await suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "");
+  const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
   const timestamp = now();
 
   db.prepare(`
     UPDATE tickets
-    SET ai_reason = ?, knowledge_source_id = ?, knowledge_source_title = ?, updated_at = ?
+    SET ai_reason = ?, knowledge_source_id = ?, knowledge_source_title = ?, knowledge_source_chunk_id = ?,
+        knowledge_source_page = ?, updated_at = ?
     WHERE id = ?
-  `).run(suggestion.reason, source?.id ?? null, source?.title ?? null, timestamp, req.params.id);
+  `).run(
+    suggestion.reason, source?.knowledgeId ?? null, source?.documentTitle ?? null, source?.id ?? null,
+    source?.page ?? null, timestamp, req.params.id
+  );
 
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
     req.params.id,
     "ai",
     "ai_suggested",
-    JSON.stringify({ source_id: source?.id ?? null, used_ai: suggestion.usedAi }),
+    JSON.stringify({ source_id: source?.knowledgeId ?? null, chunk_id: source?.id ?? null, used_ai: suggestion.usedAi }),
     timestamp
   );
 
   res.json({
     draft: suggestion.draft,
     reason: suggestion.reason,
-    source: source ? { id: source.id, title: source.title } : null,
+    source: source ? { id: source.knowledgeId, title: source.documentTitle, chunkId: source.id, page: source.page } : null,
     usedAi: suggestion.usedAi
   });
 });

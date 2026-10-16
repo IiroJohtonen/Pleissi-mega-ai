@@ -10,6 +10,7 @@ import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { RenovationPanel } from "../views/Renovations";
 import { storedAiPrompt } from "../preferences";
 import { Toast } from "../components/Toast";
 import { t } from "../i18n";
@@ -267,7 +268,7 @@ export function TicketDrawer({
   // Viimeisin tässä istunnossa pyydetty AI-ehdotus; muuten näytetään tehtävälle tallennettu peruste ja lähde.
   const [suggestion, setSuggestion] = useState<{
     reason: string;
-    source: { id: string; title: string } | null;
+    source: { id: string; title: string; chunkId?: string | null; page?: number | string | null } | null;
     usedAi: boolean;
   } | null>(null);
   const [suggesting, setSuggesting] = useState(false);
@@ -284,7 +285,7 @@ export function TicketDrawer({
   const aiSource = suggestion
     ? suggestion.source
     : suggestionUsed && ticket.knowledge_source_id && ticket.knowledge_source_title
-      ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title }
+      ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title, chunkId: ticket.knowledge_source_chunk_id, page: ticket.knowledge_source_page }
       : null;
 
   const [suggestionToast, setSuggestionToast] = useState<{ title: string; message: string } | null>(null);
@@ -311,7 +312,7 @@ export function TicketDrawer({
       const result = await api<{
         draft: string;
         reason: string;
-        source: { id: string; title: string } | null;
+        source: { id: string; title: string; chunkId?: string | null; page?: number | string | null } | null;
         usedAi: boolean;
       }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
@@ -923,10 +924,14 @@ export function TicketDrawer({
           />
         )}
 
-        <div className="ticket-description">
-          <h3>{t("Kuvaus")}</h3>
-          <p>{description}</p>
-        </div>
+        {detail.renovation ? (
+          <RenovationPanel notice={detail.renovation} onChanged={onChanged} />
+        ) : (
+          <div className="ticket-description">
+            <h3>{t("Kuvaus")}</h3>
+            <p>{description}</p>
+          </div>
+        )}
 
         {/* Vastaus ja työtilaukset ovat välilehtinä. Piilotettu välilehti pysyy sivulla, jotta keskeneräinen
             vastaus tai työtilaus ei katoa välilehteä vaihdettaessa. */}
@@ -969,12 +974,12 @@ export function TicketDrawer({
             <p>
               <a
                 className="source-pill source-link"
-                href={`#/knowledge/${encodeURIComponent(aiSource.id)}`}
+                href={`#/knowledge/${encodeURIComponent(aiSource.chunkId ? `${aiSource.id}:${aiSource.chunkId}` : aiSource.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                title={t("Avaa dokumentti uuteen välilehteen")}
+                title={t("Avaa lähde uuteen välilehteen")}
               >
-                {t("Ehdotettu dokumentti:")}{" "}{aiSource.title} ↗
+                📄 {aiSource.title}{aiSource.page ? `, ${t("s. {0}", String(aiSource.page))}` : ""} ↗
               </a>
             </p>
           ) : null}
@@ -1146,6 +1151,7 @@ export function TicketDrawer({
           ) : (
             <div className="timeline-event" key={item.id}>
               <span>{actionLabel(item.event.action)}</span>
+              {eventNote(item.event.details) && <span className="event-note">{eventNote(item.event.details)}</span>}
               <small>{actorLabel(item.event.actor)} · {formatDate(item.created_at)}</small>
             </div>
           ))}
@@ -1184,6 +1190,16 @@ export function TicketDrawer({
       )}
     </section>
   );
+}
+
+// Lokimerkinnän vapaa teksti, esim. remontin valvontakäynnin havainnot.
+function eventNote(details: string) {
+  try {
+    const parsed = JSON.parse(details) as { note?: unknown };
+    return typeof parsed?.note === "string" ? parsed.note : "";
+  } catch {
+    return "";
+  }
 }
 
 // Lähettäjävalikon teksti: osoite ja tilin laji; saapumislaatikko merkitään.

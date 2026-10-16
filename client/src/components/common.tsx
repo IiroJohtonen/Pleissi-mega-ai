@@ -260,20 +260,31 @@ export function Dropdown({
   value,
   options,
   onChange,
-  disabled
+  disabled,
+  className,
+  icon,
+  placeholder,
+  ariaLabel
 }: {
   label?: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  // Lisäluokka sijoituspaikan tyylejä varten (esim. yläpalkki).
+  className?: string;
+  // Kuvake painikkeen alussa.
+  icon?: ReactNode;
+  // Teksti, kun mitään ei ole valittu.
+  placeholder?: string;
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const current = options.find(option => option.value === value);
 
   return (
     <div
-      className="dropdown"
+      className={className ? `dropdown ${className}` : "dropdown"}
       onBlur={event => {
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
@@ -287,10 +298,12 @@ export function Dropdown({
         className="dropdown-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={ariaLabel}
         disabled={disabled}
         onClick={() => setOpen(!open)}
       >
-        <span>{current?.label ?? value}</span>
+        {icon}
+        <span>{current?.label ?? (value || placeholder || "")}</span>
         <svg
           className={open ? "up" : ""}
           viewBox="0 0 24 24"

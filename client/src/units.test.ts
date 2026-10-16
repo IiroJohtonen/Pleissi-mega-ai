@@ -1,3 +1,4 @@
+import { tableToKeys } from "./views/Keys";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatDay, formatTicketNumber } from "./format";
 import { t } from "./i18n";
@@ -158,5 +159,17 @@ describe("raporttien aikavälit ja kestot", () => {
     const photo = new File(["jpeg"], "kuva.jpg", { type: "image/jpeg" });
     expect(await shrinkImage(pdf)).toBe(pdf);
     expect(await shrinkImage(photo)).toBe(photo);
+  });
+});
+
+describe("avainten tuonti", () => {
+  it("tunnistaa sarakkeet otsikkoriviltä ja vaatii avainnumeron", () => {
+    const { rows, missing } = tableToKeys(parseCsv("Asunto;Avainnumero;Tyyppi;Huomio;Tila\nA 12;A12-1;Asunto;;käytössä\n;Y-1;;Varavain;kadonnut\n"));
+    expect(missing).toEqual([]);
+    expect(rows).toEqual([
+      { line: 2, apartment: "A 12", code: "A12-1", type: "Asunto", note: "", state: "käytössä" },
+      { line: 3, apartment: "", code: "Y-1", type: "", note: "Varavain", state: "kadonnut" }
+    ]);
+    expect(tableToKeys(parseCsv("asunto;tyyppi\nA 12;Asunto\n")).missing).toEqual(["avainnumero"]);
   });
 });

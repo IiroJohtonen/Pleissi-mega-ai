@@ -45,14 +45,12 @@ const subTabs = navGroups.flatMap(group => group.tabs);
 // Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
 const ownTicketStatuses = ["active", "waiting_manager", "answered", "waiting_third_party"];
 // Päätösjonon yhteenvedon laatikot: omat tehtävät näissä tiloissa.
-const summaryTicketStatuses = ["waiting_manager", "answered", "waiting_third_party"];
+const summaryTicketStatuses = ["waiting_manager", "waiting_third_party"];
 // Keskeneräisen tehtävän tilat.
 const openTicketStatuses = ["open", ...ownTicketStatuses];
 
 // Mitä alasivun laskuri tarkoittaa.
 const navCountTitles: Partial<Record<TicketTab, string>> = {
-  sauna: t("Varaustoiveita odottaa käsittelyä"),
-  laundry: t("Varaustoiveita odottaa käsittelyä"),
   moves: t("Odottaa käsittelyä"),
   renovations: t("Odottaa käsittelyä"),
   keys: t("Palautus myöhässä")
@@ -224,20 +222,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
     if (group) setClosedGroups(current => current.filter(key => key !== group.key));
   }, [tab]);
 
-  // Alavalikon laskurit: käsittelyä odottavat varaustoiveet, muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
+  // Alavalikon laskurit: käsittelyä odottavat muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
   async function refreshNavCounts() {
     if (!navCompany) return;
     const lists = <T,>(resource: string) => Promise.all([navCompany].map(company =>
       api<T[]>(`/companies/${encodeURIComponent(company.id)}/${resource}`).catch(() => [] as T[]))).then(all => all.flat());
-    const [moves, renovations, keys, bookingRequests] = await Promise.all([
+    const [moves, renovations, keys] = await Promise.all([
       lists<{ status: string }>("moves"),
       lists<{ status: string }>("renovations"),
-      lists<{ loan_id: string | null; due_date: string | null }>("keys"),
-      lists<{ resource: string }>("booking-requests")
+      lists<{ loan_id: string | null; due_date: string | null }>("keys")
     ]);
     setNavCounts({
-      sauna: bookingRequests.filter(request => request.resource === "sauna").length,
-      laundry: bookingRequests.filter(request => request.resource === "laundry").length,
       moves: moves.filter(notice => notice.status === "pending").length,
       renovations: renovations.filter(notice => notice.status === "pending").length,
       keys: keys.filter(isKeyLate).length
@@ -416,8 +411,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
 
   // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät käyttäjän valitsemassa järjestyksessä.
+  // Remonttitehtävät ovat auki pitkään, joten ne ovat Remontit-osiossa eivätkä päätösjonossa.
   const queueTickets = allCompanyTickets
-    .filter(ticket => queueTicketStatuses.includes(ticket.status) && ticket.assignee_id === user.id)
+    .filter(ticket => queueTicketStatuses.includes(ticket.status) && ticket.assignee_id === user.id && ticket.kind !== "renovation")
     .sort((a, b) => compareQueue(a, b, queueSort));
   // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
   const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
@@ -429,8 +425,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
       || compareTickets(a.ticket, b.ticket, "priority"));
   // Kaikkien yhtiöiden keskeneräiset tehtävät, joita ei ole vielä annettu kenenkään käsiteltäväksi.
   const unassignedTickets = allCompanyTickets
-    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id)
+    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id && ticket.kind !== "renovation")
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
+  // Keskeneräiset remonttitehtävät kaikista yhtiöistä.
+  const openRenovations = allCompanyTickets.filter(ticket => ticket.kind === "renovation" && ticket.status !== "closed");
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
   const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unassigned";
   // Muistutukset koskevat kaikkia omia keskeneräisiä tehtäviä kaikista yhtiöistä, myös päätösjonon avoimia.
@@ -599,13 +597,23 @@ export function Workspace({ user }: { user: OfficeUser }) {
           <div className="nav-group">
             <button className={tab === "companies" ? "active" : ""} onClick={() => setTab("companies")}>
               <TabIcon tab="companies" />
-              {t("Taloyhtiöt")}
+              {t("Kaikki taloyhtiöt")}
             </button>
             <NavToggle open={showResidentsLink} label={t("taloyhtiöiden alasivut")} onToggle={() => setResidentsOpen(!showResidentsLink)} />
           </div>
           {showResidentsLink && (
             <div className="nav-subs">
-              {navCompany && <p className="nav-company-name" title={t("Taloyhtiön voi vaihtaa yläpalkista.")}>{navCompany.name}</p>}
+              {/* Yläpalkissa valittu taloyhtiö; painike avaa sen tietueen. Taloyhtiön voi vaihtaa yläpalkista. */}
+              {navCompany && (
+                <button
+                  type="button"
+                  className={`nav-company-name ${tab === "companies" && routeParam === navCompany.id ? "active" : ""}`}
+                  title={t("Avaa taloyhtiön tiedot. Taloyhtiön voi vaihtaa yläpalkista.")}
+                  onClick={() => navigate("companies", navCompany.id)}
+                >
+                  {navCompany.name}
+                </button>
+              )}
               {navCompany && navGroups.map(group => {
                 const open = !closedGroups.includes(group.key);
                 // Suljetun ryhmän otsikossa näkyy sen laskurien summa, jotta odottavat asiat eivät jää piiloon.
@@ -732,7 +740,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
               companyId={selectedCompany}
               companies={companies}
               onCompanyChange={changeCompany}
-              onRequestsChanged={() => void refreshNavCounts()}
             />
           )
           : tab === "reports" ? (
@@ -819,6 +826,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   <span>{t("Muistutukset")}</span>
                   <strong>{reminderTickets.length}</strong>
                   <small>{t("vaatii huomiota")}</small>
+                </button>
+                <button
+                  title={t("Avaa Remontit-osio")}
+                  onClick={() => setTab("renovations")}
+                >
+                  <span>{t("Remontti-ilmoitukset")}</span>
+                  <strong>{openRenovations.length}</strong>
+                  <small>{openRenovations.length === 1 ? t("avoin remontti") : t("avointa remonttia")}</small>
                 </button>
               </div>
             )}

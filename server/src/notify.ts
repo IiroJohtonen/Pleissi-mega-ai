@@ -90,6 +90,6 @@ export async function notifyResident(residentId: string, subject: string, lines:
       body: [`Hei ${resident.name},`, "", ...lines, "", "Ystävällisin terveisin", office.name].join("\n")
     });
   } catch (error: any) {
-    console.error("Ilmoituksen lähetys asukkaalle epäonnistui:", error?.message ?? error);
+    console.error(`Ilmoituksen lähetys asukkaalle epäonnistui (${subject}):`, error?.message ?? error);
   }
 }

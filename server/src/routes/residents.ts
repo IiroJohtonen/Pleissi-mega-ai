@@ -4,6 +4,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
 import { isAdmin, requireManager, setResidentPassword } from "../auth.js";
+import { deleteBookingsAndRelease } from "../booking-queue.js";
 import { attachmentsDir, db } from "../db.js";
 import { ACTIVE_RESIDENT, id, now, today } from "../util.js";
 
@@ -283,6 +284,9 @@ residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) 
       FROM booking_requests WHERE resident_id = ? ORDER BY created_at
     `).all(resident.id),
     waitlist: db.prepare("SELECT resource, parking_type, note, status, created_at FROM waitlist WHERE resident_id = ? ORDER BY created_at").all(resident.id),
+    booking_queue: db.prepare(`
+      SELECT resource, starts_at, ends_at, status, created_at, closed_at FROM booking_queue WHERE resident_id = ? ORDER BY created_at
+    `).all(resident.id),
     move_notices: db.prepare(`
       SELECT move_date, moves_out, new_residents, door_name, note, status, created_at
       FROM move_notices WHERE resident_id = ? ORDER BY created_at
@@ -354,12 +358,14 @@ residentsRouter.delete("/residents/:residentId", requireManager, async (req, res
     db.prepare("DELETE FROM resident_credentials WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM resident_sessions WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM password_resets WHERE kind = 'resident' AND subject_id = ?").run(resident.id);
-    db.prepare("DELETE FROM bookings WHERE resident_id = ? AND starts_at >= ?").run(resident.id, now());
+    db.prepare("DELETE FROM booking_queue WHERE resident_id = ?").run(resident.id);
+    deleteBookingsAndRelease("resident_id = ? AND starts_at >= ?", [resident.id, now()]);
     db.prepare("UPDATE bookings SET note = '' WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM waitlist WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM booking_requests WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM move_notices WHERE resident_id = ?").run(resident.id);
-    db.prepare("DELETE FROM renovation_notices WHERE resident_id = ?").run(resident.id);
+    // Remontti-ilmoitus on taloyhtiön asiakirja, joten se jää historiaan ilman asukkaan tietoja.
+    db.prepare("UPDATE renovation_notices SET resident_id = NULL, reporter_name = '' WHERE resident_id = ?").run(resident.id);
     // Lukemat ovat asunnon tietoja ja avaimen luovutus jää rekisteriin; niistä poistetaan vain yhteys asukkaaseen.
     db.prepare("UPDATE meter_readings SET resident_id = NULL, recorded_by = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);
     db.prepare("UPDATE key_loans SET resident_id = NULL, holder_name = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);

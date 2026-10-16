@@ -5,6 +5,7 @@ import { language, setLanguage, t } from "../i18n";
 import { logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import { setTheme, storedTheme } from "../theme";
 import type { Company } from "../types";
+import { Dropdown } from "./common";
 
 // Avautuva valikko, joka sulkeutuu ulkopuolelle klikatessa ja Escape-näppäimellä.
 function useDropdown() {
@@ -190,13 +191,16 @@ export function Topbar({
             aria-label={t("Hae alustalta")}
           />
         </form>
-        <label className="topbar-company" title={t("Taloyhtiö")}>
-          <Icon><path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M10 21v-5h4v5" /></Icon>
-          <select value={companyId} onChange={event => onCompanyChange(event.target.value)} aria-label={t("Taloyhtiö")}>
-            {companyId === "" && <option value="" disabled>{t("Valitse taloyhtiö")}</option>}
-            {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-          </select>
-        </label>
+        {/* Sama alasvetovalikko kuin sovelluksen muissa valinnoissa; yläpalkissa painike on tumma. */}
+        <Dropdown
+          className="topbar-company"
+          icon={<Icon><path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M10 21v-5h4v5" /></Icon>}
+          value={companyId}
+          placeholder={t("Valitse taloyhtiö")}
+          ariaLabel={t("Taloyhtiö")}
+          options={companies.map(company => ({ value: company.id, label: company.name }))}
+          onChange={onCompanyChange}
+        />
         <ProfileMenu user={user} onOpenSettings={onOpenSettings} />
       </div>
     </header>

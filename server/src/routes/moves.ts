@@ -2,6 +2,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
 import { requireManager } from "../auth.js";
+import { deleteBookingsAndRelease } from "../booking-queue.js";
 import { db } from "../db.js";
 import { notifyResident } from "../notify.js";
 import { ACTIVE_RESIDENT, id, now } from "../util.js";
@@ -102,12 +103,11 @@ movesRouter.post("/moves/:id/approve", requireManager, (req, res) => {
         db.prepare("UPDATE parking_assignments SET end_date = ? WHERE resident_id = ? AND (end_date IS NULL OR end_date > ?)")
           .run(notice.move_date, residentId, notice.move_date);
         db.prepare("DELETE FROM parking_assignments WHERE resident_id = ? AND end_date <= start_date").run(residentId);
-        result.bookingsRemoved += db.prepare("DELETE FROM bookings WHERE resident_id = ? AND starts_at >= ?")
-          .run(residentId, moveStart).changes;
+        result.bookingsRemoved += deleteBookingsAndRelease("resident_id = ? AND starts_at >= ?", [residentId, moveStart]);
+        db.prepare("UPDATE booking_queue SET status = 'cancelled', closed_at = ? WHERE resident_id = ? AND status = 'waiting'")
+          .run(now(), residentId);
         db.prepare("UPDATE waitlist SET status = 'cancelled', closed_at = ? WHERE resident_id = ? AND status IN ('waiting', 'offered')")
           .run(now(), residentId);
-        db.prepare("UPDATE booking_requests SET status = 'cancelled' WHERE resident_id = ? AND status = 'pending' AND starts_at >= ?")
-          .run(residentId, moveStart);
         result.movedOut++;
       }
       syncParkingHolders();

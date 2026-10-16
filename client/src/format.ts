@@ -75,6 +75,14 @@ export function actionLabel(action: string) {
     resident_erased: t("Asukkaan henkilötiedot poistettu"),
     retention_purge: t("Säilytysajan ylittäneet tiedot poistettu"),
     reporter_linked: t("Asukas linkitetty tehtävään"),
+    renovation_reported: t("Remontti ilmoitettu"),
+    renovation_updated: t("Remontti-ilmoituksen tietoja muutettu"),
+    renovation_approved: t("Remontti hyväksytty"),
+    renovation_rejected: t("Remontti hylätty"),
+    renovation_started: t("Remontti aloitettu"),
+    renovation_supervision: t("Valvontakäynti"),
+    renovation_completed: t("Remontti valmis"),
+    renovation_inspected: t("Remontti tarkastettu"),
     reporter_unlinked: t("Asukkaan linkitys poistettu")
   }[action] || action;
 }

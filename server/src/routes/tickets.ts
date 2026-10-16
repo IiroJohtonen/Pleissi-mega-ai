@@ -31,6 +31,7 @@ export async function deleteTicket(ticketId: string) {
     for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log"]) {
       db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
     }
+    db.prepare("DELETE FROM renovation_notices WHERE ticket_id = ?").run(ticketId);
     db.prepare("DELETE FROM tickets WHERE id = ?").run(ticketId);
   })();
   for (const file of files) await fs.rm(path.join(attachmentsDir, file.id), { force: true });
@@ -169,6 +170,8 @@ ticketsRouter.get("/decision-queue", (req, res) => {
     LEFT JOIN users u ON u.id = t.assignee_id
     WHERE t.company_id = ?
       AND t.status IN ('open', 'active')
+      -- Remonttitehtävät ovat auki pitkään, joten ne ovat Remontit-osiossa eivätkä päätösjonossa.
+      AND t.kind != 'renovation'
     ORDER BY t.priority = 'emergency' DESC, t.created_at DESC
   `).all(companyId);
   res.json(rows);
@@ -264,7 +267,10 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
   // Allekirjoitus, joka lisätään vastauksen loppuun; näytetään vastauslomakkeessa.
   const signature = renderSignature(res.locals.user?.id);
 
-  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature });
+  // Remonttitehtävän muutostyöilmoituksen tiedot.
+  const renovation = db.prepare("SELECT * FROM renovation_notices WHERE ticket_id = ?").get(req.params.id) ?? null;
+
+  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature, renovation });
 });
 
 ticketsRouter.put("/tickets/:id/fields", (req, res) => {

@@ -212,6 +212,7 @@ nav button.active {
 .knowledge-state { border-radius: 99px; padding: 3px 9px; font-weight: 700; background: #e5ecf3; color: #37475a; }
 .knowledge-state.expired, .knowledge-state.unreadable { background: #fbeae6; color: #9c2b1f; }
 .knowledge-state.upcoming { background: #fdf5dc; color: #7a5c0c; }
+.knowledge-state.processing { background: #e6f0fb; color: #1f4f8a; }
 
 .knowledge-entry-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
@@ -2650,7 +2651,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .portal-nav-group { display: grid; gap: 4px; }
 .portal-nav-group + .portal-nav-group { margin-top: 14px; }
 .portal-nav-label { padding: 0 11px 2px; color: #8d949b; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.portal-footer-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.portal-footer-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 
 .portal-main { flex: 1; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 44px 46px 64px; display: grid; gap: 18px; align-content: start; }
 .portal-title .eyebrow { margin: 0 0 6px; }
@@ -3818,7 +3819,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .nav-pin svg { width: 16px; height: 16px; transform: rotate(45deg); transition: transform .15s ease; }
 .nav-pin.pinned svg { transform: none; fill: currentColor; }
 .nav-pin:hover { background: #242c35; color: #fff; transform: none; }
-.nav-company-name { margin: 2px 0 4px 25px; overflow: hidden; color: #9bd3ff; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.nav-company-name { display: block; max-width: calc(100% - 25px); margin: 2px 0 4px 25px; padding: 4px 8px; overflow: hidden; border: 1px solid rgba(155, 211, 255, .35); border-radius: 6px; background: transparent; color: #9bd3ff; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-align: left; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.nav-company-name:hover, .nav-company-name.active { border-color: #9bd3ff; background: rgba(155, 211, 255, .12); }
 
 @media (min-width: 761px) {
   .app.nav-collapsed { padding-left: 68px; }
@@ -3907,25 +3909,22 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 .topbar-search input::placeholder { color: #8d949b; }
 .topbar-search input:focus { outline: 2px solid #9bd3ff; outline-offset: 0; border-color: #4a5868; }
-.topbar-company { position: relative; display: flex; align-items: center; }
-.topbar-company svg { position: absolute; left: 10px; width: 15px; height: 15px; color: #9bd3ff; pointer-events: none; }
-.topbar-company select {
-  max-width: 240px;
+/* Yläpalkin taloyhtiövalinta on sama alasvetovalikko kuin muualla; painike on tumma kuten yläpalkki. */
+.topbar-company { min-width: 0; }
+.topbar-company .dropdown-trigger {
+  max-width: 260px;
   height: 36px;
-  padding: 0 30px 0 32px;
-  border: 1px solid #343d47;
-  border-radius: 9px;
-  background: #1e252d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab3bd' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
+  padding: 0 10px;
+  border-color: #343d47;
+  background: #1e252d;
   color: #fff;
-  font: inherit;
   font-size: 13px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  appearance: none;
-  cursor: pointer;
 }
-.topbar-company select:focus { outline: 2px solid #9bd3ff; outline-offset: 0; }
-.topbar-company option { background: #fff; color: #1d2329; }
+.topbar-company .dropdown-trigger:hover:not(:disabled) { border-color: #4a5868; }
+.topbar-company .dropdown-trigger[aria-expanded="true"] { border-color: #9bd3ff; box-shadow: 0 0 0 3px rgba(155, 211, 255, .18); }
+.topbar-company .dropdown-trigger svg { width: 15px; height: 15px; color: #9bd3ff; }
+.topbar-company .dropdown-trigger svg:last-child { width: 12px; height: 12px; color: #aab3bd; }
+.topbar-company .dropdown-trigger span { flex: 1; }
 .topbar-profile {
   display: inline-flex;
   align-items: center;
@@ -4020,7 +4019,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .topbar-search { order: 3; flex: 1 1 100%; }
   .topbar-search input { width: 100%; }
   .topbar-company { order: 4; flex: 1 1 100%; }
-  .topbar-company select { max-width: none; width: 100%; }
+  .topbar-company .dropdown-trigger { max-width: none; width: 100%; }
   .history-dropdown { width: min(380px, calc(100vw - 24px)); }
   .profile-dropdown { width: min(320px, calc(100vw - 24px)); }
   /* Puhelimella valikko on liukuva paneeli, joten kiinnitystä ei tarvita; sulkuruksi on ylhäällä. */
@@ -4386,3 +4385,85 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .board-member-form .draft-actions button { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 9px; }
 .report-builder-actions button.primary { background: #171c22; border-color: #171c22; color: #fff; }
 .report-builder-actions button.primary:disabled { opacity: .5; }
+
+/* Remontti-ilmoituksen lomake ja tehtäväsivun remonttiosio. */
+.ticket-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ticket-form .field-hint { color: #5b6773; font-size: 12.5px; font-weight: 400; }
+.renovation-panel { display: grid; gap: 10px; }
+.renovation-panel h4 { margin: 6px 0 0; font-size: 14px; }
+.renovation-facts { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.renovation-facts dd { white-space: pre-wrap; }
+.status-badge.renovation-started { background: #dde9f8; color: #24507f; }
+.status-badge.renovation-inspected { background: #dcf3e4; color: #1f6b3d; }
+.timeline-event .event-note { display: block; color: #3b4652; white-space: pre-wrap; }
+@media (max-width: 640px) {
+  .ticket-form .form-row { grid-template-columns: 1fr; }
+}
+
+/* Avainrekisteri: latauslinkki samannäköisenä kuin painikkeet ja asunnon avainnumerot. */
+a.button-link { display: inline-flex; align-items: center; color: inherit; text-decoration: none; }
+.key-codes { display: flex; flex-wrap: wrap; gap: 6px; }
+.key-code { border: 1px solid #d2ddea; background: #f3f6f9; border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+.key-code:hover { border-color: #9bb8d8; }
+
+/* Jonot-sivun toinen osio: vuorojen jonot. */
+.content > .section-heading { margin: 18px 0 0; font-size: 18px; }
+.content > .section-heading + .muted { margin: -4px 0 0; }
+.topbar-company ul { left: auto; right: 0; max-width: min(360px, 90vw); }
+.topbar-company li button { white-space: normal; }
+
+/* Asukasportaalin sivupalkin painikkeet: samanlaiset kuin portaalin muut painikkeet. */
+.portal-footer-links .portal-footer-button { padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+
+/* Mitä AI poimi tästä: dokumentin tietopalat */
+.knowledge-chunks .chunk-summary { margin: -6px 0 12px; font-size: 13px; }
+.chunk-list { list-style: none; margin: 0; padding: 0; }
+.chunk-row { border-top: 1px solid #eceef0; padding: 8px 0; }
+.chunk-row:first-child { border-top: 0; }
+.chunk-row.highlight, .chunk-row.hit { background: #f2f7fd; margin: 0 -10px; padding: 8px 10px; border-radius: 8px; }
+.chunk-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chunk-title { background: none; border: 0; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: inherit; cursor: pointer; text-align: left; flex: 1 1 160px; min-width: 0; }
+.chunk-status { font-size: 12px; color: #6b7280; white-space: nowrap; }
+.chunk-status.verified { color: #1f7a45; }
+.chunk-status.review { color: #9c5b00; font-weight: 600; }
+.chunk-page { font-size: 12px; white-space: nowrap; }
+.chunk-head .knowledge-entry-actions { margin-top: 0; }
+.chunk-row .knowledge-content { margin-top: 6px; }
+.chunk-tags { font-size: 12px; margin: 6px 0 0; }
+.chunk-panel { margin-top: 14px; display: grid; gap: 10px; }
+.chunk-panel label, .chunk-editor label { display: grid; gap: 5px; font-size: 13px; }
+.chunk-panel input, .chunk-panel textarea, .chunk-editor input, .chunk-editor textarea {
+  width: 100%; border: 1px solid #dfe3e7; border-radius: 10px; background: #f9faf8; padding: 9px 12px; font: inherit; font-size: 13px; color: #1d2329;
+}
+.chunk-panel input[type="checkbox"] { width: auto; }
+.chunk-editor { display: grid; gap: 10px; }
+.chunk-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.chunk-buttons button { font-size: 13px; padding: 7px 12px; border: 1px solid #d9dbde; border-radius: 8px; }
+.chunk-buttons button.primary { background: #171c22; border-color: #171c22; color: #fff; }
+.chunk-buttons button.primary:disabled { opacity: .5; }
+.chunk-buttons button.danger { color: #b3402f; }
+.chunk-choice { display: flex !important; align-items: center; gap: 8px; }
+.chunk-suggestion { background: #fdf5dc; color: #6b4e09; border-radius: 8px; padding: 9px 12px; font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
+.chunk-hits { margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
+
+/* Dokumentin uusi versio: muutokset ennen hyväksyntää */
+.version-review > p.muted { font-size: 13px; margin: -4px 0 12px; }
+.knowledge-state.pending { background: #fdf5dc; color: #7a5c0c; }
+.version-counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.version-count { font-size: 12px; border-radius: 999px; padding: 3px 10px; background: #eceef0; color: #4b535d; }
+.version-count.conflict { background: #fbeae6; color: #9c2b1f; }
+.version-count.changed { background: #fdf5dc; color: #7a5c0c; }
+.version-count.new { background: #e3f3e9; color: #1f6b3d; }
+.version-group { margin-top: 16px; }
+.version-group h4 { margin: 0 0 4px; font-size: 13px; }
+.version-group > .muted { margin: 0 0 8px; font-size: 12px; }
+.version-item { border-top: 1px solid #eceef0; padding: 10px 0; }
+.version-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.version-chunk { display: grid; gap: 3px; }
+.version-chunk small { color: #717880; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.version-chunk strong { font-size: 13px; }
+.version-choice { display: flex; gap: 16px; margin-top: 8px; font-size: 13px; }
+.version-choice label { display: flex; align-items: center; gap: 6px; }
+.version-review .chunk-buttons { margin-top: 16px; }
+.version-banner { margin-top: 16px; }
+.knowledge-expiring .back-link { font-size: 13px; }

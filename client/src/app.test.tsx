@@ -287,10 +287,12 @@ describe("sovellus", () => {
   it("taloyhtiö valitaan yläpalkista ja alasivut koskevat valittua yhtiötä", async () => {
     await renderApp(staff("Isännöitsijä"), "#/companies");
     fireEvent.click(await screen.findByTitle("Näytä taloyhtiöiden alasivut"));
-    const picker = screen.getByRole("combobox", { name: "Taloyhtiö" }) as HTMLSelectElement;
+    // Sama alasvetovalikko kuin muualla sovelluksessa.
+    const picker = screen.getByRole("button", { name: "Taloyhtiö" });
     expect(picker.closest(".topbar")).toBeTruthy();
+    expect(picker.getAttribute("aria-haspopup")).toBe("listbox");
     // Valinnalla on aina arvo, joten alasivut näkyvät heti.
-    await vi.waitFor(() => expect(picker.value).toBe("demo-company"));
+    await vi.waitFor(() => expect(picker.textContent).toContain("As Oy Koivikko"));
     expect(screen.getByText("Pyykkitupa")).toBeTruthy();
     expect(localStorage.getItem("kotilo.navCompany")).toBe("demo-company");
   });

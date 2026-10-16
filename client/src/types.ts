@@ -1,3 +1,5 @@
+import type { RenovationNotice } from "./views/Renovations";
+
 
 
 export type Ticket = {
@@ -11,6 +13,8 @@ export type Ticket = {
   apartment_number?: string;
   resident_name?: string;
   type: string;
+  // renovation = remonttitehtävä, joka ei mene päätösjonoon; muut tehtävät ovat "ticket".
+  kind?: "ticket" | "renovation";
   priority: string;
   status: string;
   subject: string;
@@ -28,6 +32,8 @@ export type Ticket = {
   ai_suggested?: number;
   knowledge_source_id?: string | null;
   knowledge_source_title?: string | null;
+  knowledge_source_chunk_id?: string | null;
+  knowledge_source_page?: string | number | null;
   draft?: string;
   created_at: string;
   updated_at?: string;
@@ -67,7 +73,27 @@ export type KnowledgeEntry = {
   file_name: string | null;
   version: number;
   state: string;
+  status?: string;
   created_at: string;
+  // Dokumentin uusi versio, joka odottaa hyväksyntää.
+  pending_version_id?: string | null;
+  // Dokumentin pilkonta taustalla: processing | ready | failed.
+  processing_state?: string;
+};
+
+// Tietopala: dokumentista tai vakiotiedosta poimittu yksi tieto.
+export type KnowledgeChunk = {
+  id: string;
+  knowledge_id: string;
+  title: string;
+  content: string;
+  page: number | null;
+  tags: string;
+  // ai = AI poimi, local = kappalejako, manual = isännöitsijän kirjoittama.
+  origin: "ai" | "local" | "manual";
+  verified: number;
+  needs_review: number;
+  suggested_valid_until: string | null;
 };
 
 export type KnowledgeDetail = KnowledgeEntry & {
@@ -124,6 +150,8 @@ export type TicketDetail = {
   replyAccounts: ReplyAccount[];
   // Käyttäjän allekirjoitus, joka lisätään vastauksen loppuun; tyhjä, jos sitä ei ole.
   signature: string;
+  // Remonttitehtävän muutostyöilmoitus; muilla tehtävillä null.
+  renovation?: RenovationNotice | null;
 };
 
 export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";

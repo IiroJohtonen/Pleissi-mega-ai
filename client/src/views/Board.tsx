@@ -302,10 +302,12 @@ export function BoardView({ name }: { name: string }) {
                     {overview.renovations.map(renovation => (
                       <article key={renovation.id} className="board-card">
                         <div className="board-card-head">
-                          <strong>{t(renovation.work_type)}{renovation.apartment_number && ` · ${t("asunto {0}", renovation.apartment_number)}`}</strong>
+                          <strong>{renovation.work_type ? t(renovation.work_type) : t("Remontti")}{renovation.apartment_number && ` · ${t("asunto {0}", renovation.apartment_number)}`}</strong>
                           <span className={`status-badge renovation-${renovation.status}`}>{renovationStatusLabels[renovation.status as keyof typeof renovationStatusLabels] ?? renovation.status}</span>
                         </div>
-                        <small>{formatDay(renovation.start_date)}–{formatDay(renovation.end_date)}</small>
+                        {(renovation.start_date || renovation.end_date) && (
+                          <small>{renovation.start_date ? formatDay(renovation.start_date) : ""}–{renovation.end_date ? formatDay(renovation.end_date) : ""}</small>
+                        )}
                         <p>{renovation.description}</p>
                       </article>
                     ))}
