@@ -518,6 +518,23 @@ export function parseCsv(text: string): string[][] {
   return rows.filter(cells => cells.some(cell => cell.trim()));
 }
 
+// Lukee CSV- tai Excel-tiedoston taulukoksi (otsikkorivi + rivit). Excelistä luetaan ensimmäinen
+// välilehti; virhe heitetään, jos tiedosto ei ole .xlsx-muodossa.
+export async function readTableFile(file: File, format: "csv" | "excel"): Promise<string[][]> {
+  if (format === "excel") {
+    // Excel-lukija ladataan vasta tarvittaessa.
+    const { readSheet } = await import("read-excel-file/browser");
+    return (await readSheet(file))
+      .map(cells => cells.map(cell => cell == null ? "" : String(cell)))
+      .filter(cells => cells.some(cell => cell.trim()));
+  }
+  const buffer = await file.arrayBuffer();
+  let text = new TextDecoder("utf-8").decode(buffer);
+  // Excelin tallentama CSV on usein Windows-merkistössä, jolloin ääkköset eivät aukea UTF-8:na.
+  if (text.includes("\uFFFD")) text = new TextDecoder("windows-1252").decode(buffer);
+  return parseCsv(text);
+}
+
 // Muuntaa taulukon (otsikkorivi + rivit) tuotaviksi asukkaiksi; sama CSV:lle ja Excelille.
 export function tableToResidents(table: string[][]): { rows: ImportRow[]; missing: string[] } {
   if (table.length === 0) return { rows: [], missing: [] };
@@ -575,23 +592,11 @@ function ResidentImport({
     if (!file) return;
 
     let table: string[][];
-    if (format === "excel") {
-      try {
-        // Excel-lukija ladataan vasta tarvittaessa. Luetaan työkirjan ensimmäinen välilehti.
-        const { readSheet } = await import("read-excel-file/browser");
-        table = (await readSheet(file))
-          .map(cells => cells.map(cell => cell == null ? "" : String(cell)))
-          .filter(cells => cells.some(cell => cell.trim()));
-      } catch {
-        setError(t("Excel-tiedoston lukeminen epäonnistui. Tiedoston pitää olla .xlsx-muodossa."));
-        return;
-      }
-    } else {
-      const buffer = await file.arrayBuffer();
-      let text = new TextDecoder("utf-8").decode(buffer);
-      // Excelin tallentama CSV on usein Windows-merkistössä, jolloin ääkköset eivät aukea UTF-8:na.
-      if (text.includes("\uFFFD")) text = new TextDecoder("windows-1252").decode(buffer);
-      table = parseCsv(text);
+    try {
+      table = await readTableFile(file, format);
+    } catch {
+      setError(t("Excel-tiedoston lukeminen epäonnistui. Tiedoston pitää olla .xlsx-muodossa."));
+      return;
     }
 
     const parsed = tableToResidents(table);

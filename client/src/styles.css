@@ -4400,3 +4400,9 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 @media (max-width: 640px) {
   .ticket-form .form-row { grid-template-columns: 1fr; }
 }
+
+/* Avainrekisteri: latauslinkki samannäköisenä kuin painikkeet ja asunnon avainnumerot. */
+a.button-link { display: inline-flex; align-items: center; color: inherit; text-decoration: none; }
+.key-codes { display: flex; flex-wrap: wrap; gap: 6px; }
+.key-code { border: 1px solid #d2ddea; background: #f3f6f9; border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+.key-code:hover { border-color: #9bb8d8; }

@@ -140,3 +140,92 @@ keysRouter.post("/keys/:id/return", (req, res) => {
   if (returned.changes === 0) return res.status(409).json({ error: "Avainta ei ole luovutettu kenellekään." });
   res.json({ ok: true });
 });
+
+// ---------------------------------------------------------------------------------------------
+// Tuonti ja vienti. Viedyssä tiedostossa on samat sarakkeet kuin tuonnissa, joten se kelpaa suoraan
+// tuonnin pohjaksi. Lainassa-sarake on vain tiedoksi, eikä tuonti luo luovutuksia.
+// ---------------------------------------------------------------------------------------------
+export const KEY_FILE_COLUMNS = ["asunto", "avainnumero", "tyyppi", "huomio", "tila", "lainassa"] as const;
+const STATE_LABELS = { active: "käytössä", lost: "kadonnut" } as const;
+
+// Asunnon tunnus vertailuun: "A 12", "a12" ja "A12" ovat sama asunto.
+const apartmentKey = (value: string) => value.toLowerCase().replace(/\s+/g, "");
+
+const importRowSchema = z.object({
+  line: z.number().int().min(1),
+  apartment: z.string().trim().max(60).default(""),
+  code: z.string().trim().max(60).default(""),
+  type: z.string().trim().max(60).default(""),
+  note: z.string().trim().max(300).default(""),
+  state: z.string().trim().max(30).default("")
+});
+type ImportRow = z.infer<typeof importRowSchema>;
+type PlannedKey = { line: number; code: string; type: string; apartmentId: string | null; apartment: string; note: string; status: "active" | "lost" };
+
+// Jakaa tuotavat rivit uusiin, jo olemassa oleviin (ohitetaan) ja virheellisiin.
+function planKeyImport(companyId: string, rows: ImportRow[]) {
+  const apartments = new Map((db.prepare("SELECT id, apartment_number FROM apartments WHERE company_id = ?").all(companyId) as
+    { id: string; apartment_number: string }[]).map(apartment => [apartmentKey(apartment.apartment_number), apartment]));
+  const existingCodes = new Set((db.prepare("SELECT lower(code) AS code FROM building_keys WHERE company_id = ?").all(companyId) as
+    { code: string }[]).map(row => row.code));
+  const created: PlannedKey[] = [];
+  const existing: { line: number; code: string; apartment: string }[] = [];
+  const invalid: { line: number; code: string; apartment: string; reason: string }[] = [];
+
+  for (const row of rows) {
+    const fail = (reason: string) => invalid.push({ line: row.line, code: row.code, apartment: row.apartment, reason });
+    if (!row.code) { fail("Avainnumero puuttuu."); continue; }
+    const apartment = row.apartment ? apartments.get(apartmentKey(row.apartment)) : undefined;
+    if (row.apartment && !apartment) { fail(`Asuntoa ${row.apartment} ei löydy taloyhtiöstä.`); continue; }
+    const type = row.type
+      ? KEY_TYPES.find(option => option.toLowerCase() === row.type.toLowerCase())
+      : apartment ? "Asunto" : "Muu";
+    if (!type) { fail(`Tuntematon tyyppi: ${row.type}.`); continue; }
+    const state = row.state.toLowerCase();
+    const status = !state || ["käytössä", "kaytossa", "active"].includes(state) ? "active"
+      : ["kadonnut", "lost"].includes(state) ? "lost" : null;
+    if (!status) { fail(`Tuntematon tila: ${row.state}.`); continue; }
+    if (existingCodes.has(row.code.toLowerCase())) { existing.push({ line: row.line, code: row.code, apartment: row.apartment }); continue; }
+    // Saman tiedoston toinen rivi samalla numerolla ohitetaan kuten jo olemassa oleva avain.
+    existingCodes.add(row.code.toLowerCase());
+    created.push({ line: row.line, code: row.code, type, apartmentId: apartment?.id ?? null, apartment: apartment?.apartment_number ?? "", note: row.note, status });
+  }
+  return { created, existing, invalid };
+}
+
+// commit = false palauttaa esikatselun tallentamatta mitään.
+keysRouter.post("/companies/:companyId/keys/import", (req, res) => {
+  const companyId = companyIdFromContext(req.params.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const parsed = z.object({ rows: z.array(importRowSchema).min(1).max(5000), commit: z.boolean().default(false) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tiedostossa ei ole tuotavia rivejä." });
+
+  const plan = planKeyImport(companyId, parsed.data.rows);
+  if (parsed.data.commit) {
+    const insert = db.prepare("INSERT INTO building_keys (id, company_id, code, type, apartment_id, note, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    db.transaction(() => {
+      for (const key of plan.created) insert.run(id("key"), companyId, key.code, key.type, key.apartmentId, key.note, key.status, now());
+    })();
+  }
+  res.json({ ...plan, added: parsed.data.commit ? plan.created.length : 0 });
+});
+
+function csvCell(value: string) {
+  return /[;"\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+// Avainrekisteri CSV-tiedostona (puolipiste-erotin ja BOM, jotta Excel avaa ääkköset oikein).
+keysRouter.get("/companies/:companyId/keys/export", (req, res) => {
+  const companyId = companyIdFromContext(req.params.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const keys = db.prepare(`${KEY_SELECT} WHERE k.company_id = ? ORDER BY a.apartment_number, k.code`).all(companyId) as
+    { apartment_number: string | null; code: string; type: string; note: string; status: "active" | "lost"; holder_name: string | null }[];
+  const lines = [
+    KEY_FILE_COLUMNS.join(";"),
+    ...keys.map(key => [key.apartment_number ?? "", key.code, key.type, key.note, STATE_LABELS[key.status] ?? key.status, key.holder_name ?? ""]
+      .map(csvCell).join(";"))
+  ];
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", "attachment; filename=\"avaimet.csv\"");
+  res.send(`\uFEFF${lines.join("\r\n")}\r\n`);
+});

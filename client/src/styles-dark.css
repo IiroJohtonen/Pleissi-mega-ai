@@ -1956,3 +1956,10 @@
 :root[data-theme="dark"] .timeline-event .event-note {
     color: #cfd4db
 }
+:root[data-theme="dark"] .key-code {
+    border: 1px solid #3d5571;
+    background: #2d3a47
+}
+:root[data-theme="dark"] .key-code:hover {
+    border-color: #3d5571
+}
