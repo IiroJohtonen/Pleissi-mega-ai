@@ -105,13 +105,13 @@ portalRouter.post("/portal/tickets", async (req, res) => {
 });
 
 // Asukkaan liitteet (kuvat ja PDF:t) tehtävälle. Tallennetaan suunnalla 'portal'.
-const portalAttachmentsSchema = z.array(z.object({
+export const portalAttachmentsSchema = z.array(z.object({
   filename: z.string().trim().min(1).max(200),
   mimeType: z.string().max(120),
   data: z.string()
 })).max(5).default([]);
 
-async function savePortalAttachments(ticketId: string, attachments: z.infer<typeof portalAttachmentsSchema>, timestamp: string) {
+export async function savePortalAttachments(ticketId: string, attachments: z.infer<typeof portalAttachmentsSchema>, timestamp: string) {
   const files = attachments.map(attachment => ({ ...attachment, content: Buffer.from(attachment.data, "base64") }));
   if (files.some(file => !/^(image\/(png|jpeg|gif|webp|heic)|application\/pdf)$/.test(file.mimeType))) {
     return "Liitteeksi kelpaa kuva tai PDF.";

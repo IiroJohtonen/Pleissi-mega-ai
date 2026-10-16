@@ -8,7 +8,7 @@ import { BookingCalendar } from "./Bookings";
 import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
 import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
 import { PARKING_TYPES } from "./Parking";
-import { RENOVATION_WORK_TYPES, type RenovationNotice, renovationPeriod, renovationStatusLabels } from "./Renovations";
+import { type RenovationNotice, RenovationFields, renovationFieldsError, renovationPayload, renovationPeriod, renovationStatusLabels, renovationValues } from "./Renovations";
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
 import { t } from "../i18n";
 
@@ -914,17 +914,15 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
   );
 }
 
-// Asukkaan remontti-ilmoitus: työn tyyppi, kuvaus, ajankohta ja urakoitsija. Isännöitsijä hyväksyy
-// ilmoituksen ennen työn aloittamista ja voi asettaa sille ehtoja.
+// Asukkaan remontti-ilmoitus (muutostyöilmoitus). Kaikki kentät ovat valinnaisia; liitteiksi käyvät
+// suunnitelmat, piirustukset, urakoitsijan todistukset ja valokuvat. Isännöitsijä hyväksyy ilmoituksen
+// ennen työn aloittamista ja voi asettaa sille ehtoja.
 function PortalRenovations({ resident }: { resident: ResidentAccount }) {
   const [notices, setNotices] = useState<RenovationNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [workType, setWorkType] = useState(RENOVATION_WORK_TYPES[0]);
-  const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [contractor, setContractor] = useState("");
+  const [values, setValues] = useState(() => renovationValues());
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -945,28 +943,23 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (description.trim().length < 10) {
-      setError(t("Kuvaa työ vähintään parilla lauseella."));
-      return;
-    }
-    if (endDate < startDate) {
-      setError(t("Päättymispäivä ei voi olla ennen alkamispäivää."));
+    const invalid = renovationFieldsError(values);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setSaving(true);
     setError("");
     try {
-      await api("/portal/renovations", {
+      const created = await api<{ attachmentError?: string | null }>("/portal/renovations", {
         method: "POST",
-        body: JSON.stringify({ workType, description: description.trim(), startDate, endDate, contractor: contractor.trim() })
+        body: JSON.stringify({ ...renovationPayload(values), attachments: await portalAttachments(files) })
       });
-      setWorkType(RENOVATION_WORK_TYPES[0]);
-      setDescription("");
-      setStartDate("");
-      setEndDate("");
-      setContractor("");
+      setValues(renovationValues());
+      setFiles([]);
       setCreating(false);
       setSent(true);
+      if (created.attachmentError) setError(t("Ilmoitus lähetettiin, mutta liitteitä ei tallennettu: {0}", created.attachmentError));
       await loadNotices();
     } catch (submitError) {
       setError(errorMessage(submitError, t("Remontti-ilmoituksen lähetys epäonnistui.")));
@@ -1004,45 +997,16 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
             </div>
           </dl>
 
-          <label>
-            <span>{t("Työn tyyppi")}</span>
-            <select value={workType} onChange={event => setWorkType(event.target.value)}>
-              {RENOVATION_WORK_TYPES.map(option => <option key={option} value={option}>{t(option)}</option>)}
-            </select>
-          </label>
+          <RenovationFields values={values} onChange={setValues} />
 
-          <label>
-            <span>{t("Työn kuvaus")}</span>
-            <textarea
-              value={description}
-              onChange={event => setDescription(event.target.value)}
-              maxLength={5000}
-              rows={6}
-              placeholder={t("Kerro, mitä tehdään ja mihin rakenteisiin tai putkiin työ vaikuttaa.")}
-              required
-            />
-          </label>
-
-          <label>
-            <span>{t("Työ alkaa")}</span>
-            <input type="date" value={startDate} onChange={event => setStartDate(event.target.value)} required />
-          </label>
-
-          <label>
-            <span>{t("Työ päättyy")}</span>
-            <input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} required />
-          </label>
-
-          <label>
-            <span>{t("Urakoitsija ja yhteystiedot (valinnainen)")}</span>
-            <input value={contractor} onChange={event => setContractor(event.target.value)} maxLength={300} placeholder={t("Esim. Remontti Oy, 040 123 4567")} />
-          </label>
+          <p className="muted">{t("Liitä halutessasi suunnitelmat, piirustukset, urakoitsijan todistukset tai valokuvat.")}</p>
+          <PortalFilePicker files={files} onChange={setFiles} />
 
           {error && <p className="send-error">{error}</p>}
 
           <div className="portal-ticket-actions">
             <button type="button" className="secondary" onClick={() => setCreating(false)} disabled={saving}>{t("Peruuta")}</button>
-            <button type="submit" className="portal-new" disabled={saving || !startDate || !endDate}>{saving ? t("Lähetetään…") : t("Lähetä remontti-ilmoitus")}</button>
+            <button type="submit" className="portal-new" disabled={saving || files.reduce((sum, file) => sum + file.size, 0) > PORTAL_MAX_BYTES}>{saving ? t("Lähetetään…") : t("Lähetä remontti-ilmoitus")}</button>
           </div>
         </form>
       )}
@@ -1062,12 +1026,12 @@ function PortalRenovations({ resident }: { resident: ResidentAccount }) {
               {notices.map(notice => (
                 <tr key={notice.id}>
                   <td data-label={t("Työ")}>
-                    <strong>{t(notice.work_type)}</strong>
-                    <span>{notice.description}</span>
+                    <strong>{notice.work_type ? t(notice.work_type) : t("Remontti")}</strong>
+                    {notice.description && <span>{notice.description}</span>}
                   </td>
-                  <td data-label={t("Ajankohta")}>{renovationPeriod(notice)}</td>
+                  <td data-label={t("Ajankohta")}>{renovationPeriod(notice) || "–"}</td>
                   <td data-label={t("Tila")}>
-                    <strong>{renovationStatusLabels[notice.status]}</strong>
+                    <strong>{renovationStatusLabels[notice.status] ?? notice.status}</strong>
                     {notice.decision_note && <span>{notice.decision_note}</span>}
                   </td>
                   <td data-label={t("Ilmoitettu")}>{formatDate(notice.created_at)}</td>

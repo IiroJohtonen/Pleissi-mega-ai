@@ -359,7 +359,8 @@ residentsRouter.delete("/residents/:residentId", requireManager, async (req, res
     db.prepare("DELETE FROM waitlist WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM booking_requests WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM move_notices WHERE resident_id = ?").run(resident.id);
-    db.prepare("DELETE FROM renovation_notices WHERE resident_id = ?").run(resident.id);
+    // Remontti-ilmoitus on taloyhtiön asiakirja, joten se jää historiaan ilman asukkaan tietoja.
+    db.prepare("UPDATE renovation_notices SET resident_id = NULL, reporter_name = '' WHERE resident_id = ?").run(resident.id);
     // Lukemat ovat asunnon tietoja ja avaimen luovutus jää rekisteriin; niistä poistetaan vain yhteys asukkaaseen.
     db.prepare("UPDATE meter_readings SET resident_id = NULL, recorded_by = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);
     db.prepare("UPDATE key_loans SET resident_id = NULL, holder_name = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);

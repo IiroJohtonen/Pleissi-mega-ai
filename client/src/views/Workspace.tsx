@@ -45,7 +45,7 @@ const subTabs = navGroups.flatMap(group => group.tabs);
 // Tilat, joissa tehtävä on käsittelijänsä omissa tehtävissä.
 const ownTicketStatuses = ["active", "waiting_manager", "answered", "waiting_third_party"];
 // Päätösjonon yhteenvedon laatikot: omat tehtävät näissä tiloissa.
-const summaryTicketStatuses = ["waiting_manager", "answered", "waiting_third_party"];
+const summaryTicketStatuses = ["waiting_manager", "waiting_third_party"];
 // Keskeneräisen tehtävän tilat.
 const openTicketStatuses = ["open", ...ownTicketStatuses];
 
@@ -416,8 +416,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
 
   // Päätösjonossa ovat käyttäjälle jo osoitetut avoimet tehtävät käyttäjän valitsemassa järjestyksessä.
+  // Remonttitehtävät ovat auki pitkään, joten ne ovat Remontit-osiossa eivätkä päätösjonossa.
   const queueTickets = allCompanyTickets
-    .filter(ticket => queueTicketStatuses.includes(ticket.status) && ticket.assignee_id === user.id)
+    .filter(ticket => queueTicketStatuses.includes(ticket.status) && ticket.assignee_id === user.id && ticket.kind !== "renovation")
     .sort((a, b) => compareQueue(a, b, queueSort));
   // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
   const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
@@ -429,8 +430,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
       || compareTickets(a.ticket, b.ticket, "priority"));
   // Kaikkien yhtiöiden keskeneräiset tehtävät, joita ei ole vielä annettu kenenkään käsiteltäväksi.
   const unassignedTickets = allCompanyTickets
-    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id)
+    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id && ticket.kind !== "renovation")
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
+  // Keskeneräiset remonttitehtävät kaikista yhtiöistä.
+  const openRenovations = allCompanyTickets.filter(ticket => ticket.kind === "renovation" && ticket.status !== "closed");
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
   const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unassigned";
   // Muistutukset koskevat kaikkia omia keskeneräisiä tehtäviä kaikista yhtiöistä, myös päätösjonon avoimia.
@@ -819,6 +822,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   <span>{t("Muistutukset")}</span>
                   <strong>{reminderTickets.length}</strong>
                   <small>{t("vaatii huomiota")}</small>
+                </button>
+                <button
+                  title={t("Avaa Remontit-osio")}
+                  onClick={() => setTab("renovations")}
+                >
+                  <span>{t("Remontti-ilmoitukset")}</span>
+                  <strong>{openRenovations.length}</strong>
+                  <small>{openRenovations.length === 1 ? t("avoin remontti") : t("avointa remonttia")}</small>
                 </button>
               </div>
             )}

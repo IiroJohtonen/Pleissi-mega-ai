@@ -691,6 +691,62 @@ BEGIN
 END;
 `);
 
+// Remontti-ilmoitus on tehtävä (tickets.kind = 'renovation'), ja ilmoituksen tiedot ovat
+// renovation_notices-rivillä, joka viittaa tehtävään. Kaikki muutostyöilmoituksen kentät ovat
+// valinnaisia, joten vanhan taulun NOT NULL -sarakkeet muutetaan kerran valinnaisiksi. Toimiston
+// kirjaamalla ilmoituksella ei välttämättä ole asukasta, ja asukkaan tietojen poisto jättää
+// ilmoituksen taloyhtiön historiaan ilman asukasta.
+if (!ticketColumns.some(column => column.name === "kind")) {
+  db.exec("ALTER TABLE tickets ADD COLUMN kind TEXT NOT NULL DEFAULT 'ticket'");
+}
+{
+  const columns = db.prepare("PRAGMA table_info(renovation_notices)").all() as { name: string; notnull: number }[];
+  if (columns.find(column => column.name === "resident_id")?.notnull) {
+    db.transaction(() => {
+      db.exec(`
+        ALTER TABLE renovation_notices RENAME TO renovation_notices_old;
+        CREATE TABLE renovation_notices (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          apartment_id TEXT,
+          resident_id TEXT,
+          work_type TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          start_date TEXT,
+          end_date TEXT,
+          contractor TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'pending',
+          decision_note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          decided_by TEXT,
+          decided_at TEXT,
+          completed_at TEXT
+        );
+        INSERT INTO renovation_notices
+          (id, company_id, apartment_id, resident_id, work_type, description, start_date, end_date, contractor,
+           status, decision_note, created_at, decided_by, decided_at, completed_at)
+        SELECT id, company_id, apartment_id, resident_id, work_type, description, start_date, end_date, contractor,
+               status, decision_note, created_at, decided_by, decided_at, completed_at
+        FROM renovation_notices_old;
+        DROP TABLE renovation_notices_old;
+      `);
+    })();
+  }
+  // Työn tyypit vastaavat nyt muutostyöilmoituksen luokittelua.
+  db.prepare("UPDATE renovation_notices SET work_type = 'Sähkö' WHERE work_type = 'Sähkötyöt'").run();
+  db.prepare("UPDATE renovation_notices SET work_type = 'LVI' WHERE work_type = 'Vesi- ja viemärityöt'").run();
+  const renovationColumns = (db.prepare("PRAGMA table_info(renovation_notices)").all() as { name: string }[]).map(column => column.name);
+  // ticket_id: remonttitehtävä. Muut: asunto-osakeyhtiölain 4. luvun muutostyöilmoituksen tiedot.
+  for (const column of [
+    "ticket_id", "reporter_name", "contractor_contact", "supervisor", "impact_structures", "impact_water",
+    "impact_sewer", "impact_electric", "impact_ventilation", "waterproofing", "hazmat_survey", "started_at", "inspected_at"
+  ]) {
+    if (!renovationColumns.includes(column)) {
+      db.exec(`ALTER TABLE renovation_notices ADD COLUMN ${column} TEXT${column === "ticket_id" || column.endsWith("_at") ? "" : " NOT NULL DEFAULT ''"}`);
+    }
+  }
+}
+
 function backfillKnowledge() {
   db.prepare("UPDATE knowledge SET group_id = id WHERE group_id IS NULL").run();
   db.prepare("UPDATE knowledge SET created_at = ? WHERE created_at IS NULL").run(new Date().toISOString());

@@ -1,3 +1,5 @@
+import type { RenovationNotice } from "./views/Renovations";
+
 
 
 export type Ticket = {
@@ -11,6 +13,8 @@ export type Ticket = {
   apartment_number?: string;
   resident_name?: string;
   type: string;
+  // renovation = remonttitehtävä, joka ei mene päätösjonoon; muut tehtävät ovat "ticket".
+  kind?: "ticket" | "renovation";
   priority: string;
   status: string;
   subject: string;
@@ -124,6 +128,8 @@ export type TicketDetail = {
   replyAccounts: ReplyAccount[];
   // Käyttäjän allekirjoitus, joka lisätään vastauksen loppuun; tyhjä, jos sitä ei ole.
   signature: string;
+  // Remonttitehtävän muutostyöilmoitus; muilla tehtävillä null.
+  renovation?: RenovationNotice | null;
 };
 
 export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";

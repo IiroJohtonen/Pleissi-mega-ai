@@ -10,6 +10,7 @@ import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { RenovationPanel } from "../views/Renovations";
 import { storedAiPrompt } from "../preferences";
 import { Toast } from "../components/Toast";
 import { t } from "../i18n";
@@ -923,10 +924,14 @@ export function TicketDrawer({
           />
         )}
 
-        <div className="ticket-description">
-          <h3>{t("Kuvaus")}</h3>
-          <p>{description}</p>
-        </div>
+        {detail.renovation ? (
+          <RenovationPanel notice={detail.renovation} onChanged={onChanged} />
+        ) : (
+          <div className="ticket-description">
+            <h3>{t("Kuvaus")}</h3>
+            <p>{description}</p>
+          </div>
+        )}
 
         {/* Vastaus ja työtilaukset ovat välilehtinä. Piilotettu välilehti pysyy sivulla, jotta keskeneräinen
             vastaus tai työtilaus ei katoa välilehteä vaihdettaessa. */}
@@ -1146,6 +1151,7 @@ export function TicketDrawer({
           ) : (
             <div className="timeline-event" key={item.id}>
               <span>{actionLabel(item.event.action)}</span>
+              {eventNote(item.event.details) && <span className="event-note">{eventNote(item.event.details)}</span>}
               <small>{actorLabel(item.event.actor)} · {formatDate(item.created_at)}</small>
             </div>
           ))}
@@ -1184,6 +1190,16 @@ export function TicketDrawer({
       )}
     </section>
   );
+}
+
+// Lokimerkinnän vapaa teksti, esim. remontin valvontakäynnin havainnot.
+function eventNote(details: string) {
+  try {
+    const parsed = JSON.parse(details) as { note?: unknown };
+    return typeof parsed?.note === "string" ? parsed.note : "";
+  } catch {
+    return "";
+  }
 }
 
 // Lähettäjävalikon teksti: osoite ja tilin laji; saapumislaatikko merkitään.

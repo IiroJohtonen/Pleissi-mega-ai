@@ -1942,3 +1942,17 @@
     border-color: #a6b1bf;
     color: #19222e
 }
+:root[data-theme="dark"] .ticket-form .field-hint {
+    color: #bfc6cf
+}
+:root[data-theme="dark"] .status-badge.renovation-started {
+    background: #303c4c;
+    color: #9fc1e4
+}
+:root[data-theme="dark"] .status-badge.renovation-inspected {
+    background: #314d3b;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .timeline-event .event-note {
+    color: #cfd4db
+}

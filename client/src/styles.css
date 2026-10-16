@@ -4386,3 +4386,17 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .board-member-form .draft-actions button { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 9px; }
 .report-builder-actions button.primary { background: #171c22; border-color: #171c22; color: #fff; }
 .report-builder-actions button.primary:disabled { opacity: .5; }
+
+/* Remontti-ilmoituksen lomake ja tehtäväsivun remonttiosio. */
+.ticket-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ticket-form .field-hint { color: #5b6773; font-size: 12.5px; font-weight: 400; }
+.renovation-panel { display: grid; gap: 10px; }
+.renovation-panel h4 { margin: 6px 0 0; font-size: 14px; }
+.renovation-facts { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.renovation-facts dd { white-space: pre-wrap; }
+.status-badge.renovation-started { background: #dde9f8; color: #24507f; }
+.status-badge.renovation-inspected { background: #dcf3e4; color: #1f6b3d; }
+.timeline-event .event-note { display: block; color: #3b4652; white-space: pre-wrap; }
+@media (max-width: 640px) {
+  .ticket-form .form-row { grid-template-columns: 1fr; }
+}

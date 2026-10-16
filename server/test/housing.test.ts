@@ -54,9 +54,68 @@ describe("remontti-ilmoitukset, avaimet ja kulutuslukemat", () => {
     assert.equal((await renovations())[0].status, "completed");
   });
 
+  it("remontti-ilmoitus on tehtävä, joka ei mene päätösjonoon mutta näkyy kaikissa tehtävissä", async () => {
+    const created = await call(server, resident, "POST", "/portal/renovations", {
+      ...renovation, supervisor: "Valvoja Virtanen", impactWater: "Lattiakaivo vaihdetaan.", waterproofing: "Kiilto, sertifioitu asentaja"
+    });
+    assert.equal(created.status, 201);
+    const ticketId = created.data.ticketId as string;
+    const detail = (await call(server, manager, "GET", `/tickets/${ticketId}`)).data;
+    assert.equal(detail.ticket.kind, "renovation");
+    assert.equal(detail.ticket.type, "Remontti-ilmoitus");
+    assert.equal(detail.ticket.due_date, "2027-03-20");
+    assert.equal(detail.renovation.supervisor, "Valvoja Virtanen");
+    assert.equal(detail.renovation.impact_water, "Lattiakaivo vaihdetaan.");
+    assert.ok(detail.audit.some((row: any) => row.action === "renovation_reported"));
+    // Asukas näkee ilmoituksensa omana tehtävänään portaalissa.
+    assert.ok((await call(server, resident, "GET", `/portal/tickets/${ticketId}`)).data.messages.length > 0);
+
+    const queue = (await call(server, manager, "GET", "/decision-queue?companyId=demo-company")).data as any[];
+    assert.ok(!queue.some(ticket => ticket.id === ticketId));
+    const all = (await call(server, manager, "GET", "/tickets?companyId=demo-company")).data as any[];
+    assert.ok(all.some(ticket => ticket.id === ticketId && ticket.kind === "renovation"));
+
+    // Vaiheet kirjataan järjestyksessä tehtävän lokiin; tarkastettu remontti sulkee tehtävän.
+    assert.equal((await call(server, service, "POST", `/renovations/${ticketId}/phase`, { phase: "started" })).status, 409);
+    assert.equal((await call(server, manager, "POST", `/renovations/${ticketId}/approve`, { note: "Ehdot liitteenä." })).status, 200);
+    assert.equal((await call(server, service, "POST", `/renovations/${ticketId}/phase`, { phase: "inspected" })).status, 409);
+    for (const phase of ["started", "supervision", "supervision", "completed", "inspected"]) {
+      assert.equal((await call(server, service, "POST", `/renovations/${ticketId}/phase`, { phase, note: `${phase} ok` })).status, 200, phase);
+    }
+    const done = (await call(server, manager, "GET", `/tickets/${ticketId}`)).data;
+    assert.equal(done.renovation.status, "inspected");
+    assert.equal(done.ticket.status, "closed");
+    const actions = done.audit.map((row: any) => row.action);
+    assert.equal(actions.filter((action: string) => action === "renovation_supervision").length, 2);
+    for (const action of ["renovation_approved", "renovation_started", "renovation_completed", "renovation_inspected"]) {
+      assert.ok(actions.includes(action), action);
+    }
+  });
+
+  it("toimisto kirjaa remontti-ilmoituksen itse ilman pakollisia kenttiä ja muokkaa sitä", async () => {
+    const created = await call(server, service, "POST", "/companies/demo-company/renovations", { reporterName: "Soittaja Saarinen" });
+    assert.equal(created.status, 201);
+    const ticketId = created.data.ticketId as string;
+    const detail = (await call(server, service, "GET", `/tickets/${ticketId}`)).data;
+    assert.equal(detail.ticket.kind, "renovation");
+    assert.equal(detail.ticket.due_date, null);
+    assert.equal(detail.renovation.reporter_name, "Soittaja Saarinen");
+
+    assert.equal((await call(server, service, "PUT", `/renovations/${ticketId}`, { workType: "Keittiö", endDate: "2027-05-01", hazmatSurvey: "Ei asbestia." })).status, 200);
+    assert.equal((await call(server, service, "PUT", `/renovations/${ticketId}`, { workType: "Ei listalla" })).status, 400);
+    const updated = (await call(server, service, "GET", `/tickets/${ticketId}`)).data;
+    assert.equal(updated.renovation.hazmat_survey, "Ei asbestia.");
+    assert.equal(updated.ticket.due_date, "2027-05-01");
+    assert.match(updated.ticket.subject, /Keittiö/);
+    assert.ok(updated.audit.some((row: any) => row.action === "renovation_updated"));
+    assert.equal((await call(server, service, "POST", "/companies/demo-company/renovations", { residentId: "ei-ole" })).status, 404);
+  });
+
   it("remontti-ilmoituksen hylkäys vaatii perustelun ja päivämäärät tarkistetaan", async () => {
     assert.equal((await call(server, resident, "POST", "/portal/renovations", { ...renovation, endDate: "2027-02-01" })).status, 400);
     assert.equal((await call(server, resident, "POST", "/portal/renovations", { ...renovation, workType: "Jotain muuta" })).status, 400);
+    // Kaikki kentät ovat valinnaisia.
+    assert.equal((await call(server, resident, "POST", "/portal/renovations", {})).status, 201);
 
     const created = await call(server, resident, "POST", "/portal/renovations", renovation);
     const id = created.data.renovationId as string;
@@ -126,14 +185,17 @@ describe("remontti-ilmoitukset, avaimet ja kulutuslukemat", () => {
     assert.equal((await call(server, service, "DELETE", `/meter-readings/${created.data.readingId}`)).status, 404);
   });
 
-  it("asukkaan poisto vie remontti-ilmoitukset ja irrottaa lukemat ja avaimet asukkaasta", async () => {
+  it("asukkaan poisto irrottaa remontti-ilmoitukset, lukemat ja avaimet asukkaasta", async () => {
     const exported = (await call(server, manager, "GET", "/residents/resident-2/export")).data;
-    assert.equal(exported.renovation_notices.length, 2);
+    assert.equal(exported.renovation_notices.length, 4);
     assert.equal(exported.meter_readings.length, 3);
     assert.equal(exported.key_loans.length, 1);
 
     assert.equal((await call(server, manager, "DELETE", "/residents/resident-2")).status, 200);
-    assert.equal((await renovations()).length, 0);
+    // Remontti-ilmoitukset jäävät taloyhtiön historiaan ilman asukkaan tietoja.
+    const remaining = await renovations();
+    assert.equal(remaining.length, 5);
+    assert.ok(remaining.every(row => row.resident_id === null));
     const readings = (await call(server, service, "GET", "/companies/demo-company/meter-readings")).data as any[];
     assert.equal(readings.length, 3);
     assert.ok(readings.every(row => row.recorded_by === "Poistettu asukas"));
