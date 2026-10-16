@@ -73,7 +73,12 @@ export type KnowledgeEntry = {
   file_name: string | null;
   version: number;
   state: string;
+  status?: string;
   created_at: string;
+  // Dokumentin uusi versio, joka odottaa hyväksyntää.
+  pending_version_id?: string | null;
+  // Dokumentin pilkonta taustalla: processing | ready | failed.
+  processing_state?: string;
 };
 
 // Tietopala: dokumentista tai vakiotiedosta poimittu yksi tieto.

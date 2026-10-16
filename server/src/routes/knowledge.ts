@@ -7,6 +7,7 @@ import { chunkDocumentWithAi, formatKnowledgeEntry, type KnowledgeItem } from ".
 import { requireManager } from "../auth.js";
 import { db, knowledgeFilesDir } from "../db.js";
 import { extractPages, isPdf, UnsupportedDocumentError } from "../extract.js";
+import { applyVersion, compareVersions, likelyPreviousVersion, previousVersion } from "../knowledge-versions.js";
 import {
   chunkSourceLabel, documentPages, findSimilarChunk, hasUnknownNumbers, insertChunk, listChunks, localChunks, pagesInNote,
   processDocument, saveChunks, selectKnowledgeChunks, setChunksStatus
@@ -62,7 +63,7 @@ function knowledgeState(row: KnowledgeRow) {
   return row.audience === "internal" ? "internal" : "in_use";
 }
 
-function serializeKnowledge({ pages: _pages, ...row }: KnowledgeRow & { pages?: string | null }) {
+function serializeKnowledge({ pages: _pages, comparison: _comparison, ...row }: KnowledgeRow & { pages?: string | null; comparison?: string | null }) {
   return {
     ...row,
     content: row.kind === "document" ? row.content.slice(0, 600) : row.content,
@@ -105,16 +106,25 @@ function saveKnowledge(input: {
     : undefined;
   if (input.replaces && !replaced) return null;
 
+  // Dokumentin uusi versio odottaa isännöitsijän hyväksyntää; vakiotieto korvataan heti.
+  const pending = Boolean(replaced) && input.kind === "document";
   const knowledgeId = id("knowledge");
   db.transaction(() => {
-    if (replaced) {
+    if (replaced && pending) {
+      // Aiempi odottava versio väistyy uuden tieltä.
+      const stale = db.prepare("SELECT id FROM knowledge WHERE group_id = ? AND status = 'pending'").all(replaced.group_id) as { id: string }[];
+      for (const row of stale) {
+        db.prepare("UPDATE knowledge SET status = 'deleted' WHERE id = ?").run(row.id);
+        setChunksStatus(row.id, "deleted");
+      }
+    } else if (replaced) {
       db.prepare("UPDATE knowledge SET status = 'replaced' WHERE id = ?").run(replaced.id);
     }
     db.prepare(`
       INSERT INTO knowledge
       (id, company_id, title, content, kind, valid_from, valid_until, file_name, mime_type,
        version, group_id, status, extraction_ok, created_at, audience)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       knowledgeId,
       input.companyId,
@@ -127,6 +137,7 @@ function saveKnowledge(input: {
       input.mimeType ?? null,
       replaced ? replaced.version + 1 : 1,
       replaced ? replaced.group_id : knowledgeId,
+      pending ? "pending" : "active",
       input.extractionOk === false ? 0 : 1,
       now(),
       input.audience ?? replaced?.audience ?? "ai"
@@ -134,7 +145,7 @@ function saveKnowledge(input: {
     // Uusi versio perii aiemman version avainsanat, ellei uusia anneta.
     const tags = input.tags ? input.tags.join(", ") : replaced ? (replaced as KnowledgeRow & { tags?: string }).tags ?? "" : "";
     if (tags) db.prepare("UPDATE knowledge SET tags = ? WHERE id = ?").run(tags, knowledgeId);
-    if (replaced) setChunksStatus(replaced.id, "archived");
+    if (replaced && !pending) setChunksStatus(replaced.id, "archived");
     saveChunks(
       { id: knowledgeId, company_id: input.companyId, status: "active" },
       localChunks({ title: input.title, content: input.content, kind: input.kind }, input.pages)
@@ -150,7 +161,10 @@ knowledgeRouter.get("/companies/:companyId/knowledge", (req, res) => {
     return res.status(403).json({ error: "Company not authorized" });
   }
   const rows = db.prepare(
-    "SELECT * FROM knowledge WHERE company_id = ? AND status = 'active' ORDER BY title"
+    `SELECT k.*, (
+       SELECT p.id FROM knowledge p WHERE p.group_id = k.group_id AND p.status = 'pending' ORDER BY p.created_at DESC LIMIT 1
+     ) AS pending_version_id
+     FROM knowledge k WHERE k.company_id = ? AND k.status = 'active' ORDER BY k.title`
   ).all(req.params.companyId) as KnowledgeRow[];
   res.json(rows.map(serializeKnowledge));
 });
@@ -250,7 +264,16 @@ knowledgeRouter.post(
     // Pilkonta jatkuu taustalla; dokumentin tila näkyy käyttöliittymässä.
     void processDocument(knowledgeId);
 
-    res.status(201).json({ ok: true, knowledgeId, extractionOk, textLength: text.length });
+    // Ilman korvattavaa versiota tarkistetaan, onko tämä todennäköisesti uusi versio aiemmasta dokumentista.
+    const likely = parsed.data.replaces ? null : likelyPreviousVersion({
+      id: knowledgeId, company_id: companyId, title: parsed.data.title || path.parse(fileName).name, file_name: fileName
+    });
+
+    res.status(201).json({
+      ok: true, knowledgeId, extractionOk, textLength: text.length,
+      pending: Boolean(parsed.data.replaces),
+      likelyVersionOf: likely ? { id: likely.id, title: likely.title } : null
+    });
   }
 );
 
@@ -324,12 +347,78 @@ knowledgeRouter.put("/knowledge/:id/company", requireManager, (req, res) => {
 
 knowledgeRouter.delete("/knowledge/:id", requireManager, (req, res) => {
   const row = getAuthorizedKnowledge(req.params.id);
-  if (!row || row.status !== "active") return res.status(404).json({ error: "Knowledge not found" });
+  // Odottavan uuden version poisto = versio hylätään, ja edellinen jää voimaan.
+  if (!row || (row.status !== "active" && row.status !== "pending")) return res.status(404).json({ error: "Knowledge not found" });
 
   // Tietue poistuu AI:n käytöstä, mutta jää historiaan.
   db.prepare("UPDATE knowledge SET status = 'deleted' WHERE id = ?").run(row.id);
   setChunksStatus(row.id, "deleted");
   res.json({ ok: true });
+});
+
+type PendingRow = KnowledgeRow & { comparison: string | null };
+
+function pendingVersion(knowledgeId: string) {
+  const row = getAuthorizedKnowledge(knowledgeId) as PendingRow | null;
+  if (!row || row.status !== "pending") return null;
+  const previous = previousVersion(row);
+  return previous ? { row, previous } : null;
+}
+
+// Uuden version muutokset edelliseen: uudet, muuttuneet, poistuneet, ennallaan olevat ja ristiriidat.
+knowledgeRouter.get("/knowledge/:id/comparison", async (req, res) => {
+  const pending = pendingVersion(req.params.id);
+  if (!pending) return res.status(404).json({ error: "Odottavaa versiota ei löytynyt." });
+  const previous = { id: pending.previous.id, title: pending.previous.title, version: pending.previous.version };
+  if (pending.row.processing_state === "processing") return res.json({ state: "processing", previous, items: [] });
+  const { usedAi, items } = await compareVersions(pending.row, pending.previous);
+  res.json({ state: "ready", previous, usedAi, items });
+});
+
+// Hyväksyy uuden version. decisions: muutoskohtaiset valinnat ("Käy läpi yksitellen"); ilman niitä
+// muutokset hyväksytään, ja ristiriidoissa vanha tarkistettu tieto säilyy.
+knowledgeRouter.post("/knowledge/:id/apply-version", requireManager, async (req, res) => {
+  const pending = pendingVersion(req.params.id);
+  if (!pending) return res.status(404).json({ error: "Odottavaa versiota ei löytynyt." });
+  if (pending.row.processing_state === "processing") return res.status(409).json({ error: "Uutta versiota käsitellään vielä." });
+  const parsed = z.object({ decisions: z.record(z.string(), z.enum(["accept", "reject"])).default({}) }).safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista valinnat." });
+  const { items } = await compareVersions(pending.row, pending.previous);
+  applyVersion(pending.row, pending.previous, items, parsed.data.decisions);
+  res.json({ ok: true, knowledgeId: pending.row.id });
+});
+
+// Merkitsee juuri ladatun dokumentin aiemman dokumentin uudeksi versioksi, joka odottaa hyväksyntää.
+knowledgeRouter.post("/knowledge/:id/as-version-of", requireManager, (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row || row.status !== "active" || row.kind !== "document" || row.group_id !== row.id) {
+    return res.status(404).json({ error: "Knowledge not found" });
+  }
+  const parsed = z.object({ knowledgeId: z.string().min(1) }).safeParse(req.body);
+  const target = parsed.success ? getAuthorizedKnowledge(parsed.data.knowledgeId) : null;
+  if (!target || target.status !== "active" || target.kind !== "document" || target.company_id !== row.company_id || target.id === row.id) {
+    return res.status(404).json({ error: "Aiempaa dokumenttia ei löytynyt." });
+  }
+  db.transaction(() => {
+    const stale = db.prepare("SELECT id FROM knowledge WHERE group_id = ? AND status = 'pending'").all(target.group_id) as { id: string }[];
+    for (const old of stale) {
+      db.prepare("UPDATE knowledge SET status = 'deleted' WHERE id = ?").run(old.id);
+      setChunksStatus(old.id, "deleted");
+    }
+    db.prepare("UPDATE knowledge SET status = 'pending', group_id = ?, version = ?, audience = ? WHERE id = ?")
+      .run(target.group_id, target.version + 1, target.audience, row.id);
+  })();
+  res.json({ ok: true });
+});
+
+// Merkitse vanhentuneeksi: voimassaolo päättyy tänään.
+knowledgeRouter.post("/knowledge/:id/expire", requireManager, (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row || row.status !== "active") return res.status(404).json({ error: "Knowledge not found" });
+  const date = today();
+  db.prepare("UPDATE knowledge SET valid_until = ?, valid_from = CASE WHEN valid_from > ? THEN ? ELSE valid_from END WHERE id = ?")
+    .run(date, date, date, row.id);
+  res.json({ ok: true, validUntil: date });
 });
 
 knowledgeRouter.get("/knowledge/:id", (req, res) => {
@@ -342,12 +431,13 @@ knowledgeRouter.get("/knowledge/:id", (req, res) => {
     "SELECT * FROM knowledge WHERE group_id = ? ORDER BY version DESC"
   ).all(row.group_id) as KnowledgeRow[];
 
-  const { pages: _pages, ...fields } = row as KnowledgeRow & { pages?: string | null };
+  const { pages: _pages, comparison: _comparison, ...fields } = row as KnowledgeRow & { pages?: string | null; comparison?: string | null };
   res.json({
     ...fields,
     content_length: row.content.length,
     state: knowledgeState(row),
     company_name: company?.name ?? "",
+    pending_version_id: row.status === "active" ? versions.find(version => version.status === "pending")?.id ?? null : null,
     versions: versions.map(serializeKnowledge)
   });
 });

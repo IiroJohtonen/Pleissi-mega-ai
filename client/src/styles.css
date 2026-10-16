@@ -4441,6 +4441,29 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .chunk-buttons button { font-size: 13px; padding: 7px 12px; border: 1px solid #d9dbde; border-radius: 8px; }
 .chunk-buttons button.primary { background: #171c22; border-color: #171c22; color: #fff; }
 .chunk-buttons button.primary:disabled { opacity: .5; }
+.chunk-buttons button.danger { color: #b3402f; }
 .chunk-choice { display: flex !important; align-items: center; gap: 8px; }
 .chunk-suggestion { background: #fdf5dc; color: #6b4e09; border-radius: 8px; padding: 9px 12px; font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
 .chunk-hits { margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
+
+/* Dokumentin uusi versio: muutokset ennen hyväksyntää */
+.version-review > p.muted { font-size: 13px; margin: -4px 0 12px; }
+.knowledge-state.pending { background: #fdf5dc; color: #7a5c0c; }
+.version-counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.version-count { font-size: 12px; border-radius: 999px; padding: 3px 10px; background: #eceef0; color: #4b535d; }
+.version-count.conflict { background: #fbeae6; color: #9c2b1f; }
+.version-count.changed { background: #fdf5dc; color: #7a5c0c; }
+.version-count.new { background: #e3f3e9; color: #1f6b3d; }
+.version-group { margin-top: 16px; }
+.version-group h4 { margin: 0 0 4px; font-size: 13px; }
+.version-group > .muted { margin: 0 0 8px; font-size: 12px; }
+.version-item { border-top: 1px solid #eceef0; padding: 10px 0; }
+.version-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.version-chunk { display: grid; gap: 3px; }
+.version-chunk small { color: #717880; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.version-chunk strong { font-size: 13px; }
+.version-choice { display: flex; gap: 16px; margin-top: 8px; font-size: 13px; }
+.version-choice label { display: flex; align-items: center; gap: 6px; }
+.version-review .chunk-buttons { margin-top: 16px; }
+.version-banner { margin-top: 16px; }
+.knowledge-expiring .back-link { font-size: 13px; }

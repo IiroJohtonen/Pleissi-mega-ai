@@ -107,6 +107,9 @@ describe("tietopalat ja niiden valinta vastausehdotukseen", () => {
     })}`, { method: "POST", headers: { Authorization: `Bearer ${admin}` }, body: "Parvekkeella grillaaminen hiiligrillillä ja sähkögrillillä on kokonaan kielletty." });
     assert.equal(replaced.status, 201);
     const newId = (await replaced.json()).knowledgeId as string;
+    // Uusi versio odottaa hyväksyntää, ja sitä ennen AI käyttää vanhaa.
+    assert.equal((await select("Saako parvekkeella grillata hiiligrillillä?")).chunks[0].knowledgeId, before.knowledgeId);
+    assert.equal((await call(server, manager, "POST", `/knowledge/${newId}/apply-version`, {})).status, 200);
     const [after] = (await select("Saako parvekkeella grillata hiiligrillillä?")).chunks;
     assert.equal(after.knowledgeId, newId);
     assert.match(after.content, /kokonaan kielletty/);

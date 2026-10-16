@@ -25,6 +25,9 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 - Taloyhtiöt, vastuuisännöitsijä ja muut isännöitsijät, huoltoyhtiön tiedot
 - Asukkaat ja asunnot, tuonti CSV- tai Excel-tiedostosta
 - Tietopankki: dokumentit ja vakiotiedot, versiot ja voimassaoloajat
+- Dokumentit pilkotaan tiedoiksi taustalla (AI tai ilman avainta kappalejako, PDF sivuittain); isännöitsijä näkee, mitä AI poimi, ja voi tarkistaa, korjata, lisätä ja poistaa tietoja. AI ei koskaan muuta isännöitsijän tarkistamaa tai kirjoittamaa tietoa
+- Dokumentin uusi versio odottaa hyväksyntää: muutokset (uudet, muuttuneet, poistuneet, ristiriidat) näytetään ennen kuin uusi versio korvaa vanhan; lataus tunnistaa todennäköisen uuden version
+- Merkitse vanhentuneeksi ja muistutus tiedoista, jotka vanhenevat 30 päivän sisällä
 - Dokumentaatio jaettuna kahteen: AI-dokumentaatiota AI käyttää vastausehdotuksissa, sisäinen on vain henkilökunnalle
 - Sauna- ja pyykkitupavuorot, autopaikat, jonot, tiedotteet ja muuttoilmoitukset
 - Laskutusraportit sauna- ja autopaikkamaksuista

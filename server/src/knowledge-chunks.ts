@@ -130,7 +130,7 @@ export async function processDocument(knowledgeId: string) {
 
 // Käynnistyksessä kesken jääneet pilkonnat aloitetaan uudelleen.
 export function resumeDocumentProcessing() {
-  const rows = db.prepare("SELECT id FROM knowledge WHERE processing_state = 'processing' AND status = 'active'").all() as { id: string }[];
+  const rows = db.prepare("SELECT id FROM knowledge WHERE processing_state = 'processing' AND status IN ('active', 'pending')").all() as { id: string }[];
   for (const row of rows) void processDocument(row.id);
 }
 
@@ -145,7 +145,10 @@ export function saveChunks(knowledge: Pick<KnowledgeSource, "id" | "company_id" 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   // Vanhan version palat jäävät historiaan arkistoituina.
-  const status = knowledge.status === "active" ? "active" : knowledge.status === "deleted" ? "deleted" : "archived";
+  // Odottavan uuden version palat ovat aktiivisia, mutta AI ei käytä niitä ennen hyväksyntää, koska
+  // haku rajautuu voimassa oleviin tietueisiin.
+  const status = knowledge.status === "active" || knowledge.status === "pending" ? "active"
+    : knowledge.status === "deleted" ? "deleted" : "archived";
   db.transaction(() => {
     db.prepare(`
       UPDATE knowledge_chunks SET status = 'archived', updated_at = ?

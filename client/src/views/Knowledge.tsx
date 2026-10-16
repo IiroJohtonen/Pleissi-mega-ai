@@ -5,6 +5,7 @@ import { api, API, errorMessage, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
 import { locale, t } from "../i18n";
 import { KnowledgeChunks } from "./KnowledgeChunks";
+import { KnowledgeVersionReview } from "./KnowledgeVersion";
 
 // Kenelle tietue on: AI-dokumentaatiota AI käyttää vastausehdotuksissa, sisäinen on vain henkilökunnalle.
 export type KnowledgeAudience = "ai" | "internal";
@@ -18,6 +19,7 @@ function knowledgeStateLabel(state: string) {
     unreadable: t("Tekstiä ei saatu luettua – ei AI:n käytössä"),
     processing: t("Käsitellään – AI poimii tietoja dokumentista"),
     replaced: t("Korvattu uudella versiolla"),
+    pending: t("Uusi versio odottaa hyväksyntää"),
     deleted: t("Poistettu")
   }[state] || state;
 }
@@ -239,6 +241,12 @@ export function KnowledgeBase({
     }
   }
   const inAudience = entries.filter(entry => !audience || entry.audience === audience);
+  // Muistutus tiedoista, joiden voimassaolo päättyy 30 päivän sisällä.
+  const todayIso = new Date().toLocaleDateString("sv-SE");
+  const in30Days = new Date(Date.now() + 30 * 86_400_000).toLocaleDateString("sv-SE");
+  const expiringSoon = inAudience
+    .filter(entry => entry.valid_until && entry.valid_until >= todayIso && entry.valid_until <= in30Days)
+    .sort((a, b) => (a.valid_until ?? "").localeCompare(b.valid_until ?? ""));
   const searches = Object.entries(columnSearch).filter(([, value]) => value?.trim()) as [KnowledgeSortKey, string][];
   const visible = inAudience
     .filter(entry => (kindFilter === "all" || entry.kind === kindFilter)
@@ -314,6 +322,17 @@ export function KnowledgeBase({
             </p>
           ))}
         </form>
+      )}
+
+      {expiringSoon.length > 0 && (
+        <div className="chunk-suggestion knowledge-expiring" role="status">
+          <span>{t("Vanhenee 30 päivän sisällä:")}</span>
+          {expiringSoon.map(entry => (
+            <button key={entry.id} type="button" className="back-link" onClick={() => setOpenEntryId(entry.id)}>
+              {entry.title} ({formatDateOnly(entry.valid_until)})
+            </button>
+          ))}
+        </div>
       )}
 
       {notice && <p className="portal-sent knowledge-notice" role="status">{notice}</p>}
@@ -541,9 +560,9 @@ export function KnowledgeBase({
           form={form}
           audience={audience}
           onClose={() => setForm(null)}
-          onDone={async message => {
+          onDone={async (message, openId) => {
             setForm(null);
-            setOpenEntryId(null);
+            setOpenEntryId(openId ?? null);
             setNotice(message);
             await loadEntries();
           }}
@@ -577,14 +596,26 @@ function KnowledgeDetailDrawer({
   const [moving, setMoving] = useState(false);
   const [moveError, setMoveError] = useState("");
 
+  const reload = () => api<KnowledgeDetail>(`/knowledge/${entryId}`).then(setDetail).catch(() => setFailed(true));
+
   useEffect(() => {
     setDetail(null);
     setFailed(false);
     setMoveError("");
-    api<KnowledgeDetail>(`/knowledge/${entryId}`)
-      .then(setDetail)
-      .catch(() => setFailed(true));
+    void reload();
   }, [entryId]);
+
+  async function markExpired() {
+    if (!detail || !window.confirm(t("Merkitäänkö \"{0}\" vanhentuneeksi? Voimassaolo päättyy tänään.", detail.title))) return;
+    setMoveError("");
+    try {
+      await api(`/knowledge/${detail.id}/expire`, { method: "POST" });
+      await reload();
+      await onChanged();
+    } catch (error) {
+      setMoveError(errorMessage(error, t("Tallennus epäonnistui.")));
+    }
+  }
 
   // Taustalla käsiteltävän dokumentin tiedot päivittyvät, kunnes käsittely on valmis.
   useEffect(() => {
@@ -725,12 +756,34 @@ function KnowledgeDetailDrawer({
               <div className="knowledge-entry-actions">
                 <button onClick={() => onEdit("validity", detail)}>{t("Voimassaoloaika")}</button>
                 <button onClick={() => onEdit("replace", detail)}>{t("Muokkaa")}</button>
+                {detail.state !== "expired" && <button onClick={() => void markExpired()}>{t("Merkitse vanhentuneeksi")}</button>}
                 <button className="danger" onClick={() => onRemove(detail)}>{t("Poista")}</button>
               </div>
             )}
             {moveError && <p className="send-error">{moveError}</p>}
 
-            {detail.kind === "document" && detail.state !== "unreadable" && (
+            {detail.pending_version_id && (
+              <div className="chunk-suggestion version-banner">
+                <span>{t("Dokumentista on ladattu uusi versio, joka odottaa hyväksyntää.")}</span>
+                <button type="button" className="secondary" onClick={() => onOpenVersion(detail.pending_version_id!)}>
+                  {t("Näytä muutokset")}
+                </button>
+              </div>
+            )}
+
+            {detail.status === "pending" && (
+              <KnowledgeVersionReview
+                detail={detail}
+                onApplied={async () => { await reload(); await onChanged(); }}
+                onRejected={async () => {
+                  await onChanged();
+                  const current = detail.versions.find(version => version.status === "active");
+                  if (current) onOpenVersion(current.id); else onClose();
+                }}
+              />
+            )}
+
+            {detail.kind === "document" && detail.state !== "unreadable" && detail.status !== "pending" && (
               <KnowledgeChunks
                 detail={detail}
                 highlightChunkId={highlightChunkId}
@@ -782,7 +835,8 @@ function KnowledgeFormModal({
   // Näkymän rajaus: uusi tietue menee suoraan siihen. Ilman rajausta kohde valitaan lomakkeella.
   audience?: KnowledgeAudience;
   onClose: () => void;
-  onDone: (notice: string) => Promise<void>;
+  // openId = avataan tämä tietue tallennuksen jälkeen (esim. hyväksyntää odottava uusi versio).
+  onDone: (notice: string, openId?: string) => Promise<void>;
 }) {
   const current = form.mode === "validity" ? form.entry : form.replaces;
   const [title, setTitle] = useState(current?.title ?? "");
@@ -839,10 +893,21 @@ function KnowledgeFormModal({
           }
         );
         if (!response.ok) throw new Error(await response.text());
-        const result = await response.json() as { extractionOk: boolean };
-        await onDone(result.extractionOk
-          ? ""
-          : t("Dokumentti \"{0}\" tallennettiin, mutta sen tekstiä ei saatu luettua. Se ei ole AI:n käytössä.", file.name));
+        const result = await response.json() as {
+          knowledgeId: string; extractionOk: boolean; pending: boolean; likelyVersionOf: { id: string; title: string } | null;
+        };
+        if (!result.extractionOk) {
+          await onDone(t("Dokumentti \"{0}\" tallennettiin, mutta sen tekstiä ei saatu luettua. Se ei ole AI:n käytössä.", file.name));
+        } else if (result.pending) {
+          await onDone(t("Uusi versio odottaa hyväksyntää. Tarkista muutokset, ennen kuin se korvaa nykyisen."), result.knowledgeId);
+        } else if (result.likelyVersionOf && window.confirm(t("Onko tämä uusi versio dokumentista \"{0}\"?", result.likelyVersionOf.title))) {
+          await api(`/knowledge/${result.knowledgeId}/as-version-of`, {
+            method: "POST", body: JSON.stringify({ knowledgeId: result.likelyVersionOf.id })
+          });
+          await onDone(t("Uusi versio odottaa hyväksyntää. Tarkista muutokset, ennen kuin se korvaa nykyisen."), result.knowledgeId);
+        } else {
+          await onDone("");
+        }
       }
     } catch (caught) {
       setError(errorMessage(caught, t("Tallennus epäonnistui.")));
@@ -860,6 +925,8 @@ function KnowledgeFormModal({
         <p className="muted">
           {form.mode === "validity"
             ? t("{0}. Vanhentunut tietue poistuu AI:n käytöstä.", form.entry.title)
+            : form.replaces && form.mode === "document"
+            ? t("Näet uuden version muutokset ennen kuin se korvaa nykyisen. Vanha versio säilyy historiassa.")
             : form.replaces
             ? t("Uusi versio korvaa vanhan. Vanha versio säilyy historiassa.")
             : form.mode === "document"

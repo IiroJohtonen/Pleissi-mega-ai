@@ -446,7 +446,8 @@ if (!companyColumns.some(existing => existing.name === "managed")) {
 }
 
 // Tietopankin tietue on joko dokumentti tai vakiotieto. Uusi versio saa saman group_id:n,
-// ja vanha jää historiaan tilaan 'replaced'. Poistettu tietue jää tilaan 'deleted'.
+// ja vanha jää historiaan tilaan 'replaced'. Poistettu tietue jää tilaan 'deleted'. Dokumentin uusi versio
+// odottaa tilassa 'pending', kunnes isännöitsijä hyväksyy muutokset; vasta silloin vanha korvataan.
 const knowledgeColumns = db.prepare("PRAGMA table_info(knowledge)").all() as { name: string }[];
 for (const [column, definition] of [
   ["kind", "TEXT NOT NULL DEFAULT 'fact'"],
@@ -466,7 +467,9 @@ for (const [column, definition] of [
   // Dokumentin pilkonta taustalla: 'processing' | 'ready' | 'failed'.
   ["processing_state", "TEXT NOT NULL DEFAULT 'ready'"],
   // PDF:n teksti sivuittain (JSON-taulukko), jotta tiedon sivu säilyy ja sivun voi lukea uudelleen.
-  ["pages", "TEXT"]
+  ["pages", "TEXT"],
+  // Odottavan uuden version vertailu edelliseen (JSON), lasketaan kerran pilkonnan valmistuttua.
+  ["comparison", "TEXT"]
 ]) {
   if (!knowledgeColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE knowledge ADD COLUMN ${column} ${definition}`);
