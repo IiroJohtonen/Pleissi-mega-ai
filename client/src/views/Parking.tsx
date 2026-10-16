@@ -3,6 +3,7 @@ import { Dropdown, usePaged } from "../components/common";
 import { api, errorMessage } from "../session";
 import type { Company, Resident } from "../types";
 import { t } from "../i18n";
+import { OpenResidentButton } from "../components/Reporter";
 
 export type ParkingSpace = {
   id: string;
@@ -304,6 +305,15 @@ export function ParkingSpaces({
                 ]}
                 onChange={setResidentId}
               />
+              {(() => {
+                const holder = residents.find(resident => resident.id === residentId);
+                return holder ? (
+                  <div className="holder-link">
+                    <span>{[holder.name, holder.apartment_number && t("Asunto {0}", holder.apartment_number), holder.email].filter(Boolean).join(" · ")}</span>
+                    <OpenResidentButton residentId={holder.id} name={holder.name} />
+                  </div>
+                ) : null;
+              })()}
 
               <label>
                 <span>{t("Lisätieto")}</span>

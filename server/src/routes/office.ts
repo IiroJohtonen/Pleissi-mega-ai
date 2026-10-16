@@ -5,6 +5,7 @@ import { isAdmin, requireAdmin, requireManager } from "../auth.js";
 import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
+import { loginCodeMailReady, loginCodeSetting } from "../login-codes.js";
 
 export const officeRouter: Router = express.Router();
 
@@ -13,13 +14,19 @@ const OFFICE_SELECT = `
   SELECT name, business_id AS businessId, address, phone,
          reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority,
          ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays,
-         ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent
+         ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent, two_factor AS twoFactor,
+         resident_status_updates AS residentStatusUpdates
   FROM office_settings WHERE id = 1
 `;
 
 // aiAvailable kertoo, onko palvelimelle asetettu AI-avain; ilman sitä AI-asetukset eivät vaikuta.
+// twoFactorOverridden: palvelimen ympäristömuuttuja on kytkenyt kirjautumiskoodin pois asetuksesta huolimatta.
 function officeSettings() {
-  return { ...(db.prepare(OFFICE_SELECT).get() as Record<string, unknown>), aiAvailable: Boolean(process.env.ANTHROPIC_API_KEY) };
+  return {
+    ...(db.prepare(OFFICE_SELECT).get() as Record<string, unknown>),
+    aiAvailable: Boolean(process.env.ANTHROPIC_API_KEY),
+    twoFactorOverridden: process.env.TWO_FACTOR_DISABLED === "1"
+  };
 }
 
 // Arvioiko AI saapuvan tehtävän prioriteetin. Oletuksena pois, kunnes pääkäyttäjä kytkee sen päälle.
@@ -53,9 +60,16 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     dueReminderDays: z.number().int().min(0).max(30).optional(),
     // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina.
     aiMonthlyLimit: z.number().min(0).max(100000).optional(),
-    aiWarningPercent: z.number().int().min(0).max(100).optional()
+    aiWarningPercent: z.number().int().min(0).max(100).optional(),
+    // Kirjautumiskoodi sähköpostiin henkilökunnalle.
+    twoFactor: z.boolean().optional(),
+    // Asukas saa sähköpostin, kun hänen tehtävänsä tila muuttuu.
+    residentStatusUpdates: z.boolean().optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
+  if (parsed.data.twoFactor && !loginCodeSetting() && !loginCodeMailReady()) {
+    return res.status(400).json({ error: "Yhdistä ensin toimiston sähköpostitili. Kirjautumiskoodit lähetetään sen kautta." });
+  }
   db.prepare("UPDATE office_settings SET name = ?, business_id = ?, address = ?, phone = ? WHERE id = 1")
     .run(parsed.data.name, parsed.data.businessId, parsed.data.address, parsed.data.phone);
   if (parsed.data.reminderEmails !== undefined) {
@@ -81,6 +95,12 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   }
   if (parsed.data.aiWarningPercent !== undefined) {
     db.prepare("UPDATE office_settings SET ai_warning_percent = ? WHERE id = 1").run(parsed.data.aiWarningPercent);
+  }
+  if (parsed.data.twoFactor !== undefined) {
+    db.prepare("UPDATE office_settings SET two_factor = ? WHERE id = 1").run(parsed.data.twoFactor ? 1 : 0);
+  }
+  if (parsed.data.residentStatusUpdates !== undefined) {
+    db.prepare("UPDATE office_settings SET resident_status_updates = ? WHERE id = 1").run(parsed.data.residentStatusUpdates ? 1 : 0);
   }
   refreshBudgetAlerts();
   res.json(officeSettings());

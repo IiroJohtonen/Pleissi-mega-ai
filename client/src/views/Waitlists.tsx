@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dropdown, NoticeFilters, usePaged } from "../components/common";
+import { ReporterCell, ReporterField } from "../components/Reporter";
 import { formatDate } from "../format";
 import { api, errorMessage } from "../session";
 import type { Company } from "../types";
@@ -20,6 +21,7 @@ export type WaitlistEntry = {
   resident_name?: string | null;
   resident_email?: string | null;
   apartment_number?: string | null;
+  address?: string | null;
   offered_at?: string | null;
   offered_by?: string | null;
 };
@@ -131,7 +133,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
               <thead>
                 <tr>
                   <th>{t("Sija")}</th>
-                  <th>{t("Asukas")}</th>
+                  <th>{t("Ilmoittaja")}</th>
                   <th>{t("Asunto")}</th>
                   <th>{t("Taloyhtiö")}</th>
                   <th>{t("Jono")}</th>
@@ -158,7 +160,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
                   >
                     <td><strong>{entry.position}.</strong></td>
                     <td>
-                      <strong>{entry.resident_name || t("Tuntematon asukas")}</strong>
+                      <ReporterCell name={entry.resident_name} email={entry.resident_email} />
                       {entry.note && <span>{entry.note}</span>}
                     </td>
                     <td>{entry.apartment_number || "–"}</td>
@@ -185,7 +187,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
               <tr>
                 <th>{t("Vuoro")}</th>
                 <th>{t("Sija")}</th>
-                <th>{t("Asukas")}</th>
+                <th>{t("Ilmoittaja")}</th>
                 <th>{t("Asunto")}</th>
                 <th>{t("Taloyhtiö")}</th>
                 <th>{t("Nyt varattu")}</th>
@@ -201,7 +203,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
                     <span>{slotTime(entry)}</span>
                   </td>
                   <td><strong>{entry.position}.</strong></td>
-                  <td>{entry.resident_name || t("Tuntematon asukas")}</td>
+                  <td><ReporterCell name={entry.resident_name} email={entry.resident_email} /></td>
                   <td>{entry.apartment_number || "–"}</td>
                   <td>{companyName(entry.company_id)}</td>
                   <td>{entry.current_holder || "–"}</td>
@@ -221,11 +223,18 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
           <aside className="drawer form-drawer">
             <button type="button" className="drawer-back" onClick={() => setOpenId(null)} disabled={saving}>{t("← Takaisin")}</button>
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
-            <h2>{open.resident_name || t("Tuntematon asukas")}</h2>
+            <h2>{waitlistLabel(open)}</h2>
             <p className="muted">
-              {waitlistLabel(open)}{" "}{t("· sija")}{" "}{open.position} · {companyName(open.company_id)} · {open.apartment_number || "–"}
-              {open.resident_email ? ` · ${open.resident_email}` : ""}
+              {t("Sija")}{" "}{open.position} · {companyName(open.company_id)} · {t("jonossa alkaen")}{" "}{formatDate(open.created_at)}
             </p>
+            <ReporterField
+              companyId={open.company_id}
+              reporter={{ id: open.resident_id, name: open.resident_name, email: open.resident_email, apartment_number: open.apartment_number, address: open.address }}
+              onChange={async residentId => {
+                await api(`/waitlist/${encodeURIComponent(open.id)}/reporter`, { method: "PUT", body: JSON.stringify({ residentId }) });
+                await loadEntries();
+              }}
+            />
             {open.note && <p className="announcement-body">{open.note}</p>}
             {open.status === "offered" && (
               <p className="reply-hint">{t("Tarjottu")}{" "}{open.offered_at ? formatDate(open.offered_at) : ""}{open.offered_by ? ` · ${open.offered_by}` : ""}</p>

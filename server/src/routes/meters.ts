@@ -93,12 +93,13 @@ metersRouter.get("/companies/:companyId/meter-readings", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   res.json(db.prepare(`
-    SELECT m.id, m.company_id, m.apartment_id, m.meter_type, m.reading_date, m.value, m.source, m.recorded_by, m.note, m.created_at,
-           a.apartment_number, a.address,
+    SELECT m.id, m.company_id, m.apartment_id, m.resident_id, m.meter_type, m.reading_date, m.value, m.source, m.recorded_by, m.note, m.created_at,
+           a.apartment_number, a.address, r.name AS resident_name, r.email AS resident_email,
            LAG(m.value) OVER same_meter AS previous_value,
            LAG(m.reading_date) OVER same_meter AS previous_date
     FROM meter_readings m
     LEFT JOIN apartments a ON a.id = m.apartment_id
+    LEFT JOIN residents r ON r.id = m.resident_id
     WHERE m.company_id = ?
     WINDOW same_meter AS (PARTITION BY m.apartment_id, m.meter_type ORDER BY m.reading_date, m.created_at)
     ORDER BY m.reading_date DESC, m.created_at DESC

@@ -58,6 +58,35 @@ describe("sovellus", () => {
     expect(screen.queryByText("Kirjaudu ulos")).toBeNull();
   });
 
+  it("kysyy kirjautumiskoodin ja muistaa luotetun laitteen", async () => {
+    responses["/auth/login"] = { twoFactor: true, challengeId: "c".repeat(64), email: "te••••@example.com" };
+    responses["/auth/verify-code"] = { ...staff("Isännöitsijä"), deviceToken: "laite-1" };
+    const calls = mockApi();
+    try {
+      const { container } = await renderApp(null);
+      fireEvent.change(container.querySelector('input[type="email"]')!, { target: { value: "Testi@example.com" } });
+      fireEvent.change(container.querySelector('input[type="password"]')!, { target: { value: "salasana-123" } });
+      fireEvent.click(screen.getByRole("button", { name: "Kirjaudu" }));
+
+      expect(await screen.findByText("Syötä kirjautumiskoodi")).toBeTruthy();
+      expect(screen.getByText(/te••••@example\.com/)).toBeTruthy();
+      const codeInput = container.querySelector(".login-code-input") as HTMLInputElement;
+      // Vain numerot hyväksytään, enintään kuusi.
+      fireEvent.change(codeInput, { target: { value: "12a34567" } });
+      expect(codeInput.value).toBe("123456");
+      fireEvent.click(screen.getByRole("button", { name: "Kirjaudu" }));
+
+      await screen.findByText("Kirjaudu ulos", undefined, { timeout: 3000 }).catch(() => undefined);
+      const verify = calls.find(call => call.url.endsWith("/auth/verify-code"));
+      expect(JSON.parse(verify!.body)).toEqual({ challengeId: "c".repeat(64), code: "123456", rememberDevice: true });
+      expect(JSON.parse(localStorage.getItem("kotilo.trustedDevices")!)).toEqual({ "testi@example.com": "laite-1" });
+      expect(JSON.parse(localStorage.getItem("kotilo.session")!).deviceToken).toBeUndefined();
+    } finally {
+      delete responses["/auth/login"];
+      delete responses["/auth/verify-code"];
+    }
+  });
+
   it("näyttää päätösjonon ja merkitsee myöhässä olevan tehtävän", async () => {
     await renderApp(staff("Asiakaspalvelu"));
     expect(await screen.findByText("Saunavuoron varaus")).toBeTruthy();

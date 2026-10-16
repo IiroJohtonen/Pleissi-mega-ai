@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
+import { ReporterCell, ReporterField } from "../components/Reporter";
 import { formatDay } from "../format";
 import { api, errorMessage } from "../session";
 import type { Company } from "../types";
@@ -19,6 +20,9 @@ export type MeterReading = {
   created_at: string;
   apartment_number?: string | null;
   address?: string | null;
+  resident_id?: string | null;
+  resident_name?: string | null;
+  resident_email?: string | null;
   // Saman asunnon ja mittarin edellinen lukema; puuttuu ensimmäiseltä lukemalta.
   previous_value?: number | null;
   previous_date?: string | null;
@@ -215,7 +219,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
                   <th>{t("Lukupäivä")}</th>
                   <th>{t("Lukema")}</th>
                   <th>{t("Kulutus edellisestä")}</th>
-                  <th>{t("Kirjaaja")}</th>
+                  <th>{t("Ilmoittaja")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,7 +246,10 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
                     <td>{formatDay(reading.reading_date)}</td>
                     <td>{formatReading(reading.value, reading.meter_type)}</td>
                     <td>{consumption(reading)}</td>
-                    <td>{reading.recorded_by}{reading.source === "portal" ? t(" · portaali") : ""}</td>
+                    <td>
+                      <ReporterCell name={reading.resident_name || reading.recorded_by} email={reading.resident_email} />
+                      <span>{reading.source === "portal" ? t("asukasportaali") : t("toimisto")}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -258,6 +265,18 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
             <h2>{meterLabel(open.meter_type)} · {open.apartment_number || "–"}</h2>
             <p className="muted">{companyName(open.company_id)}{open.address ? ` · ${open.address}` : ""}</p>
+            <ReporterField
+              companyId={open.company_id}
+              reporter={{
+                id: open.resident_id, name: open.resident_name, email: open.resident_email,
+                apartment_number: open.resident_id ? open.apartment_number : null, address: open.resident_id ? open.address : null
+              }}
+              fallbackName={open.recorded_by}
+              onChange={async residentId => {
+                await api(`/meter-readings/${encodeURIComponent(open.id)}/reporter`, { method: "PUT", body: JSON.stringify({ residentId }) });
+                await loadReadings();
+              }}
+            />
             <dl className="ticket-facts">
               <div>
                 <dt>{t("Lukema")}</dt>

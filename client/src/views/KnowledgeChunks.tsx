@@ -23,10 +23,19 @@ async function openPage(knowledgeId: string, page: number) {
   }
 }
 
-function ChunkStatus({ chunk }: { chunk: KnowledgeChunk }) {
-  if (chunk.needs_review) return <span className="chunk-status review">{t("⚠ tarkista")}</span>;
-  if (chunk.verified) return <span className="chunk-status verified">{t("✓ tarkistettu")}</span>;
-  return <span className="chunk-status">{t("Tarkistamatta")}</span>;
+// Tarkistamaton tieto merkitään tarkistetuksi painikkeella; sisältö ei muutu.
+function ChunkStatus({ chunk, onVerify, busy }: { chunk: KnowledgeChunk; onVerify?: () => void; busy?: boolean }) {
+  if (chunk.verified && !chunk.needs_review) return <span className="chunk-status verified">{t("✓ Tarkistettu")}</span>;
+  const label = chunk.needs_review ? t("⚠ Tarkista") : t("Tarkistamatta");
+  if (!onVerify) return <span className={`chunk-status${chunk.needs_review ? " review" : ""}`}>{label}</span>;
+  return (
+    <span className={`chunk-status${chunk.needs_review ? " review" : ""}`}>
+      {label}
+      <button type="button" className="chunk-verify" disabled={busy} onClick={onVerify} title={t("Merkitse tieto tarkistetuksi")}>
+        {t("Merkitse tarkistetuksi")}
+      </button>
+    </span>
+  );
 }
 
 // Muokkauslomake: otsikko, teksti ja avainsanat tavallisina kenttinä.
@@ -134,6 +143,12 @@ export function KnowledgeChunks({ detail, highlightChunkId, onValidityChanged }:
     await load();
   }, t("Tallennus epäonnistui."));
 
+  const verify = (chunkIds: string[]) => run(async () => {
+    for (const chunkId of chunkIds) await api(`/knowledge-chunks/${chunkId}/verify`, { method: "POST" });
+    await load();
+  }, t("Tarkistetuksi merkitseminen epäonnistui."));
+  const unverified = (chunks ?? []).filter(chunk => !chunk.verified || chunk.needs_review);
+
   const remove = (chunk: KnowledgeChunk) => {
     if (!window.confirm(t("Poistetaanko tieto \"{0}\"? AI ei enää käytä sitä.", chunk.title))) return;
     void run(async () => {
@@ -208,10 +223,17 @@ export function KnowledgeChunks({ detail, highlightChunkId, onValidityChanged }:
 
   return (
     <section className="drawer-section knowledge-chunks">
-      <h3>{t("Mitä AI poimi tästä")}</h3>
+      <div className="chunk-header">
+        <h3>{t("Mitä AI poimi tästä")}</h3>
+        {canEdit && unverified.length > 1 && (
+          <button type="button" className="chunk-verify" disabled={busy} onClick={() => void verify(unverified.map(chunk => chunk.id))}>
+            {t("Merkitse kaikki tarkistetuiksi ({0})", unverified.length)}
+          </button>
+        )}
+      </div>
       <p className="muted chunk-summary">
         {detail.state === "processing" ? t("Käsitellään…")
-          : chunks ? t("✓ Käsitelty · {0} tietoa", String(chunks.length)) : null}
+          : chunks ? t("{0} tietoa · {1} tarkistamatta", String(chunks.length), String(unverified.length)) : null}
       </p>
       {failed && <p className="send-error">{t("Tietojen lataus epäonnistui.")}</p>}
 
@@ -248,7 +270,7 @@ export function KnowledgeChunks({ detail, highlightChunkId, onValidityChanged }:
                   <button type="button" className="chunk-title" onClick={() => setExpanded(current => current === chunk.id ? null : chunk.id)}>
                     {chunk.title}
                   </button>
-                  <ChunkStatus chunk={chunk} />
+                  <ChunkStatus chunk={chunk} busy={busy} onVerify={canEdit ? () => void verify([chunk.id]) : undefined} />
                   {chunk.page ? (
                     isPdf ? (
                       <button type="button" className="back-link chunk-page" onClick={() => void openPage(detail.id, chunk.page!)}>
