@@ -1,0 +1,157 @@
+import { chunks, overlap, stems } from "./ai.js";
+import { db } from "./db.js";
+import { id, now, today } from "./util.js";
+
+// ---------------------------------------------------------------------------------------------
+// Tietopalat. Jokainen tietopankin tietue pilkotaan aiheittaisiksi paloiksi, ja vastausehdotukseen
+// valitaan vain kysymykseen osuvat palat. Haku on paikallinen sanavartalohaku (ei vektorikantaa).
+// ---------------------------------------------------------------------------------------------
+
+// Yhden palan enimmäispituus AI:lle lähetettäessä.
+export const CHUNK_PROMPT_LIMIT = 1500;
+
+export type KnowledgeChunk = {
+  id: string;
+  knowledgeId: string;
+  title: string;
+  // Dokumentin tai vakiotiedon otsikko, josta pala on.
+  documentTitle: string;
+  content: string;
+  page: number | null;
+  tags: string;
+  kind: string;
+  origin: string;
+  verified: boolean;
+  needsReview: boolean;
+};
+
+export type ChunkInput = {
+  title: string;
+  content: string;
+  page?: number | null;
+  tags?: string;
+  origin: "ai" | "local" | "manual";
+  verified?: boolean;
+  needsReview?: boolean;
+};
+
+type KnowledgeSource = { id: string; company_id: string; title: string; content: string; kind: string; status: string };
+
+// Paikallinen pilkonta: dokumentti kappaleittain, vakiotieto yhtenä palana. Vakiotiedon on kirjoittanut
+// isännöitsijä, joten se on valmiiksi tarkistettu.
+export function localChunks(row: Pick<KnowledgeSource, "title" | "content" | "kind">): ChunkInput[] {
+  if (row.kind !== "document") {
+    return row.content.trim() ? [{ title: row.title, content: row.content.trim(), origin: "manual", verified: true }] : [];
+  }
+  return chunks(row.content).map(content => ({ title: row.title, content, origin: "local" }));
+}
+
+// Tallentaa tietueen palat. Aiemmat aktiiviset palat arkistoidaan.
+export function saveChunks(knowledge: Pick<KnowledgeSource, "id" | "company_id" | "status">, items: ChunkInput[]) {
+  const timestamp = now();
+  const insert = db.prepare(`
+    INSERT INTO knowledge_chunks
+      (id, knowledge_id, company_id, title, content, page, tags, origin, verified, needs_review, status, position, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  // Vanhan version palat jäävät historiaan arkistoituina.
+  const status = knowledge.status === "active" ? "active" : knowledge.status === "deleted" ? "deleted" : "archived";
+  db.transaction(() => {
+    db.prepare("UPDATE knowledge_chunks SET status = 'archived', updated_at = ? WHERE knowledge_id = ? AND status = 'active'")
+      .run(timestamp, knowledge.id);
+    items.forEach((item, position) => insert.run(
+      id("chunk"), knowledge.id, knowledge.company_id, item.title.trim() || "Nimetön", item.content.trim(),
+      item.page ?? null, item.tags ?? "", item.origin, item.verified ? 1 : 0, item.needsReview ? 1 : 0,
+      status, position, timestamp, timestamp
+    ));
+  })();
+}
+
+// Merkitsee tietueen palat tietueen tilan mukaisiksi (korvattu → arkistoitu, poistettu → poistettu).
+export function setChunksStatus(knowledgeId: string, status: "active" | "archived" | "deleted") {
+  db.prepare("UPDATE knowledge_chunks SET status = ?, updated_at = ? WHERE knowledge_id = ? AND status != 'deleted'")
+    .run(status, now(), knowledgeId);
+}
+
+// Kertaluonteinen siirto: tietueet, joilla ei vielä ole paloja, pilkotaan paikallisesti.
+export function migrateKnowledgeChunks() {
+  const rows = db.prepare(`
+    SELECT k.id, k.company_id, k.title, k.content, k.kind, k.status FROM knowledge k
+    WHERE NOT EXISTS (SELECT 1 FROM knowledge_chunks c WHERE c.knowledge_id = k.id)
+  `).all() as KnowledgeSource[];
+  for (const row of rows) saveChunks(row, localChunks(row));
+}
+
+type ChunkRow = {
+  id: string; knowledge_id: string; title: string; content: string; page: number | null; tags: string;
+  origin: string; verified: number; needs_review: number; document_title: string; document_tags: string; kind: string;
+};
+
+function toChunk(row: ChunkRow): KnowledgeChunk {
+  return {
+    id: row.id,
+    knowledgeId: row.knowledge_id,
+    title: row.title,
+    documentTitle: row.document_title,
+    content: row.content.slice(0, CHUNK_PROMPT_LIMIT),
+    page: row.page,
+    tags: [row.tags, row.document_tags].filter(Boolean).join(", "),
+    kind: row.kind,
+    origin: row.origin,
+    verified: row.verified === 1,
+    needsReview: row.needs_review === 1
+  };
+}
+
+// Pisteyttää palan kysymystä vasten samoin säännöin kuin aiempi tietuehaku: avainsana tai pitkä
+// otsikkosana riittää yksinään, muuten tarvitaan vähintään kaksi eri osumaa.
+function scoreChunk(query: Set<string>, chunk: KnowledgeChunk): number | null {
+  const tagStems = [...stems(chunk.tags)];
+  const tagHits = [...query].filter(word => tagStems.some(tag => word.startsWith(tag) || tag.startsWith(word)));
+  const titleHits = [...new Set([...overlap(query, `${chunk.title} ${chunk.documentTitle}`), ...tagHits])];
+  const contentHits = overlap(query, chunk.content);
+  const distinct = new Set([...titleHits, ...contentHits]);
+  const strongTitleHit = tagHits.length > 0 || titleHits.some(word => word.length >= 7);
+
+  if (distinct.size < 2 && !strongTitleHit) return null;
+  // Dokumentin palassa itse tekstin tai avainsanan pitää osua; pelkkä dokumentin nimi ei riitä.
+  if (chunk.kind === "document" && contentHits.length === 0 && tagHits.length === 0) return null;
+  return titleHits.length * 2 + contentHits.length;
+}
+
+// Valitsee kysymykseen parhaiten osuvat palat yhtiön AI:n käytössä olevasta dokumentaatiosta.
+// Mukana ovat vain aktiiviset, voimassa olevat, luettavat AI-dokumentaation palat. Tyhjä lista = ei osumia;
+// koko tietopankkia ei koskaan palauteta.
+export function selectKnowledgeChunks(companyId: string, question: string, limit = 5): KnowledgeChunk[] {
+  const query = stems(question);
+  if (query.size === 0 || limit <= 0) return [];
+  const date = today();
+  const rows = db.prepare(`
+    SELECT c.id, c.knowledge_id, c.title, c.content, c.page, c.tags, c.origin, c.verified, c.needs_review,
+           k.title AS document_title, k.tags AS document_tags, k.kind
+    FROM knowledge_chunks c
+    JOIN knowledge k ON k.id = c.knowledge_id
+    WHERE c.company_id = ? AND k.company_id = ?
+      AND c.status = 'active'
+      AND k.status = 'active'
+      AND k.audience = 'ai'
+      AND k.extraction_ok = 1
+      AND (k.valid_from IS NULL OR k.valid_from <= ?)
+      AND (k.valid_until IS NULL OR k.valid_until >= ?)
+    ORDER BY k.title, c.position
+  `).all(companyId, companyId, date, date) as ChunkRow[];
+
+  return rows
+    .map(toChunk)
+    .map(chunk => ({ chunk, score: scoreChunk(query, chunk) }))
+    .filter((entry): entry is { chunk: KnowledgeChunk; score: number } => entry.score !== null)
+    // Vakaa järjestys: tasapisteissä tietopankin järjestys.
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(entry => entry.chunk);
+}
+
+// Palan lähde käyttäjälle ja AI:lle: "Järjestyssäännöt, s. 3".
+export function chunkSourceLabel(chunk: Pick<KnowledgeChunk, "documentTitle" | "page">) {
+  return chunk.page ? `${chunk.documentTitle}, s. ${chunk.page}` : chunk.documentTitle;
+}

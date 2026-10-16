@@ -3,10 +3,11 @@ import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
-import { answerFromKnowledge, type KnowledgeItem } from "../ai.js";
+import { type KnowledgeItem } from "../ai.js";
 import { requireManager } from "../auth.js";
 import { db, knowledgeFilesDir } from "../db.js";
 import { extractText, UnsupportedDocumentError } from "../extract.js";
+import { chunkSourceLabel, localChunks, saveChunks, selectKnowledgeChunks, setChunksStatus } from "../knowledge-chunks.js";
 import { id, now, today, unsafeFileMessage } from "../util.js";
 
 export const knowledgeRouter: Router = express.Router();
@@ -126,6 +127,11 @@ function saveKnowledge(input: {
     // Uusi versio perii aiemman version avainsanat, ellei uusia anneta.
     const tags = input.tags ? input.tags.join(", ") : replaced ? (replaced as KnowledgeRow & { tags?: string }).tags ?? "" : "";
     if (tags) db.prepare("UPDATE knowledge SET tags = ? WHERE id = ?").run(tags, knowledgeId);
+    if (replaced) setChunksStatus(replaced.id, "archived");
+    saveChunks(
+      { id: knowledgeId, company_id: input.companyId, status: "active" },
+      localChunks({ title: input.title, content: input.content, kind: input.kind })
+    );
   })();
 
   return knowledgeId;
@@ -241,10 +247,16 @@ knowledgeRouter.post("/companies/:companyId/knowledge/test", async (req, res) =>
   const parsed = z.object({ question: z.string().trim().min(1) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Kirjoita kysymys." });
 
-  const answer = await answerFromKnowledge(parsed.data.question, getKnowledge(companyId));
-  res.json(answer
-    ? { found: true, answer: answer.answer, source: { id: answer.sourceId, title: answer.sourceTitle } }
-    : { found: false });
+  // Samat palat, jotka vastausehdotus saisi tähän kysymykseen.
+  const selected = selectKnowledgeChunks(companyId, parsed.data.question);
+  const chunks = selected.map(chunk => ({
+    id: chunk.id, knowledgeId: chunk.knowledgeId, title: chunk.title, documentTitle: chunk.documentTitle,
+    page: chunk.page, content: chunk.content, label: chunkSourceLabel(chunk)
+  }));
+  const [best] = selected;
+  res.json(best
+    ? { found: true, answer: best.content, source: { id: best.knowledgeId, title: best.documentTitle, chunkId: best.id, page: best.page }, chunks }
+    : { found: false, chunks });
 });
 
 knowledgeRouter.put("/knowledge/:id/validity", requireManager, (req, res) => {
@@ -288,7 +300,11 @@ knowledgeRouter.put("/knowledge/:id/company", requireManager, (req, res) => {
   const companyId = companyIdFromContext(parsed.data.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
 
-  db.prepare("UPDATE knowledge SET company_id = ? WHERE group_id = ?").run(companyId, row.group_id);
+  db.transaction(() => {
+    db.prepare("UPDATE knowledge SET company_id = ? WHERE group_id = ?").run(companyId, row.group_id);
+    db.prepare("UPDATE knowledge_chunks SET company_id = ? WHERE knowledge_id IN (SELECT id FROM knowledge WHERE group_id = ?)")
+      .run(companyId, row.group_id);
+  })();
   res.json({ ok: true });
 });
 
@@ -298,6 +314,7 @@ knowledgeRouter.delete("/knowledge/:id", requireManager, (req, res) => {
 
   // Tietue poistuu AI:n käytöstä, mutta jää historiaan.
   db.prepare("UPDATE knowledge SET status = 'deleted' WHERE id = ?").run(row.id);
+  setChunksStatus(row.id, "deleted");
   res.json({ ok: true });
 });
 

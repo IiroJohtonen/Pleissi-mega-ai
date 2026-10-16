@@ -469,8 +469,35 @@ for (const [column, definition] of [
   }
 }
 
+// Tietopalat: dokumentti tai vakiotieto pilkottuna aiheittain. AI saa vastausehdotukseen vain kysymykseen
+// osuvat palat, ei koko tietopankkia. Voimassaolo, kohde (AI/sisäinen) ja taloyhtiö tulevat tietueelta;
+// company_id on palalla tallessa, jotta jokainen haku rajautuu yhtiöön myös palatasolla.
+// origin: 'ai' = AI pilkkoi, 'local' = paikallinen kappalejako, 'manual' = isännöitsijän kirjoittama.
+// status: 'active' | 'archived' (vanhan version pala) | 'deleted'.
+db.exec(`
+CREATE TABLE IF NOT EXISTS knowledge_chunks (
+  id TEXT PRIMARY KEY,
+  knowledge_id TEXT NOT NULL,
+  company_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  page INTEGER,
+  tags TEXT NOT NULL DEFAULT '',
+  origin TEXT NOT NULL DEFAULT 'local',
+  verified INTEGER NOT NULL DEFAULT 0,
+  needs_review INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'active',
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(knowledge_id) REFERENCES knowledge(id)
+);
+CREATE INDEX IF NOT EXISTS knowledge_chunks_knowledge ON knowledge_chunks(knowledge_id);
+CREATE INDEX IF NOT EXISTS knowledge_chunks_company ON knowledge_chunks(company_id, status);
+`);
+
 const ticketSourceColumns = db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];
-for (const column of ["knowledge_source_id", "knowledge_source_title"]) {
+for (const column of ["knowledge_source_id", "knowledge_source_title", "knowledge_source_chunk_id", "knowledge_source_page"]) {
   if (!ticketSourceColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE tickets ADD COLUMN ${column} TEXT`);
   }

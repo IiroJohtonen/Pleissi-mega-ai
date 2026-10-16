@@ -15,7 +15,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 - Hätätapauksesta lähtee heti sähköposti taloyhtiön vastuuisännöitsijälle; tulos näkyy tehtävän lokissa
 
 **AI**
-- Vastausehdotus taloyhtiön tietopankin pohjalta, pyydettäessä
+- Vastausehdotus taloyhtiön tietopankin pohjalta, pyydettäessä. AI saa vain tehtävään osuvat tietopalat (enintään viisi), ei koko tietopankkia, ja ehdotuksen lähde tallentuu tehtävälle palan ja sivun tarkkuudella
 - Raportti toistuvista aiheista ja ehdotukset uusiksi vakiotiedoiksi
 - Avainsanahaku varalla, kun AI-avainta ei ole
 - AI arvioi saapuvan tehtävän prioriteetin, kun pääkäyttäjä kytkee sen päälle toimiston asetuksista (oletuksena pois)

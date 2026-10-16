@@ -27,7 +27,7 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
           return;
         }
         const message = JSON.stringify(body.messages);
-        if (String(body.system).includes("recurring")) {
+        if (JSON.stringify(body.system ?? "").includes("recurring")) {
           // Raporttipyyntö: yksi uusi aihe ja yksi, johon dokumentaatio jo vastaa.
           const report = {
             topics: [{ title: "Pyöräkellarin lukko", summary: "Lukko on jäykkä.", documentation: "Ilmoita huoltoyhtiölle.", tickets: [1, 2] }],
@@ -41,7 +41,7 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
           }));
           return;
         }
-        if (String(body.system).includes("reply draft")) {
+        if (JSON.stringify(body.system ?? "").includes("reply draft")) {
           const suggestion = { draft: "Huoltomies tulee torstaina.", reason: "Käsittelijän lisätieto.", sourceId: null };
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({
@@ -221,5 +221,21 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal(suggested.data.usedAi, true);
     const request = requests.at(-1);
     assert.match(JSON.stringify(request.body.messages), /Manager's notes:\\nHuoltomies käy torstaina klo 10\./);
+    // Vastausehdotus: oma malli, lyhyt tokenraja ja vakio-ohje välimuistilohkona.
+    assert.equal(request.body.model, "claude-sonnet-5-5");
+    assert.equal(request.body.max_tokens, 1024);
+    assert.deepEqual(request.body.thinking, { type: "between_tools" });
+    assert.deepEqual(request.body.system[0].cache_control, { type: "ephemeral" });
+    assert.doesNotMatch(request.body.system[0].text, /Ilmanvaihto/);
+  });
+
+  it("AI saa vain tehtävään osuvat palat muodossa [pala] otsikko (lähde)", async () => {
+    const created = await call(server, admin, "POST", "/inbound/messages", { companyId: "demo-company", senderName: "Asukas", subject: "Päivystys", body: "Mikä on huoltoyhtiön päivystysnumero?", channel: "email" });
+    const suggested = await call(server, admin, "POST", `/tickets/${created.data.ticketId}/suggest`, {});
+    assert.equal(suggested.status, 200);
+    const content = requests.at(-1).body.messages[0].content as string;
+    assert.match(content, /\[chunk[^\]]+\] Huoltoyhtiö \(Huoltoyhtiö\)\n.*010 123 4567/);
+    // Muut tietueet eivät osu kysymykseen, joten niitä ei lähetetä.
+    assert.doesNotMatch(content, /Hiljaisuus/);
   });
 });
