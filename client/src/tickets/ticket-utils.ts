@@ -16,7 +16,8 @@ export async function fetchTicketDetail(id: string): Promise<TicketDetail> {
     workOrders: detail.workOrders ?? [],
     contractor: detail.contractor ?? null,
     replyAccounts: detail.replyAccounts ?? [],
-    signature: detail.signature ?? ""
+    signature: detail.signature ?? "",
+    renovation: detail.renovation ?? null
   };
 }
 

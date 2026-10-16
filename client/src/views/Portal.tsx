@@ -108,8 +108,8 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
             <small>{resident.companyName} · {resident.apartmentNumber}</small>
             <strong>{resident.name}</strong>
             <div className="portal-footer-links">
-              <button className="logout" onClick={logout}>{t("Kirjaudu ulos")}</button>
-              <LanguageToggle className="logout" />
+              <LanguageToggle className="secondary portal-footer-button" />
+              <button className="secondary portal-footer-button" onClick={logout}>{t("Kirjaudu ulos")}</button>
             </div>
           </div>
         </div>

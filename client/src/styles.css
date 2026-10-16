@@ -2650,7 +2650,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .portal-nav-group { display: grid; gap: 4px; }
 .portal-nav-group + .portal-nav-group { margin-top: 14px; }
 .portal-nav-label { padding: 0 11px 2px; color: #8d949b; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.portal-footer-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.portal-footer-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 
 .portal-main { flex: 1; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 44px 46px 64px; display: grid; gap: 18px; align-content: start; }
 .portal-title .eyebrow { margin: 0 0 6px; }
@@ -3908,25 +3908,22 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 .topbar-search input::placeholder { color: #8d949b; }
 .topbar-search input:focus { outline: 2px solid #9bd3ff; outline-offset: 0; border-color: #4a5868; }
-.topbar-company { position: relative; display: flex; align-items: center; }
-.topbar-company svg { position: absolute; left: 10px; width: 15px; height: 15px; color: #9bd3ff; pointer-events: none; }
-.topbar-company select {
-  max-width: 240px;
+/* Yläpalkin taloyhtiövalinta on sama alasvetovalikko kuin muualla; painike on tumma kuten yläpalkki. */
+.topbar-company { min-width: 0; }
+.topbar-company .dropdown-trigger {
+  max-width: 260px;
   height: 36px;
-  padding: 0 30px 0 32px;
-  border: 1px solid #343d47;
-  border-radius: 9px;
-  background: #1e252d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab3bd' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px;
+  padding: 0 10px;
+  border-color: #343d47;
+  background: #1e252d;
   color: #fff;
-  font: inherit;
   font-size: 13px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  appearance: none;
-  cursor: pointer;
 }
-.topbar-company select:focus { outline: 2px solid #9bd3ff; outline-offset: 0; }
-.topbar-company option { background: #fff; color: #1d2329; }
+.topbar-company .dropdown-trigger:hover:not(:disabled) { border-color: #4a5868; }
+.topbar-company .dropdown-trigger[aria-expanded="true"] { border-color: #9bd3ff; box-shadow: 0 0 0 3px rgba(155, 211, 255, .18); }
+.topbar-company .dropdown-trigger svg { width: 15px; height: 15px; color: #9bd3ff; }
+.topbar-company .dropdown-trigger svg:last-child { width: 12px; height: 12px; color: #aab3bd; }
+.topbar-company .dropdown-trigger span { flex: 1; }
 .topbar-profile {
   display: inline-flex;
   align-items: center;
@@ -4021,7 +4018,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .topbar-search { order: 3; flex: 1 1 100%; }
   .topbar-search input { width: 100%; }
   .topbar-company { order: 4; flex: 1 1 100%; }
-  .topbar-company select { max-width: none; width: 100%; }
+  .topbar-company .dropdown-trigger { max-width: none; width: 100%; }
   .history-dropdown { width: min(380px, calc(100vw - 24px)); }
   .profile-dropdown { width: min(320px, calc(100vw - 24px)); }
   /* Puhelimella valikko on liukuva paneeli, joten kiinnitystä ei tarvita; sulkuruksi on ylhäällä. */
@@ -4411,3 +4408,8 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 /* Jonot-sivun toinen osio: vuorojen jonot. */
 .content > .section-heading { margin: 18px 0 0; font-size: 18px; }
 .content > .section-heading + .muted { margin: -4px 0 0; }
+.topbar-company ul { left: auto; right: 0; max-width: min(360px, 90vw); }
+.topbar-company li button { white-space: normal; }
+
+/* Asukasportaalin sivupalkin painikkeet: samanlaiset kuin portaalin muut painikkeet. */
+.portal-footer-links .portal-footer-button { padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; }
