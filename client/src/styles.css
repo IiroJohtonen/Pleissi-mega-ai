@@ -3818,7 +3818,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .nav-pin svg { width: 16px; height: 16px; transform: rotate(45deg); transition: transform .15s ease; }
 .nav-pin.pinned svg { transform: none; fill: currentColor; }
 .nav-pin:hover { background: #242c35; color: #fff; transform: none; }
-.nav-company-name { margin: 2px 0 4px 25px; overflow: hidden; color: #9bd3ff; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.nav-company-name { display: block; max-width: calc(100% - 25px); margin: 2px 0 4px 25px; padding: 4px 8px; overflow: hidden; border: 1px solid rgba(155, 211, 255, .35); border-radius: 6px; background: transparent; color: #9bd3ff; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-align: left; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.nav-company-name:hover, .nav-company-name.active { border-color: #9bd3ff; background: rgba(155, 211, 255, .12); }
 
 @media (min-width: 761px) {
   .app.nav-collapsed { padding-left: 68px; }

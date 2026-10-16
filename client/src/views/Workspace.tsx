@@ -602,13 +602,23 @@ export function Workspace({ user }: { user: OfficeUser }) {
           <div className="nav-group">
             <button className={tab === "companies" ? "active" : ""} onClick={() => setTab("companies")}>
               <TabIcon tab="companies" />
-              {t("Taloyhtiöt")}
+              {t("Kaikki taloyhtiöt")}
             </button>
             <NavToggle open={showResidentsLink} label={t("taloyhtiöiden alasivut")} onToggle={() => setResidentsOpen(!showResidentsLink)} />
           </div>
           {showResidentsLink && (
             <div className="nav-subs">
-              {navCompany && <p className="nav-company-name" title={t("Taloyhtiön voi vaihtaa yläpalkista.")}>{navCompany.name}</p>}
+              {/* Yläpalkissa valittu taloyhtiö; painike avaa sen tietueen. Taloyhtiön voi vaihtaa yläpalkista. */}
+              {navCompany && (
+                <button
+                  type="button"
+                  className={`nav-company-name ${tab === "companies" && routeParam === navCompany.id ? "active" : ""}`}
+                  title={t("Avaa taloyhtiön tiedot. Taloyhtiön voi vaihtaa yläpalkista.")}
+                  onClick={() => navigate("companies", navCompany.id)}
+                >
+                  {navCompany.name}
+                </button>
+              )}
               {navCompany && navGroups.map(group => {
                 const open = !closedGroups.includes(group.key);
                 // Suljetun ryhmän otsikossa näkyy sen laskurien summa, jotta odottavat asiat eivät jää piiloon.

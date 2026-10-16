@@ -55,7 +55,7 @@ export const tabTitles: Record<TicketTab, string> = {
   keys: t("Avaimet"),
   meters: t("Lukemat"),
   waitlist: t("Jonot"),
-  companies: t("Taloyhtiöt"),
+  companies: t("Kaikki taloyhtiöt"),
   residents: t("Asukkaat"),
   settings: t("Asetukset"),
   search: t("Haku")

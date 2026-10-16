@@ -1574,4 +1574,6 @@ export const en: Record<string, string> = {
   "…ja {0} muuta.": "…and {0} more.",
   "Jo rekisterissä ({0})": "Already in the register ({0})",
   "Tuo {0} avainta": "Import {0} keys",
+  "Kaikki taloyhtiöt": "All housing companies",
+  "Avaa taloyhtiön tiedot. Taloyhtiön voi vaihtaa yläpalkista.": "Open the housing company's details. You can change the housing company in the top bar.",
 };
