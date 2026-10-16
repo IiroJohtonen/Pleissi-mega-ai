@@ -15,6 +15,7 @@ function knowledgeStateLabel(state: string) {
     expired: t("Vanhentunut – ei AI:n käytössä"),
     upcoming: t("Ei vielä voimassa – ei AI:n käytössä"),
     unreadable: t("Tekstiä ei saatu luettua – ei AI:n käytössä"),
+    processing: t("Käsitellään – AI poimii tietoja dokumentista"),
     replaced: t("Korvattu uudella versiolla"),
     deleted: t("Poistettu")
   }[state] || state;
@@ -27,7 +28,8 @@ function knowledgeStateShort(state: string) {
     internal: t("Sisäinen käyttö"),
     expired: t("Vanhentunut"),
     upcoming: t("Ei vielä voimassa"),
-    unreadable: t("Teksti lukematta")
+    unreadable: t("Teksti lukematta"),
+    processing: t("Käsitellään…")
   }[state] || knowledgeStateLabel(state);
 }
 
@@ -175,6 +177,14 @@ export function KnowledgeBase({
     setNotice("");
     void loadEntries();
   }, [companyId]);
+
+  // Dokumentin pilkonta jatkuu taustalla; lista päivittyy, kunnes käsittely on valmis.
+  const processing = entries.some(entry => entry.state === "processing");
+  useEffect(() => {
+    if (!processing) return;
+    const timer = window.setInterval(() => void loadEntries(), 3000);
+    return () => window.clearInterval(timer);
+  }, [processing, companyId]);
 
   async function removeEntry(entry: KnowledgeEntry) {
     const question = entry.audience === "internal"

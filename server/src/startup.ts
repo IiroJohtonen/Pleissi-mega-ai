@@ -1,13 +1,14 @@
 import { ADMIN_ROLE } from "./auth.js";
 import { db, seed } from "./db.js";
 import { migrateBookingRequests } from "./booking-queue.js";
-import { migrateKnowledgeChunks } from "./knowledge-chunks.js";
+import { migrateKnowledgeChunks, resumeDocumentProcessing } from "./knowledge-chunks.js";
 import { migrateRenovationNotices } from "./routes/renovations.js";
 
 seed();
 migrateRenovationNotices();
 migrateBookingRequests();
 migrateKnowledgeChunks();
+resumeDocumentProcessing();
 
 // Vanhat "Osoitettu minulle" -tehtävät saavat käsittelijän lokin perusteella; jos tekijää ei
 // tunnisteta, tehtävä osoitetaan pääkäyttäjälle, jotta se ei katoa kenenkään Omista tehtävistä.

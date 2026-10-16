@@ -1606,4 +1606,6 @@ export const en: Record<string, string> = {
   "Asukas liittyy varatun vuoron jonoon kalenterista. Kun varaaja peruu vuoron, se siirtyy automaattisesti sijalla 1 olevalle.": "Residents join the queue for a booked slot in the calendar. When the booker cancels, the slot passes automatically to the person in position 1.",
   "Vuorojen jonoissa ei ole ketään.": "No one is in the slot queues.",
   "Vuoro": "Slot",
+  "Käsitellään – AI poimii tietoja dokumentista": "Processing – AI is extracting information from the document",
+  "Dokumenttien pilkonta": "Document splitting",
 };

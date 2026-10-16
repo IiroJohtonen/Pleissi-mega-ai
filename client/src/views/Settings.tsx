@@ -913,7 +913,8 @@ type AiUsage = {
 const aiFeatureLabels: Record<string, string> = {
   suggest: t("Vastausehdotukset"),
   assess: t("Saapuvien viestien arviointi"),
-  topics: t("Toistuvien aiheiden raportit")
+  topics: t("Toistuvien aiheiden raportit"),
+  chunking: t("Dokumenttien pilkonta")
 };
 
 export const formatUsd = (value: number) => `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;

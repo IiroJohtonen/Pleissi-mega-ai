@@ -77,6 +77,10 @@
     background: #4b4430;
     color: #eed799
 }
+:root[data-theme="dark"] .knowledge-state.processing {
+    background: #2f3b49;
+    color: #9abde8
+}
 :root[data-theme="dark"] .knowledge-entry-actions button {
     border: 1px solid #354150;
     background: #283341

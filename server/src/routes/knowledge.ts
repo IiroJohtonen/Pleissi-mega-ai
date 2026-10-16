@@ -6,8 +6,8 @@ import { companyIdFromContext } from "../access.js";
 import { type KnowledgeItem } from "../ai.js";
 import { requireManager } from "../auth.js";
 import { db, knowledgeFilesDir } from "../db.js";
-import { extractText, UnsupportedDocumentError } from "../extract.js";
-import { chunkSourceLabel, localChunks, saveChunks, selectKnowledgeChunks, setChunksStatus } from "../knowledge-chunks.js";
+import { extractPages, isPdf, UnsupportedDocumentError } from "../extract.js";
+import { chunkSourceLabel, listChunks, localChunks, processDocument, saveChunks, selectKnowledgeChunks, setChunksStatus } from "../knowledge-chunks.js";
 import { id, now, today, unsafeFileMessage } from "../util.js";
 
 export const knowledgeRouter: Router = express.Router();
@@ -46,18 +46,20 @@ type KnowledgeRow = {
   extraction_ok: number;
   created_at: string;
   audience: string;
+  processing_state: string;
 };
 
 function knowledgeState(row: KnowledgeRow) {
   const date = today();
   if (row.status !== "active") return row.status;
   if (!row.extraction_ok) return "unreadable";
+  if (row.processing_state === "processing") return "processing";
   if (row.valid_until && row.valid_until < date) return "expired";
   if (row.valid_from && row.valid_from > date) return "upcoming";
   return row.audience === "internal" ? "internal" : "in_use";
 }
 
-function serializeKnowledge(row: KnowledgeRow) {
+function serializeKnowledge({ pages: _pages, ...row }: KnowledgeRow & { pages?: string | null }) {
   return {
     ...row,
     content: row.kind === "document" ? row.content.slice(0, 600) : row.content,
@@ -87,6 +89,8 @@ function saveKnowledge(input: {
   fileName?: string;
   mimeType?: string;
   extractionOk?: boolean;
+  // PDF:n teksti sivuittain.
+  pages?: string[] | null;
   tags?: string[];
   // Puuttuessaan uusi versio perii korvattavan tietueen kohteen; uusi tietue on AI-dokumentaatiota.
   audience?: (typeof KNOWLEDGE_AUDIENCES)[number];
@@ -130,8 +134,9 @@ function saveKnowledge(input: {
     if (replaced) setChunksStatus(replaced.id, "archived");
     saveChunks(
       { id: knowledgeId, company_id: input.companyId, status: "active" },
-      localChunks({ title: input.title, content: input.content, kind: input.kind })
+      localChunks({ title: input.title, content: input.content, kind: input.kind }, input.pages)
     );
+    if (input.pages) db.prepare("UPDATE knowledge SET pages = ? WHERE id = ?").run(JSON.stringify(input.pages), knowledgeId);
   })();
 
   return knowledgeId;
@@ -207,9 +212,12 @@ knowledgeRouter.post(
     const unsafe = await unsafeFileMessage([{ filename: fileName, content: req.body }]);
     if (unsafe) return res.status(400).json({ error: unsafe });
     let text = "";
+    let pages: string[] | null = null;
     let extractionOk: boolean;
     try {
-      text = await extractText(req.body, fileName, parsed.data.mimeType);
+      const extracted = await extractPages(req.body, fileName, parsed.data.mimeType);
+      if (isPdf(fileName, parsed.data.mimeType)) pages = extracted;
+      text = extracted.filter(Boolean).join("\n\n");
       extractionOk = text.length > 0;
     } catch (error) {
       if (error instanceof UnsupportedDocumentError) {
@@ -230,11 +238,14 @@ knowledgeRouter.post(
       fileName,
       mimeType: parsed.data.mimeType || "application/octet-stream",
       extractionOk,
+      pages,
       audience: parsed.data.audience
     });
     if (!knowledgeId) return res.status(404).json({ error: "Korvattavaa tietuetta ei löytynyt." });
 
     await fs.writeFile(path.join(knowledgeFilesDir, knowledgeId), req.body);
+    // Pilkonta jatkuu taustalla; dokumentin tila näkyy käyttöliittymässä.
+    void processDocument(knowledgeId);
 
     res.status(201).json({ ok: true, knowledgeId, extractionOk, textLength: text.length });
   }
@@ -328,13 +339,21 @@ knowledgeRouter.get("/knowledge/:id", (req, res) => {
     "SELECT * FROM knowledge WHERE group_id = ? ORDER BY version DESC"
   ).all(row.group_id) as KnowledgeRow[];
 
+  const { pages: _pages, ...fields } = row as KnowledgeRow & { pages?: string | null };
   res.json({
-    ...row,
+    ...fields,
     content_length: row.content.length,
     state: knowledgeState(row),
     company_name: company?.name ?? "",
     versions: versions.map(serializeKnowledge)
   });
+});
+
+// Tietueen palat, eli mitä AI poimi dokumentista.
+knowledgeRouter.get("/knowledge/:id/chunks", (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row) return res.status(404).json({ error: "Knowledge not found" });
+  res.json(listChunks(row.id));
 });
 
 knowledgeRouter.get("/knowledge/:id/history", (req, res) => {

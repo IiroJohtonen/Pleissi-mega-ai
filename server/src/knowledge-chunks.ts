@@ -1,4 +1,4 @@
-import { chunks, overlap, stems } from "./ai.js";
+import { aiAvailable, chunkDocumentWithAi, chunks, overlap, stems } from "./ai.js";
 import { db } from "./db.js";
 import { id, now, today } from "./util.js";
 
@@ -33,36 +33,123 @@ export type ChunkInput = {
   origin: "ai" | "local" | "manual";
   verified?: boolean;
   needsReview?: boolean;
+  suggestedValidUntil?: string | null;
 };
 
 type KnowledgeSource = { id: string; company_id: string; title: string; content: string; kind: string; status: string };
 
 // Paikallinen pilkonta: dokumentti kappaleittain, vakiotieto yhtenä palana. Vakiotiedon on kirjoittanut
-// isännöitsijä, joten se on valmiiksi tarkistettu.
-export function localChunks(row: Pick<KnowledgeSource, "title" | "content" | "kind">): ChunkInput[] {
+// isännöitsijä, joten se on valmiiksi tarkistettu. PDF:n sivut (pages) pilkotaan sivu kerrallaan, jotta
+// jokainen pala saa sivunumeronsa.
+export function localChunks(row: Pick<KnowledgeSource, "title" | "content" | "kind">, pages?: string[] | null): ChunkInput[] {
   if (row.kind !== "document") {
     return row.content.trim() ? [{ title: row.title, content: row.content.trim(), origin: "manual", verified: true }] : [];
+  }
+  if (pages?.length) {
+    return pages.flatMap((page, index) =>
+      chunks(page).map(content => ({ title: row.title, content, page: index + 1, origin: "local" as const })));
   }
   return chunks(row.content).map(content => ({ title: row.title, content, origin: "local" }));
 }
 
-// Tallentaa tietueen palat. Aiemmat aktiiviset palat arkistoidaan.
+// Numerot (hinnat, päivämäärät, kellonajat, puhelinnumerot) palan tekstistä.
+function numbersIn(text: string) {
+  return text.match(/\d+/g) ?? [];
+}
+
+// AI:n palassa jokaisen numeron pitää löytyä alkuperäisestä tekstistä. Muuten pala merkitään
+// tarkistettavaksi, koska AI on voinut muuttaa tai keksiä luvun.
+export function hasUnknownNumbers(content: string, source: string) {
+  const known = new Set(numbersIn(source));
+  return numbersIn(content).some(number => !known.has(number));
+}
+
+type DocumentRow = KnowledgeSource & { pages: string | null; extraction_ok: number };
+
+function documentPages(row: Pick<DocumentRow, "pages">): string[] | null {
+  if (!row.pages) return null;
+  try {
+    const pages = JSON.parse(row.pages);
+    return Array.isArray(pages) ? pages.map(String) : null;
+  } catch {
+    return null;
+  }
+}
+
+const runningDocuments = new Set<string>();
+
+// Pilkkoo dokumentin taustalla. Paikalliset palat ovat käytössä heti; kun AI on käytössä, ne korvataan
+// AI:n pilkkomilla paloilla. Jos AI ei ole käytössä tai kutsu epäonnistuu, paikalliset palat jäävät.
+export async function processDocument(knowledgeId: string) {
+  if (runningDocuments.has(knowledgeId)) return;
+  const row = db.prepare("SELECT id, company_id, title, content, kind, status, pages, extraction_ok FROM knowledge WHERE id = ?")
+    .get(knowledgeId) as DocumentRow | undefined;
+  if (!row || row.kind !== "document") return;
+  const setState = (state: "processing" | "ready" | "failed") =>
+    db.prepare("UPDATE knowledge SET processing_state = ? WHERE id = ?").run(state, knowledgeId);
+  if (!row.extraction_ok || !row.content.trim()) {
+    setState("failed");
+    return;
+  }
+  if (!aiAvailable()) {
+    setState("ready");
+    return;
+  }
+
+  runningDocuments.add(knowledgeId);
+  setState("processing");
+  try {
+    const pages = documentPages(row);
+    const aiChunks = await chunkDocumentWithAi(row.title, pages ?? [row.content]);
+    // Tietue on voinut muuttua käsittelyn aikana (korvattu tai poistettu); palat saavat sen tilan.
+    const current = db.prepare("SELECT status FROM knowledge WHERE id = ?").get(knowledgeId) as { status: string } | undefined;
+    if (!current) return;
+    saveChunks({ id: row.id, company_id: row.company_id, status: current.status }, aiChunks.map(chunk => ({
+      title: chunk.title,
+      content: chunk.content,
+      // Muiden kuin PDF-dokumenttien sivunumero ei kerro mitään.
+      page: pages ? chunk.page : null,
+      tags: chunk.tags.join(", "),
+      origin: "ai" as const,
+      needsReview: hasUnknownNumbers(chunk.content, row.content),
+      suggestedValidUntil: chunk.validUntil
+    })));
+  } catch (error) {
+    console.error("Dokumentin pilkonta AI:lla epäonnistui, käytetään kappalejakoa:", error instanceof Error ? error.message : error);
+  } finally {
+    runningDocuments.delete(knowledgeId);
+    setState("ready");
+  }
+}
+
+// Käynnistyksessä kesken jääneet pilkonnat aloitetaan uudelleen.
+export function resumeDocumentProcessing() {
+  const rows = db.prepare("SELECT id FROM knowledge WHERE processing_state = 'processing' AND status = 'active'").all() as { id: string }[];
+  for (const row of rows) void processDocument(row.id);
+}
+
+// Tallentaa tietueen palat. Aiemmat aktiiviset palat arkistoidaan, paitsi isännöitsijän tarkistamat ja
+// kirjoittamat: niitä AI tai uusi pilkonta ei koskaan korvaa.
 export function saveChunks(knowledge: Pick<KnowledgeSource, "id" | "company_id" | "status">, items: ChunkInput[]) {
   const timestamp = now();
   const insert = db.prepare(`
     INSERT INTO knowledge_chunks
-      (id, knowledge_id, company_id, title, content, page, tags, origin, verified, needs_review, status, position, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, knowledge_id, company_id, title, content, page, tags, origin, verified, needs_review, status, position,
+       created_at, updated_at, suggested_valid_until)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   // Vanhan version palat jäävät historiaan arkistoituina.
   const status = knowledge.status === "active" ? "active" : knowledge.status === "deleted" ? "deleted" : "archived";
   db.transaction(() => {
-    db.prepare("UPDATE knowledge_chunks SET status = 'archived', updated_at = ? WHERE knowledge_id = ? AND status = 'active'")
+    db.prepare(`
+      UPDATE knowledge_chunks SET status = 'archived', updated_at = ?
+      WHERE knowledge_id = ? AND status = 'active' AND verified = 0 AND origin != 'manual'
+    `)
       .run(timestamp, knowledge.id);
     items.forEach((item, position) => insert.run(
       id("chunk"), knowledge.id, knowledge.company_id, item.title.trim() || "Nimetön", item.content.trim(),
       item.page ?? null, item.tags ?? "", item.origin, item.verified ? 1 : 0, item.needsReview ? 1 : 0,
-      status, position, timestamp, timestamp
+      status, position, timestamp, timestamp, item.suggestedValidUntil ?? null
     ));
   })();
 }
@@ -154,4 +241,14 @@ export function selectKnowledgeChunks(companyId: string, question: string, limit
 // Palan lähde käyttäjälle ja AI:lle: "Järjestyssäännöt, s. 3".
 export function chunkSourceLabel(chunk: Pick<KnowledgeChunk, "documentTitle" | "page">) {
   return chunk.page ? `${chunk.documentTitle}, s. ${chunk.page}` : chunk.documentTitle;
+}
+
+// Tietueen aktiiviset palat käyttöliittymälle järjestyksessä.
+export function listChunks(knowledgeId: string) {
+  return db.prepare(`
+    SELECT id, knowledge_id, title, content, page, tags, origin, verified, needs_review, suggested_valid_until,
+           position, created_at, updated_at
+    FROM knowledge_chunks WHERE knowledge_id = ? AND status = 'active'
+    ORDER BY COALESCE(page, 0), position
+  `).all(knowledgeId);
 }

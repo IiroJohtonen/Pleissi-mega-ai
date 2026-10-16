@@ -4,6 +4,25 @@ export class UnsupportedDocumentError extends Error {}
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"]);
 
+export function isPdf(fileName: string, mimeType: string) {
+  return path.extname(fileName).toLowerCase() === ".pdf" || mimeType === "application/pdf";
+}
+
+// Lukee dokumentin tekstin sivuittain. PDF palauttaa jokaisen sivun omana alkionaan, jotta tiedon
+// sivunumero säilyy; muut muodot ovat yksi sivu.
+export async function extractPages(
+  content: Buffer,
+  fileName: string,
+  mimeType: string
+): Promise<string[]> {
+  if (isPdf(fileName, mimeType)) {
+    const { extractText: extractPdfText } = await import("unpdf");
+    const { text } = await extractPdfText(new Uint8Array(content), { mergePages: false });
+    return text.map(page => page.trim());
+  }
+  return [await extractText(content, fileName, mimeType)];
+}
+
 // Lukee dokumentin tekstin: PDF, Word (.docx), kuva (tekstintunnistus) tai tekstitiedosto.
 export async function extractText(
   content: Buffer,
@@ -12,10 +31,8 @@ export async function extractText(
 ): Promise<string> {
   const extension = path.extname(fileName).toLowerCase();
 
-  if (extension === ".pdf" || mimeType === "application/pdf") {
-    const { extractText: extractPdfText } = await import("unpdf");
-    const { text } = await extractPdfText(new Uint8Array(content), { mergePages: true });
-    return text.trim();
+  if (isPdf(fileName, mimeType)) {
+    return (await extractPages(content, fileName, mimeType)).filter(Boolean).join("\n\n");
   }
 
   if (extension === ".docx") {
