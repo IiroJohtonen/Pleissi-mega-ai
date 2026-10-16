@@ -380,6 +380,10 @@ export type OfficeInfo = {
   aiRelevance?: number;
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
+  // twoFactor: kirjautumiskoodi sähköpostiin; twoFactorOverridden: palvelin on kytkenyt sen pois.
+  twoFactor?: number; twoFactorOverridden?: boolean;
+  // residentStatusUpdates: asukas saa sähköpostin, kun tehtävän tila muuttuu.
+  residentStatusUpdates?: number;
 };
 
 const providerNames: Record<MailProvider, string> = {
@@ -639,6 +643,9 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [aiRelevance, setAiRelevance] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [twoFactorOverridden, setTwoFactorOverridden] = useState(false);
+  const [residentStatusUpdates, setResidentStatusUpdates] = useState(true);
   const [aiWarningPercent, setAiWarningPercent] = useState(80);
   // Kasvaa jokaisella tallennuksella, jotta kulumittari hakee tilanteen uudelleen.
   const [savedCount, setSavedCount] = useState(0);
@@ -660,6 +667,9 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         setAiRelevance(Boolean(office.aiRelevance));
         setAiAvailable(office.aiAvailable !== false);
         setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
+        setTwoFactor(Boolean(office.twoFactor));
+        setTwoFactorOverridden(Boolean(office.twoFactorOverridden));
+        setResidentStatusUpdates(office.residentStatusUpdates !== 0);
         setAiWarningPercent(office.aiWarningPercent ?? 80);
         setRetentionMonths(office.retentionMonths ?? 0);
         setStoredRetention(office.retentionMonths ?? 0);
@@ -686,7 +696,7 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         method: "PUT",
         body: JSON.stringify({
           name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance,
-          aiMonthlyLimit, aiWarningPercent
+          aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates
         })
       });
       MANAGEMENT_OFFICE.name = office.name;
@@ -775,6 +785,51 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         </div>
         <p className="reply-hint">
           {t("Muistutukset näkyvät aina päätösjonon kärjessä. Sähköpostikooste lähtee toimiston sähköpostitililtä käyttäjän kirjautumisosoitteeseen, kun se on kytketty päälle.")}
+        </p>
+
+        </CollapseSection>
+
+        <CollapseSection id="office-security" title={t("Tietoturva")}>
+
+        <label className="switch-row">
+          <span>
+            <strong>{t("Kirjautumiskoodi sähköpostiin")}</strong>
+            <small>{t("Henkilökunta syöttää salasanan jälkeen sähköpostiin tulleen kuusinumeroisen koodin.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={twoFactor}
+            onChange={event => { setTwoFactor(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("Koodi lähetetään käyttäjän kirjautumisosoitteeseen toimiston sähköpostitililtä ja on voimassa 10 minuuttia. Käyttäjä voi merkitä laitteensa luotetuksi, jolloin koodia ei kysytä samalla laitteella 30 päivään. Salasanan vaihto poistaa luotetut laitteet. Varmista ennen käyttöönottoa, että jokaisen käyttäjän sähköpostiosoite on oikein.")}
+        </p>
+        {twoFactorOverridden && (
+          <p className="send-error">{t("Palvelimen asetus (TWO_FACTOR_DISABLED) on kytkenyt kirjautumiskoodin toistaiseksi pois.")}</p>
+        )}
+
+        </CollapseSection>
+
+        <CollapseSection id="office-resident-updates" title={t("Asukasviestintä")}>
+
+        <label className="switch-row">
+          <span>
+            <strong>{t("Tilapäivitykset asukkaalle")}</strong>
+            <small>{t("Asukas saa sähköpostin, kun hänen ilmoituksensa etenee.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={residentStatusUpdates}
+            onChange={event => { setResidentStatusUpdates(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("Viesti lähtee, kun tehtävästä tehdään työtilaus huoltoyhtiölle, huoltoyhtiö kuittaa työn tehdyksi, tehtävä otetaan käsittelyyn, se siirretään kolmannelle osapuolelle tai se suljetaan. Viesti menee tehtävän ilmoittajille, joilla on sähköpostiosoite, taloyhtiön sähköpostitililtä. Roskapostiksi merkityistä tehtävistä ei ilmoiteta. Lähetetty päivitys näkyy tehtävän aikajanalla.")}
         </p>
 
         </CollapseSection>

@@ -93,3 +93,107 @@ export async function notifyResident(residentId: string, subject: string, lines:
     console.error(`Ilmoituksen lähetys asukkaalle epäonnistui (${subject}):`, error?.message ?? error);
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Tilapäivitykset asukkaalle: kun tehtävä etenee, sen ilmoittajat saavat lyhyen sähköpostin, jotta
+// heidän ei tarvitse kysyä tilannetta. Viestit voi kytkeä pois asetuksista. Roskapostiksi tai
+// AI:n suodattamiksi merkityistä tehtävistä ei ilmoiteta, eikä samaa päivitystä lähetetä samalle
+// tehtävälle uudelleen 10 minuutin sisällä (esim. kun tilaa vaihdetaan edestakaisin).
+// ---------------------------------------------------------------------------------------------
+export type StatusEvent = "work_ordered" | "work_done" | "in_progress" | "third_party" | "closed";
+
+const STATUS_REPEAT_MS = 10 * 60 * 1000;
+
+export function residentStatusUpdatesEnabled(): boolean {
+  const row = db.prepare("SELECT resident_status_updates FROM office_settings WHERE id = 1").get() as
+    { resident_status_updates: number } | undefined;
+  return Boolean(row?.resident_status_updates);
+}
+
+// Tehtävän tila, josta asukkaalle kerrotaan, kun käsittelijä vaihtaa sen itse.
+export function statusEventFor(status: string): StatusEvent | null {
+  return status === "waiting_manager" ? "in_progress"
+    : status === "waiting_third_party" ? "third_party"
+    : status === "closed" ? "closed"
+    : null;
+}
+
+function statusMessage(event: StatusEvent, subject: string, number: string, detail: string): { title: string; lines: string[] } {
+  const quoted = `"${subject}" (#${number})`;
+  switch (event) {
+    case "work_ordered":
+      return {
+        title: `Tehtävä #${number}: työ on tilattu`,
+        lines: [
+          `ilmoittamasi asia ${quoted} on edennyt: työ on tilattu${detail ? ` huoltoyhtiöltä ${detail}` : " huoltoyhtiöltä"}.`,
+          "Huoltoyhtiö ottaa tarvittaessa yhteyttä. Saat viestin, kun työ on tehty."
+        ]
+      };
+    case "work_done":
+      return {
+        title: `Tehtävä #${number}: työ on tehty`,
+        lines: [
+          `huoltoyhtiö on kuitannut ilmoittamasi asian ${quoted} työn tehdyksi.`,
+          "Jos asia ei ole kunnossa, vastaa tähän viestiin."
+        ]
+      };
+    case "in_progress":
+      return {
+        title: `Tehtävä #${number} on käsittelyssä`,
+        lines: [`isännöitsijä käsittelee ilmoittamaasi asiaa ${quoted}. Saat viestin, kun asia etenee.`]
+      };
+    case "third_party":
+      return {
+        title: `Tehtävä #${number} odottaa ulkopuolista toimijaa`,
+        lines: [
+          `ilmoittamasi asia ${quoted} odottaa kolmatta osapuolta, esimerkiksi huoltoyhtiötä tai urakoitsijaa.`,
+          "Saat viestin, kun asia etenee."
+        ]
+      };
+    case "closed":
+      return {
+        title: `Tehtävä #${number} on valmis`,
+        lines: [
+          `ilmoittamasi tehtävä ${quoted} on käsitelty ja suljettu.`,
+          "Jos asia ei ole kunnossa, vastaa tähän viestiin tai lähetä uusi viesti asukasportaalista, niin tehtävä avataan uudelleen."
+        ]
+      };
+  }
+}
+
+// detail: esim. huoltoyhtiön nimi työtilauksessa.
+export function notifyTicketStatus(ticketId: string, event: StatusEvent, actor: string, detail = ""): void {
+  if (!residentStatusUpdatesEnabled()) return;
+  const ticket = db.prepare("SELECT id, ticket_number, subject, resident_id, ai_action FROM tickets WHERE id = ?").get(ticketId) as
+    | { id: string; ticket_number: number | null; subject: string; resident_id: string | null; ai_action: string }
+    | undefined;
+  if (!ticket || ticket.ai_action === "filtered") return;
+  const skipped = db.prepare(`
+    SELECT 1 FROM audit_log WHERE ticket_id = ? AND action = 'decision_skip' AND details LIKE '%"reason":"spam"%' LIMIT 1
+  `).get(ticketId);
+  if (skipped) return;
+
+  const since = new Date(Date.now() - STATUS_REPEAT_MS).toISOString();
+  const recent = db.prepare(`
+    SELECT details FROM audit_log WHERE ticket_id = ? AND action = 'resident_notified' AND created_at > ?
+  `).all(ticketId, since) as { details: string }[];
+  if (recent.some(row => row.details.includes(`"event":"${event}"`))) return;
+
+  const reporters = (db.prepare("SELECT resident_id FROM ticket_reporters WHERE ticket_id = ?").all(ticketId) as { resident_id: string }[])
+    .map(row => row.resident_id);
+  if (ticket.resident_id && !reporters.includes(ticket.resident_id)) reporters.push(ticket.resident_id);
+  const recipients = reporters.filter(residentId => {
+    const resident = db.prepare("SELECT email, erased_at FROM residents WHERE id = ?").get(residentId) as
+      { email: string | null; erased_at: string | null } | undefined;
+    return Boolean(resident && !resident.erased_at && VALID_EMAIL.test((resident.email ?? "").trim()));
+  });
+  if (recipients.length === 0) return;
+
+  const number = String(ticket.ticket_number ?? "").padStart(4, "0");
+  const message = statusMessage(event, ticket.subject, number, detail);
+  const portal = process.env.APP_URL ? [`Näet tehtävän tilan myös asukasportaalista: ${process.env.APP_URL}`] : [];
+  for (const residentId of recipients) void notifyResident(residentId, message.title, [...message.lines, ...portal]);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), ticketId, actor, "resident_notified", JSON.stringify({ event, recipients: recipients.length }), now()
+  );
+}

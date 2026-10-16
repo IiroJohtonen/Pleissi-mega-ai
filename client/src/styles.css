@@ -4699,3 +4699,8 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .knowledge-columns .chunk-head .knowledge-entry-actions button { padding: 4px 9px; font-size: 11.5px; }
 .knowledge-columns .chunk-row { padding: 9px 0; }
 .knowledge-drawer .chunk-head .knowledge-entry-actions { margin-top: 0; }
+
+/* Kirjautumiskoodi */
+.login-card input.login-code-input { font-size: 24px; font-weight: 700; letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; }
+.login-card label.login-remember { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.login-card label.login-remember input { width: 16px; height: 16px; margin: 0; padding: 0; }
