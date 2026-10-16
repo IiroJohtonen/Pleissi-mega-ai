@@ -7,6 +7,7 @@ import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
+import { QUEUE_POSITION_SQL } from "../booking-queue.js";
 import { id, now, unsafeFileMessage, statusAfterResidentReply } from "../util.js";
 import {
   BOOKING_RESOURCES, bookingKindError, bookingRules, bookingTimes, createBookings, deleteBooking,
@@ -245,15 +246,30 @@ portalRouter.get("/portal/bookings", (req, res) => {
   `).all(resident.companyId, parsed.data.resource, parsed.data.to, parsed.data.from) as
     { id: string; resident_id: string | null; starts_at: string; ends_at: string; series_id: string | null }[];
 
+  // Vuoron jono: jonottajien määrä sekä asukkaan oma jonopaikka ja sija, jos hän on jonossa.
+  const queue = db.prepare(`
+    SELECT q.id, q.starts_at, q.ends_at, q.resident_id, ${QUEUE_POSITION_SQL} AS position
+    FROM booking_queue q
+    WHERE q.company_id = ? AND q.resource = ? AND q.status = 'waiting' AND q.starts_at < ? AND q.ends_at > ?
+  `).all(resident.companyId, parsed.data.resource, parsed.data.to, parsed.data.from) as
+    { id: string; starts_at: string; ends_at: string; resident_id: string | null; position: number }[];
+
   // Muiden varauksista kerrotaan vain, että vuoro on varattu.
-  res.json(rows.map(row => ({
-    id: row.id,
-    starts_at: row.starts_at,
-    ends_at: row.ends_at,
-    mine: row.resident_id === resident.id,
-    // Sarjatieto vain omista varauksista, jotta sarjan voi perua kerralla.
-    series_id: row.resident_id === resident.id ? row.series_id : null
-  })));
+  res.json(rows.map(row => {
+    const waiting = queue.filter(entry => entry.starts_at === row.starts_at && entry.ends_at === row.ends_at);
+    const own = waiting.find(entry => entry.resident_id === resident.id);
+    return {
+      id: row.id,
+      starts_at: row.starts_at,
+      ends_at: row.ends_at,
+      mine: row.resident_id === resident.id,
+      // Sarjatieto vain omista varauksista, jotta sarjan voi perua kerralla.
+      series_id: row.resident_id === resident.id ? row.series_id : null,
+      queue_count: waiting.length,
+      queue_entry_id: own?.id ?? null,
+      queue_position: own?.position ?? null
+    };
+  }));
 });
 
 portalRouter.post("/portal/bookings", (req, res) => {

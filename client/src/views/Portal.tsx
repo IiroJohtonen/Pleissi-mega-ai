@@ -4,7 +4,7 @@ import { fileToBase64, formatDate, formatDay, formatFileSize, formatTicketNumber
 import { api, errorMessage, fetchObjectUrl, logout, type ResidentAccount } from "../session";
 import { splitQuotedReply } from "../tickets/ticket-utils";
 import type { Announcement } from "./Announcements";
-import { BookingCalendar } from "./Bookings";
+import { BookingCalendar, type QueueEntry, SlotQueueList } from "./Bookings";
 import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
 import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
 import { PARKING_TYPES } from "./Parking";
@@ -631,8 +631,11 @@ function PortalAnnouncements() {
 }
 
 // Asukkaan jonot: ilmoittautuminen autopaikka- ja saunavuorojonoon sekä oma sija.
+// Asukkaan jonot: sauna- ja pyykkitupavuorojen jonopaikat (liittyminen kalenterista) sekä
+// autopaikka- ja saunavuorojonot, joihin ilmoittaudutaan tältä sivulta.
 function PortalWaitlist() {
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
+  const [slotEntries, setSlotEntries] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [parkingType, setParkingType] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({ parking: "", sauna: "" });
@@ -641,7 +644,12 @@ function PortalWaitlist() {
 
   async function loadEntries() {
     try {
-      setEntries(await api<WaitlistEntry[]>("/portal/waitlist"));
+      const [waitlist, slots] = await Promise.all([
+        api<WaitlistEntry[]>("/portal/waitlist"),
+        api<QueueEntry[]>("/portal/booking-queue")
+      ]);
+      setEntries(waitlist);
+      setSlotEntries(slots);
     } catch {
       setError(t("Jonotietojen lataus epäonnistui."));
     } finally {
@@ -670,6 +678,19 @@ function PortalWaitlist() {
     }
   }
 
+  async function leaveSlot(entryId: string) {
+    setSaving(true);
+    setError("");
+    try {
+      await api(`/portal/booking-queue/${encodeURIComponent(entryId)}`, { method: "DELETE" });
+      await loadEntries();
+    } catch {
+      setError(t("Jonosta poistuminen epäonnistui."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function leave(entry: WaitlistEntry) {
     setSaving(true);
     setError("");
@@ -685,13 +706,25 @@ function PortalWaitlist() {
 
   if (loading) return <div className="empty">{t("Ladataan…")}</div>;
 
+  const slotQueue = (
+    slotEntries.length > 0 ? (
+      <SlotQueueList entries={slotEntries} showResource disabled={saving} onLeave={entryId => void leaveSlot(entryId)} />
+    ) : (
+      <article>
+        <h2>{t("Omat jonopaikat")}</h2>
+        <p className="muted">{t("Et ole minkään sauna- tai pyykkitupavuoron jonossa. Jonoon liitytään kalenterista varatun vuoron päältä.")}</p>
+      </article>
+    )
+  );
+
   const queues: { resource: "parking" | "sauna"; title: string; hint: string }[] = [
     { resource: "parking", title: t("Autopaikkajono"), hint: t("Vapautuva autopaikka tarjotaan jonossa ensimmäisenä olevalle.") },
-    { resource: "sauna", title: t("Saunavuorojono"), hint: t("Vapautuva vakiovuoro tarjotaan jonossa ensimmäisenä olevalle.") }
+    { resource: "sauna", title: t("Saunan vakiovuorojono"), hint: t("Vapautuva vakiovuoro tarjotaan jonossa ensimmäisenä olevalle.") }
   ];
 
   return (
     <div className="portal-queues">
+      {slotQueue}
       {queues.map(queue => {
         const entry = entries.find(item => item.resource === queue.resource);
         return (

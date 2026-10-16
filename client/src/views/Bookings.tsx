@@ -17,38 +17,42 @@ export type Booking = {
   mine?: boolean;
   // Viikoittaisen varauksen vuoroilla on yhteinen sarjatunniste.
   series_id?: string | null;
+  // Vuoron jono: jonottajien määrä sekä asukasportaalissa oma jonopaikka ja sija.
+  queue_count?: number;
+  queue_entry_id?: string | null;
+  queue_position?: number | null;
 };
 
-// Asukkaan toive jo varatusta vuorosta. Henkilökunnan näkymässä mukana toivoja ja vuoron nykyinen varaaja.
-export type BookingRequest = {
+// Jonopaikka varatulle vuorolle. Asukkaalla omat, henkilökunnalla kaikki jonottajat sijoineen.
+export type QueueEntry = {
   id: string;
-  resource: string;
+  resource: "sauna" | "laundry";
   starts_at: string;
   ends_at: string;
-  note: string;
-  status?: "pending" | "approved" | "rejected";
-  decision_note?: string;
+  status?: "waiting" | "granted";
+  position: number | null;
   created_at: string;
   resident_name?: string | null;
   apartment_number?: string | null;
   current_holder?: string | null;
 };
 
-const requestStatusLabels: Record<string, string> = {
-  pending: t("Odottaa käsittelyä"),
-  approved: t("Hyväksytty"),
-  rejected: t("Ei hyväksytty")
-};
+// Jonoon voi liittyä viimeistään kolme tuntia ennen vuoron alkua (sama raja tarkistetaan palvelimella).
+export const QUEUE_JOIN_CUTOFF_MS = 3 * 60 * 60 * 1000;
 
 // Taloyhtiön asetukset: mitä vuorotyyppejä kuhunkin tilaan saa varata.
 // weeklyWeeks = kuinka monelle viikolle viikoittainen vuoro varataan kerralla.
 // singlePrice = yhden vuoron hinta, monthlyPrice = viikoittaisen vuoron hinta kuukaudessa (euroa).
-type BookingRule = { single: boolean; weekly: boolean; weeklyWeeks: number; singlePrice: number; monthlyPrice: number };
+// queueEnabled = voiko varatun vuoron jonoon liittyä, queueSize = jonopaikkoja yhdellä vuorolla.
+type BookingRule = {
+  single: boolean; weekly: boolean; weeklyWeeks: number; singlePrice: number; monthlyPrice: number;
+  queueEnabled: boolean; queueSize: number;
+};
 export type BookingRules = Record<"sauna" | "laundry", BookingRule>;
 
 export const DEFAULT_BOOKING_RULES: BookingRules = {
-  sauna: { single: true, weekly: true, weeklyWeeks: 12, singlePrice: 0, monthlyPrice: 0 },
-  laundry: { single: true, weekly: true, weeklyWeeks: 12, singlePrice: 0, monthlyPrice: 0 }
+  sauna: { single: true, weekly: true, weeklyWeeks: 12, singlePrice: 0, monthlyPrice: 0, queueEnabled: false, queueSize: 3 },
+  laundry: { single: true, weekly: true, weeklyWeeks: 12, singlePrice: 0, monthlyPrice: 0, queueEnabled: false, queueSize: 3 }
 };
 
 // Asetuksissa valittavat viikoittaisen vuoron kestot.
@@ -84,11 +88,8 @@ export function BookingCalendar({
   companies,
   onCompanyChange,
   portalResident,
-  embedded = false,
-  onRequestsChanged
+  embedded = false
 }: {
-  // Kutsutaan, kun varaustoive käsitellään (esim. valikon laskurin päivitys).
-  onRequestsChanged?: () => void;
   // embedded = näytetään taloyhtiön tietueen sisällä, jolloin yhtiö on jo valittu.
   embedded?: boolean;
   resource: "sauna" | "laundry";
@@ -142,11 +143,8 @@ export function BookingCalendar({
   const [bookingNotice, setBookingNotice] = useState("");
   const [rules, setRules] = useState(DEFAULT_BOOKING_RULES[resource]);
   const bookingDisabled = !rules.single && !rules.weekly;
-  // Varaustoiveet: asukkaalla omat, henkilökunnalla käsittelyä odottavat.
-  const [requests, setRequests] = useState<BookingRequest[]>([]);
-  const [requestNote, setRequestNote] = useState("");
-  const [requestError, setRequestError] = useState("");
-  const [rejecting, setRejecting] = useState<{ id: string; note: string } | null>(null);
+  // Asukkaan omat jonopaikat tämän tilan vuoroihin.
+  const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   // Puhelimella asukas näkee yhden päivän kerrallaan isoina riveinä.
   const narrow = useNarrowScreen();
   const dayView = portal && narrow;
@@ -178,13 +176,12 @@ export function BookingCalendar({
     }
   }
 
-  async function loadRequests() {
+  async function loadQueue() {
+    if (!portal) return;
     try {
-      setRequests(await api<BookingRequest[]>(portal
-        ? `/portal/booking-requests?resource=${resource}`
-        : `/companies/${encodeURIComponent(companyId)}/booking-requests?resource=${resource}`));
+      setQueueEntries(await api<QueueEntry[]>(`/portal/booking-queue?resource=${resource}`));
     } catch {
-      setRequests([]);
+      setQueueEntries([]);
     }
   }
 
@@ -193,12 +190,8 @@ export function BookingCalendar({
   }, [companyId, resource, weekStart.getTime()]);
 
   useEffect(() => {
-    void loadRequests();
+    void loadQueue();
   }, [companyId, resource, portal]);
-
-  // Vuoron alkuhetkeen osuvat toiveet; asukkaalla vain käsittelyä odottava oma toive.
-  const requestsAt = (start: Date) => requests.filter(request =>
-    Date.parse(request.starts_at) === start.getTime() && (request.status ?? "pending") === "pending");
 
   useEffect(() => {
     if (portal) return;
@@ -215,7 +208,6 @@ export function BookingCalendar({
     setSlot({ start, booking });
     setResidentId("");
     setNote("");
-    setRequestNote("");
     setFormError("");
     // Oletuksena kertaluontoinen; jos se on kytketty pois, viikoittainen.
     setRepeat(rules.single ? "once" : "weekly");
@@ -269,67 +261,36 @@ export function BookingCalendar({
     }
   }
 
-  // Asukas toivoo jo varattua vuoroa; isännöitsijä hyväksyy tai hylkää toiveen.
-  async function sendRequest(event: FormEvent) {
-    event.preventDefault();
+  // Asukas liittyy varatun vuoron jonoon. Jos varaaja peruu vuoron, se siirtyy jonon ensimmäiselle.
+  async function joinQueue() {
     if (!slot) return;
     setSaving(true);
     setFormError("");
     try {
-      await api("/portal/booking-requests", {
+      const joined = await api<{ position: number }>("/portal/booking-queue", {
         method: "POST",
-        body: JSON.stringify({
-          resource,
-          startsAt: slot.start.toISOString(),
-          endsAt: slotEnd(slot.start).toISOString(),
-          note: requestNote.trim()
-        })
+        body: JSON.stringify({ resource, startsAt: slot.start.toISOString(), endsAt: slotEnd(slot.start).toISOString() })
       });
-      setBookingNotice(t("Toive on lähetetty isännöitsijälle. Saat tiedon, kun se on käsitelty."));
+      setBookingNotice(t("Liityit jonoon sijalle {0}. Saat sähköpostin, jos vuoro siirtyy sinulle.", joined.position));
       setSlot(null);
-      await loadRequests();
+      await Promise.all([loadBookings(), loadQueue()]);
     } catch (error) {
-      setFormError(errorMessage(error, t("Toiveen lähetys epäonnistui.")));
+      setFormError(errorMessage(error, t("Jonoon liittyminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
   }
 
-  async function cancelRequest(requestId: string) {
+  async function leaveQueue(entryId: string) {
     setSaving(true);
     setFormError("");
-    setRequestError("");
     try {
-      await api(`/portal/booking-requests/${encodeURIComponent(requestId)}`, { method: "DELETE" });
+      await api(`/portal/booking-queue/${encodeURIComponent(entryId)}`, { method: "DELETE" });
       setBookingNotice("");
       setSlot(null);
-      await loadRequests();
+      await Promise.all([loadBookings(), loadQueue()]);
     } catch (error) {
-      const message = errorMessage(error, t("Toiveen peruminen epäonnistui."));
-      setFormError(message);
-      setRequestError(message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // Henkilökunta: hyväksyntä siirtää vuoron toivojalle, hylkäys säilyttää nykyisen varauksen.
-  async function decideRequest(request: BookingRequest, decision: "approve" | "reject", decisionNote = "") {
-    if (decision === "approve" && !window.confirm(request.current_holder
-      ? t("Vuoro siirretään asukkaalle {0}. Varaus ({1}) poistuu. Jatketaanko?", request.resident_name ?? "", request.current_holder)
-      : t("Vuoro varataan asukkaalle {0}. Jatketaanko?", request.resident_name ?? ""))) return;
-    setSaving(true);
-    setRequestError("");
-    try {
-      await api(`/booking-requests/${encodeURIComponent(request.id)}/${decision}`, {
-        method: "POST",
-        body: JSON.stringify(decision === "reject" ? { note: decisionNote.trim() } : {})
-      });
-      setRejecting(null);
-      await Promise.all([loadRequests(), loadBookings()]);
-      onRequestsChanged?.();
-    } catch (error) {
-      setRequestError(errorMessage(error, t("Toiveen käsittely epäonnistui.")));
+      setFormError(errorMessage(error, t("Jonosta poistuminen epäonnistui.")));
     } finally {
       setSaving(false);
     }
@@ -346,7 +307,7 @@ export function BookingCalendar({
       );
       setBookingNotice("");
       setSlot(null);
-      await loadBookings();
+      await Promise.all([loadBookings(), loadQueue()]);
     } catch (error) {
       setFormError(errorMessage(error, t("Varauksen poistaminen epäonnistui.")));
     } finally {
@@ -362,21 +323,31 @@ export function BookingCalendar({
       Date.parse(item.starts_at) < end.getTime() && Date.parse(item.ends_at) > start.getTime()) ?? null;
     const past = end.getTime() <= now;
     const hidden = (show === "free" && Boolean(booking)) || (show === "booked" && !booking);
-    // Toisen varaamaa vuoroa asukas voi toivoa, jos yksittäiset vuorot ovat käytössä.
-    const canRequest = portal && Boolean(booking) && !booking?.mine && !past && rules.single;
-    const requested = portal && requestsAt(start).length > 0;
+    // Toisen varaaman vuoron jonoon voi liittyä, jos jono on käytössä, siinä on tilaa ja vuoron
+    // alkuun on vähintään kolme tuntia. Oman jonopaikan voi avata aina.
+    const queued = portal && Boolean(booking?.queue_entry_id);
+    const queueFull = Boolean(booking) && (booking?.queue_count ?? 0) >= rules.queueSize;
+    const queueClosed = start.getTime() - now < QUEUE_JOIN_CUTOFF_MS;
+    const canQueue = portal && Boolean(booking) && !booking?.mine && !past && rules.queueEnabled && !queueFull && !queueClosed;
     let state = "free";
     let label = t("Vapaa");
     let action = t("Varaa");
     let title = t("Varaa vuoro");
     if (booking) {
       state = booking.mine ? "mine" : "other";
-      label = booking.mine ? t("Oma varaus") : requested ? t("Toive lähetetty") : t("Varattu");
-      action = booking.mine ? t("Avaa") : canRequest ? (requested ? t("Avaa") : t("Toivo vuoroa")) : "";
+      label = booking.mine ? t("Oma varaus")
+        : queued ? t("Jonossa, sija {0}", booking.queue_position ?? "–")
+        : portal && rules.queueEnabled && !past && queueFull ? t("Jono täynnä")
+        : t("Varattu");
+      action = booking.mine || queued ? t("Avaa") : canQueue ? t("Liity jonoon") : "";
       title = portal && !booking.mine
-        ? (canRequest ? t("Vuoro on varattu. Voit jättää toiveen isännöitsijälle.") : t("Vuoro on varattu"))
+        ? (queued ? t("Olet tämän vuoron jonossa.")
+          : canQueue ? t("Vuoro on varattu. Voit liittyä jonoon.")
+          : rules.queueEnabled && !past && queueFull ? t("Vuoro on varattu, ja sen jono on täynnä.")
+          : rules.queueEnabled && !past && queueClosed ? t("Vuoro on varattu. Jonoon voi liittyä viimeistään kolme tuntia ennen vuoron alkua.")
+          : t("Vuoro on varattu"))
         : t("Avaa varaus");
-      if (requested) state = "requested";
+      if (queued) state = "requested";
     } else if (past || bookingDisabled) {
       state = "unavailable";
       label = past ? t("Mennyt") : t("Ei varattavissa");
@@ -384,7 +355,7 @@ export function BookingCalendar({
       title = past ? t("Aika on jo mennyt") : t("Varaaminen ei ole käytössä");
     }
     if (past) state += " past";
-    const clickable = booking ? (!portal || booking.mine || canRequest) : !past && !bookingDisabled;
+    const clickable = booking ? (!portal || booking.mine || canQueue || queued) : !past && !bookingDisabled;
     return { start, booking, past, hidden, clickable: Boolean(clickable), state, label, action, title };
   }
 
@@ -481,46 +452,10 @@ export function BookingCalendar({
         </p>
       )}
 
-      {!portal && requests.length > 0 && (
-        <div className="booking-requests">
-          <h2>{t("Varaustoiveet")}{" "}<b>{requests.length}</b></h2>
-          <p className="muted">{t("Asukkaat toivovat näitä jo varattuja vuoroja. Hyväksyntä siirtää vuoron toivojalle, ja aiempi varaus poistuu. Molemmat asukkaat saavat tiedon sähköpostilla.")}</p>
-          {requests.map(request => (
-            <div className="booking-request" key={request.id}>
-              <div>
-                <strong>
-                  {new Date(request.starts_at).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "numeric" })}{" "}
-                  {t("klo")}{" "}{timeLabel(new Date(request.starts_at))}–{timeLabel(new Date(request.ends_at))}
-                </strong>
-                <span>{t("Toivoja")}: {[request.resident_name, request.apartment_number].filter(Boolean).join(" · ") || "–"}</span>
-                <span>{t("Nyt varattu")}: {request.current_holder || t("vapaa")}</span>
-                {request.note && <span>{t("Viesti")}: {request.note}</span>}
-              </div>
-              {rejecting?.id === request.id ? (
-                <div className="drawer-actions booking-request-reject">
-                  <input
-                    value={rejecting.note}
-                    onChange={event => setRejecting({ id: request.id, note: event.target.value })}
-                    placeholder={t("Perustelu asukkaalle (valinnainen)")}
-                    maxLength={500}
-                    aria-label={t("Hylkäämisen perustelu")}
-                    autoFocus
-                  />
-                  <button type="button" onClick={() => setRejecting(null)} disabled={saving}>{t("Peruuta")}</button>
-                  <button type="button" className="danger" onClick={() => void decideRequest(request, "reject", rejecting.note)} disabled={saving}>
-                    {t("Hylkää toive")}
-                  </button>
-                </div>
-              ) : (
-                <div className="drawer-actions booking-request-actions">
-                  <button type="button" onClick={() => setRejecting({ id: request.id, note: "" })} disabled={saving}>{t("Hylkää")}</button>
-                  <button type="button" className="primary" onClick={() => void decideRequest(request, "approve")} disabled={saving}>{t("Hyväksy")}</button>
-                </div>
-              )}
-            </div>
-          ))}
-          {requestError && <p className="send-error">{requestError}</p>}
-        </div>
+      {portal && rules.queueEnabled && (
+        <p className="muted booking-queue-hint">
+          {t("Varatun vuoron päältä voit liittyä jonoon valitsemalla vuoron ja Liity jonoon. Jos varaaja peruu vuoron, se siirtyy jonon ensimmäiselle, ja saat siitä sähköpostin. Jonoon voi liittyä viimeistään kolme tuntia ennen vuoron alkua, ja yhden vuoron jonossa on enintään {0} paikkaa.", rules.queueSize)}
+        </p>
       )}
 
       {dayView ? (
@@ -579,11 +514,11 @@ export function BookingCalendar({
               if (cell.hidden) {
                 return <div key={start.getTime()} className="calendar-slot hidden-slot" />;
               }
-              const waiting = requestsAt(start);
+              const waiting = booking?.queue_count ?? 0;
               return booking ? (
                 <button
                   key={start.getTime()}
-                  className={`calendar-slot booked ${past ? "past" : ""} ${portal && !booking.mine ? "other" : ""} ${waiting.length > 0 ? "requested" : ""}`}
+                  className={`calendar-slot booked ${past ? "past" : ""} ${portal && !booking.mine ? "other" : ""} ${(portal ? booking.queue_entry_id : waiting > 0) ? "requested" : ""}`}
                   onClick={() => openSlot(start, booking)}
                   disabled={!cell.clickable}
                   title={cell.title}
@@ -592,7 +527,7 @@ export function BookingCalendar({
                     {portal ? cell.label : booking.resident_name || booking.note || t("Varattu")}
                   </strong>
                   {!portal && booking.apartment_number && <span>{booking.apartment_number}</span>}
-                  {!portal && waiting.length > 0 && <span className="request-badge">{t("{0} toive", waiting.length)}</span>}
+                  {!portal && waiting > 0 && <span className="request-badge">{t("{0} jonossa", waiting)}</span>}
                 </button>
               ) : (
                 <button
@@ -611,28 +546,8 @@ export function BookingCalendar({
       </div>
       )}
 
-      {portal && requests.length > 0 && (
-        <div className="booking-requests own">
-          <h2>{t("Omat varaustoiveet")}</h2>
-          {requests.map(request => (
-            <div className="booking-request" key={request.id}>
-              <div>
-                <strong>
-                  {new Date(request.starts_at).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "numeric" })}{" "}
-                  {t("klo")}{" "}{timeLabel(new Date(request.starts_at))}–{timeLabel(new Date(request.ends_at))}
-                </strong>
-                <span className={`request-status ${request.status ?? "pending"}`}>{requestStatusLabels[request.status ?? "pending"]}</span>
-                {request.decision_note && <span>{request.decision_note}</span>}
-              </div>
-              {(request.status ?? "pending") === "pending" && (
-                <div className="drawer-actions booking-request-actions">
-                  <button type="button" onClick={() => void cancelRequest(request.id)} disabled={saving}>{t("Peru toive")}</button>
-                </div>
-              )}
-            </div>
-          ))}
-          {requestError && <p className="send-error">{requestError}</p>}
-        </div>
+      {portal && queueEntries.length > 0 && (
+        <SlotQueueList entries={queueEntries} onLeave={entryId => void leaveQueue(entryId)} disabled={saving} />
       )}
 
       {slot && (
@@ -648,39 +563,37 @@ export function BookingCalendar({
             </p>
 
             {slot.booking && portal && !slot.booking.mine ? (() => {
-              const own = requestsAt(slot.start)[0];
-              return own ? (
+              const entryId = slot.booking.queue_entry_id;
+              return entryId ? (
                 <>
-                  <p className="topic-text">{t("Olet toivonut tätä vuoroa. Isännöitsijä käsittelee toiveen, ja saat tiedon sähköpostilla.")}</p>
-                  {own.note && <p className="muted">{t("Viestisi")}: {own.note}</p>}
+                  <p className="topic-text">
+                    {t("Olet tämän vuoron jonossa sijalla {0}. Jos varaaja peruu vuoron, se siirtyy jonon ensimmäiselle, ja saat siitä sähköpostin.", slot.booking.queue_position ?? "–")}
+                  </p>
                   {formError && <p className="send-error">{formError}</p>}
                   <div className="drawer-actions compact-actions">
                     <button type="button" onClick={() => setSlot(null)}>{t("Sulje")}</button>
-                    <button className="danger" type="button" onClick={() => void cancelRequest(own.id)} disabled={saving}>
-                      {saving ? t("Perutaan…") : t("Peru toive")}
+                    <button className="danger" type="button" onClick={() => void leaveQueue(entryId)} disabled={saving}>
+                      {saving ? t("Poistutaan…") : t("Poistu jonosta")}
                     </button>
                   </div>
                 </>
               ) : (
-                <form className="ticket-form" onSubmit={sendRequest}>
-                  <p className="topic-text">{t("Vuoro on jo varattu. Voit jättää toiveen isännöitsijälle. Jos hän hyväksyy sen, vuoro siirtyy sinulle.")}</p>
+                <>
+                  <p className="topic-text">
+                    {t("Vuoro on jo varattu. Voit liittyä jonoon: jos varaaja peruu vuoron, se siirtyy jonon ensimmäiselle, ja saat siitä sähköpostin.")}
+                  </p>
+                  <p className="muted">
+                    {t("Jonossa nyt {0} / {1}.", slot.booking.queue_count ?? 0, rules.queueSize)}
+                  </p>
                   {residentFacts}
-                  <label>
-                    <span>{t("Viesti isännöitsijälle (valinnainen)")}</span>
-                    <textarea
-                      value={requestNote}
-                      onChange={event => setRequestNote(event.target.value)}
-                      rows={3}
-                      maxLength={300}
-                      placeholder={t("Esim. miksi tarvitset juuri tämän vuoron")}
-                    />
-                  </label>
                   {formError && <p className="send-error">{formError}</p>}
                   <div className="drawer-actions compact-actions">
                     <button type="button" onClick={() => setSlot(null)}>{t("Peruuta")}</button>
-                    <button className="primary" type="submit" disabled={saving}>{saving ? t("Lähetetään…") : t("Lähetä toive")}</button>
+                    <button className="primary" type="button" onClick={() => void joinQueue()} disabled={saving}>
+                      {saving ? t("Liitytään…") : t("Liity jonoon")}
+                    </button>
                   </div>
-                </form>
+                </>
               );
             })() : slot.booking && portal ? (
               <>
@@ -797,5 +710,40 @@ export function BookingCalendar({
         </div>
       )}
     </section>
+  );
+}
+
+// Asukkaan omat jonopaikat: vuoro, sija ja tila. Listalta voi poistua jonosta, mutta uuteen jonoon
+// liitytään aina kalenterista varatun vuoron päältä.
+export function SlotQueueList({ entries, onLeave, disabled, showResource = false }: {
+  entries: QueueEntry[];
+  onLeave: (entryId: string) => void;
+  disabled?: boolean;
+  showResource?: boolean;
+}) {
+  const time = (value: string) => new Date(value).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  return (
+    <div className="booking-requests own">
+      <h2>{t("Omat jonopaikat")}</h2>
+      {entries.map(entry => (
+        <div className="booking-request" key={entry.id}>
+          <div>
+            <strong>
+              {showResource ? `${BOOKING_RESOURCES[entry.resource]?.name ?? entry.resource} · ` : ""}
+              {new Date(entry.starts_at).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "numeric" })}{" "}
+              {t("klo")}{" "}{time(entry.starts_at)}–{time(entry.ends_at)}
+            </strong>
+            <span className={`request-status ${entry.status === "granted" ? "approved" : "pending"}`}>
+              {entry.status === "granted" ? t("Sait vuoron") : t("Jonossa, sija {0}", entry.position ?? "–")}
+            </span>
+          </div>
+          {entry.status !== "granted" && (
+            <div className="drawer-actions booking-request-actions">
+              <button type="button" onClick={() => onLeave(entry.id)} disabled={disabled}>{t("Poistu jonosta")}</button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

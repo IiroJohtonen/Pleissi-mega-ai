@@ -506,6 +506,33 @@ for (const column of ["single_price", "monthly_price"]) {
   }
 }
 
+// Vuorokohtainen jono: onko jono käytössä tilassa ja montako jonopaikkaa yhdellä vuorolla on.
+if (!bookingSettingColumns.some(column => column.name === "queue_enabled")) {
+  db.exec("ALTER TABLE booking_settings ADD COLUMN queue_enabled INTEGER NOT NULL DEFAULT 0");
+}
+if (!bookingSettingColumns.some(column => column.name === "queue_size")) {
+  db.exec("ALTER TABLE booking_settings ADD COLUMN queue_size INTEGER NOT NULL DEFAULT 3");
+}
+
+// Jonopaikat varatuille sauna- ja pyykkitupavuoroille. Kun varaus perutaan, vuoro siirtyy jonon
+// ensimmäiselle. status: waiting (jonossa), granted (sai vuoron), left (poistui itse),
+// cancelled (poistettu, esim. muutto). Jonosija lasketaan liittymisjärjestyksestä.
+db.exec(`
+CREATE TABLE IF NOT EXISTS booking_queue (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  starts_at TEXT NOT NULL,
+  ends_at TEXT NOT NULL,
+  resident_id TEXT,
+  status TEXT NOT NULL DEFAULT 'waiting',
+  created_at TEXT NOT NULL,
+  closed_at TEXT,
+  booking_id TEXT
+);
+CREATE INDEX IF NOT EXISTS booking_queue_slot ON booking_queue(company_id, resource, starts_at, status);
+`);
+
 // Postilaatikko, jonka kautta tehtävä saapui (esim. isännöitsijän oma tili "user:<id>"). Vastaukset
 // lähetetään samasta laatikosta, jotta asukas saa ne siltä, jolle hän kirjoitti.
 const ticketMailColumns = db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];

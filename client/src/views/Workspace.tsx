@@ -51,8 +51,6 @@ const openTicketStatuses = ["open", ...ownTicketStatuses];
 
 // Mitä alasivun laskuri tarkoittaa.
 const navCountTitles: Partial<Record<TicketTab, string>> = {
-  sauna: t("Varaustoiveita odottaa käsittelyä"),
-  laundry: t("Varaustoiveita odottaa käsittelyä"),
   moves: t("Odottaa käsittelyä"),
   renovations: t("Odottaa käsittelyä"),
   keys: t("Palautus myöhässä")
@@ -224,20 +222,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
     if (group) setClosedGroups(current => current.filter(key => key !== group.key));
   }, [tab]);
 
-  // Alavalikon laskurit: käsittelyä odottavat varaustoiveet, muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
+  // Alavalikon laskurit: käsittelyä odottavat muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
   async function refreshNavCounts() {
     if (!navCompany) return;
     const lists = <T,>(resource: string) => Promise.all([navCompany].map(company =>
       api<T[]>(`/companies/${encodeURIComponent(company.id)}/${resource}`).catch(() => [] as T[]))).then(all => all.flat());
-    const [moves, renovations, keys, bookingRequests] = await Promise.all([
+    const [moves, renovations, keys] = await Promise.all([
       lists<{ status: string }>("moves"),
       lists<{ status: string }>("renovations"),
-      lists<{ loan_id: string | null; due_date: string | null }>("keys"),
-      lists<{ resource: string }>("booking-requests")
+      lists<{ loan_id: string | null; due_date: string | null }>("keys")
     ]);
     setNavCounts({
-      sauna: bookingRequests.filter(request => request.resource === "sauna").length,
-      laundry: bookingRequests.filter(request => request.resource === "laundry").length,
       moves: moves.filter(notice => notice.status === "pending").length,
       renovations: renovations.filter(notice => notice.status === "pending").length,
       keys: keys.filter(isKeyLate).length
@@ -745,7 +740,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
               companyId={selectedCompany}
               companies={companies}
               onCompanyChange={changeCompany}
-              onRequestsChanged={() => void refreshNavCounts()}
             />
           )
           : tab === "reports" ? (

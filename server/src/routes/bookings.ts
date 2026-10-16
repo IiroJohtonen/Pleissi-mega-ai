@@ -2,6 +2,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
 import { requireAdmin } from "../auth.js";
+import { deleteBookingsAndRelease } from "../booking-queue.js";
 import { db } from "../db.js";
 import { id, now } from "../util.js";
 
@@ -16,21 +17,27 @@ export const bookingTimes = z.object({ startsAt: z.iso.datetime(), endsAt: z.iso
 
 // weeklyWeeks = kuinka monelle viikolle viikoittainen vuoro varataan kerralla.
 // singlePrice = yhden vuoron hinta, monthlyPrice = viikoittaisen vuoron hinta kuukaudessa (euroa).
-type BookingRule = { single: boolean; weekly: boolean; weeklyWeeks: number; singlePrice: number; monthlyPrice: number };
+// queueEnabled = voiko varatun vuoron jonoon liittyä, queueSize = jonopaikkoja yhdellä vuorolla.
+type BookingRule = {
+  single: boolean; weekly: boolean; weeklyWeeks: number; singlePrice: number; monthlyPrice: number;
+  queueEnabled: boolean; queueSize: number;
+};
+export const DEFAULT_QUEUE_SIZE = 3;
+export const MAX_QUEUE_SIZE = 20;
 type BookingRules = Record<(typeof BOOKING_RESOURCES)[number], BookingRule>;
 
 // Taloyhtiön asetukset: saako tilaan varata yksittäisiä ja viikoittaisia vuoroja.
 export function bookingRules(companyId: string): BookingRules {
   const rules: BookingRules = {
-    sauna: { single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0 },
-    laundry: { single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0 }
+    sauna: { single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0, queueEnabled: false, queueSize: DEFAULT_QUEUE_SIZE },
+    laundry: { single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0, queueEnabled: false, queueSize: DEFAULT_QUEUE_SIZE }
   };
   const rows = db.prepare(`
-    SELECT resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price
+    SELECT resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price, queue_enabled, queue_size
     FROM booking_settings WHERE company_id = ?
   `).all(companyId) as {
     resource: string; allow_single: number; allow_weekly: number; weekly_weeks: number;
-    single_price: number; monthly_price: number;
+    single_price: number; monthly_price: number; queue_enabled: number; queue_size: number;
   }[];
   for (const row of rows) {
     if (row.resource === "sauna" || row.resource === "laundry") {
@@ -39,7 +46,9 @@ export function bookingRules(companyId: string): BookingRules {
         weekly: Boolean(row.allow_weekly),
         weeklyWeeks: row.weekly_weeks,
         singlePrice: row.single_price,
-        monthlyPrice: row.monthly_price
+        monthlyPrice: row.monthly_price,
+        queueEnabled: Boolean(row.queue_enabled),
+        queueSize: row.queue_size
       };
     }
   }
@@ -75,24 +84,29 @@ bookingsRouter.put("/companies/:companyId/booking-settings", requireAdmin, (req,
     weekly: z.boolean(),
     weeklyWeeks: z.number().int().min(2).max(MAX_BOOKING_OCCURRENCES).default(DEFAULT_WEEKLY_WEEKS),
     singlePrice: z.number().min(0).max(10000).default(0),
-    monthlyPrice: z.number().min(0).max(10000).default(0)
+    monthlyPrice: z.number().min(0).max(10000).default(0),
+    // Puuttuessa jonon asetus säilyy ennallaan.
+    queueEnabled: z.boolean().optional(),
+    queueSize: z.number().int().min(1).max(MAX_QUEUE_SIZE).optional()
   });
   const parsed = z.object({ sauna: rule, laundry: rule }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista asetukset." });
 
+  const current = bookingRules(companyId);
   const save = db.prepare(`
     INSERT INTO booking_settings
-      (company_id, resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+      (company_id, resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price, queue_enabled, queue_size)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(company_id, resource) DO UPDATE SET
       allow_single = excluded.allow_single, allow_weekly = excluded.allow_weekly,
       weekly_weeks = excluded.weekly_weeks, single_price = excluded.single_price,
-      monthly_price = excluded.monthly_price
+      monthly_price = excluded.monthly_price, queue_enabled = excluded.queue_enabled, queue_size = excluded.queue_size
   `);
   for (const resource of BOOKING_RESOURCES) {
     const value = parsed.data[resource];
     save.run(companyId, resource, value.single ? 1 : 0, value.weekly ? 1 : 0, value.weeklyWeeks,
-      value.singlePrice, value.monthlyPrice);
+      value.singlePrice, value.monthlyPrice, (value.queueEnabled ?? current[resource].queueEnabled) ? 1 : 0,
+      value.queueSize ?? current[resource].queueSize);
   }
   res.json(bookingRules(companyId));
 });
@@ -138,13 +152,13 @@ export function createBookings(input: {
   return { created, skipped };
 }
 
-// Poistaa varauksen. series=1 poistaa myös saman sarjan myöhemmät vuorot.
+// Poistaa varauksen. series=1 poistaa myös saman sarjan myöhemmät vuorot. Vapautuneet vuorot
+// siirtyvät jonon ensimmäiselle riippumatta siitä, kuka varauksen poisti.
 export function deleteBooking(booking: { id: string; series_id: string | null; starts_at: string }, wholeSeries: boolean) {
   if (wholeSeries && booking.series_id) {
-    return db.prepare("DELETE FROM bookings WHERE series_id = ? AND starts_at >= ?")
-      .run(booking.series_id, booking.starts_at).changes;
+    return deleteBookingsAndRelease("series_id = ? AND starts_at >= ?", [booking.series_id, booking.starts_at]);
   }
-  return db.prepare("DELETE FROM bookings WHERE id = ?").run(booking.id).changes;
+  return deleteBookingsAndRelease("id = ?", [booking.id]);
 }
 
 bookingsRouter.get("/companies/:companyId/bookings", (req, res) => {
@@ -160,7 +174,10 @@ bookingsRouter.get("/companies/:companyId/bookings", (req, res) => {
 
   res.json(db.prepare(`
     SELECT b.id, b.resource, b.resident_id, b.note, b.starts_at, b.ends_at, b.created_by, b.series_id,
-           r.name AS resident_name, a.apartment_number
+           r.name AS resident_name, a.apartment_number,
+           (SELECT COUNT(*) FROM booking_queue q
+            WHERE q.company_id = b.company_id AND q.resource = b.resource AND q.starts_at = b.starts_at
+              AND q.ends_at = b.ends_at AND q.status = 'waiting') AS queue_count
     FROM bookings b
     LEFT JOIN residents r ON r.id = b.resident_id
     LEFT JOIN apartments a ON a.id = r.apartment_id

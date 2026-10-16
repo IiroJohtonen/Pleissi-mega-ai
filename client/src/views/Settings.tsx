@@ -1030,6 +1030,9 @@ function SystemAlertsCard() {
 
 // Asetukset: saako taloyhtiön saunaan ja pyykkitupaan varata yksittäisiä ja viikoittaisia vuoroja.
 // Taloyhtiön vuorovaraus- ja autopaikka-asetukset; näytetään taloyhtiön tiedoissa.
+// Valittavat jonopaikkojen määrät yhdelle vuorolle.
+const QUEUE_SIZE_OPTIONS = [1, 2, 3, 4, 5, 10];
+
 export function BookingSettings({ companyId }: { companyId: string }) {
   const [rules, setRules] = useState<BookingRules | null>(null);
   const [parkingPrices, setParkingPrices] = useState<Record<string, number> | null>(null);
@@ -1076,6 +1079,11 @@ export function BookingSettings({ companyId }: { companyId: string }) {
   async function toggle(resource: "sauna" | "laundry", kind: "single" | "weekly") {
     if (!rules) return;
     await save({ ...rules, [resource]: { ...rules[resource], [kind]: !rules[resource][kind] } });
+  }
+
+  async function setQueue(resource: "sauna" | "laundry", change: { queueEnabled?: boolean; queueSize?: number }) {
+    if (!rules) return;
+    await save({ ...rules, [resource]: { ...rules[resource], ...change } });
   }
 
   async function setWeeklyWeeks(resource: "sauna" | "laundry", weeks: number) {
@@ -1188,6 +1196,33 @@ export function BookingSettings({ companyId }: { companyId: string }) {
               onChange={event => void setWeeklyWeeks(section.resource, Number(event.target.value))}
             >
               {WEEKLY_DURATION_OPTIONS.map(option => <option key={option.weeks} value={option.weeks}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="switch-row">
+            <span>
+              <strong>{t("Jono varatuille vuoroille")}</strong>
+              <small>{t("Asukas voi liittyä varatun vuoron jonoon kalenterista. Kun varaaja peruu vuoron, se siirtyy jonon ensimmäiselle.")}</small>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={rules?.[section.resource].queueEnabled ?? false}
+              disabled={!rules || readOnly}
+              onChange={() => rules && void setQueue(section.resource, { queueEnabled: !rules[section.resource].queueEnabled })}
+            />
+            <i aria-hidden="true" />
+          </label>
+          <label className="booking-settings-duration">
+            <span>
+              <strong>{t("Jonopaikkoja yhdellä vuorolla")}</strong>
+              <small>{t("Kun jono on täynnä, kalenterissa näkyy Jono täynnä.")}</small>
+            </span>
+            <select
+              value={rules?.[section.resource].queueSize ?? 3}
+              disabled={!rules || readOnly || !rules[section.resource].queueEnabled}
+              onChange={event => void setQueue(section.resource, { queueSize: Number(event.target.value) })}
+            >
+              {QUEUE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
           <label className="booking-settings-duration">
