@@ -4156,3 +4156,233 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Määräaikakentän Myöhässä-merkintä kentän alla. */
 .fact-due { flex-direction: column; align-items: flex-start; gap: 4px; }
 .fact-due .new-reply.overdue { padding: 2px 9px; font-size: 11.5px; white-space: nowrap; }
+
+/* Raporttien pääsivu: mittarit ja omat raportit */
+.reports-hub > .content { padding: 0; }
+.reports-tabs { border-bottom: 1px solid #e2e4e6; }
+.metrics { display: grid; gap: 12px; }
+.metrics-filters { justify-content: space-between; }
+.metrics-actions { display: flex; gap: 8px; align-items: center; }
+.metrics-actions button { padding: 8px 14px; font-size: 13px; }
+.metrics-summary > div { flex: 1 1 170px; }
+.queue-summary > div.summary-alert { border-color: #f1c0b8; background: #fff6f4; }
+.queue-summary > div.summary-alert strong { color: #a3341f; }
+.metrics-table th.num,
+.metrics-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.metrics-table tfoot td { border-top: 2px solid #d9dde1; font-weight: 700; color: #191f25; }
+.metric-alert { color: #a3341f; font-weight: 700; }
+.print-only { display: none; }
+
+.custom-reports { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 14px; align-items: start; }
+.saved-reports {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e2e4e6;
+  border-radius: 14px;
+  background: #fff;
+}
+.saved-reports > button {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: #1d2329;
+  text-align: left;
+}
+.saved-reports > button:hover { background: #f1f4f7; }
+.saved-reports > button.active { background: #e3eefc; color: #1f4f8f; }
+.saved-reports > button small { color: #747a80; font-size: 11px; }
+.saved-reports .saved-report-new { font-weight: 700; color: #28548f; }
+.saved-reports .muted { margin: 4px 6px; font-size: 12px; line-height: 1.45; }
+.custom-report-main { display: grid; gap: 12px; min-width: 0; }
+.report-builder { display: grid; gap: 14px; }
+.report-builder label { display: grid; gap: 5px; }
+.report-builder label > span { color: #5d646b; font-size: 12px; font-weight: 600; }
+.report-name input { max-width: 420px; }
+.report-builder-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.report-date input { padding: 8px 10px; }
+.report-builder-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip-select { margin: 0; padding: 0; border: 0; min-width: 0; }
+.chip-select legend { margin-bottom: 6px; padding: 0; color: #5d646b; font-size: 12px; font-weight: 600; }
+.chip-select > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-select button {
+  padding: 6px 11px;
+  border: 1px solid #d9dbde;
+  border-radius: 99px;
+  background: #fff;
+  color: #4b535d;
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip-select button:hover { border-color: #9bb8d8; }
+.chip-select button.active { border-color: #3f7fbf; background: #e3eefc; color: #1f4f8f; }
+.danger-link { border: 0; background: none; color: #b03a2e; font-weight: 600; padding: 8px 6px; }
+.danger-link:hover { text-decoration: underline; }
+.link-button { justify-self: start; border: 0; background: none; color: #28548f; font-weight: 600; padding: 4px 0; }
+
+@media (max-width: 860px) {
+  .custom-reports { grid-template-columns: 1fr; }
+}
+
+/* AI-kulut ja järjestelmän tila asetuksissa */
+.ai-usage { display: grid; gap: 7px; padding: 12px 14px; border: 1px solid #e1e4e7; border-radius: 12px; background: #f8fafc; }
+.ai-usage-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.ai-usage-head span { font-variant-numeric: tabular-nums; font-weight: 700; color: #191f25; }
+.ai-usage-bar { height: 8px; border-radius: 99px; background: #e3e7eb; overflow: hidden; }
+.ai-usage-bar i { display: block; height: 100%; border-radius: inherit; background: #3f7fbf; }
+.ai-usage-warning .ai-usage-bar i { background: #d39b1c; }
+.ai-usage-full .ai-usage-bar i { background: #c2412d; }
+.ai-usage small { color: #747a80; font-size: 12px; line-height: 1.45; }
+.ai-usage .send-error { margin: 0; }
+
+.system-alerts { display: grid; gap: 10px; }
+.system-alerts .suggest-header h2 { margin: 0; }
+.system-alerts > .muted { margin: 0; font-size: 13px; line-height: 1.5; }
+.status-badge.status-badge-ok { background: #dcf3e4; color: #1f6b3d; }
+.status-badge.status-badge-alert { background: #fde3de; color: #a3341f; }
+.system-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid #f1c0b8;
+  border-radius: 10px;
+  background: #fff6f4;
+}
+.system-alert > div { display: grid; gap: 3px; min-width: 0; }
+.system-alert small { color: #747a80; font-size: 12px; }
+.system-alert details summary { color: #28548f; font-size: 12px; cursor: pointer; }
+.system-alert pre { max-height: 220px; overflow: auto; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 11px; color: #3b4e63; }
+.system-alert.resolved { border-color: #e1e4e7; background: #fff; }
+.system-alert.resolved strong { color: #5d646b; font-weight: 600; }
+
+.system-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #f1c0b8;
+  border-radius: 10px;
+  background: #fff6f4;
+  color: #8a2c1b;
+  font-size: 13px;
+  font-weight: 600;
+}
+.system-alert-banner a { color: #28548f; }
+.system-alert-banner button { margin-left: auto; border: 0; background: none; color: #8a2c1b; font-size: 18px; line-height: 1; }
+
+/* Hallituksen tunnukset taloyhtiön tiedoissa */
+.board-members { display: grid; gap: 10px; }
+.board-members .suggest-header h2 { margin: 0; }
+.board-members > .muted { margin: 0; font-size: 13px; line-height: 1.5; max-width: 760px; }
+.board-member-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.board-member-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e1e4e7;
+  border-radius: 10px;
+}
+.board-member-list li > span { display: grid; gap: 2px; min-width: 0; }
+.board-member-list small { color: #747a80; font-size: 12px; }
+.board-member-form { padding-top: 6px; border-top: 1px solid #eef0f2; }
+
+/* Hallituksen näkymä */
+.board-page { min-height: 100vh; background: #f4f6f8; }
+.board-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 24px;
+  background: #171c22;
+  color: #fff;
+}
+.board-header .board-logo { height: 30px; }
+.board-header > div:nth-child(2) { display: grid; gap: 1px; min-width: 0; }
+.board-header small { color: #aab1b8; font-size: 12px; }
+.board-header-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.board-header-actions .board-user { color: #d6dadf; font-size: 13px; }
+.board-header-actions button { padding: 7px 12px; font-size: 13px; }
+.board-main { max-width: 1100px; margin: 0 auto; padding: 28px 24px 56px; display: grid; gap: 14px; align-content: start; }
+.board-summary > div { flex: 1 1 170px; }
+.board-contact dl { display: grid; gap: 8px; margin: 10px 0 0; }
+.board-contact dl > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.board-contact dt { color: #5d646b; font-weight: 600; }
+.board-contact dd { margin: 0; color: #191f25; }
+.board-tabs { border-bottom: 1px solid #e2e4e6; }
+.board-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #4b535d; }
+.board-tickets td strong { margin-right: 6px; }
+.board-tickets .ticket-number { white-space: nowrap; color: #5d646b; }
+.board-cards { display: grid; gap: 10px; margin-top: 12px; }
+.board-card { display: grid; gap: 5px; padding: 13px 15px; border: 1px solid #e1e4e7; border-radius: 12px; background: #fff; }
+.board-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.board-card small { color: #747a80; font-size: 12px; }
+.board-card p { margin: 0; white-space: pre-line; font-size: 14px; line-height: 1.5; color: #2b3138; }
+.status-badge.renovation-pending { background: #fdf0cf; color: #7a5600; }
+.status-badge.renovation-approved { background: #dcf3e4; color: #1f6b3d; }
+.status-badge.renovation-rejected { background: #fde3de; color: #a3341f; }
+.status-badge.renovation-completed { background: #e3e7eb; color: #3b4e63; }
+
+@media (max-width: 700px) {
+  .board-header { flex-wrap: wrap; padding: 10px 16px; }
+  .board-header-actions { width: 100%; justify-content: space-between; margin-left: 0; }
+  .board-main { padding: 18px 16px 40px; }
+  .board-contact dl > div { grid-template-columns: 1fr; gap: 2px; }
+  .board-tickets th:nth-child(3), .board-tickets td:nth-child(3) { display: none; }
+}
+
+/* Asukasportaalin liitteet: kameranappi, esikatselu ja pikkukuvat */
+.portal-files { display: grid; gap: 8px; }
+.portal-file-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.portal-file-buttons small { color: #747a80; font-size: 12px; }
+.portal-file-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.portal-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 5px 8px 5px 5px;
+  border: 1px solid #e1e4e7;
+  border-radius: 10px;
+  background: #fff;
+}
+.portal-file img,
+.portal-file-icon { width: 44px; height: 44px; flex: none; border-radius: 7px; object-fit: cover; }
+.portal-file-icon { display: grid; place-items: center; background: #e5ecf3; color: #37475a; font-size: 10px; font-weight: 700; }
+.portal-file-name { display: grid; min-width: 0; max-width: 180px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-file-name small { color: #747a80; }
+.portal-file button { border: 0; background: none; color: #747a80; font-size: 17px; line-height: 1; padding: 2px 4px; }
+.portal-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.portal-thumbs:empty { display: none; }
+.portal-thumb img { display: block; width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid #e1e4e7; }
+.portal-camera { display: none; }
+
+@media (max-width: 760px), (pointer: coarse) {
+  .portal-camera { display: inline-flex; }
+}
+
+/* Tulostus: raportit ilman navigaatiota ja painikkeita, esim. hallituksen kokoukseen. */
+@media print {
+  .sidebar, .topbar, .mobile-bar, .no-print, .system-alert-banner { display: none !important; }
+  .app { padding-top: 0 !important; display: block; }
+  .main { padding: 0 !important; }
+  .print-only { display: block; }
+  .report-card, .queue-summary > div { break-inside: avoid; border-color: #ccc; }
+  body { background: #fff; }
+}
+
+/* Painikkeiden koko uusissa korteissa samaksi kuin muualla asetuksissa */
+.report-builder.ticket-form { margin-top: 0; }
+.report-builder-actions button,
+.board-members .suggest-header button,
+.board-member-list button,
+.board-member-form .draft-actions button { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 9px; }
+.report-builder-actions button.primary { background: #171c22; border-color: #171c22; color: #fff; }
+.report-builder-actions button.primary:disabled { opacity: .5; }

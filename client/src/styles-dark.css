@@ -1742,3 +1742,203 @@
 :root[data-theme="dark"] .knowledge-company svg {
     color: #99bbdd
 }
+:root[data-theme="dark"] .reports-tabs {
+    border-bottom: 1px solid #384454
+}
+:root[data-theme="dark"] .queue-summary > div.summary-alert {
+    border-color: #71443d;
+    background: #242e3b
+}
+:root[data-theme="dark"] .queue-summary > div.summary-alert strong {
+    color: #eba294
+}
+:root[data-theme="dark"] .metrics-table tfoot td {
+    border-top: 2px solid #364151;
+    color: #e2e5e9
+}
+:root[data-theme="dark"] .metric-alert {
+    color: #eba294
+}
+:root[data-theme="dark"] .saved-reports {
+    border: 1px solid #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .saved-reports > button {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .saved-reports > button:hover {
+    background: #2e3b48
+}
+:root[data-theme="dark"] .saved-reports > button.active {
+    background: #2f3b4a;
+    color: #99bbe9
+}
+:root[data-theme="dark"] .saved-reports > button small {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .saved-reports .saved-report-new {
+    color: #9dbbe4
+}
+:root[data-theme="dark"] .report-builder label > span {
+    color: #c1c7d0
+}
+:root[data-theme="dark"] .chip-select legend {
+    color: #c1c7d0
+}
+:root[data-theme="dark"] .chip-select button {
+    border: 1px solid #354150;
+    background: #283341;
+    color: #c8ced6
+}
+:root[data-theme="dark"] .chip-select button:hover {
+    border-color: #3d5571
+}
+:root[data-theme="dark"] .chip-select button.active {
+    background: #2f3b4a;
+    color: #99bbe9
+}
+:root[data-theme="dark"] .danger-link {
+    color: #e49e97
+}
+:root[data-theme="dark"] .link-button {
+    color: #9dbbe4
+}
+:root[data-theme="dark"] .ai-usage {
+    border: 1px solid #384454;
+    background: #242e3b
+}
+:root[data-theme="dark"] .ai-usage-head span {
+    color: #e2e5e9
+}
+:root[data-theme="dark"] .ai-usage-bar {
+    background: #171e26
+}
+:root[data-theme="dark"] .ai-usage small {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .status-badge.status-badge-ok {
+    background: #314d3b;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .status-badge.status-badge-alert {
+    background: #4a3430;
+    color: #eba294
+}
+:root[data-theme="dark"] .system-alert {
+    border: 1px solid #71443d;
+    background: #242e3b
+}
+:root[data-theme="dark"] .system-alert small {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .system-alert details summary {
+    color: #9dbbe4
+}
+:root[data-theme="dark"] .system-alert pre {
+    color: #b3c1d1
+}
+:root[data-theme="dark"] .system-alert.resolved {
+    border-color: #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .system-alert.resolved strong {
+    color: #c1c7d0
+}
+:root[data-theme="dark"] .system-alert-banner {
+    border: 1px solid #71443d;
+    background: #242e3b;
+    color: #eba598
+}
+:root[data-theme="dark"] .system-alert-banner a {
+    color: #9dbbe4
+}
+:root[data-theme="dark"] .system-alert-banner button {
+    color: #eba598
+}
+:root[data-theme="dark"] .board-member-list li {
+    border: 1px solid #384454
+}
+:root[data-theme="dark"] .board-member-list small {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .board-member-form {
+    border-top: 1px solid #3b4859
+}
+:root[data-theme="dark"] .board-page {
+    background: #2d3a47
+}
+:root[data-theme="dark"] .board-contact dt {
+    color: #c1c7d0
+}
+:root[data-theme="dark"] .board-contact dd {
+    color: #e2e5e9
+}
+:root[data-theme="dark"] .board-tabs {
+    border-bottom: 1px solid #384454
+}
+:root[data-theme="dark"] .board-toggle {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .board-tickets .ticket-number {
+    color: #c1c7d0
+}
+:root[data-theme="dark"] .board-card {
+    border: 1px solid #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .board-card small {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .board-card p {
+    color: #d9dde2
+}
+:root[data-theme="dark"] .status-badge.renovation-pending {
+    background: #4e4632;
+    color: #efd69b
+}
+:root[data-theme="dark"] .status-badge.renovation-approved {
+    background: #314d3b;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .status-badge.renovation-rejected {
+    background: #4a3430;
+    color: #eba294
+}
+:root[data-theme="dark"] .status-badge.renovation-completed {
+    background: #171e26;
+    color: #b3c1d1
+}
+:root[data-theme="dark"] .portal-file-buttons small {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .portal-file {
+    border: 1px solid #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .portal-file-icon {
+    background: #303d4b;
+    color: #b5c2d2
+}
+:root[data-theme="dark"] .portal-file-name small {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .portal-file button {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .portal-thumb img {
+    border: 1px solid #384454
+}
+@media print {
+    :root[data-theme="dark"] .report-card,
+:root[data-theme="dark"] .queue-summary > div {
+        border-color: #313c49
+    }
+    :root[data-theme="dark"] body {
+        background: #283341
+    }
+}
+:root[data-theme="dark"] .report-builder-actions button.primary {
+    background: #d6dbe1;
+    border-color: #a6b1bf;
+    color: #19222e
+}

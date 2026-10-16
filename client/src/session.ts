@@ -20,8 +20,9 @@ export type ResidentAccount = {
   apartmentNumber: string;
 };
 
-// kind "resident" = asukas, joka näkee vain asukasportaalin.
-export type Session = { token: string; user: OfficeUser; kind?: "resident"; resident?: ResidentAccount };
+// kind "resident" = asukas, joka näkee vain asukasportaalin; "board" = taloyhtiön hallituksen jäsen,
+// joka näkee vain oman yhtiönsä hallituksen näkymän.
+export type Session = { token: string; user: OfficeUser; kind?: "resident" | "board"; resident?: ResidentAccount };
 
 export const USER_ROLES = ["Pääkäyttäjä", "Isännöitsijä", "Asiakaspalvelu"];
 const SESSION_KEY = "kotilo.session";

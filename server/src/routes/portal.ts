@@ -163,7 +163,7 @@ portalRouter.get("/portal/tickets/:id", (req, res) => {
     ORDER BY created_at
   `).all(ticket.id, resident.email ?? "", resident.email ?? "");
   const attachments = db.prepare(`
-    SELECT id, filename, size, created_at, direction FROM attachments
+    SELECT id, filename, mime_type, size, created_at, direction FROM attachments
     WHERE ticket_id = ? AND direction IN ('portal', 'outbound') ORDER BY created_at
   `).all(ticket.id);
   res.json({ ticket, messages, attachments });

@@ -3,6 +3,7 @@ import {
   getMailAccount, lastPollError, mailAccountFor, mailboxOwnerId, mailEnabled, type MailProvider, OFFICE_ACCOUNT, type OutgoingEmail,
   recordPollResult, userAccountId
 } from "./mail-common.js";
+import { trackMailPoll } from "./alerts.js";
 import { db } from "./db.js";
 import { pollImapAccount, sendViaImap } from "./mail-imap.js";
 import { pollMicrosoftAccount, sendViaMicrosoft } from "./mail-microsoft.js";
@@ -84,6 +85,11 @@ export async function getMailStatus(accountId: string = OFFICE_ACCOUNT): Promise
   return { connected: Boolean(account) && !error, provider, emailAddress: account?.email, canSend: true, ...(error ? { error } : {}) };
 }
 
+// Hälytyksessä näytettävä tilin nimi: osoite, jos se tiedetään.
+function mailLabel(accountId: string) {
+  return getMailAccount(accountId)?.email || (accountId === OFFICE_ACCOUNT ? "toimiston tili" : accountId);
+}
+
 let isRunning = false;
 
 async function pollAll(): Promise<void> {
@@ -100,9 +106,11 @@ async function pollAll(): Promise<void> {
         else if (provider === "microsoft") await pollMicrosoftAccount(accountId);
         else await pollGmailAccount(accountId);
         recordPollResult(accountId);
+        trackMailPoll(accountId, mailLabel(accountId));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         recordPollResult(accountId, message);
+        trackMailPoll(accountId, mailLabel(accountId), message);
         console.error(`Postin tarkistus epäonnistui (${accountId === OFFICE_ACCOUNT ? "toimiston tili" : accountId}, ${provider}):`, message);
       }
     }

@@ -43,7 +43,29 @@ CREATE TABLE IF NOT EXISTS resident_sessions (
   created_at TEXT NOT NULL,
   FOREIGN KEY(resident_id) REFERENCES residents(id)
 );
+
+-- Taloyhtiön hallituksen jäsenten tunnukset: lukuoikeus oman yhtiön tehtäviin, remontteihin ja tiedotteisiin.
+CREATE TABLE IF NOT EXISTS board_members (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  last_login_at TEXT,
+  UNIQUE(company_id, email),
+  FOREIGN KEY(company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE IF NOT EXISTS board_sessions (
+  token_hash TEXT PRIMARY KEY,
+  member_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(member_id) REFERENCES board_members(id)
+);
 `);
+
+export type BoardAccount = { id: string; name: string; email: string; companyId: string; companyName: string };
 
 export type ResidentAccount = {
   id: string;
@@ -58,7 +80,7 @@ export type ResidentAccount = {
 export type User = { id: string; name: string; email: string; role: string };
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const MIN_PASSWORD_LENGTH = 8;
+export const MIN_PASSWORD_LENGTH = 8;
 export const USER_ROLES = ["Pääkäyttäjä", "Isännöitsijä", "Asiakaspalvelu"] as const;
 export const ADMIN_ROLE = "Pääkäyttäjä";
 
@@ -91,7 +113,7 @@ function localToday(): string {
 // Palvelimen omat sisäiset kutsut (Gmail-tuonti) tunnistetaan tällä käynnistyskohtaisella avaimella.
 export const INTERNAL_TOKEN = crypto.randomBytes(32).toString("hex");
 
-function hashPassword(password: string): string {
+export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16);
   const hash = crypto.scryptSync(password, salt, 64);
   return `${salt.toString("hex")}:${hash.toString("hex")}`;
@@ -173,6 +195,33 @@ function residentForToken(token: string): ResidentAccount | null {
     .get(session.resident_id, localToday()) as ResidentAccount | undefined) ?? null;
 }
 
+const BOARD_SELECT = `
+  SELECT b.id, b.name, b.email, b.company_id AS companyId, c.name AS companyName
+  FROM board_members b
+  JOIN companies c ON c.id = b.company_id
+`;
+
+function boardMemberForToken(token: string): BoardAccount | null {
+  const session = db.prepare("SELECT member_id, created_at FROM board_sessions WHERE token_hash = ?")
+    .get(hashToken(token)) as { member_id: string; created_at: string } | undefined;
+  if (!session) return null;
+  if (Date.now() - Date.parse(session.created_at) > SESSION_TTL_MS) {
+    db.prepare("DELETE FROM board_sessions WHERE token_hash = ?").run(hashToken(token));
+    return null;
+  }
+  return (db.prepare(`${BOARD_SELECT} WHERE b.id = ?`).get(session.member_id) as BoardAccount | undefined) ?? null;
+}
+
+// Asettaa tai vaihtaa hallituksen jäsenen salasanan. Vaihto kirjaa jäsenen ulos kaikilta laitteilta.
+export function setBoardPassword(memberId: string, password: string): string | null {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Salasanassa pitää olla vähintään ${MIN_PASSWORD_LENGTH} merkkiä.`;
+  }
+  db.prepare("UPDATE board_members SET password_hash = ? WHERE id = ?").run(hashPassword(password), memberId);
+  db.prepare("DELETE FROM board_sessions WHERE member_id = ?").run(memberId);
+  return null;
+}
+
 // Asettaa tai vaihtaa asukkaan salasanan. Vaihto kirjaa asukkaan ulos kaikilta laitteilta.
 export function setResidentPassword(residentId: string, password: string): string | null {
   if (password.length < MIN_PASSWORD_LENGTH) {
@@ -217,6 +266,12 @@ export function createPasswordResets(email: string): PasswordReset[] {
   for (const resident of residents) {
     accounts.push({ kind: "resident", id: resident.id, name: resident.name, label: `Asukasportaali, ${resident.company}` });
   }
+  const boardMembers = db.prepare(`
+    SELECT b.id, b.name, c.name AS company FROM board_members b JOIN companies c ON c.id = b.company_id WHERE b.email = ?
+  `).all(email) as { id: string; name: string; company: string }[];
+  for (const member of boardMembers) {
+    accounts.push({ kind: "board", id: member.id, name: member.name, label: `Hallituksen näkymä, ${member.company}` });
+  }
 
   return accounts.map(account => {
     const token = crypto.randomBytes(32).toString("hex");
@@ -235,7 +290,9 @@ export function consumePasswordReset(token: string, password: string): string | 
   if (!row || Date.now() - Date.parse(row.created_at) > RESET_TTL_MS) {
     return "Palautuslinkki on vanhentunut tai jo käytetty. Pyydä uusi linkki.";
   }
-  const error = row.kind === "user" ? setUserPassword(row.subject_id, password) : setResidentPassword(row.subject_id, password);
+  const error = row.kind === "user" ? setUserPassword(row.subject_id, password)
+    : row.kind === "board" ? setBoardPassword(row.subject_id, password)
+    : setResidentPassword(row.subject_id, password);
   if (error) return error;
   db.prepare("DELETE FROM password_resets WHERE token_hash = ?").run(hashToken(token));
   return null;
@@ -263,9 +320,21 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = tokenFromRequest(req);
   const user = token ? userForToken(token) : null;
   if (user) {
-    // Henkilökunta ei käytä asukasportaalin rajapintaa.
+    // Henkilökunta ei käytä asukasportaalin eikä hallituksen näkymän rajapintaa.
     if (req.path.startsWith("/portal/")) return res.status(403).json({ error: "Vain asukkaille." });
+    if (req.path.startsWith("/board/")) return res.status(403).json({ error: "Vain hallituksen jäsenille." });
     res.locals.user = user;
+    res.locals.token = token;
+    return next();
+  }
+
+  // Hallituksen jäsen pääsee vain hallituksen näkymän rajapintaan, ja sielläkin vain lukemaan.
+  const boardMember = token ? boardMemberForToken(token) : null;
+  if (boardMember) {
+    if (!req.path.startsWith("/board/") && req.path !== "/auth/logout") {
+      return res.status(403).json({ error: "Ei käyttöoikeutta." });
+    }
+    res.locals.boardMember = boardMember;
     res.locals.token = token;
     return next();
   }
@@ -308,7 +377,26 @@ authRouter.post("/auth/login", (req, res) => {
   ).get(parsed.data.email) as (User & { password_hash: string }) | undefined;
 
   if (!row || !verifyPassword(parsed.data.password, row.password_hash)) {
-    // Ei henkilökunnan tunnus: kokeillaan asukasta. Sama sähköposti voi olla usean yhtiön
+    // Ei henkilökunnan tunnus: kokeillaan hallituksen jäsentä. Sama henkilö voi olla usean yhtiön
+    // hallituksessa, joten valitaan tunnus, jonka salasana täsmää.
+    const members = db.prepare("SELECT id, password_hash FROM board_members WHERE email = ? ORDER BY created_at")
+      .all(parsed.data.email) as { id: string; password_hash: string }[];
+    const member = members.find(candidate => verifyPassword(parsed.data.password, candidate.password_hash));
+    if (member) {
+      failedLogins.delete(key);
+      const boardToken = crypto.randomBytes(32).toString("hex");
+      db.prepare("INSERT INTO board_sessions VALUES (?, ?, ?)").run(hashToken(boardToken), member.id, new Date().toISOString());
+      db.prepare("UPDATE board_members SET last_login_at = ? WHERE id = ?").run(new Date().toISOString(), member.id);
+      const account = db.prepare(`${BOARD_SELECT} WHERE b.id = ?`).get(member.id) as BoardAccount;
+      return res.json({
+        token: boardToken,
+        kind: "board",
+        user: { id: account.id, name: account.name, email: account.email, role: "Hallitus" },
+        board: account
+      });
+    }
+
+    // Ei hallituksen tunnus: kokeillaan asukasta. Sama sähköposti voi olla usean yhtiön
     // asukkaalla, joten valitaan se, jonka salasana täsmää.
     const candidates = db.prepare(`
       SELECT rc.resident_id, rc.password_hash
@@ -348,6 +436,7 @@ authRouter.post("/auth/login", (req, res) => {
 authRouter.post("/auth/logout", (_req, res) => {
   db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(res.locals.token));
   db.prepare("DELETE FROM resident_sessions WHERE token_hash = ?").run(hashToken(res.locals.token));
+  db.prepare("DELETE FROM board_sessions WHERE token_hash = ?").run(hashToken(res.locals.token));
   res.json({ ok: true });
 });
 
