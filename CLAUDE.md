@@ -8,7 +8,9 @@ https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 Kun teet pull requestin, joka muuttaa sovelluksen toimintaa:
 
 1. Lisää testaussivun tietokantaan (ArtifactData-työkalu, sivun osoite yllä):
-   - `changes/pr-<numero>`: `{date: "VVVV-KK-PP", pr: <numero>, title, what: [selkokieliset muutokset], how: "missä ja miten muutos näkyy"}`
+   - `changes/pr-<numero>`: `{date: "VVVV-KK-PP", pr: <numero>, title, what: [selkokieliset muutokset], how: "missä ja miten muutos näkyy"}`.
+     Jos pull requestia ei vielä ole, käytä tunnistetta `VVVV-KK-PP-<aihe>` ja `pr: null`, ja päivitä `pr`-kenttä,
+     kun pull request tehdään.
    - `tests/T-<juokseva numero>` jokaiselle uudelle testille: `{order, changeId: "pr-<numero>", status: "todo",
      area (näkymä), field (kenttä), role, priority ("1"–"3"), title, steps: [vaiheet], input (prompti/syöte), expected}`.
      Jatka numerointia suurimmasta olemassa olevasta T-numerosta (lue `tests`-kokoelma ensin).
