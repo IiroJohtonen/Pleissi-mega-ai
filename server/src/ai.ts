@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { aiBudgetExhausted, recordAiUsage } from "./ai-budget.js";
 import { z } from "zod";
 
 export type TriageResult = {
@@ -132,8 +133,9 @@ export function findKnowledgeAnswer(
 
 // Claudea kutsutaan käsittelijän pyytämässä vastausehdotuksessa (suggestReply), raportin aiheissa ja,
 // kun toimisto on kytkenyt sen päälle, saapuvan viestin arvioinnissa (assessIncoming).
+// Kun kuukauden AI-kuluraja on täynnä, toimitaan kuten ilman AI-avainta.
 function claudeClient(): { client: Anthropic; model: string } | null {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!process.env.ANTHROPIC_API_KEY || aiBudgetExhausted()) return null;
   return { client: new Anthropic(), model: process.env.ANTHROPIC_MODEL || "claude-opus-5-5" };
 }
 
@@ -238,6 +240,7 @@ ${managerContext.trim() || "(none)"}
       messages: [{ role: "user", content: user }],
       output_config: { format: betaZodOutputFormat(SuggestionSchema) }
     });
+    recordAiUsage("suggest", response.model || ai.model, response.usage);
     if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
     const parsed = response.parsed_output;
     if (!parsed?.draft.trim()) throw new Error("Empty draft");
@@ -356,6 +359,7 @@ repeating it. If there is no existing documentation, covered is an empty list.
     messages: [{ role: "user", content: `Existing documentation:\n${knowledgePrompt(knowledge) || "(none)"}\n\nTickets:\n${user}` }],
     output_config: { format: betaZodOutputFormat(TopicsSchema) }
   });
+  recordAiUsage("topics", response.model || ai.model, response.usage);
   if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
   if (!response.parsed_output) throw new Error("AI:n vastausta ei voitu lukea");
 
@@ -467,6 +471,7 @@ ${body.slice(0, 8000)}
       messages: [{ role: "user", content: user }],
       output_config: { effort: "low", format: betaZodOutputFormat(AssessmentSchema) }
     }, { timeout: 20_000, maxRetries: 1 });
+    recordAiUsage("assess", response.model || ai.model, response.usage);
     if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
     const parsed = response.parsed_output;
     if (!parsed) throw new Error("No assessment in the response");

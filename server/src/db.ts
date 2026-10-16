@@ -584,6 +584,28 @@ if (!ticketColumns.some(column => column.name === "due_date")) {
   db.exec("ALTER TABLE tickets ADD COLUMN due_date TEXT");
 }
 
+// Tehtävän sulkemisaika raportteja varten. Tehtävän voi sulkea monesta paikasta, joten aika asetetaan
+// tietokannan triggerillä aina, kun tila muuttuu suljetuksi, ja tyhjennetään, kun tehtävä avataan uudelleen.
+// Ennen tätä muutosta suljetuille tehtäville käytetään viimeisintä muokkausaikaa.
+if (!ticketColumns.some(column => column.name === "closed_at")) {
+  db.exec("ALTER TABLE tickets ADD COLUMN closed_at TEXT");
+  db.exec("UPDATE tickets SET closed_at = updated_at WHERE status = 'closed'");
+}
+db.exec(`
+CREATE TRIGGER IF NOT EXISTS tickets_closed_at_update
+AFTER UPDATE OF status ON tickets
+WHEN (NEW.status = 'closed') != (OLD.status = 'closed')
+BEGIN
+  UPDATE tickets SET closed_at = CASE WHEN NEW.status = 'closed' THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now') END WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS tickets_closed_at_insert
+AFTER INSERT ON tickets
+WHEN NEW.status = 'closed' AND NEW.closed_at IS NULL
+BEGIN
+  UPDATE tickets SET closed_at = NEW.created_at WHERE id = NEW.id;
+END;
+`);
+
 // Poistetun (anonymisoidun) asukkaan rivi jää historiaan ilman henkilötietoja.
 if (!(db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).some(column => column.name === "erased_at")) {
   db.exec("ALTER TABLE residents ADD COLUMN erased_at TEXT");

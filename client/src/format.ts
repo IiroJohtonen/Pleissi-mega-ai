@@ -70,6 +70,8 @@ export function actionLabel(action: string) {
     ticket_reopened: t("Tehtävä avattu uudelleen"),
     ticket_deleted: t("Tehtävä poistettu"),
     user_deleted: t("Käyttäjä poistettu"),
+    board_member_created: t("Hallituksen tunnus luotu"),
+    board_member_deleted: t("Hallituksen tunnus poistettu"),
     resident_erased: t("Asukkaan henkilötiedot poistettu"),
     retention_purge: t("Säilytysajan ylittäneet tiedot poistettu"),
     reporter_linked: t("Asukas linkitetty tehtävään"),

@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { usePaged } from "../components/common";
 import { api, isManager, type OfficeUser } from "../session";
 import type { Company } from "../types";
+import { BoardMembersCard } from "./Board";
 import { BookingCalendar } from "./Bookings";
 import { KnowledgeBase } from "./Knowledge";
 import { ParkingSpaces } from "./Parking";
@@ -74,6 +75,7 @@ export function Companies({
 
         <CompanyCard company={openCompany} onSaved={onChanged} />
         <MailAccountCard target={openCompany.id} />
+        <BoardMembersCard key={`board-${openCompany.id}`} companyId={openCompany.id} />
         <BookingSettings key={openCompany.id} companyId={openCompany.id} />
 
         <div className="card-tabs">

@@ -1,4 +1,6 @@
 import { AUTHORIZED_COMPANY_IDS } from "./access.js";
+import { refreshBudgetAlerts } from "./ai-budget.js";
+import { raiseAlert, resolveAlert } from "./alerts.js";
 import { createBackup, hasBackupToday } from "./backup.js";
 import { db } from "./db.js";
 import { sendEmail } from "./mail.js";
@@ -105,10 +107,17 @@ async function purgeExpiredData() {
 }
 
 // Kun BACKUP_DIR on asetettu, tietokannasta ja tiedostoista otetaan varmuuskopio kerran päivässä.
+// Epäonnistumisesta tulee hälytys, joka kuittautuu seuraavan onnistuneen kopion jälkeen.
 async function backupDaily() {
   const targetDir = process.env.BACKUP_DIR;
   if (!targetDir || await hasBackupToday(targetDir)) return;
-  console.log(`Kotilo: varmuuskopio tallennettu kansioon ${await createBackup(targetDir)}`);
+  try {
+    console.log(`Kotilo: varmuuskopio tallennettu kansioon ${await createBackup(targetDir)}`);
+    resolveAlert("backup");
+  } catch (error: any) {
+    raiseAlert("backup", "Varmuuskopiointi epäonnistui", String(error?.message ?? error));
+    throw error;
+  }
 }
 
 export function startMaintenanceJobs() {
@@ -117,6 +126,7 @@ export function startMaintenanceJobs() {
     purgeDeletedMailIds();
     purgeExpiredData().catch(error => console.error("Säilytysajan poistot epäonnistuivat:", error?.message ?? error));
     backupDaily().catch(error => console.error("Varmuuskopiointi epäonnistui:", error?.message ?? error));
+    refreshBudgetAlerts();
   };
   run();
   setInterval(run, 60 * 60 * 1000);

@@ -132,3 +132,31 @@ describe("päätösjonon järjestys ja haku", () => {
     expect(ticketNumberQuery("#12 sauna")).toBeNull();
   });
 });
+
+describe("raporttien aikavälit ja kestot", () => {
+  it("laskee aikavälin päivät valinnasta", async () => {
+    const { rangeDates } = await import("./views/Metrics");
+    const now = new Date(2026, 9, 16, 12);
+    expect(rangeDates({ range: "7d" }, now)).toEqual({ from: "2026-10-10", to: "2026-10-16" });
+    expect(rangeDates({ range: "month" }, now)).toEqual({ from: "2026-10-01", to: "2026-10-16" });
+    expect(rangeDates({ range: "lastMonth" }, now)).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+    expect(rangeDates({ range: "year" }, now)).toEqual({ from: "2026-01-01", to: "2026-10-16" });
+    expect(rangeDates({ range: "custom", from: "2026-03-01", to: "2026-03-31" }, now)).toEqual({ from: "2026-03-01", to: "2026-03-31" });
+  });
+
+  it("näyttää keston minuutteina, tunteina tai päivinä", async () => {
+    const { formatDuration } = await import("./views/Metrics");
+    expect(formatDuration(null)).toBe("–");
+    expect(formatDuration(0.25)).toBe("15 min");
+    expect(formatDuration(5)).toBe("5 h");
+    expect(formatDuration(72)).toBe("3 pv");
+  });
+
+  it("ei muuta pieniä kuvia eikä PDF-tiedostoja ennen lähetystä", async () => {
+    const { shrinkImage } = await import("./views/Portal");
+    const pdf = new File(["%PDF-1.4"], "lasku.pdf", { type: "application/pdf" });
+    const photo = new File(["jpeg"], "kuva.jpg", { type: "image/jpeg" });
+    expect(await shrinkImage(pdf)).toBe(pdf);
+    expect(await shrinkImage(photo)).toBe(photo);
+  });
+});

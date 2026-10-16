@@ -9,6 +9,7 @@ import helmet from "helmet";
 // Käynnistyksen tietokantakorjaukset ajetaan ennen kuin mikään muu moduuli lukee tietokantaa.
 import "./startup.js";
 import { requestUser } from "./access.js";
+import { raiseAlert } from "./alerts.js";
 import { authRouter, INTERNAL_TOKEN, requireAuth, type User } from "./auth.js";
 import { db } from "./db.js";
 import { signatureRouter } from "./signature.js";
@@ -17,6 +18,7 @@ import { startMailPolling } from "./mail.js";
 import { startMaintenanceJobs } from "./jobs.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { billingRouter } from "./routes/billing.js";
+import { boardRouter } from "./routes/board.js";
 import { bookingRequestsRouter } from "./routes/booking-requests.js";
 import { bookingsRouter } from "./routes/bookings.js";
 import { companiesRouter } from "./routes/companies.js";
@@ -112,7 +114,7 @@ for (const router of [
   authRouter, passwordResetRouter, officeRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingRequestsRouter, billingRouter, portalRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter, contactRouter, searchRouter
+  metersRouter, contactRouter, searchRouter, boardRouter
 ]) {
   app.use("/api", router);
 }
@@ -131,12 +133,21 @@ if (process.env.NODE_ENV === "production" && existsSync(path.join(CLIENT_DIST, "
 app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (res.headersSent) return next(error);
   const status = Number(error?.status ?? error?.statusCode) || 500;
-  if (status >= 500) console.error(`${req.method} ${req.path} epäonnistui:`, error);
+  if (status >= 500) {
+    console.error(`${req.method} ${req.path} epäonnistui:`, error);
+    raiseAlert("server-error", "Palvelimella tapahtui virhe", `${req.method} ${req.path}\n\n${error?.stack ?? error}`);
+  }
   res.status(status).json({
     error: status === 413 ? "Pyyntö on liian suuri."
       : status < 500 ? "Virheellinen pyyntö."
       : "Palvelimella tapahtui virhe. Yritä uudelleen."
   });
+});
+
+// Käsittelemätön virhe taustatyössä ei kaada palvelinta, mutta siitä tulee hälytys.
+process.on("unhandledRejection", reason => {
+  console.error("Käsittelemätön virhe:", reason);
+  raiseAlert("server-error", "Palvelimen taustatyössä tapahtui virhe", String((reason as Error)?.stack ?? reason));
 });
 
 app.listen(PORT, (error?: Error) => {

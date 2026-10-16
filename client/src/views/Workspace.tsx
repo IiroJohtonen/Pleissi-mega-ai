@@ -22,7 +22,8 @@ import { MeterReadings } from "./Meters";
 import { MoveNotices } from "./Moves";
 import { ParkingSpaces } from "./Parking";
 import { RenovationNotices } from "./Renovations";
-import { Reports } from "./Reports";
+import { SystemAlertBanner } from "../components/SystemAlertBanner";
+import { ReportsHub } from "./Metrics";
 import { Residents } from "./Residents";
 import { Topbar } from "../components/Topbar";
 import { type HistoryEntry, readHistory, rememberTicket } from "../history";
@@ -649,6 +650,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       </aside>
 
       <main className="main">
+        <SystemAlertBanner />
         {/* Avattu tehtävä näytetään omana sivunaan listan tilalla; navigaatio pysyy vieressä käytössä. */}
         {openTicketId && (selected ? (
           <TicketDrawer
@@ -734,7 +736,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
             />
           )
           : tab === "reports" ? (
-            <Reports
+            <ReportsHub
               tickets={tickets}
               loading={loading}
               companyId={selectedCompany}
@@ -761,6 +763,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "settings" ? (
             <Settings
+              key={`settings-${routeParam ?? ""}`}
+              initialTab={routeParam === "office" ? "office" : "user"}
               onSaved={async () => setCompanies(await api<Company[]>("/companies"))}
             />
           ) : (

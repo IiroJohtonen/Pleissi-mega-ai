@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
 import { formatDate } from "../format";
-import { type Language, language, LANGUAGES, setLanguage } from "../i18n";
+import { type Language, language, LANGUAGES, locale, setLanguage } from "../i18n";
 import {
   api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession, USER_ROLES
 } from "../session";
@@ -79,9 +79,9 @@ function CollapseSection({ id, title, action, children }: {
 }
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
-export function Settings(props: { onSaved: () => Promise<void> }) {
+export function Settings({ initialTab = "user", ...props }: { onSaved: () => Promise<void>; initialTab?: "user" | "office" }) {
   const admin = isAdmin();
-  const [tab, setTab] = useState<"user" | "office">("user");
+  const [tab, setTab] = useState<"user" | "office">(initialTab);
 
   return (
     <>
@@ -378,6 +378,8 @@ export type OfficeInfo = {
   aiPriority?: number; aiAvailable?: boolean;
   // aiRelevance: 1 = AI tarkistaa, koskeeko saapuva sähköposti taloyhtiön asioita.
   aiRelevance?: number;
+  // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
+  aiMonthlyLimit?: number; aiWarningPercent?: number;
 };
 
 const providerNames: Record<MailProvider, string> = {
@@ -636,6 +638,10 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [aiPriority, setAiPriority] = useState(false);
   const [aiRelevance, setAiRelevance] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
+  const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
+  const [aiWarningPercent, setAiWarningPercent] = useState(80);
+  // Kasvaa jokaisella tallennuksella, jotta kulumittari hakee tilanteen uudelleen.
+  const [savedCount, setSavedCount] = useState(0);
   const [retentionMonths, setRetentionMonths] = useState(0);
   // Viimeksi tallennettu säilytysaika; lyhentäminen varmistetaan, koska se poistaa tietoja pysyvästi.
   const [storedRetention, setStoredRetention] = useState(0);
@@ -653,6 +659,8 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         setAiPriority(Boolean(office.aiPriority));
         setAiRelevance(Boolean(office.aiRelevance));
         setAiAvailable(office.aiAvailable !== false);
+        setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
+        setAiWarningPercent(office.aiWarningPercent ?? 80);
         setRetentionMonths(office.retentionMonths ?? 0);
         setStoredRetention(office.retentionMonths ?? 0);
       })
@@ -677,13 +685,15 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
         body: JSON.stringify({
-          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance
+          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance,
+          aiMonthlyLimit, aiWarningPercent
         })
       });
       MANAGEMENT_OFFICE.name = office.name;
       setStoredRetention(office.retentionMonths ?? 0);
       await onSaved();
       setSaved(true);
+      setSavedCount(count => count + 1);
     } catch (caught) {
       let message = t("Asetusten tallennus epäonnistui.");
       try {
@@ -771,6 +781,34 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
 
         <CollapseSection id="office-ai" title={t("AI")}>
 
+        <AiUsageMeter refreshKey={savedCount} />
+        <div className="signature-fields">
+          <label>
+            <span>{t("Kuukausiraja ($)")}</span>
+            <input
+              type="number"
+              min={0}
+              step={5}
+              value={aiMonthlyLimit}
+              onChange={event => { setAiMonthlyLimit(Math.max(0, Number(event.target.value) || 0)); setSaved(false); }}
+            />
+          </label>
+          <label>
+            <span>{t("Varoita, kun rajasta on käytetty (%)")}</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={5}
+              value={aiWarningPercent}
+              onChange={event => { setAiWarningPercent(Math.min(100, Math.max(0, Number(event.target.value) || 0))); setSaved(false); }}
+            />
+          </label>
+        </div>
+        <p className="reply-hint">
+          {t("Kun kuukauden AI-kulut saavuttavat rajan, AI kytkeytyy pois kuun loppuun asti: vastausehdotukset tehdään dokumentaatiohaulla ja saapuvat viestit käsitellään ilman AI:ta. Pääkäyttäjät saavat sähköpostin varoitusrajalla ja kun raja täyttyy. 0 = ei rajaa. Kulut ovat arvio Anthropicin hinnaston mukaan dollareina.")}
+        </p>
+
         <label className="switch-row">
           <span>
             <strong>{t("AI arvioi saapuvan tehtävän prioriteetin")}</strong>
@@ -846,6 +884,8 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         </div>
       </form>
 
+      <SystemAlertsCard />
+
       <ContactRequests />
 
       <a className="settings-card settings-link" href="#/log">
@@ -861,6 +901,130 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
 
       <OfficeUsers />
     </section>
+  );
+}
+
+type AiUsage = {
+  month: string; costUsd: number; limitUsd: number; warningPercent: number; exhausted: boolean; calls: number;
+  byFeature: { feature: string; calls: number; cost: number }[];
+  history: { month: string; calls: number; cost: number }[];
+};
+
+const aiFeatureLabels: Record<string, string> = {
+  suggest: t("Vastausehdotukset"),
+  assess: t("Saapuvien viestien arviointi"),
+  topics: t("Toistuvien aiheiden raportit")
+};
+
+export const formatUsd = (value: number) => `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+
+// Tämän kuun AI-kulut suhteessa kuukausirajaan.
+function AiUsageMeter({ refreshKey }: { refreshKey: number }) {
+  const [usage, setUsage] = useState<AiUsage | null>(null);
+  useEffect(() => {
+    api<AiUsage>("/office/ai-usage")
+      .then(found => setUsage(typeof found?.costUsd === "number" ? found : null))
+      .catch(() => undefined);
+  }, [refreshKey]);
+  if (!usage) return null;
+  const percent = usage.limitUsd > 0 ? Math.min(100, (usage.costUsd / usage.limitUsd) * 100) : 0;
+  const level = usage.exhausted ? "full" : usage.limitUsd > 0 && percent >= usage.warningPercent ? "warning" : "ok";
+  return (
+    <div className={`ai-usage ai-usage-${level}`}>
+      <div className="ai-usage-head">
+        <strong>{t("AI-kulut tässä kuussa")}</strong>
+        <span>
+          {formatUsd(usage.costUsd)}
+          {usage.limitUsd > 0 ? ` / ${formatUsd(usage.limitUsd)}` : ` · ${t("ei rajaa")}`}
+        </span>
+      </div>
+      {usage.limitUsd > 0 && (
+        <div className="ai-usage-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)} aria-label={t("AI-kulut kuukausirajasta")}>
+          <i style={{ width: `${percent}%` }} />
+        </div>
+      )}
+      {usage.exhausted && <p className="send-error">{t("Kuukausiraja on täynnä, joten AI on pois käytöstä kuun loppuun asti. Nosta rajaa, jos haluat ottaa AI:n heti takaisin käyttöön.")}</p>}
+      <small>
+        {usage.calls === 0
+          ? t("Ei AI-kutsuja tässä kuussa.")
+          : usage.byFeature.map(row => `${aiFeatureLabels[row.feature] ?? row.feature}: ${row.calls} (${formatUsd(row.cost)})`).join(" · ")}
+      </small>
+      {usage.history.length > 1 && (
+        <small>
+          {t("Aiemmat kuukaudet:")}{" "}
+          {usage.history.filter(row => row.month !== usage.month).map(row => `${row.month} ${formatUsd(row.cost)}`).join(" · ")}
+        </small>
+      )}
+    </div>
+  );
+}
+
+type SystemAlert = {
+  id: string; kind: string; title: string; details: string; count: number;
+  created_at: string; last_at: string; resolved_at: string | null;
+};
+
+// Järjestelmän tila: palvelimen virheet, katkenneet postiyhteydet, varmuuskopiot ja AI-kulujen raja.
+// Samat hälytykset lähtevät pääkäyttäjille sähköpostina.
+function SystemAlertsCard() {
+  const [alerts, setAlerts] = useState<SystemAlert[] | null>(null);
+  const [showResolved, setShowResolved] = useState(false);
+  const [error, setError] = useState("");
+  const load = () => api<SystemAlert[]>("/system/alerts")
+    .then(found => setAlerts(Array.isArray(found) ? found : []))
+    .catch(() => setError(t("Hälytysten lataus epäonnistui.")));
+  useEffect(() => { void load(); }, []);
+
+  async function resolve(alertId: string) {
+    try {
+      await api(`/system/alerts/${encodeURIComponent(alertId)}/resolve`, { method: "POST" });
+      await load();
+    } catch (resolveError) {
+      setError(errorMessage(resolveError, t("Kuittaus epäonnistui.")));
+    }
+  }
+
+  const open = (alerts ?? []).filter(alert => !alert.resolved_at);
+  const resolved = (alerts ?? []).filter(alert => alert.resolved_at);
+  return (
+    <div className="settings-card system-alerts">
+      <div className="suggest-header">
+        <h2>{t("Järjestelmän tila")}</h2>
+        <span className={`status-badge ${open.length ? "status-badge-alert" : "status-badge-ok"}`}>
+          {open.length ? t("{0} avointa hälytystä", open.length) : t("Kaikki kunnossa")}
+        </span>
+      </div>
+      <p className="muted">
+        {t("Pleissi ilmoittaa sähköpostilla pääkäyttäjille, kun palvelimella tapahtuu virhe, sähköpostin vastaanotto katkeaa yli 15 minuutiksi, varmuuskopiointi epäonnistuu tai AI-kulut lähestyvät rajaa.")}
+      </p>
+      {error && <p className="send-error">{error}</p>}
+      {open.map(alert => (
+        <div className="system-alert" key={alert.id}>
+          <div>
+            <strong>{alert.title}</strong>
+            <small>
+              {formatDate(alert.last_at)}
+              {alert.count > 1 && ` · ${t("toistunut {0} kertaa", alert.count)}`}
+            </small>
+            {alert.details && <details><summary>{t("Lisätiedot")}</summary><pre>{alert.details}</pre></details>}
+          </div>
+          <button type="button" className="secondary" onClick={() => void resolve(alert.id)}>{t("Kuittaa")}</button>
+        </div>
+      ))}
+      {resolved.length > 0 && (
+        <button type="button" className="link-button" onClick={() => setShowResolved(!showResolved)}>
+          {showResolved ? t("Piilota kuitatut") : t("Näytä kuitatut ({0})", resolved.length)}
+        </button>
+      )}
+      {showResolved && resolved.map(alert => (
+        <div className="system-alert resolved" key={alert.id}>
+          <div>
+            <strong>{alert.title}</strong>
+            <small>{formatDate(alert.last_at)} · {t("kuitattu")} {formatDate(alert.resolved_at as string)}</small>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

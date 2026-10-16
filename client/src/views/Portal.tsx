@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { DownloadLink, LanguageToggle } from "../components/common";
 import { fileToBase64, formatDate, formatDay, formatFileSize, formatTicketNumber } from "../format";
-import { api, errorMessage, logout, type ResidentAccount } from "../session";
+import { api, errorMessage, fetchObjectUrl, logout, type ResidentAccount } from "../session";
 import { splitQuotedReply } from "../tickets/ticket-utils";
 import type { Announcement } from "./Announcements";
 import { BookingCalendar } from "./Bookings";
@@ -193,30 +193,130 @@ type PortalTicket = {
 const PORTAL_TICKET_TYPES = ["Vikailmoitus", "Kysymys", "Ilmoitus", "Pyyntö", "Muu"];
 
 // Asukkaan tehtävät: uuden tehtävän luonti isännöitsijälle ja lista omista tehtävistä tiloineen.
-// Asukkaan liitevalinta: kuvat ja PDF:t, enintään viisi.
-function PortalFilePicker({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
+// Asukkaan liitevalinta: kuvat ja PDF:t, enintään viisi. Puhelimella "Ota kuva" avaa kameran.
+// Isot kuvat pienennetään ennen lähetystä, jotta puhelimen kuvat mahtuvat 10 Mt:n rajaan.
+const PORTAL_MAX_FILES = 5;
+const PORTAL_MAX_BYTES = 10 * 1024 * 1024;
+const RESIZE_OVER_BYTES = 1.5 * 1024 * 1024;
+const RESIZE_MAX_SIDE = 2000;
+
+export async function shrinkImage(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp|heic)$/.test(file.type) || file.size <= RESIZE_OVER_BYTES || typeof createImageBitmap !== "function") {
+    return file;
+  }
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, RESIZE_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    // Selain ei osaa lukea kuvaa (esim. HEIC): lähetetään alkuperäinen.
+    return file;
+  }
+}
+
+function FilePreview({ file, onRemove }: { file: File; onRemove: () => void }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    if (!file.type.startsWith("image/") || file.type === "image/heic") return;
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
   return (
-    <div className="reply-attachments">
-      <label className="attach-button">
-        {t("Liitä kuva")}
-        <input
-          type="file"
-          multiple
-          accept="image/png,image/jpeg,image/gif,image/webp,image/heic,application/pdf"
-          onChange={event => {
-            const picked = [...(event.target.files ?? [])];
-            event.target.value = "";
-            onChange([...files, ...picked].slice(0, 5));
-          }}
-        />
-      </label>
-      {files.map((file, index) => (
-        <span className="reply-file" key={`${file.name}-${index}`}>
-          {file.name} <small>{formatFileSize(file.size)}</small>
-          <button type="button" onClick={() => onChange(files.filter((_, position) => position !== index))} aria-label={t("Poista liite {0}", file.name)}>×</button>
-        </span>
-      ))}
+    <span className="portal-file">
+      {url ? <img src={url} alt="" /> : <span className="portal-file-icon" aria-hidden="true">{file.type === "application/pdf" ? "PDF" : "IMG"}</span>}
+      <span className="portal-file-name">{file.name}<small>{formatFileSize(file.size)}</small></span>
+      <button type="button" onClick={onRemove} aria-label={t("Poista liite {0}", file.name)}>×</button>
+    </span>
+  );
+}
+
+function PortalFilePicker({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
+  const [busy, setBusy] = useState(false);
+  const total = files.reduce((sum, file) => sum + file.size, 0);
+
+  async function add(picked: File[]) {
+    setBusy(true);
+    try {
+      const prepared = await Promise.all(picked.map(shrinkImage));
+      onChange([...files, ...prepared].slice(0, PORTAL_MAX_FILES));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const input = (capture: boolean) => (
+    <input
+      type="file"
+      multiple={!capture}
+      accept={capture ? "image/*" : "image/png,image/jpeg,image/gif,image/webp,image/heic,application/pdf"}
+      {...(capture ? { capture: "environment" } : {})}
+      disabled={busy || files.length >= PORTAL_MAX_FILES}
+      onChange={event => {
+        const picked = [...(event.target.files ?? [])];
+        event.target.value = "";
+        void add(picked);
+      }}
+    />
+  );
+
+  return (
+    <div className="portal-files">
+      <div className="portal-file-buttons">
+        <label className="attach-button portal-camera">
+          {t("Ota kuva")}
+          {input(true)}
+        </label>
+        <label className="attach-button">
+          {t("Liitä kuva tai PDF")}
+          {input(false)}
+        </label>
+        <small>{busy ? t("Valmistellaan kuvaa…") : t("Enintään {0} liitettä, yhteensä 10 Mt.", PORTAL_MAX_FILES)}</small>
+      </div>
+      {files.length > 0 && (
+        <div className="portal-file-list">
+          {files.map((file, index) => (
+            <FilePreview key={`${file.name}-${index}`} file={file} onRemove={() => onChange(files.filter((_, position) => position !== index))} />
+          ))}
+        </div>
+      )}
+      {total > PORTAL_MAX_BYTES && <p className="send-error">{t("Liitteiden yhteiskoko on liian suuri. Poista jokin liite.")}</p>}
     </div>
+  );
+}
+
+// Portaalin liitteen pikkukuva: kuva haetaan kirjautumisotsakkeella, ja klikkaus lataa tiedoston.
+function PortalAttachmentThumb({ attachment }: { attachment: PortalThread["attachments"][number] }) {
+  const [url, setUrl] = useState("");
+  const isImage = /^image\/(png|jpeg|gif|webp)$/.test(attachment.mime_type ?? "");
+  useEffect(() => {
+    if (!isImage) return;
+    let objectUrl = "";
+    let current = true;
+    fetchObjectUrl(`/portal/attachments/${encodeURIComponent(attachment.id)}`)
+      .then(found => {
+        objectUrl = found;
+        if (current) setUrl(found);
+        else URL.revokeObjectURL(found);
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [attachment.id, isImage]);
+  if (!url) return null;
+  return (
+    <a className="portal-thumb" href={url} target="_blank" rel="noreferrer" title={attachment.filename}>
+      <img src={url} alt={attachment.filename} />
+    </a>
   );
 }
 
@@ -227,7 +327,7 @@ async function portalAttachments(files: File[]) {
 type PortalThread = {
   ticket: PortalTicket;
   messages: { id: string; direction: string; body: string; created_at: string }[];
-  attachments: { id: string; filename: string; size: number; created_at: string; direction: string }[];
+  attachments: { id: string; filename: string; size: number; created_at: string; direction: string; mime_type?: string }[];
 };
 
 // Asukkaan näkymä yhteen tehtävään: viestiketju isännöitsijän kanssa, liitteet ja uusi viesti.
@@ -298,6 +398,9 @@ function PortalTicketThread({ ticketId, onBack }: { ticketId: string; onBack: ()
       {thread.attachments.length > 0 && (
         <div className="portal-thread-files">
           <strong>{t("Liitteet")}</strong>
+          <div className="portal-thumbs">
+            {thread.attachments.map(attachment => <PortalAttachmentThumb key={attachment.id} attachment={attachment} />)}
+          </div>
           {thread.attachments.map(attachment => (
             <DownloadLink key={attachment.id} path={`/portal/attachments/${attachment.id}`} filename={attachment.filename}>
               {attachment.filename} <small>{attachment.direction === "portal" ? t("sinulta") : t("isännöitsijältä")} · {formatFileSize(attachment.size)}</small>

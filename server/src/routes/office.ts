@@ -2,6 +2,8 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { visibleCompanyIds } from "../access.js";
 import { isAdmin, requireAdmin, requireManager } from "../auth.js";
+import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
+import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
 
 export const officeRouter: Router = express.Router();
@@ -10,7 +12,8 @@ export const officeRouter: Router = express.Router();
 const OFFICE_SELECT = `
   SELECT name, business_id AS businessId, address, phone,
          reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority,
-         ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays
+         ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays,
+         ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent
   FROM office_settings WHERE id = 1
 `;
 
@@ -47,7 +50,10 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     aiPriority: z.boolean().optional(),
     aiRelevance: z.boolean().optional(),
     replyReminderDays: z.number().int().min(1).max(30).optional(),
-    dueReminderDays: z.number().int().min(0).max(30).optional()
+    dueReminderDays: z.number().int().min(0).max(30).optional(),
+    // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina.
+    aiMonthlyLimit: z.number().min(0).max(100000).optional(),
+    aiWarningPercent: z.number().int().min(0).max(100).optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
   db.prepare("UPDATE office_settings SET name = ?, business_id = ?, address = ?, phone = ? WHERE id = 1")
@@ -70,6 +76,13 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   if (parsed.data.aiRelevance !== undefined) {
     db.prepare("UPDATE office_settings SET ai_relevance = ? WHERE id = 1").run(parsed.data.aiRelevance ? 1 : 0);
   }
+  if (parsed.data.aiMonthlyLimit !== undefined) {
+    db.prepare("UPDATE office_settings SET ai_monthly_limit = ? WHERE id = 1").run(Math.round(parsed.data.aiMonthlyLimit * 100) / 100);
+  }
+  if (parsed.data.aiWarningPercent !== undefined) {
+    db.prepare("UPDATE office_settings SET ai_warning_percent = ? WHERE id = 1").run(parsed.data.aiWarningPercent);
+  }
+  refreshBudgetAlerts();
   res.json(officeSettings());
 });
 
@@ -95,4 +108,19 @@ officeRouter.get("/audit", requireManager, (_req, res) => {
     LIMIT 2000
   `).all(...companyIds, isAdmin(res) ? 1 : 0);
   res.json(rows);
+});
+
+// AI:n käyttö ja kustannusarvio tältä kuulta sekä kuuden edellisen kuukauden historia.
+officeRouter.get("/office/ai-usage", requireAdmin, (_req, res) => {
+  res.json(aiUsageSummary());
+});
+
+// Järjestelmähälytykset (palvelimen virheet, postiyhteydet, varmuuskopiot, AI-kulut) pääkäyttäjälle.
+officeRouter.get("/system/alerts", requireAdmin, (_req, res) => {
+  res.json(listAlerts());
+});
+
+officeRouter.post("/system/alerts/:id/resolve", requireAdmin, (req, res) => {
+  if (!markAlertResolved(String(req.params.id))) return res.status(404).json({ error: "Hälytystä ei löytynyt tai se on jo kuitattu." });
+  res.json({ ok: true });
 });
