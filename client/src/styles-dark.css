@@ -1967,3 +1967,39 @@
 :root[data-theme="dark"] .key-code:hover {
     border-color: #3d5571
 }
+:root[data-theme="dark"] .chunk-row {
+    border-top: 1px solid #3a4758
+}
+:root[data-theme="dark"] .chunk-row.highlight,
+:root[data-theme="dark"] .chunk-row.hit {
+    background: #232c38
+}
+:root[data-theme="dark"] .chunk-status {
+    color: #b8c0ca
+}
+:root[data-theme="dark"] .chunk-status.verified {
+    color: #9ee6bd
+}
+:root[data-theme="dark"] .chunk-status.review {
+    color: #eeca96
+}
+:root[data-theme="dark"] .chunk-panel input,
+:root[data-theme="dark"] .chunk-panel textarea,
+:root[data-theme="dark"] .chunk-editor input,
+:root[data-theme="dark"] .chunk-editor textarea {
+    border: 1px solid #374353;
+    background: #242d3a;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .chunk-buttons button {
+    border: 1px solid #354150
+}
+:root[data-theme="dark"] .chunk-buttons button.primary {
+    background: #d6dbe1;
+    border-color: #a6b1bf;
+    color: #19222e
+}
+:root[data-theme="dark"] .chunk-suggestion {
+    background: #4b4430;
+    color: #efd69c
+}

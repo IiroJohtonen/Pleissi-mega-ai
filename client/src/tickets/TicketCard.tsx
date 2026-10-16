@@ -287,7 +287,9 @@ export function TicketCard({
           {ticket.ai_suggested && ticket.knowledge_source_title ? <strong>{ticket.ai_reason}</strong> : null}
           <p>{ticket.draft || t("Ei tallennettua luonnosta.")}</p>
           {ticket.ai_suggested && ticket.knowledge_source_title ? (
-            <span className="source-pill">{t("Lähde:")}{" "}{ticket.knowledge_source_title}</span>
+            <span className="source-pill">
+              📄 {ticket.knowledge_source_title}{ticket.knowledge_source_page ? `, ${t("s. {0}", String(ticket.knowledge_source_page))}` : ""}
+            </span>
           ) : null}
         </div>
       </div>

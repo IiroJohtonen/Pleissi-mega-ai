@@ -38,6 +38,12 @@ export type ChunkInput = {
 
 type KnowledgeSource = { id: string; company_id: string; title: string; content: string; kind: string; status: string };
 
+// Kappaleen otsikoksi sen ensimmäinen virke lyhennettynä, jotta palat erottuvat toisistaan listassa.
+export function previewTitle(content: string) {
+  const sentence = content.split(/(?<=[.!?])\s/)[0].trim();
+  return sentence.length <= 70 ? sentence.replace(/[.!?]$/, "") : `${sentence.slice(0, 67).replace(/\s+\S*$/, "")}…`;
+}
+
 // Paikallinen pilkonta: dokumentti kappaleittain, vakiotieto yhtenä palana. Vakiotiedon on kirjoittanut
 // isännöitsijä, joten se on valmiiksi tarkistettu. PDF:n sivut (pages) pilkotaan sivu kerrallaan, jotta
 // jokainen pala saa sivunumeronsa.
@@ -47,9 +53,9 @@ export function localChunks(row: Pick<KnowledgeSource, "title" | "content" | "ki
   }
   if (pages?.length) {
     return pages.flatMap((page, index) =>
-      chunks(page).map(content => ({ title: row.title, content, page: index + 1, origin: "local" as const })));
+      chunks(page).map(content => ({ title: previewTitle(content), content, page: index + 1, origin: "local" as const })));
   }
-  return chunks(row.content).map(content => ({ title: row.title, content, origin: "local" }));
+  return chunks(row.content).map(content => ({ title: previewTitle(content), content, origin: "local" }));
 }
 
 // Numerot (hinnat, päivämäärät, kellonajat, puhelinnumerot) palan tekstistä.
@@ -66,7 +72,7 @@ export function hasUnknownNumbers(content: string, source: string) {
 
 type DocumentRow = KnowledgeSource & { pages: string | null; extraction_ok: number };
 
-function documentPages(row: Pick<DocumentRow, "pages">): string[] | null {
+export function documentPages(row: Pick<DocumentRow, "pages">): string[] | null {
   if (!row.pages) return null;
   try {
     const pages = JSON.parse(row.pages);
@@ -100,7 +106,7 @@ export async function processDocument(knowledgeId: string) {
   setState("processing");
   try {
     const pages = documentPages(row);
-    const aiChunks = await chunkDocumentWithAi(row.title, pages ?? [row.content]);
+    const aiChunks = await chunkDocumentWithAi(row.title, (pages ?? [row.content]).map((text, index) => ({ page: index + 1, text })));
     // Tietue on voinut muuttua käsittelyn aikana (korvattu tai poistettu); palat saavat sen tilan.
     const current = db.prepare("SELECT status FROM knowledge WHERE id = ?").get(knowledgeId) as { status: string } | undefined;
     if (!current) return;
@@ -195,7 +201,9 @@ function toChunk(row: ChunkRow): KnowledgeChunk {
 function scoreChunk(query: Set<string>, chunk: KnowledgeChunk): number | null {
   const tagStems = [...stems(chunk.tags)];
   const tagHits = [...query].filter(word => tagStems.some(tag => word.startsWith(tag) || tag.startsWith(word)));
-  const titleHits = [...new Set([...overlap(query, `${chunk.title} ${chunk.documentTitle}`), ...tagHits])];
+  // Kappalejaon palan otsikko on sen oma ensimmäinen virke, joten se ei ole otsikko-osuma.
+  const titleText = chunk.origin === "local" ? chunk.documentTitle : `${chunk.title} ${chunk.documentTitle}`;
+  const titleHits = [...new Set([...overlap(query, titleText), ...tagHits])];
   const contentHits = overlap(query, chunk.content);
   const distinct = new Set([...titleHits, ...contentHits]);
   const strongTitleHit = tagHits.length > 0 || titleHits.some(word => word.length >= 7);
@@ -251,4 +259,54 @@ export function listChunks(knowledgeId: string) {
     FROM knowledge_chunks WHERE knowledge_id = ? AND status = 'active'
     ORDER BY COALESCE(page, 0), position
   `).all(knowledgeId);
+}
+
+// Lisää tietueelle yhden palan listan loppuun (isännöitsijän lisäämä tai hyväksymä).
+export function insertChunk(knowledge: { id: string; company_id: string }, item: ChunkInput) {
+  const chunkId = id("chunk");
+  const timestamp = now();
+  const { position } = db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS position FROM knowledge_chunks WHERE knowledge_id = ?")
+    .get(knowledge.id) as { position: number };
+  db.prepare(`
+    INSERT INTO knowledge_chunks
+      (id, knowledge_id, company_id, title, content, page, tags, origin, verified, needs_review, status, position, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
+  `).run(
+    chunkId, knowledge.id, knowledge.company_id, item.title.trim() || "Nimetön", item.content.trim(), item.page ?? null,
+    item.tags ?? "", item.origin, item.verified ? 1 : 0, item.needsReview ? 1 : 0, position, timestamp, timestamp
+  );
+  return chunkId;
+}
+
+// Tietueen pala, joka käsittelee samaa asiaa kuin annettu teksti, tai null.
+export function findSimilarChunk(knowledgeId: string, text: string) {
+  const query = stems(text);
+  if (query.size === 0) return null;
+  const rows = db.prepare(`
+    SELECT c.id, c.knowledge_id, c.title, c.content, c.page, c.tags, c.origin, c.verified, c.needs_review,
+           k.title AS document_title, '' AS document_tags, k.kind
+    FROM knowledge_chunks c JOIN knowledge k ON k.id = c.knowledge_id
+    WHERE c.knowledge_id = ? AND c.status = 'active'
+  `).all(knowledgeId) as ChunkRow[];
+  let best: { chunk: KnowledgeChunk; score: number } | null = null;
+  for (const row of rows) {
+    const chunk = toChunk(row);
+    // Dokumentin nimi ei tee palasta samankaltaista, koska kaikki palat ovat samasta dokumentista.
+    const score = scoreChunk(query, { ...chunk, documentTitle: "" });
+    if (score !== null && score >= 3 && (!best || score > best.score)) best = { chunk, score };
+  }
+  return best?.chunk ?? null;
+}
+
+// Sivunumerot isännöitsijän huomiosta: "sivulta 7", "s. 3–4", "sivut 2 ja 5".
+export function pagesInNote(note: string, pageCount: number) {
+  const pages = new Set<number>();
+  for (const match of note.matchAll(/(?:\bs\.|\bsivu\w*)\s*(\d+)(?:\s*(?:[–-]|ja|,)\s*(\d+))?/gi)) {
+    const first = Number(match[1]);
+    const last = match[2] ? Number(match[2]) : first;
+    for (let page = Math.min(first, last); page <= Math.max(first, last) && page - Math.min(first, last) < 10; page++) {
+      if (page >= 1 && page <= pageCount) pages.add(page);
+    }
+  }
+  return [...pages].sort((a, b) => a - b);
 }

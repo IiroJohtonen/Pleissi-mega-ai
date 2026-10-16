@@ -124,4 +124,46 @@ describe("tietopalat ja niiden valinta vastausehdotukseen", () => {
       db.close();
     }
   });
+
+  it("isännöitsijä muokkaa, lisää ja poistaa tietoja, ja muokattu tieto on tarkistettu", async () => {
+    const knowledgeId = await upload("demo-company", "Pihasäännöt", "Roskakatos on pihan pohjoispäädyssä.\n\nPyöräteline on B-portaan edessä.");
+    const chunks = async () => (await call(server, admin, "GET", `/knowledge/${knowledgeId}/chunks`)).data as any[];
+    const [first, second] = await chunks();
+    assert.equal(first.origin, "local");
+    assert.equal(first.verified, 0);
+
+    const edit = { title: "Roskakatos", content: "Roskakatos on pihan pohjoispäädyssä, avain on sama kuin ulko-ovessa.", tags: ["roskat", "jäte"] };
+    assert.equal((await call(server, service, "PUT", `/knowledge-chunks/${first.id}`, edit)).status, 403);
+    assert.equal((await call(server, manager, "PUT", `/knowledge-chunks/${first.id}`, edit)).status, 200);
+    const edited = (await chunks()).find(chunk => chunk.id === first.id);
+    assert.equal(edited.origin, "manual");
+    assert.equal(edited.verified, 1);
+    assert.equal(edited.tags, "roskat, jäte");
+
+    // Ilman AI:ta luonnos on teksti sellaisenaan; samaa asiaa käsittelevä pala ehdotetaan päivitettäväksi.
+    const draft = await call(server, manager, "POST", `/knowledge/${knowledgeId}/chunks/draft`, { text: "Roskakatoksen avain on sama kuin ulko-ovessa ja roskakatos tyhjennetään maanantaisin." });
+    assert.equal(draft.status, 200);
+    assert.equal(draft.data.usedAi, false);
+    assert.equal(draft.data.similar?.id, first.id);
+    const fresh = await call(server, manager, "POST", `/knowledge/${knowledgeId}/chunks/draft`, { text: "Kerhohuoneen voi varata isännöitsijältä." });
+    assert.equal(fresh.data.similar, null);
+    const saved = await call(server, manager, "POST", `/knowledge/${knowledgeId}/chunks`, { title: fresh.data.title, content: fresh.data.content, tags: [] });
+    assert.equal(saved.status, 201);
+    assert.equal((await chunks()).length, 3);
+    const [hit] = (await select("Miten kerhohuoneen voi varata?")).chunks;
+    assert.equal(hit.id, saved.data.chunkId);
+
+    assert.equal((await call(server, manager, "DELETE", `/knowledge-chunks/${second.id}`)).status, 200);
+    assert.deepEqual((await chunks()).map(chunk => chunk.id).sort(), [first.id, saved.data.chunkId].sort());
+  });
+
+  it("puuttuvien tietojen haku ilman AI:ta ehdottaa vain kappaleet, joita ei vielä ole", async () => {
+    const knowledgeId = await upload("demo-company", "Kerhohuone", "Kerhohuone on kellarissa.\n\nKerhohuoneen voi varata viikonloppuisin.");
+    const [first] = (await call(server, admin, "GET", `/knowledge/${knowledgeId}/chunks`)).data as any[];
+    assert.equal((await call(server, manager, "DELETE", `/knowledge-chunks/${first.id}`)).status, 200);
+    const missing = await call(server, manager, "POST", `/knowledge/${knowledgeId}/chunks/missing`, { note: "Kerhohuoneen sijainti puuttuu" });
+    assert.equal(missing.status, 200);
+    assert.equal(missing.data.usedAi, false);
+    assert.deepEqual(missing.data.proposals.map((proposal: any) => proposal.content), ["Kerhohuone on kellarissa."]);
+  });
 });

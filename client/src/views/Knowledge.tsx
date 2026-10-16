@@ -4,6 +4,7 @@ import { formatDate, formatDateOnly, formatDay } from "../format";
 import { api, API, errorMessage, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
 import { locale, t } from "../i18n";
+import { KnowledgeChunks } from "./KnowledgeChunks";
 
 // Kenelle tietue on: AI-dokumentaatiota AI käyttää vastausehdotuksissa, sisäinen on vain henkilökunnalle.
 export type KnowledgeAudience = "ai" | "internal";
@@ -140,13 +141,15 @@ export function KnowledgeBase({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [form, setForm] = useState<KnowledgeFormState | null>(null);
-  const [openEntryId, setOpenEntryId] = useState<string | null>(initialEntryId);
+  // Tehtävän lähdelinkki on muotoa "<tietue>:<pala>", jolloin pala näytetään korostettuna.
+  const [initialKnowledgeId, initialChunkId] = (initialEntryId ?? "").split(":");
+  const [openEntryId, setOpenEntryId] = useState<string | null>(initialKnowledgeId || null);
   const [notice, setNotice] = useState("");
   const [moveListError, setMoveListError] = useState("");
   const [question, setQuestion] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
-    { found: boolean; answer?: string; source?: { id: string; title: string } } | null
+    { found: boolean; answer?: string; source?: { id: string; title: string }; chunks?: { id: string; title: string; label: string }[] } | null
   >(null);
   // Suodattimet, sarakekohtainen haku ja järjestys toimivat kuten tehtävälistassa.
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -294,6 +297,16 @@ export function KnowledgeBase({
             <div className="test-result">
               <p>{testResult.answer}</p>
               <span className="source-pill">{t("Lähde:")}{" "}{testResult.source?.title}</span>
+              {testResult.chunks && testResult.chunks.length > 0 && (
+                <>
+                  <p className="muted">{t("AI saisi vastausehdotukseen nämä tiedot:")}</p>
+                  <ol className="chunk-hits">
+                    {testResult.chunks.map(chunk => (
+                      <li key={chunk.id}>{chunk.title}{" "}<span className="muted">({chunk.label})</span></li>
+                    ))}
+                  </ol>
+                </>
+              )}
             </div>
           ) : (
             <p className="test-result muted">
@@ -509,6 +522,7 @@ export function KnowledgeBase({
       {openEntryId && !form && (
         <KnowledgeDetailDrawer
           entryId={openEntryId}
+          highlightChunkId={openEntryId === initialKnowledgeId ? initialChunkId || null : null}
           companies={companies}
           onOpenVersion={setOpenEntryId}
           onClose={() => setOpenEntryId(null)}
@@ -541,6 +555,7 @@ export function KnowledgeBase({
 
 function KnowledgeDetailDrawer({
   entryId,
+  highlightChunkId = null,
   onOpenVersion,
   onClose,
   onEdit,
@@ -549,6 +564,7 @@ function KnowledgeDetailDrawer({
   companies = []
 }: {
   entryId: string;
+  highlightChunkId?: string | null;
   companies?: Company[];
   onOpenVersion: (entryId: string) => void;
   onClose: () => void;
@@ -569,6 +585,15 @@ function KnowledgeDetailDrawer({
       .then(setDetail)
       .catch(() => setFailed(true));
   }, [entryId]);
+
+  // Taustalla käsiteltävän dokumentin tiedot päivittyvät, kunnes käsittely on valmis.
+  useEffect(() => {
+    if (detail?.state !== "processing") return;
+    const timer = window.setInterval(() => {
+      api<KnowledgeDetail>(`/knowledge/${entryId}`).then(setDetail).catch(() => undefined);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [detail?.state, entryId]);
 
   // Siirtää tietueen AI-dokumentaation ja sisäisen dokumentaation välillä.
   async function moveTo(audience: KnowledgeAudience) {
@@ -704,6 +729,17 @@ function KnowledgeDetailDrawer({
               </div>
             )}
             {moveError && <p className="send-error">{moveError}</p>}
+
+            {detail.kind === "document" && detail.state !== "unreadable" && (
+              <KnowledgeChunks
+                detail={detail}
+                highlightChunkId={highlightChunkId}
+                onValidityChanged={async () => {
+                  setDetail(await api<KnowledgeDetail>(`/knowledge/${entryId}`));
+                  await onChanged();
+                }}
+              />
+            )}
 
             <section className="drawer-section">
               <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>

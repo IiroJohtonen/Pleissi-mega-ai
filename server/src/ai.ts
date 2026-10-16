@@ -313,11 +313,13 @@ const CHUNKING_BATCH_CHARS = 20_000;
 
 // Ryhmittelee sivut kutsuiksi niin, ettei yksikään kutsu kasva liian suureksi. Yli rajan menevä sivu
 // pilkotaan, mutta se säilyttää sivunumeronsa.
-export function chunkingBatches(pages: string[]): { page: number; text: string }[][] {
-  const batches: { page: number; text: string }[][] = [];
-  let current: { page: number; text: string }[] = [];
+export type DocumentPage = { page: number; text: string };
+
+export function chunkingBatches(pages: DocumentPage[]): DocumentPage[][] {
+  const batches: DocumentPage[][] = [];
+  let current: DocumentPage[] = [];
   let size = 0;
-  pages.forEach((text, index) => {
+  pages.forEach(({ page, text }) => {
     for (let start = 0; start < Math.max(text.length, 1); start += CHUNKING_BATCH_CHARS) {
       const part = text.slice(start, start + CHUNKING_BATCH_CHARS);
       if (!part.trim()) continue;
@@ -326,7 +328,7 @@ export function chunkingBatches(pages: string[]): { page: number; text: string }
         current = [];
         size = 0;
       }
-      current.push({ page: index + 1, text: part });
+      current.push({ page, text: part });
       size += part.length;
     }
   });
@@ -336,7 +338,13 @@ export function chunkingBatches(pages: string[]): { page: number; text: string }
 
 // Pilkkoo dokumentin AI:lla. Heittää virheen, jos AI ei ole käytössä tai kutsu epäonnistuu; kutsuja
 // käyttää silloin paikallista pilkontaa.
-export async function chunkDocumentWithAi(title: string, pages: string[]): Promise<AiChunk[]> {
+// note = isännöitsijän huomio, esim. "pysäköintisäännöt sivulta 7 puuttuu"; existing = jo poimittujen
+// tietojen otsikot, joita ei toisteta.
+export async function chunkDocumentWithAi(
+  title: string,
+  pages: DocumentPage[],
+  options: { note?: string; existing?: string[] } = {}
+): Promise<AiChunk[]> {
   const ai = claudeClient();
   if (!ai) throw new Error("AI ei ole käytössä");
   const model = fastModel();
@@ -348,7 +356,12 @@ export async function chunkDocumentWithAi(title: string, pages: string[]): Promi
       model,
       max_tokens: 16000,
       system: [{ type: "text", text: CHUNKING_SYSTEM, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: `Document title: ${title}\n\nDocument text:\n${text}` }],
+      messages: [{ role: "user", content: [
+        `Document title: ${title}`,
+        options.note ? `The property manager says something was missed (from the manager, follow it):\n${options.note}\nReturn only chunks for what is missing.` : "",
+        options.existing?.length ? `Already extracted, do not repeat:\n${options.existing.map(item => `- ${item}`).join("\n")}` : "",
+        `Document text:\n${text}`
+      ].filter(Boolean).join("\n\n") }],
       output_config: { effort: "low", format: betaZodOutputFormat(ChunkingSchema) }
     }, { timeout: 120_000, maxRetries: 1 });
     recordAiUsage("chunking", response.model || model, response.usage);
@@ -370,6 +383,35 @@ export async function chunkDocumentWithAi(title: string, pages: string[]): Promi
   }
   if (!result.length) throw new Error("AI ei löytänyt dokumentista tietoja");
   return result;
+}
+
+const EntrySchema = z.object({ title: z.string(), content: z.string(), tags: z.array(z.string()) });
+
+// Muotoilee isännöitsijän vapaan tekstin tietopalaksi ja ehdottaa avainsanoja. Heittää virheen, jos AI
+// ei ole käytössä tai kutsu epäonnistuu.
+export async function formatKnowledgeEntry(text: string, documentTitle: string) {
+  const ai = claudeClient();
+  if (!ai) throw new Error("AI ei ole käytössä");
+  const model = fastModel();
+  const response = await ai.client.beta.messages.parse({
+    model,
+    max_tokens: 4000,
+    system: `
+You turn a property manager's note into one knowledge chunk for a Finnish housing company's
+knowledge base. The manager wrote it, so keep every fact exactly as written: prices, dates, times,
+phone numbers, names. Do not add anything.
+title: short Finnish heading a resident would recognise.
+content: the note as clear, self-contained Finnish text.
+tags: 2–6 Finnish keywords residents might use.
+`,
+    messages: [{ role: "user", content: `Document: ${documentTitle}\n\nNote:\n${text}` }],
+    output_config: { effort: "low", format: betaZodOutputFormat(EntrySchema) }
+  }, { timeout: 30_000, maxRetries: 1 });
+  recordAiUsage("chunking", response.model || model, response.usage);
+  if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
+  const parsed = response.parsed_output;
+  if (!parsed?.content.trim()) throw new Error("AI:n vastausta ei voitu lukea");
+  return { title: parsed.title.trim(), content: parsed.content.trim(), tags: parsed.tags.map(tag => tag.trim()).filter(Boolean).slice(0, 6) };
 }
 
 export type TopicTicket = {

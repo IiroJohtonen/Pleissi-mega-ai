@@ -106,4 +106,17 @@ describe("dokumentin pilkonta AI:lla", () => {
       failing = false;
     }
   });
+
+  it("puuttuvien tietojen haku välittää isännöitsijän huomion ja jo poimitut otsikot", async () => {
+    const { knowledgeId } = await upload("Asukasopas 3");
+    const missing = await call(server, admin, "POST", `/knowledge/${knowledgeId}/chunks/missing`, { note: "Saunan hinta puuttuu" });
+    assert.equal(missing.status, 200);
+    assert.equal(missing.data.usedAi, true);
+    const content = requests.at(-1).messages[0].content as string;
+    assert.match(content, /Saunan hinta puuttuu/);
+    assert.match(content, /Already extracted, do not repeat:\n- Saunamaksu\n- Pyöräkellari/);
+    assert.deepEqual(missing.data.proposals.map((proposal: any) => proposal.needsReview), [false, true]);
+    // Mitään ei tallennettu ennen hyväksyntää.
+    assert.equal(((await call(server, admin, "GET", `/knowledge/${knowledgeId}/chunks`)).data as any[]).length, 2);
+  });
 });

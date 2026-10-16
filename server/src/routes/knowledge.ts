@@ -3,11 +3,14 @@ import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
-import { type KnowledgeItem } from "../ai.js";
+import { chunkDocumentWithAi, formatKnowledgeEntry, type KnowledgeItem } from "../ai.js";
 import { requireManager } from "../auth.js";
 import { db, knowledgeFilesDir } from "../db.js";
 import { extractPages, isPdf, UnsupportedDocumentError } from "../extract.js";
-import { chunkSourceLabel, listChunks, localChunks, processDocument, saveChunks, selectKnowledgeChunks, setChunksStatus } from "../knowledge-chunks.js";
+import {
+  chunkSourceLabel, documentPages, findSimilarChunk, hasUnknownNumbers, insertChunk, listChunks, localChunks, pagesInNote,
+  processDocument, saveChunks, selectKnowledgeChunks, setChunksStatus
+} from "../knowledge-chunks.js";
 import { id, now, today, unsafeFileMessage } from "../util.js";
 
 export const knowledgeRouter: Router = express.Router();
@@ -354,6 +357,132 @@ knowledgeRouter.get("/knowledge/:id/chunks", (req, res) => {
   const row = getAuthorizedKnowledge(req.params.id);
   if (!row) return res.status(404).json({ error: "Knowledge not found" });
   res.json(listChunks(row.id));
+});
+
+type ChunkRecord = { id: string; knowledge_id: string; company_id: string; status: string };
+
+function getAuthorizedChunk(chunkId: string) {
+  const row = db.prepare("SELECT id, knowledge_id, company_id, status FROM knowledge_chunks WHERE id = ?").get(chunkId) as ChunkRecord | undefined;
+  return row && row.status === "active" && companyIdFromContext(row.company_id) ? row : null;
+}
+
+const chunkSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  content: z.string().trim().min(1).max(5000),
+  tags: z.array(z.string().trim().min(1).max(40)).max(12).default([])
+});
+
+// Isännöitsijän muokkaama pala on hänen kirjoittamansa ja tarkistama: AI ei enää muuta sitä.
+knowledgeRouter.put("/knowledge-chunks/:id", requireManager, (req, res) => {
+  const chunk = getAuthorizedChunk(req.params.id);
+  if (!chunk) return res.status(404).json({ error: "Tietoa ei löytynyt." });
+  const parsed = chunkSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Kirjoita otsikko ja teksti." });
+  db.prepare(`
+    UPDATE knowledge_chunks SET title = ?, content = ?, tags = ?, origin = 'manual', verified = 1, needs_review = 0, updated_at = ?
+    WHERE id = ?
+  `).run(parsed.data.title, parsed.data.content, parsed.data.tags.join(", "), now(), chunk.id);
+  res.json({ ok: true });
+});
+
+knowledgeRouter.delete("/knowledge-chunks/:id", requireManager, (req, res) => {
+  const chunk = getAuthorizedChunk(req.params.id);
+  if (!chunk) return res.status(404).json({ error: "Tietoa ei löytynyt." });
+  db.prepare("UPDATE knowledge_chunks SET status = 'deleted', updated_at = ? WHERE id = ?").run(now(), chunk.id);
+  res.json({ ok: true });
+});
+
+// Lisää tieto -esikatselu: AI muotoilee isännöitsijän tekstin palaksi ja ehdottaa avainsanoja. Jos
+// dokumentissa on jo samaa asiaa käsittelevä pala, ehdotetaan sen päivittämistä.
+knowledgeRouter.post("/knowledge/:id/chunks/draft", requireManager, async (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row || row.status !== "active") return res.status(404).json({ error: "Knowledge not found" });
+  const parsed = z.object({ text: z.string().trim().min(1).max(5000) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Kirjoita lisättävä tieto." });
+
+  let draft: { title: string; content: string; tags: string[] };
+  let usedAi = true;
+  try {
+    draft = await formatKnowledgeEntry(parsed.data.text, row.title);
+  } catch {
+    usedAi = false;
+    const firstLine = parsed.data.text.split(/[.!?\n]/)[0].trim();
+    draft = { title: firstLine.slice(0, 80) || row.title, content: parsed.data.text, tags: [] };
+  }
+  const similar = findSimilarChunk(row.id, `${draft.title} ${draft.content} ${draft.tags.join(" ")}`);
+  res.json({ ...draft, usedAi, similar: similar ? { id: similar.id, title: similar.title, content: similar.content } : null });
+});
+
+// Tallentaa esikatselussa hyväksytyn palan. replaceChunkId = päivitetään olemassa oleva pala.
+knowledgeRouter.post("/knowledge/:id/chunks", requireManager, (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row || row.status !== "active") return res.status(404).json({ error: "Knowledge not found" });
+  const parsed = chunkSchema.extend({
+    page: z.number().int().positive().nullable().optional(),
+    // 'ai' = AI:n ehdotus, jonka isännöitsijä hyväksyi; 'manual' = isännöitsijän oma teksti.
+    origin: z.enum(["ai", "manual"]).default("manual"),
+    replaceChunkId: z.string().optional()
+  }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Kirjoita otsikko ja teksti." });
+
+  if (parsed.data.replaceChunkId) {
+    const chunk = getAuthorizedChunk(parsed.data.replaceChunkId);
+    if (!chunk || chunk.knowledge_id !== row.id) return res.status(404).json({ error: "Tietoa ei löytynyt." });
+    db.prepare(`
+      UPDATE knowledge_chunks SET title = ?, content = ?, tags = ?, origin = 'manual', verified = 1, needs_review = 0, updated_at = ?
+      WHERE id = ?
+    `).run(parsed.data.title, parsed.data.content, parsed.data.tags.join(", "), now(), chunk.id);
+    return res.json({ ok: true, chunkId: chunk.id });
+  }
+
+  const chunkId = insertChunk(row, {
+    title: parsed.data.title,
+    content: parsed.data.content,
+    tags: parsed.data.tags.join(", "),
+    page: parsed.data.page ?? null,
+    origin: parsed.data.origin,
+    verified: true,
+    // AI:n ehdotuksessa keksitty luku jää näkyviin tarkistettavaksi, vaikka isännöitsijä hyväksyi sen.
+    needsReview: parsed.data.origin === "ai" && hasUnknownNumbers(parsed.data.content, row.content)
+  });
+  res.status(201).json({ ok: true, chunkId });
+});
+
+// Jäikö jotain puuttumaan: AI lukee vain mainitut sivut uudelleen ja ehdottaa uusia paloja esikatseluun.
+// Mitään ei tallenneta ennen kuin isännöitsijä hyväksyy ehdotukset.
+knowledgeRouter.post("/knowledge/:id/chunks/missing", requireManager, async (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id);
+  if (!row || row.status !== "active" || row.kind !== "document") return res.status(404).json({ error: "Knowledge not found" });
+  const parsed = z.object({ note: z.string().trim().min(1).max(1000) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Kerro, mitä puuttuu." });
+
+  const allPages = documentPages(row as KnowledgeRow & { pages: string | null }) ?? [row.content];
+  const pageNumbers = allPages.length === 1 ? [1] : pagesInNote(parsed.data.note, allPages.length);
+  if (!pageNumbers.length) {
+    return res.status(400).json({ error: `Kerro, millä sivulla puuttuva tieto on (dokumentissa on ${allPages.length} sivua).` });
+  }
+  const selected = pageNumbers.slice(0, 5).map(page => ({ page, text: allPages[page - 1] ?? "" }));
+  const existing = listChunks(row.id) as { title: string; content: string }[];
+  const paged = allPages.length > 1;
+
+  let usedAi = true;
+  let proposals: { title: string; content: string; tags: string[]; page: number | null }[];
+  try {
+    proposals = (await chunkDocumentWithAi(row.title, selected, { note: parsed.data.note, existing: existing.map(chunk => chunk.title) }))
+      .map(chunk => ({ title: chunk.title, content: chunk.content, tags: chunk.tags, page: paged ? chunk.page : null }));
+  } catch {
+    // Ilman AI:ta ehdotetaan mainittujen sivujen kappaleet, joita ei vielä ole tietoina.
+    usedAi = false;
+    const known = new Set(existing.map(chunk => chunk.content.replace(/\s+/g, " ").trim()));
+    proposals = localChunks({ title: row.title, content: "", kind: "document" }, allPages)
+      .filter(chunk => chunk.page && pageNumbers.includes(chunk.page) && !known.has(chunk.content))
+      .map(chunk => ({ title: chunk.title, content: chunk.content, tags: [], page: paged ? chunk.page ?? null : null }));
+  }
+  res.json({
+    usedAi,
+    pages: pageNumbers.slice(0, 5),
+    proposals: proposals.map(proposal => ({ ...proposal, needsReview: usedAi && hasUnknownNumbers(proposal.content, row.content) }))
+  });
 });
 
 knowledgeRouter.get("/knowledge/:id/history", (req, res) => {

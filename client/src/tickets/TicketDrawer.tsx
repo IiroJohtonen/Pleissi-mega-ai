@@ -268,7 +268,7 @@ export function TicketDrawer({
   // Viimeisin tässä istunnossa pyydetty AI-ehdotus; muuten näytetään tehtävälle tallennettu peruste ja lähde.
   const [suggestion, setSuggestion] = useState<{
     reason: string;
-    source: { id: string; title: string } | null;
+    source: { id: string; title: string; chunkId?: string | null; page?: number | string | null } | null;
     usedAi: boolean;
   } | null>(null);
   const [suggesting, setSuggesting] = useState(false);
@@ -285,7 +285,7 @@ export function TicketDrawer({
   const aiSource = suggestion
     ? suggestion.source
     : suggestionUsed && ticket.knowledge_source_id && ticket.knowledge_source_title
-      ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title }
+      ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title, chunkId: ticket.knowledge_source_chunk_id, page: ticket.knowledge_source_page }
       : null;
 
   const [suggestionToast, setSuggestionToast] = useState<{ title: string; message: string } | null>(null);
@@ -312,7 +312,7 @@ export function TicketDrawer({
       const result = await api<{
         draft: string;
         reason: string;
-        source: { id: string; title: string } | null;
+        source: { id: string; title: string; chunkId?: string | null; page?: number | string | null } | null;
         usedAi: boolean;
       }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
@@ -974,12 +974,12 @@ export function TicketDrawer({
             <p>
               <a
                 className="source-pill source-link"
-                href={`#/knowledge/${encodeURIComponent(aiSource.id)}`}
+                href={`#/knowledge/${encodeURIComponent(aiSource.chunkId ? `${aiSource.id}:${aiSource.chunkId}` : aiSource.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                title={t("Avaa dokumentti uuteen välilehteen")}
+                title={t("Avaa lähde uuteen välilehteen")}
               >
-                {t("Ehdotettu dokumentti:")}{" "}{aiSource.title} ↗
+                📄 {aiSource.title}{aiSource.page ? `, ${t("s. {0}", String(aiSource.page))}` : ""} ↗
               </a>
             </p>
           ) : null}

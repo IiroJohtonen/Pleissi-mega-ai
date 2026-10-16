@@ -32,6 +32,8 @@ export type Ticket = {
   ai_suggested?: number;
   knowledge_source_id?: string | null;
   knowledge_source_title?: string | null;
+  knowledge_source_chunk_id?: string | null;
+  knowledge_source_page?: string | number | null;
   draft?: string;
   created_at: string;
   updated_at?: string;
@@ -72,6 +74,21 @@ export type KnowledgeEntry = {
   version: number;
   state: string;
   created_at: string;
+};
+
+// Tietopala: dokumentista tai vakiotiedosta poimittu yksi tieto.
+export type KnowledgeChunk = {
+  id: string;
+  knowledge_id: string;
+  title: string;
+  content: string;
+  page: number | null;
+  tags: string;
+  // ai = AI poimi, local = kappalejako, manual = isännöitsijän kirjoittama.
+  origin: "ai" | "local" | "manual";
+  verified: number;
+  needs_review: number;
+  suggested_valid_until: string | null;
 };
 
 export type KnowledgeDetail = KnowledgeEntry & {
