@@ -266,7 +266,7 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
       {view === "apartments" && !loading && !loadError && (
         apartmentRows.length === 0 ? <div className="empty">{t("Ei asuntoja.")}</div> : (
           <div className="table-card">
-            <table className="data-table">
+            <table className="data-table report-topics">
               <thead>
                 <tr>
                   <th>{t("Asunto")}</th>

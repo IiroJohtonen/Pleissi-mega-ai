@@ -476,7 +476,7 @@ export function RenovationNotices({ companies, defaultCompanyId = "", onChanged 
 
       <div className="residents-toolbar">
         <span>{openCount}{" "}{t("keskeneräistä remonttia ·")}{" "}{pendingCount}{" "}{t("odottaa käsittelyä")}</span>
-        <button className="primary" onClick={() => setCreating(true)}>{t("Uusi remontti-ilmoitus")}</button>
+        <button className="secondary" onClick={() => setCreating(true)}>{t("Uusi remontti-ilmoitus")}</button>
       </div>
 
       {loading ? <div className="empty">{t("Ladataan…")}</div>
