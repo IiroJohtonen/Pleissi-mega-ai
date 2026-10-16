@@ -3,6 +3,22 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 16.10.2026 · Kirjautumiskoodi sähköpostiin ja tilapäivitykset asukkaalle
+
+**Mitä muutettiin**
+- Henkilökunnan kirjautumiseen kuusinumeroinen koodi sähköpostiin (kytketään asetuksista)
+- Luotettu laite: koodia ei kysytä samalla laitteella 30 päivään
+- Asukas saa sähköpostin, kun hänen ilmoituksensa etenee
+- Tietoturvakatselmus: kirjautumisyritykset rajattu viiteen vartissa käyttäjää kohden
+
+**Miten**
+- Asetukset → Isännöitsijätoimiston tiedot → Tietoturva: Kirjautumiskoodi sähköpostiin. Vaatii yhdistetyn
+  toimiston sähköpostitilin. Hätäkatkaisin palvelimelle: TWO_FACTOR_DISABLED=1.
+- Asetukset → Asukasviestintä: Tilapäivitykset asukkaalle (oletuksena päällä). Viesti lähtee työtilauksesta,
+  tehdystä työstä, käsittelyyn otosta, siirrosta kolmannelle osapuolelle ja sulkemisesta.
+
+**Testit:** T-033–T-041
+
 ## 16.10.2026 · Ilmoittaja näkyviin tietueille, siirtymä asukkaan tietueelle, uudet sauna- ja pyykkitupasivut, tiiviimpi dokumentaatio
 
 **Mitä muutettiin**
