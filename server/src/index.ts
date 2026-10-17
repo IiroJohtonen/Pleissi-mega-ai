@@ -12,6 +12,7 @@ import { requestUser } from "./access.js";
 import { raiseAlert } from "./alerts.js";
 import { authRouter, INTERNAL_TOKEN, requireAuth, type User } from "./auth.js";
 import { db } from "./db.js";
+import { loginCodesRouter } from "./login-codes.js";
 import { signatureRouter } from "./signature.js";
 import { searchRouter } from "./routes/search.js";
 import { startMailPolling } from "./mail.js";
@@ -34,6 +35,7 @@ import { parkingRouter } from "./routes/parking.js";
 import { passwordResetRouter } from "./routes/password-reset.js";
 import { portalRouter } from "./routes/portal.js";
 import { renovationsRouter } from "./routes/renovations.js";
+import { reportersRouter } from "./routes/reporters.js";
 import { reportsRouter } from "./routes/reports.js";
 import { residentsRouter } from "./routes/residents.js";
 import { ticketActionsRouter } from "./routes/ticket-actions.js";
@@ -80,7 +82,7 @@ app.use("/api", rateLimit({
   skip: req => req.headers["x-internal-token"] === INTERNAL_TOKEN,
   message: tooManyRequests
 }));
-app.use(["/api/auth/login", "/api/auth/forgot", "/api/auth/reset"], rateLimit({
+app.use(["/api/auth/login", "/api/auth/forgot", "/api/auth/reset", "/api/auth/verify-code", "/api/auth/resend-code"], rateLimit({
   windowMs: 15 * 60_000,
   limit: Number(process.env.AUTH_RATE_LIMIT) || 30,
   standardHeaders: "draft-7",
@@ -111,10 +113,10 @@ app.get("/api/health", (_req, res) => {
 
 // Rajapinnan reitit aihealueittain; jokainen on omassa tiedostossaan kansiossa routes.
 for (const router of [
-  authRouter, passwordResetRouter, officeRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
+  authRouter, loginCodesRouter, passwordResetRouter, officeRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingQueueRouter, billingRouter, portalRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter, contactRouter, searchRouter, boardRouter
+  metersRouter, contactRouter, searchRouter, boardRouter, reportersRouter
 ]) {
   app.use("/api", router);
 }

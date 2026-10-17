@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { DownloadLink, Dropdown, usePaged } from "../components/common";
+import { ReporterField } from "../components/Reporter";
 import { formatDate, formatDay } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company, Resident } from "../types";
@@ -20,6 +21,10 @@ type BuildingKey = {
   // Nykyinen luovutus; puuttuu, kun avain on toimistolla.
   loan_id: string | null;
   holder_name: string | null;
+  holder_resident_id?: string | null;
+  holder_email?: string | null;
+  holder_apartment?: string | null;
+  holder_address?: string | null;
   handed_at: string | null;
   due_date: string | null;
   loan_note: string | null;
@@ -375,11 +380,16 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
 
             {open && open.loan_id && (
               <div className="ticket-form">
+                <ReporterField
+                  label={t("Haltija")}
+                  companyId={open.company_id}
+                  reporter={{
+                    id: open.holder_resident_id, name: open.holder_resident_id ? open.holder_name : null, email: open.holder_email,
+                    apartment_number: open.holder_apartment, address: open.holder_address
+                  }}
+                  fallbackName={open.holder_name}
+                />
                 <dl className="ticket-facts">
-                  <div>
-                    <dt>{t("Haltija")}</dt>
-                    <dd>{open.holder_name}</dd>
-                  </div>
                   <div>
                     <dt>{t("Luovutettu")}</dt>
                     <dd>{formatDate(open.handed_at ?? undefined)}</dd>

@@ -15,10 +15,13 @@ export const KEY_TYPES = ["Asunto", "Yleisavain", "Yleiset tilat", "Autotalli", 
 
 const KEY_SELECT = `
   SELECT k.*, a.apartment_number, a.address,
-         l.id AS loan_id, l.holder_name, l.resident_id AS holder_resident_id, l.handed_at, l.due_date, l.note AS loan_note
+         l.id AS loan_id, l.holder_name, l.resident_id AS holder_resident_id, l.handed_at, l.due_date, l.note AS loan_note,
+         hr.email AS holder_email, ha.apartment_number AS holder_apartment, ha.address AS holder_address
   FROM building_keys k
   LEFT JOIN apartments a ON a.id = k.apartment_id
   LEFT JOIN key_loans l ON l.key_id = k.id AND l.returned_at IS NULL
+  LEFT JOIN residents hr ON hr.id = l.resident_id
+  LEFT JOIN apartments ha ON ha.id = hr.apartment_id
 `;
 
 keysRouter.get("/companies/:companyId/keys", (req, res) => {

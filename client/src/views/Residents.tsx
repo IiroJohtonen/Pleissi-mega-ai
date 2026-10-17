@@ -19,8 +19,13 @@ export function Residents({
   companyId,
   companies,
   onCompanyChange,
-  onChanged
+  onChanged,
+  openResidentId,
+  onResidentClosed
 }: {
+  // Avattava asukas (osoite #/residents/<id>), esim. ilmoittajakentän painikkeesta.
+  openResidentId?: string | null;
+  onResidentClosed?: () => void;
   companyId: string;
   companies: Company[];
   // Annettuna näkymä on koko asukastietokanta: kaikkien taloyhtiöiden asukkaat ja suodattimet.
@@ -88,6 +93,19 @@ export function Residents({
     void loadResidents();
   }, [companyId, allCompanies, companies.length]);
 
+  // Osoitteessa annettu asukas avataan, kun lista on ladattu. Toisen taloyhtiön asukkaalle vaihdetaan suodatin.
+  const [openedFromRoute, setOpenedFromRoute] = useState("");
+  useEffect(() => {
+    if (!openResidentId || openResidentId === openedFromRoute || loading) return;
+    const resident = residents.find(candidate => candidate.id === openResidentId);
+    if (!resident) return;
+    setOpenedFromRoute(openResidentId);
+    if (allCompanies && resident.company_id && companyFilter !== "all" && resident.company_id !== companyFilter) {
+      setCompanyFilter(resident.company_id);
+    }
+    openForm(resident);
+  }, [openResidentId, residents, loading]);
+
   const searchText = search.trim().toLowerCase();
   const visibleResidents = allCompanies
     ? residents.filter(resident =>
@@ -142,6 +160,7 @@ export function Residents({
   ];
 
   function closeForm() {
+    if (openedFromRoute && editing?.id === openedFromRoute) onResidentClosed?.();
     setAdding(false);
     setFormError("");
   }

@@ -2047,3 +2047,165 @@
     background: #232d3a;
     color: #e5ac9d
 }
+:root[data-theme="dark"] .reporter-card {
+    border: 1px solid #3d5671;
+    background: #232d39
+}
+:root[data-theme="dark"] .reporter-label {
+    color: #c6ccd4
+}
+:root[data-theme="dark"] .reporter-avatar {
+    color: #ffffff
+}
+:root[data-theme="dark"] .reporter-avatar.empty {
+    background: #344251;
+    color: #c6ccd4
+}
+:root[data-theme="dark"] .reporter-text strong {
+    color: #b9c7d9
+}
+:root[data-theme="dark"] .reporter-text span {
+    color: #ccd2d9
+}
+:root[data-theme="dark"] .reporter-text .reporter-email {
+    color: #9dbde5
+}
+:root[data-theme="dark"] .reporter-text .muted {
+    color: #b7bfc9
+}
+:root[data-theme="dark"] .reporter-search input {
+    background: #283341
+}
+:root[data-theme="dark"] .open-resident {
+    border: 1px solid #3d5571;
+    background: #283341;
+    color: #9dbde5
+}
+:root[data-theme="dark"] .open-resident:hover {
+    background: #2f3c4a
+}
+:root[data-theme="dark"] .holder-link {
+    background: #232d39;
+    color: #ccd2d9
+}
+:root[data-theme="dark"] .reporter-cell strong {
+    color: #b9c7d9
+}
+:root[data-theme="dark"] .data-table td .reporter-cell small {
+    color: #bec5ce
+}
+:root[data-theme="dark"] .booking-toolbar {
+    border: 1px solid #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .booking-week > button {
+    border: 1px solid #364251;
+    background: #283341;
+    color: #d8dce1
+}
+:root[data-theme="dark"] .booking-week > button:hover {
+    border-color: #3d5671;
+    background: #2d3a46
+}
+:root[data-theme="dark"] .booking-week strong {
+    color: #e2e5e9
+}
+:root[data-theme="dark"] .booking-week strong small {
+    color: #b8c0ca
+}
+:root[data-theme="dark"] .booking-segmented {
+    background: #1e2631
+}
+:root[data-theme="dark"] .booking-segmented button {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .booking-segmented button.active {
+    background: #283341;
+    color: #e2e5e9
+}
+:root[data-theme="dark"] .booking-stat.free {
+    background: #304b3a;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .booking-stat.queued {
+    background: #4e4632;
+    color: #efd69b
+}
+:root[data-theme="dark"] .booking-sauna .booking-stat.booked {
+    background: #4b3c30;
+    color: #eeb494
+}
+:root[data-theme="dark"] .booking-sauna .calendar-day.today {
+    background: #46382d
+}
+:root[data-theme="dark"] .booking-sauna .calendar-day.today strong {
+    color: #edb592
+}
+:root[data-theme="dark"] .booking-sauna .calendar-slot.booked {
+    border-color: #71553d;
+    background: #4b3c30;
+    color: #e4c2ac
+}
+:root[data-theme="dark"] .booking-sauna .calendar-slot.booked:hover {
+    background: #4f4033
+}
+:root[data-theme="dark"] .booking-sauna .calendar-slot.booked span {
+    color: #dcbaa3
+}
+:root[data-theme="dark"] .booking-sauna .calendar-slot.free:hover:not(:disabled) {
+    background: #47392e;
+    color: #edb592
+}
+:root[data-theme="dark"] .booking-laundry .booking-stat.booked {
+    background: #31494d;
+    color: #9ce2ed
+}
+:root[data-theme="dark"] .booking-laundry .calendar-day.today {
+    background: #2e4547
+}
+:root[data-theme="dark"] .booking-laundry .calendar-day.today strong {
+    color: #99e2ed
+}
+:root[data-theme="dark"] .booking-laundry .calendar-slot.booked {
+    border-color: #3d6971;
+    background: #31494d;
+    color: #aadee6
+}
+:root[data-theme="dark"] .booking-laundry .calendar-slot.booked:hover {
+    background: #344e51
+}
+:root[data-theme="dark"] .booking-laundry .calendar-slot.booked span {
+    color: #adcfd4
+}
+:root[data-theme="dark"] .booking-laundry .calendar-slot.free:hover:not(:disabled) {
+    background: #2e4648;
+    color: #99e2ed
+}
+:root[data-theme="dark"] .booking-page .calendar-slot.booked.other {
+    border-color: #384454;
+    border-left-color: #2d3643;
+    background: #1f2732;
+    color: #b6bec8
+}
+:root[data-theme="dark"] .ticket-facts.knowledge-meta > div {
+    border: 1px solid #394555;
+    background: #242e3b
+}
+:root[data-theme="dark"] .ticket-facts.knowledge-meta dt {
+    color: #bfc6cf
+}
+:root[data-theme="dark"] .knowledge-columns > .drawer-section {
+    border: 1px solid #394555;
+    border-top: 1px solid #394555
+}
+:root[data-theme="dark"] .knowledge-text {
+    background: #26303d
+}
+:root[data-theme="dark"] .chunk-verify {
+    border: 1px solid #3d7152;
+    background: #2e4837;
+    color: #a3e4bd
+}
+:root[data-theme="dark"] .chunk-verify:hover:not(:disabled) {
+    background: #314c3c
+}

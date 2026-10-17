@@ -794,6 +794,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
               key={navCompanyKey}
               companyId={navCompanyKey}
               companies={companies}
+              openResidentId={routeParam}
+              onResidentClosed={() => navigate("residents")}
               onCompanyChange={() => undefined}
               onChanged={async () => setCompanies(await api<Company[]>("/companies"))}
             />

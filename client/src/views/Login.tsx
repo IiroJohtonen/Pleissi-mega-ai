@@ -3,6 +3,29 @@ import { LanguageToggle } from "../components/common";
 import { api, errorMessage, MANAGEMENT_OFFICE, type Session, setSession } from "../session";
 import { t } from "../i18n";
 
+// Luotetun laitteen tunnisteet sähköpostiosoitteittain: kirjautumiskoodia ei kysytä 30 päivään.
+const DEVICE_KEY = "kotilo.trustedDevices";
+
+function deviceTokenFor(email: string): string | undefined {
+  try {
+    return (JSON.parse(localStorage.getItem(DEVICE_KEY) || "{}") as Record<string, string>)[email.trim().toLowerCase()];
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberDeviceToken(email: string, token: string) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(DEVICE_KEY) || "{}") as Record<string, string>;
+    stored[email.trim().toLowerCase()] = token;
+    localStorage.setItem(DEVICE_KEY, JSON.stringify(stored));
+  } catch {
+    // Selaimen tallennustila ei ole käytössä; koodi kysytään seuraavallakin kerralla.
+  }
+}
+
+type LoginResponse = Session | { twoFactor: true; challengeId: string; email: string };
+
 // Palautuslinkin tunniste osoitteesta #/reset/<tunniste>.
 function resetTokenFromHash() {
   return window.location.hash.match(/^#\/reset\/([0-9a-f]{20,})$/i)?.[1] ?? "";
@@ -15,7 +38,11 @@ export function Login() {
   const [error, setError] = useState("");
   // login = kirjautuminen, forgot = palautuslinkin pyyntö, reset = uuden salasanan asetus linkistä.
   const [resetToken, setResetToken] = useState(resetTokenFromHash);
-  const [mode, setMode] = useState<"login" | "forgot" | "reset">(resetToken ? "reset" : "login");
+  const [mode, setMode] = useState<"login" | "forgot" | "reset" | "code">(resetToken ? "reset" : "login");
+  // Kirjautumiskoodin vaihe: palvelimen antama tunniste ja osoite, johon koodi lähetettiin.
+  const [challenge, setChallenge] = useState<{ id: string; email: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [rememberDevice, setRememberDevice] = useState(true);
   const [repeat, setRepeat] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -67,10 +94,18 @@ export function Login() {
     setSubmitting(true);
     setError("");
     try {
-      setSession(await api<Session>("/auth/login", {
+      const result = await api<LoginResponse>("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password })
-      }));
+        body: JSON.stringify({ email, password, deviceToken: deviceTokenFor(email) })
+      });
+      if ("twoFactor" in result) {
+        setChallenge({ id: result.challengeId, email: result.email });
+        setCode("");
+        setNotice("");
+        setMode("code");
+      } else {
+        setSession(result);
+      }
     } catch (loginError) {
       let message = t("Kirjautuminen epäonnistui. Tarkista, että palvelin on käynnissä.");
       try {
@@ -82,6 +117,89 @@ export function Login() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function verifyCode(event: FormEvent) {
+    event.preventDefault();
+    if (!challenge) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await api<Session & { deviceToken?: string }>("/auth/verify-code", {
+        method: "POST",
+        body: JSON.stringify({ challengeId: challenge.id, code: code.trim(), rememberDevice })
+      });
+      if (result.deviceToken) rememberDeviceToken(email, result.deviceToken);
+      const { deviceToken: _deviceToken, ...session } = result;
+      setSession(session);
+    } catch (codeError) {
+      const message = errorMessage(codeError, t("Koodin tarkistus epäonnistui."));
+      setError(message);
+      // Vanhentunut tai liian monta kertaa väärin syötetty koodi: palataan salasanaan.
+      if (/Kirjaudu uudelleen|Log in again/.test(message)) {
+        setChallenge(null);
+        setMode("login");
+        setPassword("");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function resendCode() {
+    if (!challenge) return;
+    setError("");
+    setNotice("");
+    try {
+      await api("/auth/resend-code", { method: "POST", body: JSON.stringify({ challengeId: challenge.id }) });
+      setNotice(t("Uusi koodi lähetetty."));
+    } catch (resendError) {
+      setError(errorMessage(resendError, t("Koodin lähetys epäonnistui.")));
+    }
+  }
+
+  if (mode === "code" && challenge) {
+    return (
+      <div className="login-page">
+        <form className="login-card" onSubmit={verifyCode}>
+          <img src="/pleissi-logo-dark.svg" alt="Pleissi" />
+          <h1>{t("Syötä kirjautumiskoodi")}</h1>
+          <p>{t("Lähetimme kuusinumeroisen koodin osoitteeseen {0}. Koodi on voimassa 10 minuuttia.", challenge.email)}</p>
+          <label>
+            <span>{t("Koodi")}</span>
+            <input
+              className="login-code-input"
+              value={code}
+              onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="\d{6}"
+              maxLength={6}
+              placeholder="123456"
+              autoFocus
+              required
+            />
+          </label>
+          <label className="login-remember">
+            <input type="checkbox" checked={rememberDevice} onChange={event => setRememberDevice(event.target.checked)} />
+            <span>{t("Muista tämä laite 30 päivää")}</span>
+          </label>
+          {error && <p className="send-error">{error}</p>}
+          {notice && <p className="login-notice">{notice}</p>}
+          <button type="submit" disabled={submitting || code.length !== 6}>
+            {submitting ? t("Tarkistetaan…") : t("Kirjaudu")}
+          </button>
+          <button type="button" className="login-link" onClick={() => void resendCode()}>{t("Lähetä koodi uudelleen")}</button>
+          <button
+            type="button"
+            className="login-link"
+            onClick={() => { setChallenge(null); setPassword(""); setError(""); setNotice(""); setMode("login"); }}
+          >
+            {t("← Takaisin kirjautumiseen")}
+          </button>
+        </form>
+      </div>
+    );
   }
 
   if (mode === "forgot") {

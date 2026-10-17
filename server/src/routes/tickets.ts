@@ -9,7 +9,7 @@ import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { replyAccountsFor } from "../mail.js";
 import { renderSignature } from "../signature.js";
-import { alertEmergency } from "../notify.js";
+import { alertEmergency, notifyTicketStatus, statusEventFor } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL, TICKET_STATUSES } from "../util.js";
 import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
 
@@ -355,6 +355,8 @@ ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
       id("audit"), req.params.id, res.locals.user?.name ?? parsed.data.actor, "status_changed",
       JSON.stringify({ from: ticket.status, to: parsed.data.status }), changedAt
     );
+    const event = statusEventFor(parsed.data.status);
+    if (event) notifyTicketStatus(req.params.id, event, res.locals.user?.name ?? parsed.data.actor);
     // Poistopyynnön vuoksi säilytetty tehtävä anonymisoidaan heti, kun se suljetaan.
     if (parsed.data.status === "closed") await processPendingErasures();
   }
@@ -420,6 +422,9 @@ ticketsRouter.post("/tickets/:id/reporters", (req, res) => {
         updated_at = ?
     WHERE id = ?
   `).run(resident.id, resident.apartment_id, timestamp, req.params.id);
+  // Remonttitehtävän ilmoittaja on myös remontti-ilmoituksen ilmoittaja.
+  db.prepare("UPDATE renovation_notices SET resident_id = ?, apartment_id = ? WHERE ticket_id = ?")
+    .run(resident.id, resident.apartment_id, req.params.id);
 
   if (result.changes > 0) {
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(

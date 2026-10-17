@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NoticeFilters, usePaged } from "../components/common";
+import { ReporterCell, ReporterField } from "../components/Reporter";
 import { formatDate, formatDateOnly, formatDay, noticeStatusClass } from "../format";
 import { api, errorMessage, isManager } from "../session";
 import type { Company } from "../types";
@@ -19,7 +20,9 @@ export type MoveNotice = {
   decided_by?: string | null;
   decided_at?: string | null;
   result?: string | null;
+  resident_id?: string | null;
   resident_name?: string | null;
+  resident_email?: string | null;
   apartment_number?: string | null;
   address?: string | null;
 };
@@ -161,7 +164,7 @@ export function MoveNotices({ companies, defaultCompanyId = "", onChanged }: { c
                     }}
                   >
                     <td>
-                      <strong>{notice.resident_name || t("Tuntematon asukas")}</strong>
+                      <ReporterCell name={notice.resident_name} email={notice.resident_email} />
                       <span>{moveSummary(notice)}</span>
                     </td>
                     {showCompany && <td>{companyName(notice.company_id)}</td>}
@@ -184,9 +187,16 @@ export function MoveNotices({ companies, defaultCompanyId = "", onChanged }: { c
             <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
             <h2>{t("Muuttoilmoitus")}</h2>
             <p className="muted">
-              {open.resident_name || t("Tuntematon asukas")} · {companyName(open.company_id)} · {open.apartment_number || "–"}
-              {open.address ? `, ${open.address}` : ""}{" "}{t("· ilmoitettu")}{" "}{formatDate(open.created_at)}
+              {companyName(open.company_id)}{" "}{t("· ilmoitettu")}{" "}{formatDate(open.created_at)}
             </p>
+            <ReporterField
+              companyId={open.company_id}
+              reporter={{ id: open.resident_id, name: open.resident_name, email: open.resident_email, apartment_number: open.apartment_number, address: open.address }}
+              onChange={open.status === "pending" ? async residentId => {
+                await api(`/moves/${encodeURIComponent(open.id)}/reporter`, { method: "PUT", body: JSON.stringify({ residentId }) });
+                await loadNotices();
+              } : undefined}
+            />
 
             <dl className="ticket-facts">
               <div>

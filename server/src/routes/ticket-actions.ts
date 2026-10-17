@@ -8,7 +8,7 @@ import { selectKnowledgeChunks } from "../knowledge-chunks.js";
 import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
 import { attachmentsDir, db } from "../db.js";
 import { type OutgoingAttachment, parseSender, replyAccountsFor, sendEmail } from "../mail.js";
-import { notifyResident } from "../notify.js";
+import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
 import { id, now, unsafeFileMessage } from "../util.js";
 
@@ -73,16 +73,12 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
     );
   }
 
-  // Sulkemisesta ilmoitetaan tehtävän ilmoittajille (ei roskapostiksi merkityistä).
+  // Sulkemisesta ja käsittelyyn ottamisesta kerrotaan tehtävän ilmoittajille (ei roskapostiksi merkityistä).
   if (parsed.data.decision === "skip" && parsed.data.reason !== "spam" && ticket.status !== "closed") {
-    const reporters = db.prepare("SELECT resident_id FROM ticket_reporters WHERE ticket_id = ?").all(req.params.id) as { resident_id: string }[];
-    const number = String(ticket.ticket_number ?? "").padStart(4, "0");
-    for (const reporter of reporters) {
-      void notifyResident(reporter.resident_id, `Tehtävä #${number} on suljettu`, [
-        `ilmoittamasi tehtävä "${ticket.subject}" (#${number}) on käsitelty ja suljettu.`,
-        "Jos asia ei ole kunnossa, vastaa tähän viestiin tai lähetä uusi viesti asukasportaalista, niin tehtävä avataan uudelleen."
-      ]);
-    }
+    notifyTicketStatus(req.params.id, "closed", res.locals.user?.name ?? parsed.data.actor);
+  }
+  if (parsed.data.decision === "human" && ticket.status !== "waiting_manager") {
+    notifyTicketStatus(req.params.id, "in_progress", res.locals.user?.name ?? parsed.data.actor);
   }
 
   res.json({ ok: true, status });

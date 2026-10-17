@@ -27,7 +27,7 @@ const moveSchema = z.object({
 });
 
 const MOVE_SELECT = `
-  SELECT m.*, r.name AS resident_name, a.apartment_number, a.address
+  SELECT m.*, r.name AS resident_name, r.email AS resident_email, a.apartment_number, a.address
   FROM move_notices m
   LEFT JOIN residents r ON r.id = m.resident_id
   LEFT JOIN apartments a ON a.id = m.apartment_id

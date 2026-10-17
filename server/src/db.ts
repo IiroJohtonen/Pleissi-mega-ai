@@ -711,6 +711,10 @@ if (!officeColumns.some(existing => existing.name === "reply_reminder_days")) {
 if (!officeColumns.some(existing => existing.name === "due_reminder_days")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN due_reminder_days INTEGER NOT NULL DEFAULT 1");
 }
+// Asukkaan tilapäivitykset sähköpostilla (1 = päällä): työ tilattu, työ tehty, käsittelyssä, valmis.
+if (!officeColumns.some(existing => existing.name === "resident_status_updates")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN resident_status_updates INTEGER NOT NULL DEFAULT 1");
+}
 
 // Toistuvien aiheiden raportti: aiheet, jotka jätettiin pois, koska niistä on jo dokumentaatio.
 if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]).some(column => column.name === "covered")) {

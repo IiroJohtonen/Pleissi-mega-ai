@@ -5,6 +5,7 @@ import { z } from "zod";
 import { companyIdFromContext, getAuthorizedTicket } from "../access.js";
 import { attachmentsDir, db } from "../db.js";
 import { type OutgoingAttachment, sendEmail } from "../mail.js";
+import { notifyTicketStatus } from "../notify.js";
 import { id, now, VALID_EMAIL } from "../util.js";
 
 export const workOrdersRouter: Router = express.Router();
@@ -119,6 +120,7 @@ workOrdersRouter.post("/tickets/:id/work-orders", async (req, res) => {
     id("audit"), req.params.id, actor, "work_order_created",
     JSON.stringify({ contractor: contractorName, to: emailSent ? contractorEmail : null }), timestamp
   );
+  if (ticket.status !== "closed") notifyTicketStatus(req.params.id, "work_ordered", actor, contractorName);
 
   res.status(201).json({ ok: true, workOrderId, emailSent });
 });
@@ -207,5 +209,6 @@ workOrdersRouter.post("/work-orders/:id/done", (req, res) => {
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), order.ticket_id, actor, "work_order_done", JSON.stringify({ contractor: order.contractor_name }), timestamp
   );
+  notifyTicketStatus(order.ticket_id, "work_done", actor);
   res.json({ ok: true });
 });

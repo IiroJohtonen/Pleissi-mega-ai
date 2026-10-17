@@ -44,6 +44,25 @@ CREATE TABLE IF NOT EXISTS resident_sessions (
   FOREIGN KEY(resident_id) REFERENCES residents(id)
 );
 
+-- Kirjautumiskoodit (kaksivaiheinen tunnistautuminen): koodista tallennetaan vain tiiviste.
+CREATE TABLE IF NOT EXISTS login_challenges (
+  id_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  sends INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  sent_at TEXT NOT NULL
+);
+
+-- Luotetut laitteet: kirjautumiskoodia ei kysytä 30 päivään. Tunnisteesta tallennetaan vain tiiviste.
+CREATE TABLE IF NOT EXISTS trusted_devices (
+  token_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+
 -- Taloyhtiön hallituksen jäsenten tunnukset: lukuoikeus oman yhtiön tehtäviin, remontteihin ja tiedotteisiin.
 CREATE TABLE IF NOT EXISTS board_members (
   id TEXT PRIMARY KEY,
@@ -128,7 +147,7 @@ function verifyPassword(password: string, stored: string): boolean {
 }
 
 // Istuntotunnisteesta tallennetaan vain tiiviste, jotta tietokannan lukija ei voi käyttää istuntoja.
-function hashToken(token: string): string {
+export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
@@ -242,6 +261,7 @@ function setUserPassword(userId: string, password: string): string | null {
   }
   db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(password), userId);
   db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM trusted_devices WHERE user_id = ?").run(userId);
   return null;
 }
 
@@ -313,6 +333,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (req.path === "/gmail/callback" || req.path === "/mail/microsoft/callback") return next();
   // Salasanan palautus tehdään kirjautumatta.
   if (req.path === "/auth/forgot" || req.path === "/auth/reset") return next();
+  // Kirjautumiskoodin syöttö ja uudelleenlähetys tehdään ennen istuntoa.
+  if (req.path === "/auth/verify-code" || req.path === "/auth/resend-code") return next();
   // Kotisivun yhteydenottolomake lähetetään kirjautumatta.
   if (req.path === "/contact" && req.method === "POST") return next();
   if (req.path === "/inbound/messages" && req.headers["x-internal-token"] === INTERNAL_TOKEN) return next();
@@ -358,10 +380,19 @@ const FAILED_LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export const authRouter: Router = express.Router();
 
-authRouter.post("/auth/login", (req, res) => {
+// Luo henkilökunnan istunnon ja palauttaa kirjautumisvastauksen.
+export function issueStaffSession(user: User) {
+  const token = crypto.randomBytes(32).toString("hex");
+  db.prepare("INSERT INTO sessions VALUES (?, ?, ?)").run(hashToken(token), user.id, new Date().toISOString());
+  return { token, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+}
+
+authRouter.post("/auth/login", async (req, res) => {
   const parsed = z.object({
     email: z.string().trim().min(1),
-    password: z.string().min(1)
+    password: z.string().min(1),
+    // Laitteelle aiemmin annettu tunniste, jolla kirjautumiskoodia ei kysytä uudelleen 30 päivään.
+    deviceToken: z.string().max(200).optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Anna sähköposti ja salasana." });
 
@@ -427,10 +458,18 @@ authRouter.post("/auth/login", (req, res) => {
   }
 
   failedLogins.delete(key);
-  const token = crypto.randomBytes(32).toString("hex");
-  db.prepare("INSERT INTO sessions VALUES (?, ?, ?)").run(hashToken(token), row.id, new Date().toISOString());
+  const user: User = { id: row.id, name: row.name, email: row.email, role: row.role };
 
-  res.json({ token, user: { id: row.id, name: row.name, email: row.email, role: row.role } });
+  // Kaksivaiheinen tunnistautuminen: oikean salasanan jälkeen sähköpostiin lähetetään kertakäyttöinen
+  // koodi, ellei laite ole luotettu. Moduuli ladataan vasta tässä, koska se käyttää sähköpostia.
+  const loginCodes = await import("./login-codes.js");
+  if (loginCodes.loginCodeRequired() && !loginCodes.trustedDevice(user.id, parsed.data.deviceToken)) {
+    const challenge = await loginCodes.startLoginChallenge(user);
+    if ("error" in challenge) return res.status(challenge.status).json({ error: challenge.error });
+    return res.json({ twoFactor: true, challengeId: challenge.challengeId, email: challenge.maskedEmail });
+  }
+
+  res.json(issueStaffSession(user));
 });
 
 authRouter.post("/auth/logout", (_req, res) => {
@@ -519,6 +558,8 @@ authRouter.put("/users/:id", (req, res) => {
 
   if (password) {
     db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(password), user.id);
+    // Salasanan vaihto poistaa myös luotetut laitteet: seuraava kirjautuminen kysyy koodin.
+    db.prepare("DELETE FROM trusted_devices WHERE user_id = ?").run(user.id);
     // Salasanan vaihto kirjaa käyttäjän ulos muilta laitteilta; muutoksen tekijän oma istunto säilyy.
     db.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").run(
       user.id, hashToken(res.locals.token)
@@ -553,6 +594,8 @@ authRouter.delete("/users/:id", requireAdmin, (req, res) => {
     `).run(actor.id, user.id);
     db.prepare("UPDATE tickets SET assignee_id = NULL WHERE assignee_id = ?").run(user.id);
     db.prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
+    db.prepare("DELETE FROM trusted_devices WHERE user_id = ?").run(user.id);
+    db.prepare("DELETE FROM login_challenges WHERE user_id = ?").run(user.id);
     db.prepare("DELETE FROM password_resets WHERE kind = 'user' AND subject_id = ?").run(user.id);
     db.prepare("DELETE FROM reminder_log WHERE user_id = ?").run(user.id);
     db.prepare("DELETE FROM gmail_accounts WHERE id = ?").run(`user:${user.id}`);
