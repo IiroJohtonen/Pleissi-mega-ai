@@ -60,6 +60,63 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Sivupalkin yhtiövalikosta vaihdettu yhtiö vaihtaa Asukkaat-, Sauna- ja Dokumentaatio-näkymien yhtiön.
 - Kaikki taloyhtiöt… avaa yhtiölistan; listasta avattu yhtiö vaihtaa sivupalkin valinnan.
 - Dokumentin avaaminen leveällä näytöllä: poiminnat ja luettu teksti näkyvät vierekkäin täysleveänä.
+## 17.10.2026 · Lomakkeet taloyhtiön tauluihin, uusi Asetukset-sivu ja dokumentin välilehdet
+
+**Mitä muutettiin**
+- Verkkosivun mittarilukemailmoitus menee Lukemat-tauluun (kylmä ja lämmin vesi omina lukeminaan), muuttoilmoitus
+  Muutot-tauluun ja auton lämmityspaikka Autopaikat-sivun uuteen Lämmityspaikan tilaukset -tauluun. Niistä ei enää tule tehtäviä.
+- Tietueilla on samat kentät kuin verkkosivun lomakkeella, ja niitä voi muokata (Muokkaa-painike). Jos osoitetta ei
+  tunnisteta, tietue tulee ilman asuntoa ja asunnon voi valita muokkaamalla; muuttoilmoitusta ei voi hyväksyä ilman asuntoa.
+- Asukasportaalin Auton lämmityspaikka on nyt tilauslomake (paikka, tilaustyyppi, alkaen, loppuu), ja tilaus näkyy Autopaikat-sivulla.
+- Huoltotyötilaus, häiriöilmoitus, irtisanomisilmoitus ja asuntohakemus pysyvät tehtävinä. Erillinen Lomakkeet-taulu poistettiin.
+- Asetukset-sivu on leveämpi. Isännöitsijätoimiston tiedot ovat välilehdillä (Toimisto, Tietoturva, AI, Perustiedot,
+  Käyttäjät, Järjestelmä), ja vasemmalla on aliotsikot, joista pääsee suoraan oikeaan kohtaan. Samat aliotsikot ovat käyttäjän asetuksissa.
+- Dokumentin näkymässä on välilehdet Dokumentista luettu teksti ja Mitä AI poimi tästä.
+
+**Miten**
+- Ilmoitukset → Lukemat, Asukkaat → Muutot ja Tilat → Autopaikat (alhaalla Auton lämmityspaikan tilaukset): avaa rivi → Muokkaa.
+- Asetukset → Isännöitsijätoimiston tiedot → välilehdet; aliotsikot vasemmalla.
+- Dokumentaatio → avaa dokumentti → välilehdet (Mitä AI poimi tästä vain pääkäyttäjälle).
+
+**Testit:** T-080–T-087
+
+## 17.10.2026 · Verkkosivun lomakkeet sähköpostista Lomakkeet-tauluun
+
+**Mitä muutettiin**
+- Toimiston postiin tuleva viesti, jonka otsikossa on lomakkeen nimi (Mittarilukemailmoitus, Muuttoilmoitus,
+  Huoltotyötilaus, Auton lämmityspaikka, Asuntohakemus, Häiriöilmoitus, Irtisanomisilmoitus), luetaan lomakkeeksi:
+  viestin kentät tallentuvat tehtävälle otsikoineen
+- Kenttien nimet ovat isännöitsijäyrityksen verkkosivun lomakkeista, joten myös taulukkomuotoinen viesti luetaan oikein
+- Lomakkeen osoite ja huoneistonumero ohjaavat tehtävän oikeaan taloyhtiöön ja asuntoon; ilmoittaja liitetään
+  asukkaaseen lomakkeen sähköpostin tai nimen perusteella
+- Uusi Lomakkeet-taulu (sivupalkki → Ilmoitukset → Lomakkeet), jossa oma välilehti jokaiselle lomaketyypille;
+  myös asukasportaalin lomakkeet näkyvät siellä
+- Lomakkeita ei lähetetä AI:lle, koska niissä voi olla henkilötunnuksia ja tilinumeroita
+
+**Miten**
+- Sivupalkki → valitse taloyhtiö → Ilmoitukset → Lomakkeet. Rivi avaa tehtävän, jolla kaikki kentät ovat
+  Lomakkeen tiedot -kortissa.
+
+**Testit:** T-074–T-079
+
+## 17.10.2026 · Asukasportaalin lomakkeet: huoltotyötilaus, häiriöilmoitus, irtisanomisilmoitus, asuntohakemus ja lämmityspaikka
+
+**Mitä muutettiin**
+- Asukasportaaliin uusi Lomakkeet-osio, jossa ovat isännöitsijäyrityksen sivujen lomakkeet: huoltotyötilaus,
+  häiriöilmoitus, mittarilukemat, muuttoilmoitus, remontti-ilmoitus, auton lämmityspaikka, irtisanomisilmoitus
+  ja yleinen asuntohakemus
+- Lähetetystä lomakkeesta tulee isännöitsijälle tehtävä, jolla lomakkeen tiedot näkyvät selkeänä taulukkona;
+  asukas näkee lomakkeen ja vastaukset Tehtävät-sivulla
+- Irtisanomisilmoitus kertoo aikaisimman päättymispäivän; liian aikaisesta päivästä näkyy huomio myös isännöitsijälle
+- Autopaikoille uusi paikkatyyppi Lämmityspaikka (hinta asetuksissa, jono portaalissa)
+- Kulutuslukemat-sivu on nyt nimeltään Mittarilukemat
+
+**Miten**
+- Asukasportaali → sivupalkin Lomakkeet (puhelimella Lisää-valikko).
+- Isännöitsijä: päätösjono ja Kaikki tehtävät → avaa tehtävä, jonka tyyppi on Huoltotyötilaus, Häiriöilmoitus,
+  Irtisanomisilmoitus tai Asuntohakemus.
+
+**Testit:** T-067–T-073
 
 ## 16.10.2026 · Kirjautumiskoodi sähköpostiin ja tilapäivitykset asukkaalle
 

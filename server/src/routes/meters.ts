@@ -4,6 +4,7 @@ import { companyIdFromContext } from "../access.js";
 import { db } from "../db.js";
 import { id, now, today } from "../util.js";
 import { portalResident } from "./portal.js";
+import { detailList, detailsSchema, parseDetails } from "../site-forms.js";
 
 export const metersRouter: Router = express.Router();
 
@@ -92,8 +93,9 @@ metersRouter.get("/companies/:companyId/apartments", (req, res) => {
 metersRouter.get("/companies/:companyId/meter-readings", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
-  res.json(db.prepare(`
+  const rows = db.prepare(`
     SELECT m.id, m.company_id, m.apartment_id, m.resident_id, m.meter_type, m.reading_date, m.value, m.source, m.recorded_by, m.note, m.created_at,
+           m.details,
            a.apartment_number, a.address, r.name AS resident_name, r.email AS resident_email,
            LAG(m.value) OVER same_meter AS previous_value,
            LAG(m.reading_date) OVER same_meter AS previous_date
@@ -103,7 +105,32 @@ metersRouter.get("/companies/:companyId/meter-readings", (req, res) => {
     WHERE m.company_id = ?
     WINDOW same_meter AS (PARTITION BY m.apartment_id, m.meter_type ORDER BY m.reading_date, m.created_at)
     ORDER BY m.reading_date DESC, m.created_at DESC
-  `).all(companyId));
+  `).all(companyId) as (Record<string, unknown> & { details: string })[];
+  // details: verkkosivun lomakkeen ilmoittajan tiedot (nimi, puhelin, sähköposti, osoite, huoneisto).
+  res.json(rows.map(row => ({ ...row, details: detailList("meter", row.details) })));
+});
+
+// Lukeman muokkaus: asunto, mittari, lukema, päivä, huomio ja lomakkeen ilmoittajan tiedot.
+metersRouter.put("/meter-readings/:id", (req, res) => {
+  const reading = db.prepare("SELECT id, company_id, details FROM meter_readings WHERE id = ?").get(req.params.id) as
+    { id: string; company_id: string; details: string } | undefined;
+  if (!reading || !companyIdFromContext(reading.company_id)) return res.status(404).json({ error: "Lukemaa ei löytynyt." });
+  const parsed = readingSchema.extend({
+    apartmentId: z.string().min(1).nullable().default(null),
+    details: detailsSchema("meter").optional()
+  }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista asunto, mittari ja lukema." });
+  const readingDate = parsed.data.readingDate ?? today();
+  const dateError = readingDateError(readingDate);
+  if (dateError) return res.status(400).json({ error: dateError });
+  if (parsed.data.apartmentId && !db.prepare("SELECT 1 FROM apartments WHERE id = ? AND company_id = ?").get(parsed.data.apartmentId, reading.company_id)) {
+    return res.status(404).json({ error: "Asuntoa ei löytynyt tästä taloyhtiöstä." });
+  }
+  const details = parsed.data.details ?? parseDetails(reading.details);
+  db.prepare(`
+    UPDATE meter_readings SET apartment_id = ?, meter_type = ?, value = ?, reading_date = ?, note = ?, details = ? WHERE id = ?
+  `).run(parsed.data.apartmentId, parsed.data.meterType, parsed.data.value, readingDate, parsed.data.note, JSON.stringify(details), reading.id);
+  res.json({ ok: true });
 });
 
 metersRouter.post("/companies/:companyId/meter-readings", (req, res) => {

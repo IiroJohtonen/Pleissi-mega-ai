@@ -561,6 +561,46 @@
     border-color: #3d714c;
     color: #a8e2bb
 }
+:root[data-theme="dark"] .portal-own-orders {
+    border: 1px solid #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .portal-own-orders li span {
+    color: #b8bfc9
+}
+:root[data-theme="dark"] .detail-editor {
+    border: 1px solid #384454
+}
+:root[data-theme="dark"] .detail-editor legend {
+    color: #d7dbe1
+}
+:root[data-theme="dark"] .heating-orders .residents-toolbar h2 {
+    color: #b9c7d9
+}
+:root[data-theme="dark"] .inline-check {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .ticket-form-card h3 {
+    color: #d7dbe1
+}
+:root[data-theme="dark"] .ticket-form-card h3 small {
+    color: #b8bfc9
+}
+:root[data-theme="dark"] .ticket-form-card dl {
+    border: 1px solid #333e4d
+}
+:root[data-theme="dark"] .ticket-form-card dl > div {
+    border-top: 1px solid #394555
+}
+:root[data-theme="dark"] .ticket-form-card dl > div.warning {
+    background: #4a4230
+}
+:root[data-theme="dark"] .ticket-form-card dt {
+    color: #c0c7d0
+}
+:root[data-theme="dark"] .ticket-form-card dd {
+    color: #e0e3e7
+}
 :root[data-theme="dark"] .ticket-description h3 {
     color: #d7dbe1
 }
@@ -715,6 +755,32 @@
 :root[data-theme="dark"] .audit-email p {
     border: 1px solid #384454;
     background: #2d3847
+}
+:root[data-theme="dark"] .settings-nav span {
+    color: #abb4c0
+}
+:root[data-theme="dark"] .settings-nav button {
+    color: #cfd4db
+}
+:root[data-theme="dark"] .settings-nav button:hover {
+    border-left-color: #5a697c;
+    background: #1d2630;
+    color: #e3e6ea
+}
+:root[data-theme="dark"] .settings-subtabs {
+    border-bottom: 1px solid #384454
+}
+:root[data-theme="dark"] .settings-subtabs button {
+    color: #b8c0ca
+}
+:root[data-theme="dark"] .settings-subtabs button.active {
+    border-bottom-color: #5a697c;
+    color: #e3e6ea
+}
+@media (max-width: 900px) {
+    :root[data-theme="dark"] .settings-nav button {
+        border: 1px solid #384454
+    }
 }
 :root[data-theme="dark"] .settings-users li {
     border-top: 1px solid #3b4858
@@ -1050,6 +1116,23 @@
 }
 :root[data-theme="dark"] .repeat-choice small {
     color: #b6bec8
+}
+:root[data-theme="dark"] .portal-form-warning {
+    background: #4a4230;
+    color: #efd39b
+}
+:root[data-theme="dark"] .portal-chips legend {
+    color: #d7dbe1
+}
+:root[data-theme="dark"] .portal-chips button {
+    border: 1px solid #333e4d;
+    background: #283341;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .portal-chips button.active {
+    border-color: #a6b1bf;
+    background: #d6dbe1;
+    color: #19222e
 }
 :root[data-theme="dark"] .portal-sent {
     background: #2f3d49;
@@ -2242,4 +2325,7 @@
     background: #d6dbe1;
     border: 1px solid #a6b1bf;
     color: #19222e
+}
+:root[data-theme="dark"] .knowledge-view-tabs {
+    border-bottom: 1px solid #384454
 }

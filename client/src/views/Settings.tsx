@@ -12,7 +12,7 @@ import { saveAiPrompt, storedAiPrompt } from "../preferences";
 import { t } from "../i18n";
 import { setTheme, storedTheme } from "../theme";
 import { MasterDataSettings } from "./MasterData";
-import { CollapseSection } from "../components/CollapseSection";
+import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -21,7 +21,7 @@ export function Settings({ initialTab = "user", ...props }: { onSaved: () => Pro
   const [tab, setTab] = useState<"user" | "office">(initialTab);
 
   return (
-    <>
+    <div className="settings-page">
       <div className="card-tabs settings-tabs" role="tablist">
         <button role="tab" aria-selected={tab === "user"} className={tab === "user" ? "active" : ""} onClick={() => setTab("user")}>
           {t("Käyttäjän asetukset")}
@@ -33,9 +33,60 @@ export function Settings({ initialTab = "user", ...props }: { onSaved: () => Pro
         )}
       </div>
       {tab === "office" && admin ? <OfficeSettings {...props} /> : <UserSettings />}
-    </>
+    </div>
   );
 }
+
+// Asetussivun aliotsikot: valinta avaa osion ja vierittää siihen.
+function SettingsNav({ items }: { items: { id: string; label: string }[] }) {
+  return (
+    <nav className="settings-nav" aria-label={t("Tämän sivun osiot")}>
+      <span>{t("Tällä sivulla")}</span>
+      {items.map(item => (
+        <button key={item.id} type="button" onClick={() => jumpToSection(item.id)}>{item.label}</button>
+      ))}
+    </nav>
+  );
+}
+
+const userSections = [
+  { id: "user-details", label: t("Omat tiedot") },
+  { id: "mail-personal", label: t("Oma sähköpostitili") },
+  { id: "signature", label: t("Sähköpostin allekirjoitus") },
+  { id: "appearance", label: t("Ulkoasu") },
+  { id: "ai-prompt", label: t("AI-ehdotukset") },
+  { id: "language", label: t("Kieli") }
+];
+
+// Isännöitsijätoimiston asetukset välilehdittäin; kunkin välilehden osiot ovat aliotsikoina.
+type OfficeTab = "office" | "security" | "ai" | "master" | "users" | "system";
+const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label: string }[] }[] = [
+  {
+    tab: "office", label: t("Toimisto"), sections: [
+      { id: "office-details", label: t("Toimiston tiedot") },
+      { id: "office-reminders", label: t("Muistutukset") },
+      { id: "office-resident-updates", label: t("Asukasviestintä") },
+      { id: "office-unidentified", label: t("Taloyhtiö tunnistamatta -jono") },
+      { id: "gmail-office", label: t("Toimiston sähköpostitili") }
+    ]
+  },
+  {
+    tab: "security", label: t("Tietoturva"), sections: [
+      { id: "office-security", label: t("Kirjautuminen") },
+      { id: "office-retention", label: t("Tietojen säilytys") },
+      { id: "log", label: t("Loki") }
+    ]
+  },
+  { tab: "ai", label: t("AI"), sections: [{ id: "office-ai", label: t("AI-käyttö ja -asetukset") }] },
+  { tab: "master", label: t("Perustiedot"), sections: [{ id: "master-data", label: t("Perustiedot") }] },
+  { tab: "users", label: t("Käyttäjät"), sections: [{ id: "users", label: t("Käyttäjät") }] },
+  {
+    tab: "system", label: t("Järjestelmä"), sections: [
+      { id: "system-alerts", label: t("Järjestelmän tila") },
+      { id: "contact-requests", label: t("Yhteydenottopyynnöt") }
+    ]
+  }
+];
 
 // Kirjautuneen käyttäjän omat tiedot, salasana ja kieli.
 // Ulkoasu: tumma tila päälle tai pois. Valinta tallentuu tähän selaimeen ja vaihtuu heti.
@@ -246,7 +297,9 @@ function UserSettings() {
   }
 
   return (
-    <section className="content settings">
+    <div className="settings-shell">
+    <SettingsNav items={userSections} />
+    <section className="content settings settings-main">
       <form className="settings-card ticket-form" onSubmit={handleSubmit}>
         <CollapseSection id="user-details" title={t("Omat tiedot")}>
         <p className="muted">{MANAGEMENT_OFFICE.name} · {t(user?.role ?? "")}</p>
@@ -302,6 +355,7 @@ function UserSettings() {
         </CollapseSection>
       </div>
     </section>
+    </div>
   );
 }
 
@@ -627,6 +681,10 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [officeTab, setOfficeTab] = useState<OfficeTab>("office");
+  const activeTab = officeTabs.find(item => item.tab === officeTab) ?? officeTabs[0];
+  // Välilehdet, joiden asetukset tallennetaan yhteisellä Tallenna asetukset -painikkeella.
+  const formTab = officeTab === "office" || officeTab === "security" || officeTab === "ai";
 
 
   async function handleSubmit(event: FormEvent) {
@@ -668,9 +726,27 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
 
 
   return (
-    <section className="settings-layout">
-      <div className="content settings">
+    <div className="settings-office">
+      <div className="settings-subtabs" role="tablist" aria-label={t("Isännöitsijätoimiston asetukset")}>
+        {officeTabs.map(item => (
+          <button
+            key={item.tab}
+            role="tab"
+            aria-selected={officeTab === item.tab}
+            className={officeTab === item.tab ? "active" : ""}
+            onClick={() => setOfficeTab(item.tab)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="settings-shell">
+      <SettingsNav items={activeTab.sections} />
+      <div className="content settings settings-main">
+      {formTab && (
       <form className="settings-card ticket-form" onSubmit={handleSubmit}>
+        {officeTab === "office" && (
+          <>
         <CollapseSection id="office-details" title={t("Isännöitsijätoimiston tiedot")}>
 
         <label>
@@ -738,6 +814,72 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
 
         </CollapseSection>
 
+        <CollapseSection id="office-resident-updates" title={t("Asukasviestintä")}>
+
+        <label className="switch-row">
+          <span>
+            <strong>{t("Tilapäivitykset asukkaalle")}</strong>
+            <small>{t("Asukas saa sähköpostin, kun hänen ilmoituksensa etenee.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={residentStatusUpdates}
+            onChange={event => { setResidentStatusUpdates(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("Viesti lähtee, kun tehtävästä tehdään työtilaus huoltoyhtiölle, huoltoyhtiö kuittaa työn tehdyksi, tehtävä otetaan käsittelyyn, se siirretään kolmannelle osapuolelle tai se suljetaan. Viesti menee tehtävän ilmoittajille, joilla on sähköpostiosoite, taloyhtiön sähköpostitililtä. Roskapostiksi merkityistä tehtävistä ei ilmoiteta. Lähetetty päivitys näkyy tehtävän aikajanalla.")}
+        </p>
+
+        </CollapseSection>
+
+        <CollapseSection id="office-unidentified" title={t("Taloyhtiö tunnistamatta -jono")}>
+        <p className="reply-hint">
+          {t("Kun saapuvan viestin taloyhtiötä ei tunnisteta vastaanottajasta eikä lähettäjästä, tehtävä menee Taloyhtiö tunnistamatta -jonoon. Valitse, ketkä näkevät jonon ja valitsevat tehtäville taloyhtiön ja käsittelijän. Pääkäyttäjät käsittelevät jonoa aina.")}
+        </p>
+        <fieldset className="queue-access">
+          <legend>{t("Roolit")}</legend>
+          {USER_ROLES.map(role => (
+            <label key={role} className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={role === "Pääkäyttäjä" || queueRoles.includes(role)}
+                disabled={role === "Pääkäyttäjä"}
+                onChange={event => {
+                  setQueueRoles(current => event.target.checked ? [...new Set([...current, role])] : current.filter(item => item !== role));
+                  setSaved(false);
+                }}
+              />
+              {t(role)}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="queue-access">
+          <legend>{t("Lisäksi nämä käyttäjät")}</legend>
+          {queueUserOptions.filter(user => user.role !== "Pääkäyttäjä" && !queueRoles.includes(user.role)).map(user => (
+            <label key={user.id} className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={queueUsers.includes(user.id)}
+                onChange={event => {
+                  setQueueUsers(current => event.target.checked ? [...new Set([...current, user.id])] : current.filter(item => item !== user.id));
+                  setSaved(false);
+                }}
+              />
+              {user.name}{" "}<span className="muted">({t(user.role)})</span>
+            </label>
+          ))}
+          {queueUserOptions.every(user => user.role === "Pääkäyttäjä" || queueRoles.includes(user.role)) && (
+            <p className="muted">{t("Kaikki käyttäjät näkevät jonon jo roolinsa perusteella.")}</p>
+          )}
+        </fieldset>
+        </CollapseSection>
+          </>
+        )}
+        {officeTab === "security" && (
+          <>
         <CollapseSection id="office-security" title={t("Tietoturva")}>
 
         <label className="switch-row">
@@ -762,27 +904,32 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
 
         </CollapseSection>
 
-        <CollapseSection id="office-resident-updates" title={t("Asukasviestintä")}>
+        <CollapseSection id="office-retention" title={t("Tietojen säilytys")}>
 
-        <label className="switch-row">
-          <span>
-            <strong>{t("Tilapäivitykset asukkaalle")}</strong>
-            <small>{t("Asukas saa sähköpostin, kun hänen ilmoituksensa etenee.")}</small>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            checked={residentStatusUpdates}
-            onChange={event => { setResidentStatusUpdates(event.target.checked); setSaved(false); }}
-          />
-          <i aria-hidden="true" />
+        <label>
+          <span>{t("Säilytysaika")}</span>
+          <select
+            value={retentionMonths}
+            onChange={event => { setRetentionMonths(Number(event.target.value)); setSaved(false); }}
+          >
+            <option value={0}>{t("Säilytetään toistaiseksi")}</option>
+            {[12, 24, 36, 60, 120].map(months => (
+              <option key={months} value={months}>{months / 12} {months === 12 ? t("vuosi") : t("vuotta")}</option>
+            ))}
+            {retentionMonths > 0 && ![12, 24, 36, 60, 120].includes(retentionMonths) && (
+              <option value={retentionMonths}>{retentionMonths}{" "}{t("kk")}</option>
+            )}
+          </select>
         </label>
         <p className="reply-hint">
-          {t("Viesti lähtee, kun tehtävästä tehdään työtilaus huoltoyhtiölle, huoltoyhtiö kuittaa työn tehdyksi, tehtävä otetaan käsittelyyn, se siirretään kolmannelle osapuolelle tai se suljetaan. Viesti menee tehtävän ilmoittajille, joilla on sähköpostiosoite, taloyhtiön sähköpostitililtä. Roskapostiksi merkityistä tehtävistä ei ilmoiteta. Lähetetty päivitys näkyy tehtävän aikajanalla.")}
+          {t("Tätä kauemmin suljettuna olleet tehtävät poistetaan pysyvästi viesteineen ja liitteineen, samoin tätä vanhemmat lokimerkinnät. Poisto tehdään automaattisesti tunnin sisällä tallennuksesta eikä sitä voi perua.")}
         </p>
 
         </CollapseSection>
-
+          </>
+        )}
+        {officeTab === "ai" && (
+          <>
         <CollapseSection id="office-ai" title={t("AI")}>
 
         <AiUsageMeter refreshKey={savedCount} />
@@ -854,71 +1001,8 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         )}
 
         </CollapseSection>
-
-        <CollapseSection id="office-unidentified" title={t("Taloyhtiö tunnistamatta -jono")}>
-        <p className="reply-hint">
-          {t("Kun saapuvan viestin taloyhtiötä ei tunnisteta vastaanottajasta eikä lähettäjästä, tehtävä menee Taloyhtiö tunnistamatta -jonoon. Valitse, ketkä näkevät jonon ja valitsevat tehtäville taloyhtiön ja käsittelijän. Pääkäyttäjät käsittelevät jonoa aina.")}
-        </p>
-        <fieldset className="queue-access">
-          <legend>{t("Roolit")}</legend>
-          {USER_ROLES.map(role => (
-            <label key={role} className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={role === "Pääkäyttäjä" || queueRoles.includes(role)}
-                disabled={role === "Pääkäyttäjä"}
-                onChange={event => {
-                  setQueueRoles(current => event.target.checked ? [...new Set([...current, role])] : current.filter(item => item !== role));
-                  setSaved(false);
-                }}
-              />
-              {t(role)}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset className="queue-access">
-          <legend>{t("Lisäksi nämä käyttäjät")}</legend>
-          {queueUserOptions.filter(user => user.role !== "Pääkäyttäjä" && !queueRoles.includes(user.role)).map(user => (
-            <label key={user.id} className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={queueUsers.includes(user.id)}
-                onChange={event => {
-                  setQueueUsers(current => event.target.checked ? [...new Set([...current, user.id])] : current.filter(item => item !== user.id));
-                  setSaved(false);
-                }}
-              />
-              {user.name}{" "}<span className="muted">({t(user.role)})</span>
-            </label>
-          ))}
-          {queueUserOptions.every(user => user.role === "Pääkäyttäjä" || queueRoles.includes(user.role)) && (
-            <p className="muted">{t("Kaikki käyttäjät näkevät jonon jo roolinsa perusteella.")}</p>
-          )}
-        </fieldset>
-        </CollapseSection>
-
-        <CollapseSection id="office-retention" title={t("Tietojen säilytys")}>
-
-        <label>
-          <span>{t("Säilytysaika")}</span>
-          <select
-            value={retentionMonths}
-            onChange={event => { setRetentionMonths(Number(event.target.value)); setSaved(false); }}
-          >
-            <option value={0}>{t("Säilytetään toistaiseksi")}</option>
-            {[12, 24, 36, 60, 120].map(months => (
-              <option key={months} value={months}>{months / 12} {months === 12 ? t("vuosi") : t("vuotta")}</option>
-            ))}
-            {retentionMonths > 0 && ![12, 24, 36, 60, 120].includes(retentionMonths) && (
-              <option value={retentionMonths}>{retentionMonths}{" "}{t("kk")}</option>
-            )}
-          </select>
-        </label>
-        <p className="reply-hint">
-          {t("Tätä kauemmin suljettuna olleet tehtävät poistetaan pysyvästi viesteineen ja liitteineen, samoin tätä vanhemmat lokimerkinnät. Poisto tehdään automaattisesti tunnin sisällä tallennuksesta eikä sitä voi perua.")}
-        </p>
-
-        </CollapseSection>
+          </>
+        )}
 
         {error && <p className="send-error">{error}</p>}
 
@@ -929,26 +1013,31 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
           {saved && <span className="saved-indicator">{t("Tallennettu")}</span>}
         </div>
       </form>
+      )}
 
-      <MasterDataSettings />
+      {officeTab === "office" && <MailAccountCard target="office" />}
 
-      <SystemAlertsCard />
+      {officeTab === "security" && (
+        <a className="settings-card settings-link" href="#/log" id="section-log">
+          <div>
+            <h2>{t("Loki")}</h2>
+            <p className="muted">{t("Kaikki tehtäviin tehdyt muutokset, päätökset ja lähetetyt sähköpostit.")}</p>
+          </div>
+          <span aria-hidden="true">→</span>
+        </a>
+      )}
 
-      <ContactRequests />
-
-      <a className="settings-card settings-link" href="#/log">
-        <div>
-          <h2>{t("Loki")}</h2>
-          <p className="muted">{t("Kaikki tehtäviin tehdyt muutokset, päätökset ja lähetetyt sähköpostit.")}</p>
-        </div>
-        <span aria-hidden="true">→</span>
-      </a>
-
-      <MailAccountCard target="office" />
+      {officeTab === "master" && <MasterDataSettings />}
+      {officeTab === "users" && <OfficeUsers />}
+      {officeTab === "system" && (
+        <>
+          <div id="section-system-alerts"><SystemAlertsCard /></div>
+          <ContactRequests />
+        </>
+      )}
       </div>
-
-      <OfficeUsers />
-    </section>
+      </div>
+    </div>
   );
 }
 

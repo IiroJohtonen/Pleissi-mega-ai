@@ -1,8 +1,11 @@
 import express, { type Router } from "express";
 import { z } from "zod";
-import { companyIdForRecipients, companyIdFromContext, getAuthorizedTicket, visibleCompanyIds } from "../access.js";
+import { AUTHORIZED_COMPANY_IDS, companyIdForRecipients, companyIdFromContext, getAuthorizedTicket, visibleCompanyIds } from "../access.js";
 import { triage } from "../ai.js";
 import { db } from "../db.js";
+import { apartmentForForm, detectEmailForm, formContact, formSubject, parseFormFields } from "../email-forms.js";
+import { FORM_TYPES } from "../portal-form-data.js";
+import { importSiteForm } from "../site-forms.js";
 import { alertEmergency } from "../notify.js";
 import { id, now, statusAfterResidentReply } from "../util.js";
 import { sensitiveMatches } from "../privacy-filter.js";
@@ -51,8 +54,8 @@ inboundRouter.post("/inbound/messages", async (req, res) => {
   // tehtävä menee Taloyhtiö tunnistamatta -jonoon, eikä sitä anneta oletusyhtiön isännöitsijälle.
   const recipientCompany = companyIdForRecipients(input.recipientEmails);
   const residentCompany = !recipientCompany && input.companyUnknown ? companyByResidentEmail(input.senderEmail, visibleCompanyIds()) : null;
-  const companyPending = !recipientCompany && !residentCompany && Boolean(input.companyUnknown);
-  const companyId = recipientCompany ?? residentCompany ?? companyIdFromContext(input.companyId);
+  let companyPending = !recipientCompany && !residentCompany && Boolean(input.companyUnknown);
+  let companyId = recipientCompany ?? residentCompany ?? companyIdFromContext(input.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
 
 if (input.sourceMessageId) {
@@ -67,6 +70,11 @@ if (input.sourceMessageId) {
       ticketId: existing.ticket_id,
       duplicate: true
     });
+  }
+
+  // Lomakeviestistä tehtiin jo tietue (lukema, muutto tai lämmityspaikka).
+  if (db.prepare("SELECT 1 FROM form_imports WHERE message_id = ?").get(input.sourceMessageId)) {
+    return res.json({ duplicate: true });
   }
 
   // Viesti kuului tehtävään, joka on poistettu: sitä ei tuoda uudelleen.
@@ -133,15 +141,43 @@ if (input.sourceMessageId) {
     }
   }
 
+  // Verkkosivun lomake (esim. Huoltotyötilaus) tunnistetaan otsikosta, ja sen kentät luetaan viestistä.
+  // Lomakkeen osoite ratkaisee taloyhtiön ja asunnon, ja ilmoittaja haetaan lomakkeen yhteystiedoista,
+  // koska viestin lähettäjä on yleensä verkkosivun oma osoite.
+  const emailForm = input.channel === "email" ? detectEmailForm(input.subject) : null;
+  const formFields = emailForm ? parseFormFields(emailForm, input.body) : [];
+  const form = emailForm && formFields.length >= 2 ? emailForm : null;
+  const formPlace = form ? apartmentForForm(formFields, [...AUTHORIZED_COMPANY_IDS]) : null;
+  if (formPlace) {
+    companyId = formPlace.companyId;
+    // Lomakkeen asunnosta tunnistettiin taloyhtiö, joten tehtävä ei mene jonoon.
+    companyPending = false;
+  }
+  const contact = form ? formContact(formFields) : null;
+
+  // Mittarilukemat, muuttoilmoitukset ja lämmityspaikat menevät taloyhtiön tauluihin, eivät tehtäviksi.
+  if (form === "meter" || form === "move" || form === "heating") {
+    const fallbackCompany = db.prepare("SELECT 1 FROM companies WHERE id = ?").get(companyId) ? companyId : null;
+    const record = fallbackCompany ? importSiteForm(form, formFields, fallbackCompany, input.senderName) : null;
+    if (record) {
+      if (input.sourceMessageId) {
+        db.prepare("INSERT OR IGNORE INTO form_imports (message_id, record_kind, record_ids, created_at) VALUES (?, ?, ?, ?)")
+          .run(input.sourceMessageId, record.kind, JSON.stringify(record.ids), now());
+      }
+      return res.status(201).json({ record: record.kind, recordIds: record.ids, companyId: record.companyId });
+    }
+  }
+
   const company = db.prepare("SELECT * FROM companies WHERE id = ?")
     .get(companyId) as any;
   if (!company) return res.status(404).json({ error: "Company not found" });
 
-  const resident = findResident(
-    companyId,
-    input.senderEmail,
-    input.senderName
-  );
+  const resident = (contact && findResident(companyId, contact.email || undefined, contact.name || undefined))
+    ?? findResident(
+      companyId,
+      input.senderEmail,
+      input.senderName
+    );
 
   // Arkaluonteista viestiä ei lähetetä AI:lle, joten se luokitellaan avainsanoilla.
   const sensitiveWords = sensitiveMatches(`${input.subject}\n${input.body}`);
@@ -154,15 +190,16 @@ if (input.sourceMessageId) {
     [],
     company.maintenance_emergency_phone || undefined,
     {
-      aiPriority: aiPriorityEnabled() && sensitiveWords.length === 0,
+      // Lomakkeissa voi olla henkilötunnuksia ja tilinumeroita, joten niitä ei lähetetä AI:lle.
+      aiPriority: aiPriorityEnabled() && sensitiveWords.length === 0 && !form,
       // Asiaankuuluvuus tarkistetaan vain sähköposteista; käsin kirjattu asia kuuluu aina jonoon.
-      aiRelevance: input.channel === "email" && aiRelevanceEnabled() && sensitiveWords.length === 0,
+      aiRelevance: input.channel === "email" && aiRelevanceEnabled() && sensitiveWords.length === 0 && !form,
       sender: input.senderEmail ? `${input.senderName} <${input.senderEmail}>` : input.senderName
     }
   );
   // AI:n suodattama viesti tallennetaan suljettuna tehtävänä: se ei mene päätösjonoon eikä hälytä,
   // mutta löytyy kaikista tehtävistä ja sen voi avata uudelleen.
-  const filtered = Boolean(result.filtered);
+  const filtered = Boolean(result.filtered) && !form;
 
   const ticketId = id("ticket");
   const messageId = id("message");
@@ -177,12 +214,14 @@ if (input.sourceMessageId) {
   `).run(
     ticketId,
     companyId,
-    resident?.apartment_id ?? null,
+    // Lomakkeen asunto ratkaisee, vaikka ilmoittaja asuisi muualla (esim. omistaja ilmoittaa vuokra-asunnosta).
+    formPlace?.apartmentId ?? resident?.apartment_id ?? null,
     resident?.id ?? null,
-    result.type,
+    // Tietueeksi kelpaamaton lukema-, muutto- tai lämmityspaikkalomake on tavallinen tehtävä lomakekortin kera.
+    form && !["meter", "move", "heating"].includes(form) ? FORM_TYPES[form] : result.type,
     result.priority,
     filtered ? "closed" : "open",
-    input.subject,
+    form ? formSubject(form, formFields, input.subject) : input.subject,
     result.summary,
     input.channel,
     filtered ? "filtered" : result.emergency ? "emergency" : "pending_decision",
@@ -226,6 +265,10 @@ if (input.sourceMessageId) {
     input.channel
   );
   if (sensitiveWords.length) detectSensitivity(ticketId, `${input.subject}\n${input.body}`);
+  if (form) {
+    db.prepare("INSERT INTO portal_forms (ticket_id, form, resident_id, fields, source, created_at) VALUES (?, ?, ?, ?, 'email', ?)")
+      .run(ticketId, form, resident?.id ?? null, JSON.stringify(formFields), timestamp);
+  }
 
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     auditId,

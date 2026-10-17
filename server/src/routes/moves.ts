@@ -8,6 +8,7 @@ import { notifyResident } from "../notify.js";
 import { ACTIVE_RESIDENT, id, now } from "../util.js";
 import { syncParkingHolders } from "./parking.js";
 import { portalResident } from "./portal.js";
+import { detailList, detailsSchema, parseDetails } from "../site-forms.js";
 
 export const movesRouter: Router = express.Router();
 
@@ -64,11 +65,37 @@ movesRouter.get("/portal/moves", (_req, res) => {
 movesRouter.get("/companies/:companyId/moves", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
-  res.json(db.prepare(`${MOVE_SELECT} WHERE m.company_id = ? ORDER BY m.status = 'pending' DESC, m.created_at DESC`).all(companyId));
+  const rows = db.prepare(`${MOVE_SELECT} WHERE m.company_id = ? ORDER BY m.status = 'pending' DESC, m.created_at DESC`)
+    .all(companyId) as (Record<string, unknown> & { details: string })[];
+  // details: verkkosivun muuttoilmoituksen kentät (muuttaja, osoitteet, mukana muuttavat, vesimaksu).
+  res.json(rows.map(row => ({ ...row, details: detailList("move", row.details) })));
+});
+
+// Muuttoilmoituksen muokkaus: muuttopäivä, poismuutto, asunto, uudet asukkaat, huomio ja lomakkeen kentät.
+movesRouter.put("/moves/:id", (req, res) => {
+  const notice = db.prepare("SELECT id, company_id, details FROM move_notices WHERE id = ?").get(req.params.id) as
+    { id: string; company_id: string; details: string } | undefined;
+  if (!notice || !companyIdFromContext(notice.company_id)) return res.status(404).json({ error: "Muuttoilmoitusta ei löytynyt." });
+  const parsed = moveSchema.extend({
+    apartmentId: z.string().min(1).nullable().default(null),
+    details: detailsSchema("move").optional()
+  }).safeParse(req.body);
+  if (!parsed.success || Number.isNaN(Date.parse(parsed.success ? parsed.data.moveDate : ""))) {
+    return res.status(400).json({ error: "Tarkista muuttopäivä ja uusien asukkaiden tiedot." });
+  }
+  if (parsed.data.apartmentId && !db.prepare("SELECT 1 FROM apartments WHERE id = ? AND company_id = ?").get(parsed.data.apartmentId, notice.company_id)) {
+    return res.status(404).json({ error: "Asuntoa ei löytynyt tästä taloyhtiöstä." });
+  }
+  db.prepare(`
+    UPDATE move_notices SET move_date = ?, moves_out = ?, apartment_id = ?, new_residents = ?, door_name = ?, note = ?, details = ?
+    WHERE id = ?
+  `).run(parsed.data.moveDate, parsed.data.movesOut ? 1 : 0, parsed.data.apartmentId, JSON.stringify(parsed.data.newResidents),
+    parsed.data.doorName, parsed.data.note, JSON.stringify(parsed.data.details ?? parseDetails(notice.details)), notice.id);
+  res.json({ ok: true });
 });
 
 type MoveNotice = {
-  id: string; company_id: string; apartment_id: string; resident_id: string; move_date: string;
+  id: string; company_id: string; apartment_id: string | null; resident_id: string | null; move_date: string;
   moves_out: number; new_residents: string; door_name: string; status: string;
 };
 
@@ -85,6 +112,8 @@ movesRouter.post("/moves/:id/approve", requireManager, (req, res) => {
   const found = pendingMove(req.params.id);
   if (!found.notice) return res.status(found.status).json({ error: found.error });
   const { notice } = found;
+  // Verkkosivulta tulleelta ilmoitukselta voi puuttua asunto, jos osoitetta ei tunnistettu.
+  if (!notice.apartment_id) return res.status(400).json({ error: "Valitse ilmoitukselle asunto ennen hyväksyntää." });
   const actor = res.locals.user?.name ?? "Isännöitsijä";
   const result = { movedOut: 0, parkingReleased: [] as string[], bookingsRemoved: 0, added: [] as string[], skipped: [] as string[] };
 
@@ -133,7 +162,7 @@ movesRouter.post("/moves/:id/approve", requireManager, (req, res) => {
       .run(actor, now(), JSON.stringify(result), notice.id);
   })();
 
-  void notifyResident(notice.resident_id, "Muuttoilmoitus on hyväksytty", [
+  if (notice.resident_id) void notifyResident(notice.resident_id, "Muuttoilmoitus on hyväksytty", [
     `muuttoilmoituksesi (muuttopäivä ${notice.move_date.split("-").reverse().join(".")}) on hyväksytty ja asukastiedot on päivitetty.`,
     ...(result.added.length > 0 ? [`Asuntoon lisätyt asukkaat: ${result.added.join(", ")}.`] : []),
     ...(result.parkingReleased.length > 0 ? [`Autopaikka päättyy muuttopäivänä: ${result.parkingReleased.join(", ")}.`] : [])
@@ -146,7 +175,7 @@ movesRouter.post("/moves/:id/reject", requireManager, (req, res) => {
   if (!found.notice) return res.status(found.status).json({ error: found.error });
   db.prepare("UPDATE move_notices SET status = 'rejected', decided_by = ?, decided_at = ? WHERE id = ?")
     .run(res.locals.user?.name ?? "Isännöitsijä", now(), found.notice.id);
-  void notifyResident(found.notice.resident_id, "Muuttoilmoitusta ei hyväksytty", [
+  if (found.notice.resident_id) void notifyResident(found.notice.resident_id, "Muuttoilmoitusta ei hyväksytty", [
     "muuttoilmoitustasi ei voitu hyväksyä sellaisenaan. Isännöitsijä on tarvittaessa yhteydessä; voit myös tehdä uuden ilmoituksen asukasportaalissa."
   ]);
   res.json({ ok: true });

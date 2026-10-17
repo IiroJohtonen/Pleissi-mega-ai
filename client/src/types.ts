@@ -161,6 +161,8 @@ export type TicketDetail = {
   signature: string;
   // Remonttitehtävän muutostyöilmoitus; muilla tehtävillä null.
   renovation?: RenovationNotice | null;
+  // Asukasportaalin lomakkeen kentät otsikoineen (huoltotyötilaus, häiriöilmoitus jne.); muilla null.
+  form?: { form: string; title: string; fields: { label: string; value: string }[]; source?: "email" | "portal"; createdAt: string } | null;
   // Asukas on pyytänyt tietojensa poistoa, mutta tehtävä säilytetään perusteella; anonymisoidaan suljettaessa.
   erasurePending?: { reason: string; requested_by: string; created_at: string } | null;
 };

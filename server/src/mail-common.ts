@@ -196,6 +196,7 @@ export function isImported(sourceMessageId: string): boolean {
   return Boolean(
     db.prepare("SELECT 1 FROM gmail_imports WHERE gmail_message_id = ?").get(sourceMessageId)
     ?? db.prepare("SELECT 1 FROM deleted_mail_messages WHERE message_id = ?").get(sourceMessageId)
+    ?? db.prepare("SELECT 1 FROM form_imports WHERE message_id = ?").get(sourceMessageId)
   );
 }
 

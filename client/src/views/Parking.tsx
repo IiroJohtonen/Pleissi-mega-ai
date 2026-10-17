@@ -4,6 +4,7 @@ import { api, errorMessage } from "../session";
 import type { Company, Resident } from "../types";
 import { t } from "../i18n";
 import { OpenResidentButton } from "../components/Reporter";
+import { HeatingOrders } from "./HeatingOrders";
 
 export type ParkingSpace = {
   id: string;
@@ -16,7 +17,7 @@ export type ParkingSpace = {
   apartment_number: string | null;
 };
 
-export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka"];
+export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka", "Lämmityspaikka"];
 
 // Autopaikat: kaikkien taloyhtiöiden paikat yhdessä taulukossa. Riviä klikkaamalla paikkaa voi muokata.
 export function ParkingSpaces({
@@ -335,6 +336,8 @@ export function ParkingSpaces({
           </aside>
         </div>
       )}
+
+      <HeatingOrders companies={companies} companyFilter={embedded ? defaultCompanyId : companyFilter} />
     </section>
   );
 }

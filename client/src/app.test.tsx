@@ -185,7 +185,7 @@ describe("sovellus", () => {
     try {
       await renderApp(staff("Pääkäyttäjä"), "#/settings");
       fireEvent.click(await screen.findByRole("tab", { name: "Isännöitsijätoimiston tiedot" }));
-      expect(await screen.findByText("Toimiston sähköpostitili")).toBeTruthy();
+      expect((await screen.findAllByText("Toimiston sähköpostitili")).length).toBeGreaterThan(0);
       expect(screen.queryByText("Yhtiötä ei ole valittu.")).toBeNull();
       expect(screen.queryByText("Tehtävien vastaanotto")).toBeNull();
     } finally {
@@ -212,7 +212,7 @@ describe("sovellus", () => {
     try {
       const calls = mockApi();
       await renderApp(staff("Isännöitsijä"), "#/settings");
-      expect(await screen.findByText("Oma sähköpostitili")).toBeTruthy();
+      expect((await screen.findAllByText("Oma sähköpostitili")).length).toBeGreaterThan(0);
       expect(screen.getByText(/Yhdistä oma työsähköpostisi/)).toBeTruthy();
       await vi.waitFor(() => expect((screen.getByRole("button", { name: "Microsoft 365 / Outlook" }) as HTMLButtonElement).disabled).toBe(false));
       fireEvent.click(screen.getByRole("button", { name: "Microsoft 365 / Outlook" }));
@@ -268,7 +268,49 @@ describe("sovellus", () => {
     const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };
     await renderApp({ token: "asukastunniste", kind: "resident", user: { id: resident.id, name: resident.name, email: resident.email, role: "Asukas" }, resident });
     expect(await screen.findByText("Remontti-ilmoitus")).toBeTruthy();
-    expect(screen.getByText("Kulutuslukemat")).toBeTruthy();
+    expect(screen.getByText("Mittarilukemat")).toBeTruthy();
+  });
+
+  it("näyttää lämmityspaikan tilaukset Autopaikat-sivulla ja tilauksen lomakkeen tiedot", async () => {
+    responses["/companies/demo-company/heating-orders"] = [{
+      id: "heating-1", company_id: "demo-company", apartment_id: null, resident_id: null, start_date: "2026-11-01", end_date: null,
+      status: "pending", note: "", source: "email", created_at: "2026-10-17T08:00:00Z", apartment_number: null,
+      details: [
+        { key: "address", label: "Kohteen osoite", type: "text", options: [], value: "Koivikkotie 10" },
+        { key: "spot", label: "Tilaan", type: "select", options: ["Lämmitystolppapaikan"], value: "Lämmitystolppapaikan" },
+        { key: "name", label: "Tilaajan nimi", type: "text", options: [], value: "Ville Vieras" },
+        { key: "phone", label: "Puhelinnumero", type: "tel", options: [], value: "040 111 2222" }
+      ]
+    }];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/parking");
+      expect(await screen.findByText("Auton lämmityspaikan tilaukset")).toBeTruthy();
+      fireEvent.click(await screen.findByText("Ville Vieras"));
+      expect(screen.getByText("Tilauslomakkeen tiedot")).toBeTruthy();
+      expect(screen.getByText("040 111 2222")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Muokkaa" }));
+      expect((screen.getByLabelText("Puhelinnumero") as HTMLInputElement).value).toBe("040 111 2222");
+    } finally {
+      delete responses["/companies/demo-company/heating-orders"];
+    }
+  });
+
+  it("asukas lähettää huoltotyötilauksen portaalin lomakkeella", async () => {
+    const calls = mockApi();
+    const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };
+    await renderApp({ token: "asukastunniste", kind: "resident", user: { id: resident.id, name: resident.name, email: resident.email, role: "Asukas" }, resident });
+    for (const label of ["Häiriöilmoitus", "Irtisanomisilmoitus", "Yleinen asuntohakemus", "Auton lämmityspaikka"]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    }
+    fireEvent.click(screen.getAllByRole("button", { name: /Huoltotyötilaus/ })[0]);
+    fireEvent.change(await screen.findByLabelText("Tarkempi paikka (valinnainen)"), { target: { value: "Keittiö" } });
+    fireEvent.change(screen.getByLabelText("Vian kuvaus"), { target: { value: "Hana vuotaa tiskipöydän alle." } });
+    fireEvent.click(screen.getByRole("button", { name: "Lähetä huoltotyötilaus" }));
+
+    await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/portal/forms/service"))).toBe(true));
+    const sent = JSON.parse(calls.find(request => request.url.endsWith("/portal/forms/service"))?.body ?? "{}");
+    expect(sent).toMatchObject({ target: "Oma asunto", location: "Keittiö", description: "Hana vuotaa tiskipöydän alle.", entry: "Huolto saa mennä asuntoon yleisavaimella" });
+    expect(await screen.findByText(/Huoltotyötilaus on lähetetty/)).toBeTruthy();
   });
 
   it("näyttää käyttöliittymän englanniksi, kun kieli on valittu", async () => {
@@ -383,6 +425,9 @@ describe("sovellus", () => {
   it("näyttää toimiston asetuksissa AI-prioriteetin kytkimen pois päältä", async () => {
     await renderApp(staff("Pääkäyttäjä"), "#/settings");
     fireEvent.click(await screen.findByText("Isännöitsijätoimiston tiedot"));
+    // AI-asetukset ovat omalla välilehdellään.
+    expect(screen.queryByText("AI arvioi saapuvan tehtävän prioriteetin")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "AI" }));
     const label = await screen.findByText("AI arvioi saapuvan tehtävän prioriteetin");
     const toggle = label.closest("label")?.querySelector("input") as HTMLInputElement;
     expect(toggle.checked).toBe(false);
@@ -390,9 +435,9 @@ describe("sovellus", () => {
     // Osion saa kiinni otsikon väkäsestä, ja valinta muistetaan.
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     expect(screen.queryByText("AI arvioi saapuvan tehtävän prioriteetin")).toBeNull();
-    expect(screen.getByText("Tietojen säilytys")).toBeTruthy();
     expect(JSON.parse(localStorage.getItem("kotilo.settingsCollapsed") ?? "[]")).toEqual(["office-ai"]);
-    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    // Aliotsikko avaa tiivistetyn osion.
+    fireEvent.click(screen.getByRole("button", { name: "AI-käyttö ja -asetukset" }));
     expect(screen.getByText("AI arvioi saapuvan tehtävän prioriteetin")).toBeTruthy();
   });
 
