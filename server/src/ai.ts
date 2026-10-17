@@ -3,6 +3,8 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { aiBudgetExhausted, recordAiUsage } from "./ai-budget.js";
 import { z } from "zod";
 import type { KnowledgeChunk } from "./knowledge-chunks.js";
+import { getMasterData } from "./master-data.js";
+import { emergencyKeywordHit, maskPersonalData, senderForAi } from "./privacy-filter.js";
 
 export type TriageResult = {
   type: string;
@@ -135,9 +137,16 @@ export function findKnowledgeAnswer(
 // Claudea kutsutaan käsittelijän pyytämässä vastausehdotuksessa (suggestReply), raportin aiheissa ja,
 // kun toimisto on kytkenyt sen päälle, saapuvan viestin arvioinnissa (assessIncoming).
 // Kun kuukauden AI-kuluraja on täynnä, toimitaan kuten ilman AI-avainta.
+// Malli: pääkäyttäjän perustiedoissa valitsema, muuten ympäristömuuttuja tai oletus. ai.model on
+// raporttien malli.
 function claudeClient(): { client: Anthropic; model: string } | null {
   if (!process.env.ANTHROPIC_API_KEY || aiBudgetExhausted()) return null;
-  return { client: new Anthropic(), model: process.env.ANTHROPIC_MODEL || "claude-opus-5-5" };
+  return { client: new Anthropic(), model: getMasterData().aiModels.reports || process.env.ANTHROPIC_MODEL || "claude-opus-5-5" };
+}
+
+// Saapuvan viestin arvioinnin malli.
+function assessModel() {
+  return getMasterData().aiModels.assess || process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
 }
 
 function knowledgePrompt(items: KnowledgeItem[]): string {
@@ -215,12 +224,12 @@ null if the draft does not rely on the company knowledge.
 
 // Vastausehdotuksen malli: oletuksena Sonnet. Muut kutsut käyttävät ANTHROPIC_MODEL-mallia.
 export function replyModel() {
-  return process.env.ANTHROPIC_REPLY_MODEL || "claude-sonnet-5-5";
+  return getMasterData().aiModels.reply || process.env.ANTHROPIC_REPLY_MODEL || "claude-sonnet-5-5";
 }
 
 // Nopea malli pilkontaan ja luokitteluun: oletuksena Haiku.
 export function fastModel() {
-  return process.env.ANTHROPIC_FAST_MODEL || "claude-haiku-5-5";
+  return getMasterData().aiModels.fast || process.env.ANTHROPIC_FAST_MODEL || "claude-haiku-5-5";
 }
 
 // Ehdottaa käsittelijälle vastausluonnoksen niiden palojen pohjalta, jotka valittiin tehtävälle
@@ -241,10 +250,10 @@ Company knowledge:
 ${chunksPrompt(chunks) || "(none)"}
 
 Ticket subject:
-${subject}
+${maskPersonalData(subject)}
 
 Conversation so far:
-${conversation}
+${maskPersonalData(conversation)}
 
 Manager's notes:
 ${managerContext.trim() || "(none)"}
@@ -540,7 +549,7 @@ repeating it. If there is no existing documentation, covered is an empty list.
 
   const user = tickets
     .map((ticket, index) =>
-      `${index + 1}: [${ticket.type}] ${ticket.subject} — ${ticket.summary.slice(0, 300)}`
+      `${index + 1}: [${ticket.type}] ${maskPersonalData(ticket.subject)} — ${maskPersonalData(ticket.summary.slice(0, 300))}`
       + (ticket.reply ? `\n   Office reply: ${ticket.reply.replace(/\s+/g, " ").slice(0, 400)}` : ""))
     .join("\n");
 
@@ -595,9 +604,16 @@ export type IncomingAssessment = z.infer<typeof AssessmentSchema>;
 // sen prioriteetti. Kutsuja käyttää vain ne osat, jotka toimisto on kytkenyt päälle. Null = AI ei ole
 // käytössä tai kutsu epäonnistui, jolloin viesti käsitellään kuten ilman AI:ta. Kutsulle on aikaraja,
 // koska asukas odottaa portaalissa tehtävän tallentumista.
+// Määräaika sanoina perustiedoissa asetetun päivämäärän mukaan.
+function deadlineText(days: number) {
+  return days === 0 ? "the deadline is today" : days === 1 ? "the deadline is in one day" : `the deadline is in ${days} days`;
+}
+
 export async function assessIncoming(subject: string, body: string, sender = ""): Promise<IncomingAssessment | null> {
   const ai = claudeClient();
   if (!ai) return null;
+  const model = assessModel();
+  const days = getMasterData().priorityDays;
 
   const system = `
 You are Pleissi, an AI secretary for a Finnish property management office. A message has just
@@ -624,17 +640,17 @@ the queue. Fill it in also when relevant is false; use low then.
 - emergency: people are in danger, or damage to the building is happening now or is about to and
   gets worse with every hour of waiting. Examples: water leaking or flooding, fire or smoke, smell of
   gas, an electrical hazard, a person stuck in a lift, sewage backing up, a break-in in progress.
-  Choosing emergency immediately emails the responsible property manager and sets the deadline to
-  today, so reserve it for situations that cannot wait until the next working day. A missed
+  Choosing emergency immediately emails the responsible property manager, and ${deadlineText(days.emergency)},
+  so reserve it for situations that cannot wait until the next working day. A missed
   emergency causes real damage while a false alarm costs only attention, so when you are honestly
   torn between emergency and urgent, choose emergency.
 - urgent: something essential is broken or blocked, but nothing is getting worse by the hour. It
-  should be handled within a day. Examples: no hot water, the lift is out of service, the front door
+  should be handled soon: ${deadlineText(days.urgent)}. Examples: no hot water, the lift is out of service, the front door
   lock does not work, heating is off, a resident cannot get into their storage.
 - normal: ordinary fault reports, questions and requests with no particular time pressure. This is
-  the right choice for most messages. Deadline in five days.
+  the right choice for most messages: ${deadlineText(days.normal)}.
 - low: nothing needs to be done soon: feedback, suggestions, thanks, notices for information,
-  advertising. Deadline in two weeks.
+  advertising: ${deadlineText(days.low)}.
 
 Judge by what the message describes, not by its tone or by single words: "the lock is stiff" is a
 normal fault even though it mentions a lock, and a calmly worded "water is dripping through the
@@ -646,18 +662,18 @@ reason: one short sentence in Finnish telling the property manager why you chose
 
   const user = `
 Sender:
-${sender || "(unknown)"}
+${senderForAi(sender)}
 
 Subject:
-${subject}
+${maskPersonalData(subject)}
 
 Message:
-${body.slice(0, 8000)}
+${maskPersonalData(body.slice(0, 8000))}
 `;
 
   try {
     const response = await ai.client.beta.messages.parse({
-      model: ai.model,
+      model,
       max_tokens: 4000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
@@ -665,7 +681,7 @@ ${body.slice(0, 8000)}
       messages: [{ role: "user", content: user }],
       output_config: { effort: "low", format: betaZodOutputFormat(AssessmentSchema) }
     }, { timeout: 20_000, maxRetries: 1 });
-    recordAiUsage("assess", response.model || ai.model, response.usage);
+    recordAiUsage("assess", response.model || model, response.usage);
     if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
     const parsed = response.parsed_output;
     if (!parsed) throw new Error("No assessment in the response");
@@ -702,12 +718,8 @@ function localTriage(
 ): TriageResult {
   const text = `${subject}\n${body}`.toLowerCase();
 
-  const emergencyWords = [
-    "vesivuoto", "vesi valuu", "sähköt poikki", "sähkökatko",
-    "lukko", "ovi ei aukea", "putkirikko", "tulvii"
-  ];
-
-  if (detectEmergency && emergencyWords.some(word => text.includes(word))) {
+  // Hätäsanat ovat perustiedoissa pääkäyttäjän muokattavina.
+  if (detectEmergency && emergencyKeywordHit(text)) {
     return emergencyTriage(subject, "Viestissä havaittiin mahdollinen hätätilanne.", emergencyPhone);
   }
 

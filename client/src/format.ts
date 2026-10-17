@@ -74,6 +74,7 @@ export function actionLabel(action: string) {
     board_member_deleted: t("Hallituksen tunnus poistettu"),
     resident_erased: t("Asukkaan henkilötiedot poistettu"),
     retention_purge: t("Säilytysajan ylittäneet tiedot poistettu"),
+    master_data_updated: t("Perustietoja muutettu"),
     reporter_linked: t("Asukas linkitetty tehtävään"),
     renovation_reported: t("Remontti ilmoitettu"),
     renovation_updated: t("Remontti-ilmoituksen tietoja muutettu"),

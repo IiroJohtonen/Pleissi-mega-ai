@@ -5,6 +5,8 @@ import { isAdmin, requireAdmin, requireManager } from "../auth.js";
 import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
+import { id, now } from "../util.js";
+import { AI_MODEL_CHOICES, getMasterData, MASTER_DATA_DEFAULTS, masterDataSchema, saveMasterData } from "../master-data.js";
 
 export const officeRouter: Router = express.Router();
 
@@ -123,4 +125,20 @@ officeRouter.get("/system/alerts", requireAdmin, (_req, res) => {
 officeRouter.post("/system/alerts/:id/resolve", requireAdmin, (req, res) => {
   if (!markAlertResolved(String(req.params.id))) return res.status(404).json({ error: "Hälytystä ei löytynyt tai se on jo kuitattu." });
   res.json({ ok: true });
+});
+
+// Perustiedot: hätä- ja arkaluonteisuussanat, maskaus, määräajat ja AI-mallit. Vain pääkäyttäjälle.
+officeRouter.get("/master-data", requireAdmin, (_req, res) => {
+  res.json({ values: getMasterData(), defaults: MASTER_DATA_DEFAULTS, modelChoices: AI_MODEL_CHOICES });
+});
+
+officeRouter.put("/master-data", requireAdmin, (req, res) => {
+  const parsed = masterDataSchema.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista perustiedot." });
+  saveMasterData(parsed.data);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "master_data_updated",
+    JSON.stringify({ fields: Object.keys(parsed.data) }), now()
+  );
+  res.json(getMasterData());
 });

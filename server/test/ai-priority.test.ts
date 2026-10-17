@@ -100,8 +100,10 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal(office.aiPriority, 0);
     assert.equal(office.aiAvailable, true);
 
-    const result = await inbound("Pyöräkellari", "Pyöräkellarin lukko on jäykkä.");
+    const result = await inbound("Kellari", "Kellarissa on vesivuoto.");
     assert.equal(result.emergency, true);
+    // Pelkkä lukko ei ole enää hätäsana.
+    assert.equal((await inbound("Pyöräkellari", "Pyöräkellarin lukko on jäykkä.")).emergency, false);
     assert.equal(requests.length, 0);
   });
 
@@ -209,7 +211,11 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
   });
 
   it("AI-ehdotus ottaa huomioon käsittelijän lisätiedon", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", { companyId: "demo-company", senderName: "Asukas", subject: "Ilmanvaihto", body: "Ilmanvaihto pitää kovaa ääntä.", channel: "email" });
+    const created = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", senderName: "Asukas", senderEmail: "asukas@example.com", subject: "Ilmanvaihto",
+      body: "Ilmanvaihto pitää kovaa ääntä. Soittakaa 040 123 4567 tai asukas@example.com, tilini FI21 1234 5600 0007 85, hetu 010190-123A.",
+      channel: "email"
+    });
     const ticketId = created.data.ticketId as string;
 
     const tooLong = await call(server, admin, "POST", `/tickets/${ticketId}/suggest`, { context: "x".repeat(2001) });
@@ -221,6 +227,10 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal(suggested.data.usedAi, true);
     const request = requests.at(-1);
     assert.match(JSON.stringify(request.body.messages), /Manager's notes:\\nHuoltomies käy torstaina klo 10\./);
+    // Asukkaan yhteystiedot ja tunnisteet eivät mene AI:lle, mutta käsittelijän lisätieto menee sellaisenaan.
+    const sent = JSON.stringify(request.body.messages);
+    assert.match(sent, /Soittakaa \[puhelin\] tai \[sähköposti\], tilini \[tilinumero\], hetu \[henkilötunnus\]/);
+    assert.doesNotMatch(sent, /4567|example\.com|010190/);
     // Vastausehdotus: oma malli, lyhyt tokenraja ja vakio-ohje välimuistilohkona.
     assert.equal(request.body.model, "claude-sonnet-5-5");
     assert.equal(request.body.max_tokens, 1024);

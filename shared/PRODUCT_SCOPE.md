@@ -18,6 +18,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 - Vastausehdotus taloyhtiön tietopankin pohjalta, pyydettäessä. AI saa vain tehtävään osuvat tietopalat (enintään viisi), ei koko tietopankkia, ja ehdotuksen lähde tallentuu tehtävälle palan ja sivun tarkkuudella
 - Raportti toistuvista aiheista ja ehdotukset uusiksi vakiotiedoiksi
 - Avainsanahaku varalla, kun AI-avainta ei ole
+- Asukkaan tekstistä maskataan puhelinnumerot, sähköpostiosoitteet, henkilötunnukset ja tilinumerot ennen AI:ta; saapuvan viestin arviointi saa lähettäjästä vain sähköpostin verkkotunnuksen
 - AI arvioi saapuvan tehtävän prioriteetin, kun pääkäyttäjä kytkee sen päälle toimiston asetuksista (oletuksena pois)
 - AI tarkistaa, koskeeko saapuva sähköposti taloyhtiön asioita, ja pitää muut poissa päätösjonosta (oletuksena pois)
 
@@ -43,6 +44,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 
 **Käyttäjät ja tietosuoja**
 - Roolit pääkäyttäjä, isännöitsijä ja asiakaspalvelu; yhtiökohtainen näkyvyys palvelimella
+- Perustiedot (vain pääkäyttäjä): hätäsanat, arkaluonteisuuden tunnistussanat, maskaus, määräajat prioriteetin mukaan ja AI-mallit toiminnoittain
 - Käyttäjän poisto, asukkaan tietojen vienti ja poisto
 - Säilytysaika suljetuille tehtäville ja lokille
 - Liitteiden tarkistus, pyyntöjen rajoitus ja varmuuskopiot

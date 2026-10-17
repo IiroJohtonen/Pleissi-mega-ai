@@ -4467,3 +4467,9 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .version-review .chunk-buttons { margin-top: 16px; }
 .version-banner { margin-top: 16px; }
 .knowledge-expiring .back-link { font-size: 13px; }
+
+/* Perustiedot */
+.master-data h3 { font-size: 14px; margin: 24px 0 8px; }
+.master-data h3:first-of-type { margin-top: 12px; }
+.master-data textarea { font-family: inherit; }
+.master-data .back-link { font-size: 12px; margin-top: 4px; }
