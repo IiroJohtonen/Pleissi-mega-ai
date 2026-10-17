@@ -292,6 +292,9 @@
 :root[data-theme="dark"] .ticket-row-contact {
     color: #b3bbc6
 }
+:root[data-theme="dark"] .ticket-row-contact strong {
+    color: #dce0e5
+}
 :root[data-theme="dark"] .ticket-main p {
     color: #c1c8d0
 }

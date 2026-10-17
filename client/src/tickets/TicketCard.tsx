@@ -240,11 +240,16 @@ export function TicketCard({
             </span>
           )}
           {/* Kapealla näytöllä käsittelijä näkyy otsikon alla, koska sarake ei mahdu. */}
+          {/* Kapealla näytöllä taloyhtiö näkyy otsikon alla, koska sarake ei mahdu. */}
+          <span className="ticket-row-company-line">{companyName ?? ticket.company_name ?? ""}</span>
           <span className="ticket-row-assignee-line">{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
         </div>
         <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
         <span className="type">{t(ticket.type)}</span>
-        <span className="ticket-row-contact">{ticket.resident_name || ticket.apartment_number || t("Ei yhteyshenkilöä")}</span>
+        <span className="ticket-row-contact">
+          <strong>{companyName ?? ticket.company_name ?? ""}</strong>
+          <small>{ticket.resident_name || ticket.apartment_number || t("Ei yhteyshenkilöä")}</small>
+        </span>
         <span className={`ticket-row-assignee ${assignee ? "" : "none"}`}>{assignee ? assignee.name : t("Ei käsittelijää")}</span>
         <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
         <time className="date">{formatDate(ticket.created_at)}</time>

@@ -879,6 +879,13 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   font-size: 10px;
 }
 
+/* Taloyhtiö-sarake: yhtiö ja sen alla yhteyshenkilö. */
+.ticket-row-contact { display: grid; gap: 1px; min-width: 0; }
+.ticket-row-contact strong, .ticket-row-contact small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-row-contact strong { color: #232a31; font-size: 11px; font-weight: 600; }
+.ticket-row-contact small { font-size: 10px; }
+.ticket-row-company-line { display: none; }
+
 .ticket-main {
   display: grid;
   grid-template-columns: 1.35fr .9fr;
@@ -3337,6 +3344,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .ticket-row-header:not(.knowledge-cols):not(.resident-row-header) > button:nth-last-child(-n+2),
   .ticket-row-search:not(.knowledge-cols) > input:nth-child(5),
   .ticket-row-search:not(.knowledge-cols) > input:nth-last-child(-n+2) { display: none; }
+  .ticket-row-main .ticket-row-company-line { display: block; }
 }
 
 @media (max-width: 900px) {
@@ -3819,8 +3827,29 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .nav-pin svg { width: 16px; height: 16px; transform: rotate(45deg); transition: transform .15s ease; }
 .nav-pin.pinned svg { transform: none; fill: currentColor; }
 .nav-pin:hover { background: #242c35; color: #fff; transform: none; }
-.nav-company-name { display: block; max-width: calc(100% - 25px); margin: 2px 0 4px 25px; padding: 4px 8px; overflow: hidden; border: 1px solid rgba(155, 211, 255, .35); border-radius: 6px; background: transparent; color: #9bd3ff; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-align: left; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.nav-company-name:hover, .nav-company-name.active { border-color: #9bd3ff; background: rgba(155, 211, 255, .12); }
+/* Sivupalkin taloyhtiöosio: otsikkona taloyhtiön valinta, sen alla yhtiön näkymät. */
+.nav-company-section { display: grid; gap: 2px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.nav-company-select { min-width: 0; margin-bottom: 4px; }
+nav .nav-company-select .dropdown-trigger {
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid #343d47;
+  border-radius: 10px;
+  background: #1e252d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+nav .nav-company-select .dropdown-trigger:hover:not(:disabled) { border-color: #4a5868; background: #1e252d; }
+nav .nav-company-select .dropdown-trigger[aria-expanded="true"] { border-color: #9bd3ff; box-shadow: 0 0 0 3px rgba(155, 211, 255, .18); }
+nav .nav-company-select .dropdown-trigger svg { width: 16px; height: 16px; color: #9bd3ff; }
+nav .nav-company-select .dropdown-trigger svg:last-child { width: 12px; height: 12px; color: #aab3bd; }
+nav .nav-company-select .dropdown-trigger span { flex: 1; }
+/* Valikon vaihtoehdot ovat vaalealla pohjalla kuten muutkin valikot, eivät sivupalkin painikkeita. */
+nav .nav-company-select ul { z-index: 30; max-height: 360px; }
+nav .nav-company-select li button { padding: 8px 10px; border-radius: 8px; color: #272e35; font-weight: 500; transform: none; }
+nav .nav-company-select li button:hover { background: #eef1f5; color: #272e35; transform: none; }
+nav .nav-company-select li:last-child button { border-top: 1px solid #eceef0; border-radius: 0 0 8px 8px; margin-top: 4px; color: #3f7fbf; font-weight: 600; }
 
 @media (min-width: 761px) {
   .app.nav-collapsed { padding-left: 68px; }
@@ -3848,6 +3877,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button.nav-toggle,
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-subs,
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) nav button.nav-sub { display: none; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-company-select .dropdown-trigger { border-color: transparent; background: transparent; }
+  .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-company-select .dropdown-trigger svg:last-child { display: none; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-group { display: block; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-group > button:first-child { width: 100%; }
   .app.nav-collapsed .sidebar:not(:hover):not(:focus-within) .nav-queue-row { display: grid; justify-items: center; gap: 6px; }
@@ -3910,21 +3941,6 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .topbar-search input::placeholder { color: #8d949b; }
 .topbar-search input:focus { outline: 2px solid #9bd3ff; outline-offset: 0; border-color: #4a5868; }
 /* Yläpalkin taloyhtiövalinta on sama alasvetovalikko kuin muualla; painike on tumma kuten yläpalkki. */
-.topbar-company { min-width: 0; }
-.topbar-company .dropdown-trigger {
-  max-width: 260px;
-  height: 36px;
-  padding: 0 10px;
-  border-color: #343d47;
-  background: #1e252d;
-  color: #fff;
-  font-size: 13px;
-}
-.topbar-company .dropdown-trigger:hover:not(:disabled) { border-color: #4a5868; }
-.topbar-company .dropdown-trigger[aria-expanded="true"] { border-color: #9bd3ff; box-shadow: 0 0 0 3px rgba(155, 211, 255, .18); }
-.topbar-company .dropdown-trigger svg { width: 15px; height: 15px; color: #9bd3ff; }
-.topbar-company .dropdown-trigger svg:last-child { width: 12px; height: 12px; color: #aab3bd; }
-.topbar-company .dropdown-trigger span { flex: 1; }
 .topbar-profile {
   display: inline-flex;
   align-items: center;
@@ -4018,9 +4034,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .topbar-right > .topbar-menu { margin-left: auto; order: 2; }
   .topbar-search { order: 3; flex: 1 1 100%; }
   .topbar-search input { width: 100%; }
-  .topbar-company { order: 4; flex: 1 1 100%; }
-  .topbar-company .dropdown-trigger { max-width: none; width: 100%; }
-  .history-dropdown { width: min(380px, calc(100vw - 24px)); }
+    .history-dropdown { width: min(380px, calc(100vw - 24px)); }
   .profile-dropdown { width: min(320px, calc(100vw - 24px)); }
   /* Puhelimella valikko on liukuva paneeli, joten kiinnitystä ei tarvita; sulkuruksi on ylhäällä. */
   .nav-pin { display: none !important; }
@@ -4409,8 +4423,6 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 /* Jonot-sivun toinen osio: vuorojen jonot. */
 .content > .section-heading { margin: 18px 0 0; font-size: 18px; }
 .content > .section-heading + .muted { margin: -4px 0 0; }
-.topbar-company ul { left: auto; right: 0; max-width: min(360px, 90vw); }
-.topbar-company li button { white-space: normal; }
 
 /* Asukasportaalin sivupalkin painikkeet: samanlaiset kuin portaalin muut painikkeet. */
 .portal-footer-links .portal-footer-button { padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; }

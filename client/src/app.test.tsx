@@ -14,8 +14,7 @@ const responses: Record<string, unknown> = {
   "/users": [],
   "/office": { name: "Testitoimisto Oy", businessId: "", address: "", phone: "" },
   "/companies": [company],
-  "/tickets?companyId=demo-company": [overdueTicket],
-  "/my-tickets?companyId=demo-company": []
+  "/tickets?companyId=all": [overdueTicket]
 };
 
 function mockApi() {
@@ -98,8 +97,8 @@ describe("sovellus", () => {
   it("näyttää päätösjonossa vain omat tehtävät ja Jonossa-laatikosta käsittelijättömät", async () => {
     const unassigned = { ...overdueTicket, id: "ticket-2", ticket_number: 2, subject: "Käsittelijätön tehtävä", assignee_id: null };
     const others = { ...overdueTicket, id: "ticket-3", ticket_number: 3, subject: "Toisen tehtävä", assignee_id: "user-2" };
-    const original = responses["/tickets?companyId=demo-company"];
-    responses["/tickets?companyId=demo-company"] = [overdueTicket, unassigned, others];
+    const original = responses["/tickets?companyId=all"];
+    responses["/tickets?companyId=all"] = [overdueTicket, unassigned, others];
     try {
       await renderApp(staff("Isännöitsijä"), "#/queue");
       expect((await screen.findAllByText("Saunavuoron varaus")).length).toBeGreaterThan(0);
@@ -112,7 +111,7 @@ describe("sovellus", () => {
       expect(screen.queryByText("Saunavuoron varaus")).toBeNull();
       expect(screen.queryByText("Toisen tehtävä")).toBeNull();
     } finally {
-      responses["/tickets?companyId=demo-company"] = original;
+      responses["/tickets?companyId=all"] = original;
     }
   });
 
@@ -122,10 +121,8 @@ describe("sovellus", () => {
       waiting_since: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     };
     const fresh = { ...waiting, id: "ticket-5", ticket_number: 5, subject: "Tuore kysymys", waiting_since: new Date().toISOString() };
-    const original = responses["/tickets?companyId=demo-company"];
-    const originalMine = responses["/my-tickets?companyId=demo-company"];
-    responses["/tickets?companyId=demo-company"] = [waiting, fresh, overdueTicket];
-    responses["/my-tickets?companyId=demo-company"] = [waiting, fresh, overdueTicket];
+    const original = responses["/tickets?companyId=all"];
+    responses["/tickets?companyId=all"] = [waiting, fresh, overdueTicket];
     try {
       await renderApp(staff("Isännöitsijä"), "#/queue");
       const box = await screen.findByTitle("Näytä omat tehtävät, jotka vaativat huomiota");
@@ -141,8 +138,7 @@ describe("sovellus", () => {
       expect(screen.getByText("Saunavuoron varaus")).toBeTruthy();
       expect(screen.queryByText("Tuore kysymys")).toBeNull();
     } finally {
-      responses["/tickets?companyId=demo-company"] = original;
-      responses["/my-tickets?companyId=demo-company"] = originalMine;
+      responses["/tickets?companyId=all"] = original;
     }
   });
 
@@ -313,17 +309,21 @@ describe("sovellus", () => {
     }
   });
 
-  it("taloyhtiö valitaan yläpalkista ja alasivut koskevat valittua yhtiötä", async () => {
-    await renderApp(staff("Isännöitsijä"), "#/companies");
-    fireEvent.click(await screen.findByTitle("Näytä taloyhtiöiden alasivut"));
-    // Sama alasvetovalikko kuin muualla sovelluksessa.
-    const picker = screen.getByRole("button", { name: "Taloyhtiö" });
-    expect(picker.closest(".topbar")).toBeTruthy();
-    expect(picker.getAttribute("aria-haspopup")).toBe("listbox");
+  it("taloyhtiö valitaan sivupalkin yhtiöosiosta ja alasivut koskevat valittua yhtiötä", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/residents");
+    // Sama alasvetovalikko kuin muualla sovelluksessa, mutta sivupalkissa yhtiön näkymien otsikkona.
+    const picker = await screen.findByRole("button", { name: "Taloyhtiö" });
+    expect(picker.closest(".sidebar")).toBeTruthy();
+    expect(document.querySelector(".topbar .dropdown")).toBeNull();
     // Valinnalla on aina arvo, joten alasivut näkyvät heti.
     await vi.waitFor(() => expect(picker.textContent).toContain("As Oy Koivikko"));
     expect(screen.getByText("Pyykkitupa")).toBeTruthy();
+    expect(screen.getByText("Yhtiön tiedot")).toBeTruthy();
     expect(localStorage.getItem("kotilo.navCompany")).toBe("demo-company");
+    // Valikon viimeinen kohta avaa kaikkien taloyhtiöiden listan.
+    fireEvent.click(picker);
+    fireEvent.click(screen.getByRole("option", { name: "Kaikki taloyhtiöt…" }));
+    await vi.waitFor(() => expect(window.location.hash).toBe("#/companies"));
   });
 
   it("profiilivalikosta pääsee asetuksiin ja historia näyttää avatut tehtävät", async () => {

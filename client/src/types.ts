@@ -3,6 +3,8 @@ import type { RenovationNotice } from "./views/Renovations";
 
 
 export type Ticket = {
+  // Taloyhtiön nimi; palvelin liittää sen tehtävälistaan.
+  company_name?: string;
   id: string;
   ticket_number?: number;
   company_id: string;
