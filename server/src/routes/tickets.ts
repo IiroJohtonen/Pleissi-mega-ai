@@ -3,7 +3,7 @@ import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import {
-  companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket, isRestrictedTicket, redactRestrictedTicket
+  companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket, isRestrictedTicket, redactRestrictedTicket, visibleCompanyIds
 } from "../access.js";
 import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
@@ -54,16 +54,22 @@ ticketsRouter.delete("/tickets/:id", requireManager, async (req, res) => {
   res.json({ ok: true });
 });
 
+// companyId=all palauttaa kaikkien käyttäjälle näkyvien taloyhtiöiden tehtävät yhdellä haulla.
 ticketsRouter.get("/tickets", (req, res) => {
-  const companyId = companyIdFromContext(req.query.companyId);
-  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const all = req.query.companyId === "all";
+  const companyId = all ? null : companyIdFromContext(req.query.companyId);
+  if (!all && !companyId) return res.status(403).json({ error: "Company not authorized" });
+  const companyIds = all ? visibleCompanyIds() : [companyId as string];
+  if (companyIds.length === 0) return res.json([]);
   const rows = db.prepare(`
-    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
+    SELECT t.*, r.name AS resident_name, a.apartment_number, u.name AS assignee_name, c.name AS company_name,
+           ${NEW_REPLY_SQL} AS has_new_reply, ${AI_SUGGESTED_SQL} AS ai_suggested, ${WAITING_SINCE_SQL} AS waiting_since
     FROM tickets t
+    JOIN companies c ON c.id = t.company_id
     LEFT JOIN residents r ON r.id = t.resident_id
     LEFT JOIN apartments a ON a.id = t.apartment_id
     LEFT JOIN users u ON u.id = t.assignee_id
-    WHERE t.company_id = ?
+    WHERE t.company_id IN (${companyIds.map(() => "?").join(", ")})
     ORDER BY
       CASE t.priority
         WHEN 'emergency' THEN 1
@@ -72,7 +78,7 @@ ticketsRouter.get("/tickets", (req, res) => {
         ELSE 4
       END,
       t.created_at DESC
-  `).all(companyId) as Parameters<typeof redactRestrictedTicket>[0][];
+  `).all(...companyIds) as Parameters<typeof redactRestrictedTicket>[0][];
   res.json(rows.map(redactRestrictedTicket));
 });
 

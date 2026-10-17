@@ -1780,4 +1780,7 @@ export const en: Record<string, string> = {
   "Tilapäivitykset asukkaalle": "Status updates to residents",
   "Asukas saa sähköpostin, kun hänen ilmoituksensa etenee.": "Residents get an email when their report progresses.",
   "Viesti lähtee, kun tehtävästä tehdään työtilaus huoltoyhtiölle, huoltoyhtiö kuittaa työn tehdyksi, tehtävä otetaan käsittelyyn, se siirretään kolmannelle osapuolelle tai se suljetaan. Viesti menee tehtävän ilmoittajille, joilla on sähköpostiosoite, taloyhtiön sähköpostitililtä. Roskapostiksi merkityistä tehtävistä ei ilmoiteta. Lähetetty päivitys näkyy tehtävän aikajanalla.": "A message is sent when a work order is placed with the maintenance company, the work is marked done, the task is taken into handling, moved to a third party or closed. It goes to the task's reporters who have an email address, from the housing company's email account. Tasks marked as spam are not reported. Sent updates appear on the task timeline.",
+  "Kaikki dokumentit": "All documents",
+  "Kaikki taloyhtiöt…": "All housing companies…",
+  "Yhtiön tiedot": "Company details",
 };

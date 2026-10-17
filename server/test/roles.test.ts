@@ -27,6 +27,21 @@ describe("roolit ja yhtiönäkyvyys", () => {
 
   after(() => server.stop());
 
+  it("kaikkien yhtiöiden tehtävät haetaan yhdellä haulla vain näkyvistä yhtiöistä", async () => {
+    await call(server, admin, "POST", "/inbound/messages", {
+      companyId: otherCompany, senderName: "Asukas", subject: "Testiyhtiön vika", body: "Ovi ei sulkeudu.", channel: "email"
+    });
+    const adminRows = (await call(server, admin, "GET", "/tickets?companyId=all")).data as any[];
+    const companiesSeen = new Set(adminRows.map(row => row.company_id));
+    assert.ok(companiesSeen.has("demo-company") && companiesSeen.has(otherCompany));
+    assert.equal(adminRows.find(row => row.company_id === otherCompany).company_name, "As Oy Testi");
+
+    // Isännöitsijä ei näe toisen vastuuisännöitsijän yhtiötä.
+    const managerRows = (await call(server, manager, "GET", "/tickets?companyId=all")).data as any[];
+    assert.ok(managerRows.length > 0);
+    assert.ok(managerRows.every(row => row.company_id !== otherCompany));
+  });
+
   it("kirjautumaton ei pääse rajapintaan", async () => {
     assert.equal((await call(server, null, "GET", "/companies")).status, 401);
   });

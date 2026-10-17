@@ -4,8 +4,6 @@ import type { HistoryEntry } from "../history";
 import { language, setLanguage, t } from "../i18n";
 import { logout, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import { setTheme, storedTheme } from "../theme";
-import type { Company } from "../types";
-import { Dropdown } from "./common";
 
 // Avautuva valikko, joka sulkeutuu ulkopuolelle klikatessa ja Escape-näppäimellä.
 function useDropdown() {
@@ -145,9 +143,6 @@ function ProfileMenu({ user, onOpenSettings }: { user: OfficeUser; onOpenSetting
 // Yläpalkki: logo, historia ja toimiston nimi vasemmalla; haku, taloyhtiövalinta ja profiili oikealla.
 export function Topbar({
   user,
-  companies,
-  companyId,
-  onCompanyChange,
   searchText,
   onSearchTextChange,
   onSearch,
@@ -157,9 +152,6 @@ export function Topbar({
   onOpenMenu
 }: {
   user: OfficeUser;
-  companies: Company[];
-  companyId: string;
-  onCompanyChange: (companyId: string) => void;
   searchText: string;
   onSearchTextChange: (text: string) => void;
   onSearch: () => void;
@@ -191,16 +183,6 @@ export function Topbar({
             aria-label={t("Hae alustalta")}
           />
         </form>
-        {/* Sama alasvetovalikko kuin sovelluksen muissa valinnoissa; yläpalkissa painike on tumma. */}
-        <Dropdown
-          className="topbar-company"
-          icon={<Icon><path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M10 21v-5h4v5" /></Icon>}
-          value={companyId}
-          placeholder={t("Valitse taloyhtiö")}
-          ariaLabel={t("Taloyhtiö")}
-          options={companies.map(company => ({ value: company.id, label: company.name }))}
-          onChange={onCompanyChange}
-        />
         <ProfileMenu user={user} onOpenSettings={onOpenSettings} />
       </div>
     </header>
