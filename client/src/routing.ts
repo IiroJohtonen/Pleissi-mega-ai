@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { TicketTab } from "./types";
 import { t } from "./i18n";
 
-const ticketTabs: TicketTab[] = ["queue", "unassigned", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "forms", "keys", "meters", "waitlist", "settings", "log", "search"];
+const ticketTabs: TicketTab[] = ["queue", "unassigned", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log", "search"];
 
 type Route = { tab: TicketTab; param: string | null };
 
@@ -52,7 +52,6 @@ export const tabTitles: Record<TicketTab, string> = {
   announcements: t("Tiedotteet"),
   moves: t("Muutot"),
   renovations: t("Remontit"),
-  forms: t("Lomakkeet"),
   keys: t("Avaimet"),
   meters: t("Lukemat"),
   waitlist: t("Jonot"),

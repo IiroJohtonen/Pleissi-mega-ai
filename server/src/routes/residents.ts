@@ -274,15 +274,18 @@ residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) 
       SELECT resource, starts_at, ends_at, status, created_at, closed_at FROM booking_queue WHERE resident_id = ? ORDER BY created_at
     `).all(resident.id),
     move_notices: db.prepare(`
-      SELECT move_date, moves_out, new_residents, door_name, note, status, created_at
+      SELECT move_date, moves_out, new_residents, door_name, note, details, status, created_at
       FROM move_notices WHERE resident_id = ? ORDER BY created_at
+    `).all(resident.id),
+    heating_orders: db.prepare(`
+      SELECT start_date, end_date, status, note, details, created_at FROM heating_orders WHERE resident_id = ? ORDER BY created_at
     `).all(resident.id),
     renovation_notices: db.prepare(`
       SELECT work_type, description, start_date, end_date, contractor, status, decision_note, created_at
       FROM renovation_notices WHERE resident_id = ? ORDER BY created_at
     `).all(resident.id),
     meter_readings: db.prepare(`
-      SELECT meter_type, reading_date, value, note, created_at FROM meter_readings WHERE resident_id = ? ORDER BY reading_date
+      SELECT meter_type, reading_date, value, note, details, created_at FROM meter_readings WHERE resident_id = ? ORDER BY reading_date
     `).all(resident.id),
     key_loans: db.prepare(`
       SELECT k.code, k.type, l.handed_at, l.due_date, l.returned_at
@@ -339,10 +342,11 @@ residentsRouter.delete("/residents/:residentId", requireManager, async (req, res
     db.prepare("DELETE FROM waitlist WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM booking_requests WHERE resident_id = ?").run(resident.id);
     db.prepare("DELETE FROM move_notices WHERE resident_id = ?").run(resident.id);
+    db.prepare("DELETE FROM heating_orders WHERE resident_id = ?").run(resident.id);
     // Remontti-ilmoitus on taloyhtiön asiakirja, joten se jää historiaan ilman asukkaan tietoja.
     db.prepare("UPDATE renovation_notices SET resident_id = NULL, reporter_name = '' WHERE resident_id = ?").run(resident.id);
     // Lukemat ovat asunnon tietoja ja avaimen luovutus jää rekisteriin; niistä poistetaan vain yhteys asukkaaseen.
-    db.prepare("UPDATE meter_readings SET resident_id = NULL, recorded_by = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);
+    db.prepare("UPDATE meter_readings SET resident_id = NULL, recorded_by = ?, note = '', details = '{}' WHERE resident_id = ?").run(ERASED_NAME, resident.id);
     db.prepare("UPDATE key_loans SET resident_id = NULL, holder_name = ?, note = '' WHERE resident_id = ?").run(ERASED_NAME, resident.id);
 
     // Autopaikka vapautuu tänään; mennyt haltijajakso jää laskutusta varten ilman nimeä.

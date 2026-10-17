@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { t } from "../i18n";
 
 const COLLAPSED_KEY = "kotilo.settingsCollapsed";
@@ -12,6 +12,15 @@ function collapsedSections(): string[] {
   }
 }
 
+const OPEN_EVENT = "kotilo:open-section";
+
+// Siirtyy osioon (esim. asetusten aliotsikosta): avaa tiivistetyn osion ja vierittää sen näkyviin.
+export function jumpToSection(id: string) {
+  window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: id }));
+  // Avattu osio piirtyy seuraavassa ruudussa; vieritetään vasta sitten.
+  requestAnimationFrame(() => document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
 // Tiivistettävä asetusosio: otsikon väkäsestä osio sulkeutuu ja avautuu. Valinta säilyy selaimessa.
 // Suljetun osion kentät säilyttävät arvonsa, koska ne ovat näkymän omassa tilassa.
 export function CollapseSection({ id, title, action, children }: {
@@ -22,6 +31,14 @@ export function CollapseSection({ id, title, action, children }: {
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(() => !collapsedSections().includes(id));
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === id) setOpen(true);
+    };
+    window.addEventListener(OPEN_EVENT, listener);
+    return () => window.removeEventListener(OPEN_EVENT, listener);
+  }, [id]);
 
   function toggle() {
     const next = !open;
@@ -35,7 +52,7 @@ export function CollapseSection({ id, title, action, children }: {
   }
 
   const heading = (
-    <h2 className="collapse-heading">
+    <h2 className="collapse-heading" id={`section-${id}`}>
       <button
         type="button"
         className="collapse-head"

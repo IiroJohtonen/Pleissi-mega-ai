@@ -85,6 +85,24 @@ describe("asukasportaalin lomakkeet", () => {
     })).status, 403);
   });
 
+  it("asukas tilaa lämmityspaikan, ja tilaus näkyy Autopaikat-sivulla", async () => {
+    assert.equal((await call(server, resident, "POST", "/portal/heating-orders", {
+      spot: "Lämmitystolppapaikan", orderType: "Määräaikainen", startDate: "2026-11-01"
+    })).status, 400);
+    const created = await call(server, resident, "POST", "/portal/heating-orders", {
+      spot: "Lämmitystolppapaikan", orderType: "Määräaikainen", startDate: "2026-11-01", endDate: "2027-03-31", phone: "040 123 4567"
+    });
+    assert.equal(created.status, 201);
+    const orders = (await call(server, manager, "GET", "/companies/demo-company/heating-orders")).data as any[];
+    const order = orders.find(row => row.id === created.data.orderId);
+    assert.equal(order.resident_name, "Liisa Mallikas");
+    assert.equal(order.source, "portal");
+    assert.equal(order.details.find((field: any) => field.key === "phone").value, "040 123 4567");
+    const own = (await call(server, resident, "GET", "/portal/heating-orders")).data as any[];
+    assert.equal(own[0].id, created.data.orderId);
+    assert.equal((await call(server, manager, "POST", "/portal/heating-orders", {})).status, 403);
+  });
+
   it("asukas voi jonottaa lämmityspaikkaa", async () => {
     const joined = await call(server, resident, "POST", "/portal/waitlist", { resource: "parking", parkingType: "Lämmityspaikka", note: "" });
     assert.equal(joined.status, 201);

@@ -78,27 +78,9 @@ describe("verkkosivun lomakkeet sähköpostina", () => {
     assert.equal(value(detail, "Onko uusi osoite tiedossa?"), "Kyllä");
     assert.equal(value(detail, "Vahvistus"), "Vahvistettu");
 
-    // Lomakkeet-taulussa tilinumero ja nimi eivät näy tiivistelmässä.
-    const listed = (await call(server, admin, "GET", `/companies/${otherCompanyId}/forms`)).data as any[];
-    const row = listed.find(item => item.ticketId === detail.ticket.id);
-    assert.equal(row.title, "Irtisanomisilmoitus");
-    assert.equal(row.reporter, "Pekka Rantanen");
-    assert.ok(row.summary.length > 0);
-    assert.ok(!row.summary.some((field: any) => /Pankkitili|nimi/i.test(field.label)));
   });
 
-  it("muut lomakkeet tunnistetaan otsikosta, ja tavallinen viesti jää tavalliseksi", async () => {
-    const meter = await receive("Mittarilukemailmoitus", "Etu- ja Sukunimi: Liisa Mallikas\nOsoite: Koivikkotie 10\nHuoneistonumero: A 12\nKylmä vesi: 123,4\nLämmin vesi: 56,7");
-    assert.equal(meter.ticket.type, "Mittarilukemailmoitus");
-    // Lomakkeen asunto ratkaisee, vaikka ilmoittaja asuu toisessa asunnossa.
-    assert.equal(meter.ticket.apartment_number, "A 12");
-    assert.equal(meter.ticket.resident_id, "resident-2");
-    assert.equal(value(meter, "Kylmä vesi"), "123,4");
-
-    const heating = await receive("Lomake: Auton lämmityspaikka", "Osoite: Koivikkotie 10\nTilaan: Lämmitystolppapaikan\nTilaustyyppi: Määräaikainen\nEtu- ja Sukunimi: Ville Vieras");
-    assert.equal(heating.ticket.type, "Auton lämmityspaikka");
-    assert.equal(heating.ticket.resident_id, null);
-
+  it("häiriöilmoitus on tehtävä, ja tavallinen viesti jää tavalliseksi", async () => {
     const disturbance = await receive("Häiriöilmoitus", "Osoite: Koivikkotie 10\nIlmoittajan nimi: Liisa Mallikas\nPvm.: 2026-10-15\nAjankohta: klo 23-01\nHäiriön laatu: kovaääninen juhliminen\nAsunnon numero: as A12");
     assert.equal(disturbance.ticket.type, "Häiriöilmoitus");
     assert.equal(value(disturbance, "Häiriön laatu"), "kovaääninen juhliminen");
@@ -107,8 +89,135 @@ describe("verkkosivun lomakkeet sähköpostina", () => {
     const plain = await receive("Muuttoilmoitus", "Hei, muutan pois joulukuun alussa. Mitä minun pitää tehdä?");
     assert.equal(plain.form, null);
     assert.notEqual(plain.ticket.type, "Muuttoilmoitus");
+  });
 
-    const forms = (await call(server, admin, "GET", "/companies/demo-company/forms")).data as any[];
-    assert.deepEqual([...new Set(forms.map(item => item.form))].sort(), ["disturbance", "heating", "meter", "service"]);
+  // Mittarilukema, muuttoilmoitus ja lämmityspaikka eivät ole tehtäviä vaan taloyhtiön tietueita.
+  async function receiveRecord(subject: string, body: string) {
+    sequence += 1;
+    const messageId = `<tietue-${sequence}@example.com>`;
+    const created = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", channel: "email", senderName: "Hemman verkkosivu", senderEmail: "wordpress@hemman.example",
+      subject, body, sourceMessageId: messageId
+    });
+    assert.equal(created.status, 201);
+    assert.equal(created.data.ticketId, undefined);
+    return { ...created.data, messageId };
+  }
+
+  const detail = (row: any, key: string) => row.details.find((field: any) => field.key === key)?.value;
+
+  it("mittarilukemailmoitus menee Lukemat-tauluun ja on muokattavissa", async () => {
+    const created = await receiveRecord("Mittarilukemailmoitus",
+      "Etu- ja Sukunimi: Liisa Mallikas\nPuhelinnumero: 040 123 4567\nOsoite: Koivikkotie 10\nHuoneistonumero: A 12\nKylmä vesi: 123,4\nLämmin vesi: 56,7");
+    assert.equal(created.record, "meter-readings");
+    assert.equal(created.recordIds.length, 2);
+    const readings = (await call(server, admin, "GET", "/companies/demo-company/meter-readings")).data as any[];
+    const cold = readings.find(row => row.id === created.recordIds[0]);
+    assert.equal(cold.meter_type, "cold_water");
+    assert.equal(cold.value, 123.4);
+    assert.equal(cold.source, "email");
+    // Lomakkeen asunto ratkaisee, vaikka ilmoittaja asuu toisessa asunnossa.
+    assert.equal(cold.apartment_number, "A 12");
+    assert.equal(cold.resident_id, "resident-2");
+    assert.equal(detail(cold, "phone"), "040 123 4567");
+
+    // Sama viesti ei tule kahdesti.
+    const again = await call(server, admin, "POST", "/inbound/messages", {
+      companyId: "demo-company", channel: "email", senderName: "x", subject: "Mittarilukemailmoitus", body: "Kylmä vesi: 1", sourceMessageId: created.messageId
+    });
+    assert.equal(again.data.duplicate, true);
+
+    const edited = await call(server, admin, "PUT", `/meter-readings/${cold.id}`, {
+      apartmentId: "apt-34", meterType: "cold_water", value: 124, readingDate: cold.reading_date, note: "Korjattu",
+      details: { name: "Liisa Mallikas", phone: "040 765 4321", address: "Koivikkotie 10", apartment: "B 34" }
+    });
+    assert.equal(edited.status, 200);
+    const after = ((await call(server, admin, "GET", "/companies/demo-company/meter-readings")).data as any[]).find(row => row.id === cold.id);
+    assert.equal(after.value, 124);
+    assert.equal(after.apartment_number, "B 34");
+    assert.equal(detail(after, "phone"), "040 765 4321");
+    // Lukeman muokkaus ei hyväksy tulevaisuuden päivää.
+    assert.equal((await call(server, admin, "PUT", `/meter-readings/${cold.id}`, {
+      apartmentId: "apt-34", meterType: "cold_water", value: 124, readingDate: "2999-01-01"
+    })).status, 400);
+  });
+
+  it("muuttoilmoitus menee Muutot-tauluun lomakkeen kentillä", async () => {
+    const created = await receiveRecord("Muuttoilmoitus", [
+      "Muutto: Sisäänmuuttoilmoitus",
+      "Etu- ja Sukunimi: Ville Vieras",
+      "Puhelinnumero: 040 111 2222",
+      "Sähköposti: ville@example.com",
+      "Syntymäaika: 1.2.1990",
+      "Nykyisen asunnon katuosoite: Vanhatie 3",
+      "Nykyisen asunnon numero: 5",
+      "Nykyinen postinumero: 33100",
+      "Nykyinen kaupunki: Tampere",
+      "Etu- ja Sukunimi: Vilma Vieras",
+      "Syntymäaika: 3.4.1992",
+      "Muuttopäivä: 2026-11-01",
+      "Uuden asunnon katuosoite: Koivikkotie 10",
+      "Asunnon numero: B 34",
+      "Paikkakunta: Tampere",
+      "Olen: Vuokralainen",
+      "Maksun suoritus: 2",
+      "Maksu suoritetaan: Taloyhtiölle erillisellä laskulla"
+    ].join("\n"));
+    assert.equal(created.record, "moves");
+    const moves = (await call(server, admin, "GET", "/companies/demo-company/moves")).data as any[];
+    const move = moves.find(row => row.id === created.recordIds[0]);
+    assert.equal(move.move_date, "2026-11-01");
+    assert.equal(move.apartment_number, "B 34");
+    assert.equal(move.moves_out, 0);
+    assert.equal(move.source, "email");
+    assert.deepEqual(JSON.parse(move.new_residents).map((person: any) => person.name), ["Ville Vieras", "Vilma Vieras"]);
+    assert.equal(detail(move, "with1Name"), "Vilma Vieras");
+    assert.equal(detail(move, "with1Birth"), "3.4.1992");
+    assert.equal(detail(move, "waterPayment"), "Taloyhtiölle erillisellä laskulla");
+
+    // Tunnistamaton osoite: ilmoitus tulee ilman asuntoa, ja asunto pitää valita ennen hyväksyntää.
+    const unknown = await receiveRecord("Muuttoilmoitus", "Muutto: Poismuuttoilmoitus\nEtu- ja Sukunimi: Outi Outo\nNykyisen asunnon katuosoite: Tuntematon tie 9\nMuuttopäivä: 2026-12-01");
+    assert.equal((await call(server, admin, "POST", `/moves/${unknown.recordIds[0]}/approve`)).status, 400);
+    const edited = await call(server, admin, "PUT", `/moves/${unknown.recordIds[0]}`, {
+      moveDate: "2026-12-01", movesOut: true, apartmentId: "apt-12", newResidents: [], doorName: "", note: "",
+      details: { kind: "Poismuuttoilmoitus", name: "Outi Outo", currentAddress: "Koivikkotie 10", currentApartment: "A 12" }
+    });
+    assert.equal(edited.status, 200);
+    const fixed = ((await call(server, admin, "GET", "/companies/demo-company/moves")).data as any[]).find(row => row.id === unknown.recordIds[0]);
+    assert.equal(fixed.apartment_number, "A 12");
+    assert.equal(detail(fixed, "currentAddress"), "Koivikkotie 10");
+  });
+
+  it("auton lämmityspaikka menee Autopaikat-sivun tilauksiin", async () => {
+    const created = await receiveRecord("Lomake: Auton lämmityspaikka", [
+      "Osoite: Koivikkotie 10", "Tilaan: Lämmitystolppapaikan", "Tilaustyyppi: Määräaikainen",
+      "Tarve lämmityspaikalle alkaen: 2026-11-01", "Mikäli määräaikainen, loppumispäivä: 2027-03-31",
+      "Etu- ja Sukunimi: Ville Vieras", "Puhelinnumero: 040 111 2222", "Osoite: Vanhatie 3", "Kaupunki: Tampere", "Postinumero: 33100"
+    ].join("\n"));
+    assert.equal(created.record, "heating-orders");
+    const orders = (await call(server, admin, "GET", "/companies/demo-company/heating-orders")).data as any[];
+    const order = orders.find(row => row.id === created.recordIds[0]);
+    assert.equal(order.start_date, "2026-11-01");
+    assert.equal(order.end_date, "2027-03-31");
+    assert.equal(order.status, "pending");
+    assert.equal(detail(order, "address"), "Koivikkotie 10");
+    assert.equal(detail(order, "ordererAddress"), "Vanhatie 3");
+
+    const edited = await call(server, admin, "PUT", `/heating-orders/${order.id}`, {
+      apartmentId: "apt-12", startDate: "2026-11-01", endDate: null, status: "approved", note: "Paikka 4",
+      details: { address: "Koivikkotie 10", spot: "Lämmitystolppapaikan", orderType: "Toistaiseksi voimassa oleva", name: "Ville Vieras" }
+    });
+    assert.equal(edited.status, 200);
+    const approved = ((await call(server, admin, "GET", "/companies/demo-company/heating-orders")).data as any[]).find(row => row.id === order.id);
+    assert.equal(approved.status, "approved");
+    assert.equal(approved.end_date, null);
+    assert.equal(detail(approved, "orderType"), "Toistaiseksi voimassa oleva");
+    assert.equal(detail(approved, "phone"), "");
+  });
+
+  it("lukema ilman lukemia käsitellään tehtävänä", async () => {
+    const fallback = await receive("Mittarilukemailmoitus", "Etu- ja Sukunimi: Liisa Mallikas\nOsoite: Koivikkotie 10\nHuoneistonumero: B 34\nKylmä vesi: en löydä mittaria");
+    assert.notEqual(fallback.ticket.type, "Mittarilukemailmoitus");
+    assert.ok(fallback.form);
   });
 });

@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
+import { type DetailField, DetailEditor, DetailFacts, detailValue, detailValues, sourceLabel } from "../components/FormDetails";
 import { ReporterCell, ReporterField } from "../components/Reporter";
 import { formatDay } from "../format";
 import { api, errorMessage } from "../session";
@@ -10,11 +11,13 @@ import { locale, t } from "../i18n";
 export type MeterReading = {
   id: string;
   company_id: string;
-  apartment_id: string;
+  apartment_id: string | null;
   meter_type: "cold_water" | "hot_water" | "electricity";
   reading_date: string;
   value: number;
-  source: "portal" | "office";
+  source: "portal" | "office" | "email";
+  // Verkkosivun lomakkeen ilmoittajan tiedot (nimi, puhelin, sähköposti, osoite, huoneisto).
+  details?: DetailField[];
   recorded_by: string;
   note: string;
   created_at: string;
@@ -68,6 +71,10 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Avatun lukeman muokkaus.
+  const [editing, setEditing] = useState<{
+    apartmentId: string; meterType: string; valueText: string; readingDate: string; note: string; details: Record<string, string>;
+  } | null>(null);
 
   const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
 
@@ -88,10 +95,48 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
     void loadReadings();
   }, [companies.length]);
 
+  const open = readings.find(reading => reading.id === openId) ?? null;
+  // Asunnot uudelle lukemalle tai muokattavan lukeman taloyhtiöstä.
+  const apartmentCompany = creating ? formCompany : editing && open ? open.company_id : "";
   useEffect(() => {
-    if (!creating || !formCompany) return;
-    api<Apartment[]>(`/companies/${encodeURIComponent(formCompany)}/apartments`).then(setApartments).catch(() => setApartments([]));
-  }, [creating, formCompany]);
+    if (!apartmentCompany) return;
+    api<Apartment[]>(`/companies/${encodeURIComponent(apartmentCompany)}/apartments`).then(setApartments).catch(() => setApartments([]));
+  }, [apartmentCompany]);
+
+  function startEdit(reading: MeterReading) {
+    setError("");
+    setEditing({
+      apartmentId: reading.apartment_id ?? "", meterType: reading.meter_type, valueText: String(reading.value).replace(".", ","),
+      readingDate: reading.reading_date, note: reading.note, details: detailValues(reading.details)
+    });
+  }
+
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!open || !editing) return;
+    const value = parseReading(editing.valueText);
+    if (value === null) {
+      setError(t("Anna lukema numerona."));
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await api(`/meter-readings/${encodeURIComponent(open.id)}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          apartmentId: editing.apartmentId || null, meterType: editing.meterType, value, readingDate: editing.readingDate,
+          note: editing.note.trim(), details: editing.details
+        })
+      });
+      setEditing(null);
+      await loadReadings();
+    } catch (saveError) {
+      setError(errorMessage(saveError, t("Lukeman tallennus epäonnistui.")));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function openCreate() {
     setCreating(true);
@@ -146,7 +191,6 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
   const visible = readings.filter(reading => (companyFilter === "all" || reading.company_id === companyFilter)
     && (typeFilter === "all" || reading.meter_type === typeFilter));
   const paged = usePaged(visible, `${companyFilter}|${typeFilter}`);
-  const open = readings.find(reading => reading.id === openId) ?? null;
   const consumption = (reading: MeterReading) => reading.previous_value == null
     ? "–"
     : formatReading(Math.round((reading.value - reading.previous_value) * 1000) / 1000, reading.meter_type);
@@ -230,25 +274,32 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
                     title={t("Avaa lukema")}
                     role="button"
                     tabIndex={0}
-                    onClick={() => { setOpenId(reading.id); setCreating(false); setError(""); }}
+                    onClick={() => { setOpenId(reading.id); setCreating(false); setEditing(null); setError(""); }}
                     onKeyDown={event => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         setOpenId(reading.id);
                         setCreating(false);
+                        setEditing(null);
                         setError("");
                       }
                     }}
                   >
-                    <td><strong>{reading.apartment_number || "–"}</strong></td>
+                    <td>
+                      <strong>{reading.apartment_number || "–"}</strong>
+                      {!reading.apartment_id && <span className="late-note">{t("Valitse asunto")}</span>}
+                    </td>
                     <td>{companyName(reading.company_id)}</td>
                     <td><span className="type">{meterLabel(reading.meter_type)}</span></td>
                     <td>{formatDay(reading.reading_date)}</td>
                     <td>{formatReading(reading.value, reading.meter_type)}</td>
                     <td>{consumption(reading)}</td>
                     <td>
-                      <ReporterCell name={reading.resident_name || reading.recorded_by} email={reading.resident_email} />
-                      <span>{reading.source === "portal" ? t("asukasportaali") : t("toimisto")}</span>
+                      <ReporterCell
+                        name={reading.resident_name || detailValue(reading.details, "name") || reading.recorded_by}
+                        email={reading.resident_email || detailValue(reading.details, "email")}
+                      />
+                      <span>{sourceLabel(reading.source)}</span>
                     </td>
                   </tr>
                 ))}
@@ -261,8 +312,8 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
       {open && (
         <div className="overlay">
           <aside className="drawer form-drawer">
-            <button type="button" className="drawer-back" onClick={() => setOpenId(null)} disabled={saving}>{t("← Takaisin")}</button>
-            <button className="close" onClick={() => setOpenId(null)} disabled={saving}>×</button>
+            <button type="button" className="drawer-back" onClick={() => { setOpenId(null); setEditing(null); }} disabled={saving}>{t("← Takaisin")}</button>
+            <button className="close" onClick={() => { setOpenId(null); setEditing(null); }} disabled={saving}>×</button>
             <h2>{meterLabel(open.meter_type)} · {open.apartment_number || "–"}</h2>
             <p className="muted">{companyName(open.company_id)}{open.address ? ` · ${open.address}` : ""}</p>
             <ReporterField
@@ -296,17 +347,64 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
               </div>
               <div>
                 <dt>{t("Kirjaaja")}</dt>
-                <dd>{open.recorded_by} · {open.source === "portal" ? t("asukasportaali") : t("toimisto")}</dd>
+                <dd>{open.recorded_by} · {sourceLabel(open.source)}</dd>
               </div>
               <div>
                 <dt>{t("Lisätieto")}</dt>
                 <dd>{open.note || "–"}</dd>
               </div>
             </dl>
-            {error && <p className="send-error">{error}</p>}
-            <div className="draft-actions">
-              <button className="danger" onClick={() => void handleDelete(open)} disabled={saving}>{t("Poista lukema")}</button>
-            </div>
+            <DetailFacts title={t("Ilmoittajan tiedot lomakkeelta")} fields={open.details} />
+            {editing && (
+              <form className="ticket-form record-edit" onSubmit={saveEdit}>
+                <h3>{t("Muokkaa lukemaa")}</h3>
+                <Dropdown
+                  label={t("Asunto")}
+                  value={editing.apartmentId}
+                  options={[
+                    { value: "", label: t("Ei valittu") },
+                    ...apartments.map(apartment => ({ value: apartment.id, label: `${apartment.apartment_number} · ${apartment.address}` }))
+                  ]}
+                  onChange={apartmentId => setEditing({ ...editing, apartmentId })}
+                />
+                <Dropdown
+                  label={t("Mittari")}
+                  value={editing.meterType}
+                  options={METER_TYPES.map(option => ({ value: option, label: meterLabel(option) }))}
+                  onChange={meterType => setEditing({ ...editing, meterType })}
+                />
+                <label>
+                  <span>{t("Lukema (")}{meterUnit(editing.meterType)})</span>
+                  <input value={editing.valueText} onChange={event => setEditing({ ...editing, valueText: event.target.value })} inputMode="decimal" />
+                </label>
+                <label>
+                  <span>{t("Lukupäivä")}</span>
+                  <input type="date" value={editing.readingDate} max={todayText()} onChange={event => setEditing({ ...editing, readingDate: event.target.value })} required />
+                </label>
+                <label>
+                  <span>{t("Lisätieto")}</span>
+                  <input value={editing.note} onChange={event => setEditing({ ...editing, note: event.target.value })} maxLength={300} />
+                </label>
+                <DetailEditor
+                  title={t("Ilmoittajan tiedot lomakkeelta")}
+                  fields={open.details ?? []}
+                  values={editing.details}
+                  onChange={details => setEditing({ ...editing, details })}
+                />
+                {error && <p className="send-error">{error}</p>}
+                <div className="drawer-actions compact-actions">
+                  <button type="button" onClick={() => setEditing(null)} disabled={saving}>{t("Peruuta")}</button>
+                  <button className="primary" type="submit" disabled={saving}>{saving ? t("Tallennetaan…") : t("Tallenna")}</button>
+                </div>
+              </form>
+            )}
+            {!editing && error && <p className="send-error">{error}</p>}
+            {!editing && (
+              <div className="draft-actions">
+                <button className="secondary" onClick={() => startEdit(open)} disabled={saving}>{t("Muokkaa")}</button>
+                <button className="danger" onClick={() => void handleDelete(open)} disabled={saving}>{t("Poista lukema")}</button>
+              </div>
+            )}
           </aside>
         </div>
       )}

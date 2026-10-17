@@ -16,7 +16,8 @@ const RECORDS = {
   moves: { table: "move_notices", label: "muuttoilmoitus", apartment: true },
   renovations: { table: "renovation_notices", label: "remontti-ilmoitus", apartment: true },
   waitlist: { table: "waitlist", label: "jonopaikka", apartment: false },
-  "meter-readings": { table: "meter_readings", label: "lukema", apartment: false }
+  "meter-readings": { table: "meter_readings", label: "lukema", apartment: false },
+  "heating-orders": { table: "heating_orders", label: "lämmityspaikkatilaus", apartment: true }
 } as const;
 
 reportersRouter.put("/:kind/:id/reporter", (req, res, next) => {

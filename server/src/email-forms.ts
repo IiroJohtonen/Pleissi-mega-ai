@@ -60,6 +60,8 @@ const EMAIL_LABELS = ["Sähköposti"];
 const ADDRESS_LABELS = ["Osoite", "Irtisanottavan asunnon katuosoite", "Nykyisen asunnon katuosoite"];
 const APARTMENT_LABELS = ["Huoneistonumero", "Nykyisen asunnon numero"];
 
+export { KNOWN_LABELS };
+
 export function detectEmailForm(subject: string): FormKey | null {
   return SUBJECT_PATTERNS.find(([, pattern]) => pattern.test(subject))?.[0] ?? null;
 }
@@ -120,7 +122,7 @@ export function parseFormFields(form: FormKey, body: string): FormField[] {
   return fields.filter(field => field.value.trim() !== "");
 }
 
-const first = (fields: FormField[], labels: string[]) => fields.find(field => labels.includes(field.label))?.value ?? "";
+export const first = (fields: FormField[], labels: string[]) => fields.find(field => labels.includes(field.label))?.value ?? "";
 
 // Ilmoittajan nimi ja sähköposti lomakkeen kentistä; lähettäjä on usein verkkosivun oma osoite.
 export function formContact(fields: FormField[]) {
@@ -132,30 +134,30 @@ const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9åäö
 // Taloyhtiö ja asunto lomakkeen osoitteesta: katuosoite verrataan asuntojen osoitteisiin ja
 // huoneistonumero asunnon numeroon. Palauttaa null, jos osoitetta ei tunnisteta.
 export function apartmentForForm(fields: FormField[], companyIds: string[]) {
-  const address = first(fields, ADDRESS_LABELS);
-  if (!address || companyIds.length === 0) return null;
-  const apartmentNumber = normalize(first(fields, APARTMENT_LABELS));
+  return findApartment(first(fields, ADDRESS_LABELS), first(fields, APARTMENT_LABELS), companyIds);
+}
+
+// Asunto katuosoitteen ja huoneistonumeron perusteella. Osoitteessa voi olla myös huoneisto
+// ("Koivikkotie 10 B 34"). Palauttaa taloyhtiön, vaikka huoneistoa ei tunnistettaisi.
+export function findApartment(address: string, apartment: string, companyIds: string[]) {
+  if (!address.trim() || companyIds.length === 0) return null;
+  const apartmentNumber = normalize(apartment);
   const street = normalize(address.split(",")[0]);
   const rows = db.prepare(`
     SELECT id, company_id, apartment_number, address FROM apartments
     WHERE company_id IN (${companyIds.map(() => "?").join(", ")})
   `).all(...companyIds) as { id: string; company_id: string; apartment_number: string; address: string }[];
+  // Sama katu ja numero: "koivikkotie10" ei saa vastata osoitetta "koivikkotie1".
   const sameStreet = rows.filter(row => {
     const candidate = normalize(row.address);
-    return candidate && (street.startsWith(candidate) || candidate.startsWith(street));
+    return candidate && street.startsWith(candidate) && !/\d/.test(street.charAt(candidate.length));
   });
   if (sameStreet.length === 0) return null;
-  const exact = apartmentNumber
-    ? sameStreet.find(row => normalize(row.apartment_number) === apartmentNumber
-      || street.endsWith(normalize(row.apartment_number)))
-    : undefined;
+  const exact = sameStreet.find(row => {
+    const number = normalize(row.apartment_number);
+    return (apartmentNumber && (number === apartmentNumber || apartmentNumber.endsWith(number))) || street.endsWith(number);
+  });
   return { companyId: (exact ?? sameStreet[0]).company_id, apartmentId: exact?.id ?? null };
-}
-
-// Rivit, jotka listassa tiivistävät lomakkeen: yhteystiedot ja henkilötunnukset jätetään pois.
-const HIDDEN_IN_SUMMARY = /nimi|puhelin|sähköposti|henkilötunnus|syntymäaika|pankkitili|vahvistus/i;
-export function formSummary(fields: FormField[]) {
-  return fields.filter(field => !HIDDEN_IN_SUMMARY.test(field.label)).slice(0, 4);
 }
 
 // Tehtävän otsikko: lomakkeen nimi ja kohde, esim. "Huoltotyötilaus: Koivikkotie 10, B 34".
