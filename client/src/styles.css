@@ -4654,7 +4654,8 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 }
 
 /* Dokumentaation tietue: tiivis otsikko ja tietorivi, AI:n poiminnat ja luettu teksti vierekkäin */
-.drawer.knowledge-drawer.wide { width: min(1320px, 96vw); }
+/* Kortti täyttää sivun kuten muutkin kortit; leveämpi palsta mahduttaa poiminnat ja tekstin vierekkäin. */
+.overlay > .drawer.knowledge-drawer.wide:not(.skip-drawer) { --card-column: 1240px; }
 .knowledge-head { display: grid; gap: 4px; margin-top: 4px; }
 .knowledge-head .type { justify-self: start; }
 .knowledge-head h2 { margin: 0; font-size: 22px; line-height: 1.25; }
