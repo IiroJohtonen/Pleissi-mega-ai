@@ -1,8 +1,19 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { usePaged } from "../components/common";
+import { formatDateOnly } from "../format";
 import { api, errorMessage, isAdmin, isManager } from "../session";
 import type { Company, Resident } from "../types";
 import { t } from "../i18n";
+
+type OpenTicket = { id: string; ticket_number: number | null; subject: string; type: string; status: string; created_at: string };
+
+const ERASURE_OTHER = "Muu peruste";
+// Säilytyksen perusteet: asia on kesken, tai tietoja tarvitaan oikeusvaateeseen (GDPR 17 art. 3 kohta).
+const ERASURE_REASONS = [
+  "Kesken oleva vahinko- tai korjausasia",
+  "Mahdollinen korvaus- tai vakuutusasia",
+  ERASURE_OTHER
+];
 
 export function Residents({
   companyId,
@@ -201,17 +212,43 @@ export function Residents({
     }
   }
 
+  // Poistopyyntö: ensin haetaan asukkaan avoimet tehtävät. Kesken olevan asian (esim. vesivahingon)
+  // tehtävät voi säilyttää perusteineen; ne anonymisoidaan, kun tehtävä suljetaan.
+  const [erasure, setErasure] = useState<{ openTickets: OpenTicket[]; keep: Set<string>; reason: string; other: string } | null>(null);
+  useEffect(() => setErasure(null), [editing?.id]);
+
+  async function startErasure(resident: Resident) {
+    setFormError("");
+    try {
+      const preview = await api<{ openTickets: OpenTicket[] }>(`/residents/${encodeURIComponent(resident.id)}/erasure-preview`);
+      if (preview.openTickets.length === 0) {
+        await eraseResident(resident, [], "");
+        return;
+      }
+      setErasure({ openTickets: preview.openTickets, keep: new Set(), reason: ERASURE_REASONS[0], other: "" });
+    } catch (error) {
+      setFormError(errorMessage(error, t("Asukkaan tehtävien haku epäonnistui.")));
+    }
+  }
+
   // Poistaa asukkaan henkilötiedot pysyvästi; tehtävät jäävät historiaan ilman nimeä ja viestejä.
-  async function eraseResident(resident: Resident) {
+  async function eraseResident(resident: Resident, keepTicketIds: string[], keepReason: string) {
     if (!window.confirm(
       t("Poistetaanko asukkaan {0} henkilötiedot pysyvästi?\n\n", resident.name)
       + t("Nimi, sähköposti, kirjautumistunnus, viestit, liitteet, tulevat vuorot, jonotukset ja muuttoilmoitukset poistetaan. ")
+      + (keepTicketIds.length
+        ? t("Säilytettävät tehtävät ({0}) anonymisoidaan, kun ne suljetaan. ", String(keepTicketIds.length))
+        : "")
       + t("Tehtävät jäävät historiaan ilman nimeä. Poistoa ei voi perua.")
     )) return;
     setSubmitting(true);
     setFormError("");
     try {
-      await api(`/residents/${encodeURIComponent(resident.id)}`, { method: "DELETE" });
+      await api(`/residents/${encodeURIComponent(resident.id)}`, {
+        method: "DELETE",
+        body: JSON.stringify({ keepTicketIds, keepReason })
+      });
+      setErasure(null);
       setAdding(false);
       await loadResidents();
       await onChanged();
@@ -465,10 +502,64 @@ export function Residents({
                   </p>
                   <div className="drawer-actions compact-actions">
                     <button type="button" disabled={submitting} onClick={() => exportResident(editing)}>{t("Vie tiedot")}</button>
-                    <button type="button" className="danger" disabled={submitting} onClick={() => eraseResident(editing)}>
+                    <button type="button" className="danger" disabled={submitting || Boolean(erasure)} onClick={() => void startErasure(editing)}>
                       {t("Poista henkilötiedot")}
                     </button>
                   </div>
+                  {erasure && (
+                    <div className="erasure-panel">
+                      <h4>{t("Asukkaalla on avoimia tehtäviä")}</h4>
+                      <p className="reply-hint">
+                        {t("Jos asia on kesken ja tietoja tarvitaan sen hoitamiseen (esim. vesivahinko tai korvausasia), tehtävän voi säilyttää. Säilytetty tehtävä anonymisoidaan automaattisesti, kun se suljetaan. Muut tiedot poistetaan heti.")}
+                      </p>
+                      {erasure.openTickets.map(ticket => (
+                        <label key={ticket.id} className="erasure-ticket">
+                          <input
+                            type="checkbox"
+                            checked={erasure.keep.has(ticket.id)}
+                            onChange={event => {
+                              const keep = new Set(erasure.keep);
+                              if (event.target.checked) keep.add(ticket.id); else keep.delete(ticket.id);
+                              setErasure({ ...erasure, keep });
+                            }}
+                          />
+                          <span>
+                            {ticket.ticket_number ? `#${ticket.ticket_number} ` : ""}{ticket.subject}
+                            <small>{" · "}{t(ticket.type)}{" · "}{formatDateOnly(ticket.created_at)}</small>
+                          </span>
+                        </label>
+                      ))}
+                      {erasure.keep.size > 0 && (
+                        <label>
+                          <span>{t("Säilytyksen peruste")}</span>
+                          <select value={erasure.reason} onChange={event => setErasure({ ...erasure, reason: event.target.value })}>
+                            {ERASURE_REASONS.map(reason => <option key={reason} value={reason}>{t(reason)}</option>)}
+                          </select>
+                        </label>
+                      )}
+                      {erasure.keep.size > 0 && erasure.reason === ERASURE_OTHER && (
+                        <label>
+                          <span>{t("Kirjoita peruste")}</span>
+                          <input value={erasure.other} onChange={event => setErasure({ ...erasure, other: event.target.value })} />
+                        </label>
+                      )}
+                      <div className="drawer-actions compact-actions">
+                        <button
+                          type="button"
+                          className="danger"
+                          disabled={submitting || (erasure.keep.size > 0 && erasure.reason === ERASURE_OTHER && !erasure.other.trim())}
+                          onClick={() => void eraseResident(
+                            editing,
+                            [...erasure.keep],
+                            erasure.keep.size ? (erasure.reason === ERASURE_OTHER ? erasure.other.trim() : erasure.reason) : ""
+                          )}
+                        >
+                          {t("Poista henkilötiedot pysyvästi")}
+                        </button>
+                        <button type="button" className="secondary" onClick={() => setErasure(null)}>{t("Peru")}</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </form>

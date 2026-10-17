@@ -121,7 +121,10 @@ boardRouter.get("/board/overview", (_req, res) => {
 
   // Roskapostiksi suodatetut viestit eivät ole taloyhtiön asioita, joten ne jätetään pois.
   const tickets = db.prepare(`
-    SELECT ticket_number AS number, subject, type, status, priority, created_at, closed_at, due_date
+    SELECT ticket_number AS number,
+           -- Arkaluonteisen tehtävän otsikko ei näy hallitukselle.
+           CASE WHEN sensitive = 1 THEN 'Arkaluonteinen tehtävä' ELSE subject END AS subject,
+           type, status, priority, created_at, closed_at, due_date
     FROM tickets
     WHERE company_id = ? AND ai_action != 'filtered' AND (status != 'closed' OR created_at >= ?)
     ORDER BY status = 'closed', created_at DESC

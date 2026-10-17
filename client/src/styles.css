@@ -4468,6 +4468,25 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .version-banner { margin-top: 16px; }
 .knowledge-expiring .back-link { font-size: 13px; }
 
+/* Perustiedot */
+.master-data h3 { font-size: 14px; margin: 24px 0 8px; }
+.master-data h3:first-of-type { margin-top: 12px; }
+.master-data textarea { font-family: inherit; }
+.master-data .back-link { font-size: 12px; margin-top: 4px; }
+
+/* Arkaluonteinen tehtävä */
+.sensitive-note { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -6px 0 12px; font-size: 12px; }
+.sensitive-note.active { background: #f3eefb; color: #4f2f86; border-radius: 8px; padding: 8px 12px; margin-top: 0; }
+.sensitive-note .back-link { font-size: 12px; }
+
+/* Asukkaan poisto: säilytettävät avoimet tehtävät */
+.erasure-panel { margin-top: 14px; border: 1px solid #f0d4cc; background: #fdf6f4; border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
+.erasure-panel h4 { margin: 0; font-size: 13px; }
+.erasure-panel .reply-hint { margin: 0; }
+.erasure-ticket { display: flex !important; align-items: flex-start; gap: 8px; font-size: 13px; }
+.erasure-ticket input { width: auto !important; margin-top: 3px; }
+.erasure-ticket small { color: #717880; }
+.erasure-note { background: #fdf6f4; color: #8a3a25; border-radius: 8px; padding: 9px 12px; font-size: 13px; margin: 0 0 12px; }
 /* Ilmoittaja tietueilla: nimi, asunto ja yhteystiedot kortissa, siirtymä asukkaan tietueelle */
 .reporter-card {
   display: grid;

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
 import { selectKnowledgeChunks } from "../knowledge-chunks.js";
+import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
 import { attachmentsDir, db } from "../db.js";
 import { type OutgoingAttachment, parseSender, replyAccountsFor, sendEmail } from "../mail.js";
 import { notifyTicketStatus } from "../notify.js";
@@ -113,7 +114,9 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
 
   // AI saa vain tehtävään osuvat palat: haku otsikon, viimeisimpien viestien ja lisätiedon perusteella.
   const chunks = selectKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? ""].join("\n"));
-  const suggestion = await suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "");
+  // Arkaluonteinen tehtävä ei mene AI:lle: ehdotus tehdään dokumentaatiohaulla.
+  const sensitive = detectSensitivity(ticket.id, `${ticket.subject}\n${conversation}`);
+  const suggestion = await suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", { allowAi: !sensitive });
   const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
   const timestamp = now();
 
@@ -132,7 +135,7 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     req.params.id,
     "ai",
     "ai_suggested",
-    JSON.stringify({ source_id: source?.knowledgeId ?? null, chunk_id: source?.id ?? null, used_ai: suggestion.usedAi }),
+    JSON.stringify({ source_id: source?.knowledgeId ?? null, chunk_id: source?.id ?? null, used_ai: suggestion.usedAi, sensitive }),
     timestamp
   );
 
@@ -140,8 +143,21 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     draft: suggestion.draft,
     reason: suggestion.reason,
     source: source ? { id: source.knowledgeId, title: source.documentTitle, chunkId: source.id, page: source.page } : null,
-    usedAi: suggestion.usedAi
+    usedAi: suggestion.usedAi,
+    sensitive
   });
+});
+
+// Käsittelijä merkitsee tehtävän arkaluonteiseksi tai poistaa merkinnän.
+ticketActionsRouter.put("/tickets/:id/sensitive", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as any;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ sensitive: z.boolean() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse, onko tehtävä arkaluonteinen." });
+  if (Boolean(ticket.sensitive) !== parsed.data.sensitive) {
+    setSensitivity(ticket.id, parsed.data.sensitive, res.locals.user?.name ?? "Käsittelijä");
+  }
+  res.json({ ok: true, sensitive: parsed.data.sensitive });
 });
 
 ticketActionsRouter.post("/tickets/:id/draft", (req, res) => {

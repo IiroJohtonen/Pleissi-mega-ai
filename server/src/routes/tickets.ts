@@ -2,13 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
-import { companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket } from "../access.js";
+import {
+  companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket, isRestrictedTicket, redactRestrictedTicket
+} from "../access.js";
 import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { replyAccountsFor } from "../mail.js";
 import { renderSignature } from "../signature.js";
 import { alertEmergency, notifyTicketStatus, statusEventFor } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL, TICKET_STATUSES } from "../util.js";
+import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -69,8 +72,8 @@ ticketsRouter.get("/tickets", (req, res) => {
         ELSE 4
       END,
       t.created_at DESC
-  `).all(companyId);
-  res.json(rows);
+  `).all(companyId) as Parameters<typeof redactRestrictedTicket>[0][];
+  res.json(rows.map(redactRestrictedTicket));
 });
 
 ticketsRouter.post("/tickets", (req, res) => {
@@ -155,8 +158,8 @@ ticketsRouter.get("/my-tickets", (req, res) => {
       AND t.status IN ('active', 'waiting_manager', 'answered', 'waiting_third_party')
       AND t.assignee_id = ?
     ORDER BY t.updated_at DESC
-  `).all(companyId, res.locals.user?.id ?? "");
-  res.json(rows);
+  `).all(companyId, res.locals.user?.id ?? "") as Parameters<typeof redactRestrictedTicket>[0][];
+  res.json(rows.map(redactRestrictedTicket));
 });
 
 ticketsRouter.get("/decision-queue", (req, res) => {
@@ -173,8 +176,8 @@ ticketsRouter.get("/decision-queue", (req, res) => {
       -- Remonttitehtävät ovat auki pitkään, joten ne ovat Remontit-osiossa eivätkä päätösjonossa.
       AND t.kind != 'renovation'
     ORDER BY t.priority = 'emergency' DESC, t.created_at DESC
-  `).all(companyId);
-  res.json(rows);
+  `).all(companyId) as Parameters<typeof redactRestrictedTicket>[0][];
+  res.json(rows.map(redactRestrictedTicket));
 });
 
 const PREVIEW_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]);
@@ -197,10 +200,31 @@ export function linkAttachmentsToMessages<T extends TicketAttachment>(attachment
   });
 }
 
+// Arkaluonteisen tehtävän avaukset kirjataan lokiin, kukin käyttäjä kerran päivässä.
+function logSensitiveView(ticketId: string, actor: string | undefined) {
+  if (!actor) return;
+  const ticket = db.prepare("SELECT sensitive FROM tickets WHERE id = ?").get(ticketId) as { sensitive: number } | undefined;
+  if (!ticket?.sensitive) return;
+  const timestamp = now();
+  const seen = db.prepare(`
+    SELECT 1 FROM audit_log WHERE ticket_id = ? AND action = 'sensitive_viewed' AND actor = ? AND substr(created_at, 1, 10) = ?
+  `).get(ticketId, actor, timestamp.slice(0, 10));
+  if (!seen) {
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(id("audit"), ticketId, actor, "sensitive_viewed", "{}", timestamp);
+  }
+}
+
 ticketsRouter.get("/tickets/:id", (req, res) => {
   if (!getAuthorizedTicket(req.params.id)) {
+    if (isRestrictedTicket(req.params.id)) {
+      return res.status(403).json({
+        error: "Tehtävä on arkaluonteinen. Sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät.",
+        restricted: true
+      });
+    }
     return res.status(404).json({ error: "Ticket not found" });
   }
+  logSensitiveView(req.params.id, res.locals.user?.name);
   const ticket = db.prepare(`
     SELECT t.*, r.name AS resident_name, a.apartment_number, c.name AS company_name
     FROM tickets t
@@ -270,10 +294,16 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
   // Remonttitehtävän muutostyöilmoituksen tiedot.
   const renovation = db.prepare("SELECT * FROM renovation_notices WHERE ticket_id = ?").get(req.params.id) ?? null;
 
-  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature, renovation });
+  // Poistopyynnön vuoksi säilytetty tehtävä: anonymisoidaan, kun tehtävä suljetaan.
+  const erasurePending = pendingErasure(req.params.id) ?? null;
+
+  res.json({
+    ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature,
+    renovation, erasurePending
+  });
 });
 
-ticketsRouter.put("/tickets/:id/fields", (req, res) => {
+ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
   const schema = z.object({
     type: z.string().trim().min(1).max(60).optional(),
     priority: z.enum(["emergency", "urgent", "normal", "low"]).optional(),
@@ -327,6 +357,8 @@ ticketsRouter.put("/tickets/:id/fields", (req, res) => {
     );
     const event = statusEventFor(parsed.data.status);
     if (event) notifyTicketStatus(req.params.id, event, res.locals.user?.name ?? parsed.data.actor);
+    // Poistopyynnön vuoksi säilytetty tehtävä anonymisoidaan heti, kun se suljetaan.
+    if (parsed.data.status === "closed") await processPendingErasures();
   }
 
   const type = parsed.data.type ?? ticket.type;

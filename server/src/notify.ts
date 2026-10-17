@@ -14,7 +14,7 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
            r.name AS resident, a.apartment_number AS apartment,
            (SELECT m.sender FROM messages m WHERE m.ticket_id = t.id ORDER BY m.created_at LIMIT 1) AS sender,
            (SELECT m.body FROM messages m WHERE m.ticket_id = t.id ORDER BY m.created_at LIMIT 1) AS message,
-           t.summary
+           t.summary, t.sensitive
     FROM tickets t
     JOIN companies c ON c.id = t.company_id
     LEFT JOIN users u ON u.id = c.manager_id
@@ -25,7 +25,7 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
     ticket_number: number | null; subject: string; company: string; emergency_phone: string | null;
     manager_id: string | null; manager_name: string | null; manager_email: string | null;
     resident: string | null; apartment: string | null; sender: string | null; message: string | null;
-    summary: string;
+    summary: string; sensitive: number;
   } | undefined;
   if (!ticket || (ticket.manager_id && ticket.manager_id === actorId)) return;
 
@@ -42,8 +42,13 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
 
   const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string };
   const number = String(ticket.ticket_number ?? "").padStart(4, "0");
-  const reporter = [ticket.resident ?? ticket.sender, ticket.apartment && `asunto ${ticket.apartment}`].filter(Boolean).join(", ");
-  const message = (ticket.message ?? ticket.summary).trim();
+  // Arkaluonteisen tehtävän sisältöä ei lähetetä sähköpostilla; ilmoitus kertoo vain, mistä tehtävä löytyy.
+  const sensitive = Boolean(ticket.sensitive);
+  if (sensitive) ticket.subject = "Arkaluonteinen tehtävä";
+  const reporter = [sensitive ? null : ticket.resident ?? ticket.sender, ticket.apartment && `asunto ${ticket.apartment}`].filter(Boolean).join(", ");
+  const message = sensitive
+    ? "Viesti sisältää arkaluonteisia tietoja, joten se näytetään vain Pleississä."
+    : (ticket.message ?? ticket.summary).trim();
   try {
     await sendEmail({
       to: email,

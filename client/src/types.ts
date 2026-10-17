@@ -33,6 +33,11 @@ export type Ticket = {
   knowledge_source_id?: string | null;
   knowledge_source_title?: string | null;
   knowledge_source_chunk_id?: string | null;
+  // 1 = arkaluonteinen tehtävä, jota ei lähetetä AI:lle.
+  sensitive?: number;
+  sensitive_source?: string | null;
+  // Arkaluonteinen tehtävä, jonka sisältö on rajattu tältä käyttäjältä.
+  restricted?: boolean;
   knowledge_source_page?: string | number | null;
   draft?: string;
   created_at: string;
@@ -152,6 +157,8 @@ export type TicketDetail = {
   signature: string;
   // Remonttitehtävän muutostyöilmoitus; muilla tehtävillä null.
   renovation?: RenovationNotice | null;
+  // Asukas on pyytänyt tietojensa poistoa, mutta tehtävä säilytetään perusteella; anonymisoidaan suljettaessa.
+  erasurePending?: { reason: string; requested_by: string; created_at: string } | null;
 };
 
 export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";

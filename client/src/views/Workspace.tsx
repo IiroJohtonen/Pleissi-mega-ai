@@ -56,6 +56,16 @@ const navCountTitles: Partial<Record<TicketTab, string>> = {
   keys: t("Palautus myöhässä")
 };
 
+// Palvelimen vastaus arkaluonteiseksi rajatusta tehtävästä (403, restricted: true).
+function restrictedMessage(error: unknown): string {
+  try {
+    const body = JSON.parse((error as Error).message);
+    return body?.restricted ? t("Tehtävä on arkaluonteinen. Sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät.") : "";
+  } catch {
+    return "";
+  }
+}
+
 export function Workspace({ user }: { user: OfficeUser }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
@@ -88,6 +98,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }, []);
   const [selectedCompany, setSelectedCompany] = useState("demo-company");
   const [selected, setSelected] = useState<TicketDetail | null>(null);
+  // Ilmoitus, kun avattava tehtävä on arkaluonteisena rajattu käyttäjältä.
+  const [restrictedNotice, setRestrictedNotice] = useState("");
   const { tab, param: routeParam } = useRoute();
   // Avatun tehtävän tallentamattomat muutokset: navigointi varmistaa poistumisen.
   const ticketDirty = useRef(false);
@@ -265,9 +277,19 @@ export function Workspace({ user }: { user: OfficeUser }) {
     const route = parseRoute();
     const refreshId = paramIsTicket(route.tab) ? route.param : null;
     if (refreshId && companyId === selectedCompany) {
-      const detail = await fetchTicketDetail(refreshId);
-      const current = parseRoute();
-      if (paramIsTicket(current.tab) && current.param === refreshId) setSelected(detail);
+      try {
+        const detail = await fetchTicketDetail(refreshId);
+        const current = parseRoute();
+        if (paramIsTicket(current.tab) && current.param === refreshId) setSelected(detail);
+      } catch (error) {
+        // Tehtävä merkittiin juuri arkaluonteiseksi, eikä käyttäjä enää näe sitä.
+        if (restrictedMessage(error)) {
+          setRestrictedNotice(restrictedMessage(error));
+          navigate(route.tab);
+        } else {
+          throw error;
+        }
+      }
     }
   }
 
@@ -338,8 +360,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
         if (!cancelled) setSelected(detail);
       })
       .catch(error => {
-        console.error(error);
-        if (!cancelled) navigate(tab);
+        if (cancelled) return;
+        const restricted = restrictedMessage(error);
+        if (restricted) setRestrictedNotice(restricted); else console.error(error);
+        navigate(tab);
       });
     return () => {
       cancelled = true;
@@ -659,6 +683,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
       <main className="main">
         <SystemAlertBanner />
+        {restrictedNotice && !openTicketId && (
+          <p className="sensitive-note active restricted-notice" role="status">
+            <span>{restrictedNotice}</span>
+            <button type="button" className="back-link" onClick={() => setRestrictedNotice("")}>{t("Sulje")}</button>
+          </p>
+        )}
         {/* Avattu tehtävä näytetään omana sivunaan listan tilalla; navigaatio pysyy vieressä käytössä. */}
         {openTicketId && (selected ? (
           <TicketDrawer

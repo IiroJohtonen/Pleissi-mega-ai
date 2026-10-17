@@ -7,6 +7,7 @@ import { db } from "../db.js";
 import { isAdmin, type User } from "../auth.js";
 import { id, now, TICKET_STATUSES, today } from "../util.js";
 import { getKnowledge } from "./knowledge.js";
+import { sensitiveMatches } from "../privacy-filter.js";
 
 export const reportsRouter: Router = express.Router();
 
@@ -60,16 +61,18 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
     });
   }
 
-  const tickets = db.prepare(`
+  const tickets = (db.prepare(`
     SELECT t.id, t.ticket_number, t.type, t.subject, t.summary,
            (SELECT m.body FROM messages m
             WHERE m.ticket_id = t.id AND m.direction = 'outbound'
             ORDER BY m.created_at LIMIT 1) AS reply
     FROM tickets t
-    WHERE t.company_id = ? AND t.created_at >= ?
+    WHERE t.company_id = ? AND t.created_at >= ? AND t.sensitive = 0
     ORDER BY created_at DESC
     LIMIT ?
-  `).all(companyId, parsed.data.since, MAX_TOPIC_TICKETS) as TopicTicket[];
+  `).all(companyId, parsed.data.since, MAX_TOPIC_TICKETS) as TopicTicket[])
+    // Arkaluonteiset tehtävät eivät mene AI:lle, myöskään merkitsemättömät, joiden teksti osuu sanalistaan.
+    .filter(ticket => sensitiveMatches(`${ticket.subject}\n${ticket.summary}`).length === 0);
 
   let topics: RecurringTopic[] = [];
   let covered: CoveredTopic[] = [];

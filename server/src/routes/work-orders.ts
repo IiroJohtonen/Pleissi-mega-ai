@@ -137,7 +137,9 @@ workOrdersRouter.post("/work-orders/:id/messages", async (req, res) => {
     | { id: string; ticket_id: string; company_id: string; contractor_name: string; contractor_email: string;
         ordered_at: string; ticket_subject: string; ticket_number: number | null }
     | undefined;
-  if (!order || !companyIdFromContext(order.company_id)) return res.status(404).json({ error: "Työtilausta ei löytynyt." });
+  if (!order || !companyIdFromContext(order.company_id) || !getAuthorizedTicket(order.ticket_id)) {
+    return res.status(404).json({ error: "Työtilausta ei löytynyt." });
+  }
 
   // Osoite otetaan tilaukselta; puhelimitse kirjatulla tilauksella käytetään taloyhtiön nykyistä huoltoyhtiön osoitetta.
   const company = db.prepare("SELECT name, maintenance_email FROM companies WHERE id = ?").get(order.company_id) as
@@ -189,7 +191,9 @@ workOrdersRouter.post("/work-orders/:id/done", (req, res) => {
   const order = db.prepare("SELECT * FROM work_orders WHERE id = ?").get(req.params.id) as
     | { id: string; ticket_id: string; company_id: string; status: string; contractor_name: string }
     | undefined;
-  if (!order || !companyIdFromContext(order.company_id)) return res.status(404).json({ error: "Työtilausta ei löytynyt." });
+  if (!order || !companyIdFromContext(order.company_id) || !getAuthorizedTicket(order.ticket_id)) {
+    return res.status(404).json({ error: "Työtilausta ei löytynyt." });
+  }
   if (order.status === "done") return res.status(409).json({ error: "Työtilaus on jo kuitattu tehdyksi." });
 
   const actor = res.locals.user?.name ?? "Isännöitsijä";

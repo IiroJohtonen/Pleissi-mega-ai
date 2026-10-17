@@ -2032,6 +2032,21 @@
 :root[data-theme="dark"] .version-chunk small {
     color: #b7bec9
 }
+:root[data-theme="dark"] .sensitive-note.active {
+    background: #382e47;
+    color: #b8a2de
+}
+:root[data-theme="dark"] .erasure-panel {
+    border: 1px solid #71483d;
+    background: #232d3a
+}
+:root[data-theme="dark"] .erasure-ticket small {
+    color: #b7bec9
+}
+:root[data-theme="dark"] .erasure-note {
+    background: #232d3a;
+    color: #e5ac9d
+}
 :root[data-theme="dark"] .reporter-card {
     border: 1px solid #3d5671;
     background: #232d39

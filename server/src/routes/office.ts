@@ -1,10 +1,12 @@
 import express, { type Router } from "express";
 import { z } from "zod";
-import { visibleCompanyIds } from "../access.js";
+import { canSeeSensitiveTicket, RESTRICTED_SUBJECT, visibleCompanyIds } from "../access.js";
 import { isAdmin, requireAdmin, requireManager } from "../auth.js";
 import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
+import { id, now } from "../util.js";
+import { AI_MODEL_CHOICES, getMasterData, MASTER_DATA_DEFAULTS, masterDataSchema, saveMasterData } from "../master-data.js";
 import { loginCodeMailReady, loginCodeSetting } from "../login-codes.js";
 
 export const officeRouter: Router = express.Router();
@@ -114,7 +116,7 @@ officeRouter.get("/audit", requireManager, (_req, res) => {
   const companyIds = visibleCompanyIds();
   const rows = db.prepare(`
     SELECT a.id, a.ticket_id, a.actor, a.action, a.details, a.created_at,
-           t.ticket_number, t.subject AS ticket_subject, c.name AS company_name,
+           t.ticket_number, t.subject AS ticket_subject, c.name AS company_name, t.company_id, t.sensitive, t.assignee_id,
            (SELECT m.body FROM messages m
             WHERE a.action = 'reply_sent' AND m.ticket_id = a.ticket_id
               AND m.direction = 'outbound' AND m.created_at = a.created_at
@@ -126,8 +128,14 @@ officeRouter.get("/audit", requireManager, (_req, res) => {
        OR (a.ticket_id IS NULL AND ?)
     ORDER BY a.created_at DESC
     LIMIT 2000
-  `).all(...companyIds, isAdmin(res) ? 1 : 0);
-  res.json(rows);
+  `).all(...companyIds, isAdmin(res) ? 1 : 0) as ({
+    company_id: string | null; sensitive: number | null; assignee_id: string | null;
+  } & Record<string, unknown>)[];
+  // Arkaluonteisen tehtävän sisältö ei näy lokissa käyttäjälle, jolta tehtävä on rajattu.
+  res.json(rows.map(({ company_id, sensitive, assignee_id, ...row }) =>
+    company_id && !canSeeSensitiveTicket({ company_id, sensitive, assignee_id })
+      ? { ...row, ticket_subject: RESTRICTED_SUBJECT, email_body: null, details: "{}" }
+      : row));
 });
 
 // AI:n käyttö ja kustannusarvio tältä kuulta sekä kuuden edellisen kuukauden historia.
@@ -143,4 +151,20 @@ officeRouter.get("/system/alerts", requireAdmin, (_req, res) => {
 officeRouter.post("/system/alerts/:id/resolve", requireAdmin, (req, res) => {
   if (!markAlertResolved(String(req.params.id))) return res.status(404).json({ error: "Hälytystä ei löytynyt tai se on jo kuitattu." });
   res.json({ ok: true });
+});
+
+// Perustiedot: hätä- ja arkaluonteisuussanat, maskaus, määräajat ja AI-mallit. Vain pääkäyttäjälle.
+officeRouter.get("/master-data", requireAdmin, (_req, res) => {
+  res.json({ values: getMasterData(), defaults: MASTER_DATA_DEFAULTS, modelChoices: AI_MODEL_CHOICES });
+});
+
+officeRouter.put("/master-data", requireAdmin, (req, res) => {
+  const parsed = masterDataSchema.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista perustiedot." });
+  saveMasterData(parsed.data);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "master_data_updated",
+    JSON.stringify({ fields: Object.keys(parsed.data) }), now()
+  );
+  res.json(getMasterData());
 });
