@@ -57,6 +57,62 @@ describe("asukkaan tietojen vienti ja poisto", () => {
   });
 });
 
+describe("poistopyyntö, kun asukkaalla on avoimia tehtäviä", () => {
+  let server: TestServer;
+  let manager: string;
+
+  before(async () => {
+    server = await startServer();
+    manager = await login(server, MANAGER_EMAIL);
+  });
+
+  after(() => server.stop());
+
+  const inbound = async (subject: string, body: string) => {
+    const created = await call(server, manager, "POST", "/inbound/messages", {
+      companyId: "demo-company", senderName: "Liisa Mallikas", senderEmail: "liisa@example.com", subject, body, channel: "email"
+    });
+    assert.equal(created.status, 201);
+    return created.data.ticketId as string;
+  };
+
+  it("kesken olevan asian tehtävä säilyy perusteineen ja anonymisoidaan, kun se suljetaan", async () => {
+    const water = await inbound("Vesivahinko kylpyhuoneessa", "Katosta tippuu vettä, soittakaa 040 765 4321.");
+    const other = await inbound("Saunavuoro", "Haluaisin vaihtaa saunavuoroni.");
+
+    const preview = (await call(server, manager, "GET", "/residents/resident-2/erasure-preview")).data;
+    assert.ok(preview.openTickets.some((ticket: any) => ticket.id === water));
+
+    // Säilytykselle tarvitaan peruste.
+    assert.equal((await call(server, manager, "DELETE", "/residents/resident-2", { keepTicketIds: [water] })).status, 400);
+    const erased = await call(server, manager, "DELETE", "/residents/resident-2", {
+      keepTicketIds: [water], keepReason: "Kesken oleva vahinko- tai korjausasia"
+    });
+    assert.equal(erased.status, 200);
+
+    // Säilytetty tehtävä on ennallaan ja kertoo poistopyynnöstä.
+    let detail = (await call(server, manager, "GET", `/tickets/${water}`)).data;
+    assert.equal(detail.ticket.subject, "Vesivahinko kylpyhuoneessa");
+    assert.match(detail.messages[0].body, /tippuu vettä/);
+    assert.equal(detail.erasurePending.reason, "Kesken oleva vahinko- tai korjausasia");
+    assert.ok(detail.audit.some((row: any) => row.action === "erasure_deferred"));
+
+    // Muu tehtävä anonymisoitiin heti, myös otsikko ja tiivistelmä.
+    const otherDetail = (await call(server, manager, "GET", `/tickets/${other}`)).data;
+    assert.equal(otherDetail.ticket.subject, "[Poistettu]");
+    assert.equal(otherDetail.ticket.summary, "");
+    assert.ok(otherDetail.messages.every((message: any) => message.body === "[Poistettu]" && !message.sender.includes("Liisa")));
+
+    // Suljettaessa säilytetty tehtävä anonymisoidaan.
+    assert.equal((await call(server, manager, "PUT", `/tickets/${water}/fields`, { status: "closed" })).status, 200);
+    detail = (await call(server, manager, "GET", `/tickets/${water}`)).data;
+    assert.equal(detail.ticket.subject, "[Poistettu]");
+    assert.ok(detail.messages.every((message: any) => message.body === "[Poistettu]" && !message.sender.includes("Liisa")));
+    assert.equal(detail.erasurePending, null);
+    assert.ok(detail.audit.some((row: any) => row.action === "erasure_completed"));
+  });
+});
+
 describe("käyttäjän poisto", () => {
   let server: TestServer;
   let admin: string;

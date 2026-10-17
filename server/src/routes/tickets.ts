@@ -9,6 +9,7 @@ import { replyAccountsFor } from "../mail.js";
 import { renderSignature } from "../signature.js";
 import { alertEmergency } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL, TICKET_STATUSES } from "../util.js";
+import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -270,10 +271,16 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
   // Remonttitehtävän muutostyöilmoituksen tiedot.
   const renovation = db.prepare("SELECT * FROM renovation_notices WHERE ticket_id = ?").get(req.params.id) ?? null;
 
-  res.json({ ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature, renovation });
+  // Poistopyynnön vuoksi säilytetty tehtävä: anonymisoidaan, kun tehtävä suljetaan.
+  const erasurePending = pendingErasure(req.params.id) ?? null;
+
+  res.json({
+    ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature,
+    renovation, erasurePending
+  });
 });
 
-ticketsRouter.put("/tickets/:id/fields", (req, res) => {
+ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
   const schema = z.object({
     type: z.string().trim().min(1).max(60).optional(),
     priority: z.enum(["emergency", "urgent", "normal", "low"]).optional(),
@@ -325,6 +332,8 @@ ticketsRouter.put("/tickets/:id/fields", (req, res) => {
       id("audit"), req.params.id, res.locals.user?.name ?? parsed.data.actor, "status_changed",
       JSON.stringify({ from: ticket.status, to: parsed.data.status }), changedAt
     );
+    // Poistopyynnön vuoksi säilytetty tehtävä anonymisoidaan heti, kun se suljetaan.
+    if (parsed.data.status === "closed") await processPendingErasures();
   }
 
   const type = parsed.data.type ?? ticket.type;

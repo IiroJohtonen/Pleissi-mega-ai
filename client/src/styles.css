@@ -4478,3 +4478,12 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .sensitive-note { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -6px 0 12px; font-size: 12px; }
 .sensitive-note.active { background: #f3eefb; color: #4f2f86; border-radius: 8px; padding: 8px 12px; margin-top: 0; }
 .sensitive-note .back-link { font-size: 12px; }
+
+/* Asukkaan poisto: säilytettävät avoimet tehtävät */
+.erasure-panel { margin-top: 14px; border: 1px solid #f0d4cc; background: #fdf6f4; border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
+.erasure-panel h4 { margin: 0; font-size: 13px; }
+.erasure-panel .reply-hint { margin: 0; }
+.erasure-ticket { display: flex !important; align-items: flex-start; gap: 8px; font-size: 13px; }
+.erasure-ticket input { width: auto !important; margin-top: 3px; }
+.erasure-ticket small { color: #717880; }
+.erasure-note { background: #fdf6f4; color: #8a3a25; border-radius: 8px; padding: 9px 12px; font-size: 13px; margin: 0 0 12px; }

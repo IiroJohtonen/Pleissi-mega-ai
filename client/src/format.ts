@@ -77,6 +77,8 @@ export function actionLabel(action: string) {
     master_data_updated: t("Perustietoja muutettu"),
     sensitive_marked: t("Merkitty arkaluonteiseksi"),
     sensitive_cleared: t("Arkaluonteisuusmerkintä poistettu"),
+    erasure_deferred: t("Poistopyyntö: tehtävä säilytetään"),
+    erasure_completed: t("Säilytetty tehtävä anonymisoitu"),
     reporter_linked: t("Asukas linkitetty tehtävään"),
     renovation_reported: t("Remontti ilmoitettu"),
     renovation_updated: t("Remontti-ilmoituksen tietoja muutettu"),

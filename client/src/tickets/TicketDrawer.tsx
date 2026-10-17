@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, FactDropdown } from "../components/common";
 import {
-  actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatFileSize, formatTicketNumber,
+  actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
 import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUser, session } from "../session";
@@ -940,6 +940,13 @@ export function TicketDrawer({
             onClose={() => setNewResidentFrom(null)}
             onCreated={createResidentFromSender}
           />
+        )}
+
+        {detail.erasurePending && (
+          <p className="erasure-note">
+            {t("Asukas on pyytänyt tietojensa poistoa ({0}). Tehtävä säilytetään perusteella \"{1}\" ja anonymisoidaan, kun se suljetaan.",
+              formatDateOnly(detail.erasurePending.created_at), t(detail.erasurePending.reason))}
+          </p>
         )}
 
         {detail.renovation ? (

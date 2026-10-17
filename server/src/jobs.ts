@@ -2,6 +2,7 @@ import { AUTHORIZED_COMPANY_IDS } from "./access.js";
 import { refreshBudgetAlerts } from "./ai-budget.js";
 import { raiseAlert, resolveAlert } from "./alerts.js";
 import { createBackup, hasBackupToday } from "./backup.js";
+import { processPendingErasures } from "./resident-erasure.js";
 import { db } from "./db.js";
 import { sendEmail } from "./mail.js";
 import { deleteTicket } from "./routes/tickets.js";
@@ -130,4 +131,11 @@ export function startMaintenanceJobs() {
   };
   run();
   setInterval(run, 60 * 60 * 1000);
+
+  // Poistopyynnön vuoksi säilytetyt tehtävät anonymisoidaan pian sulkemisen jälkeen.
+  const erasures = () => {
+    processPendingErasures().catch(error => console.error("Säilytettyjen tehtävien anonymisointi epäonnistui:", error?.message ?? error));
+  };
+  erasures();
+  setInterval(erasures, 5 * 60 * 1000);
 }

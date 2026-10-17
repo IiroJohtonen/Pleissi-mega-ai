@@ -46,7 +46,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 **Käyttäjät ja tietosuoja**
 - Roolit pääkäyttäjä, isännöitsijä ja asiakaspalvelu; yhtiökohtainen näkyvyys palvelimella
 - Perustiedot (vain pääkäyttäjä): hätäsanat, arkaluonteisuuden tunnistussanat, maskaus, määräajat prioriteetin mukaan ja AI-mallit toiminnoittain
-- Käyttäjän poisto, asukkaan tietojen vienti ja poisto
+- Käyttäjän poisto, asukkaan tietojen vienti ja poisto; poistopyynnössä avoimen tehtävän voi säilyttää perusteella (esim. kesken oleva vahinko), ja se anonymisoidaan suljettaessa
 - Säilytysaika suljetuille tehtäville ja lokille
 - Liitteiden tarkistus, pyyntöjen rajoitus ja varmuuskopiot
 

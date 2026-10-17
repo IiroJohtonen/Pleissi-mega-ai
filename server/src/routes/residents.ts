@@ -1,12 +1,14 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
 import { isAdmin, requireManager, setResidentPassword } from "../auth.js";
 import { deleteBookingsAndRelease } from "../booking-queue.js";
-import { attachmentsDir, db } from "../db.js";
+import { db } from "../db.js";
 import { ACTIVE_RESIDENT, id, now, today } from "../util.js";
+import {
+  deferTicketErasure, ERASED_NAME, eraseResidentFromTicket, openResidentTickets, removeAttachmentFiles, residentTicketIds,
+  sentByResident
+} from "../resident-erasure.js";
 
 export const residentsRouter: Router = express.Router();
 
@@ -222,22 +224,6 @@ function getAuthorizedResident(residentId: string) {
 }
 
 // Tehtävät, joissa asukas on yhteyshenkilö tai ilmoittaja.
-function residentTicketIds(residentId: string) {
-  return (db.prepare(`
-    SELECT id FROM tickets
-    WHERE resident_id = ? OR id IN (SELECT ticket_id FROM ticket_reporters WHERE resident_id = ?)
-    ORDER BY created_at
-  `).all(residentId, residentId) as { id: string }[]).map(ticket => ticket.id);
-}
-
-// Viestin lähettäjä on muotoa "Nimi <osoite>" tai pelkkä nimi.
-function sentByResident(sender: string, resident: { name: string; email: string | null }) {
-  const value = sender.toLowerCase();
-  const name = resident.name.toLowerCase();
-  return value === name || value.startsWith(`${name} <`)
-    || Boolean(resident.email && value.includes(`<${resident.email.toLowerCase()}>`));
-}
-
 // Asukkaasta tallennetut tiedot yhtenä tiedostona (tietosuoja-asetuksen mukainen tietopyyntö).
 // Mukana ovat asukkaan omat viestit ja hänelle lähetetyt vastaukset, ei sisäisiä muistiinpanoja.
 residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) => {
@@ -305,54 +291,43 @@ residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) 
   });
 });
 
-const ERASED_NAME = "Poistettu asukas";
-const ERASED_TEXT = "[Poistettu]";
+// Asukkaan avoimet tehtävät ennen poistoa: isännöitsijä päättää, säilytetäänkö kesken olevat asiat.
+residentsRouter.get("/residents/:residentId/erasure-preview", requireManager, (req, res) => {
+  const resident = getAuthorizedResident(req.params.residentId);
+  if (!resident) return res.status(404).json({ error: "Asukasta ei löytynyt." });
+  res.json({ openTickets: openResidentTickets(resident.id) });
+});
 
 // Poistaa asukkaan henkilötiedot (tietosuoja-asetuksen mukainen poistopyyntö). Asukkaan rivi ja
 // tehtävät jäävät tilastoihin ilman nimeä: viestit, liitteet, tunnukset, tulevat vuorot, varaustoiveet, jonot sekä
 // muutto- ja remontti-ilmoitukset poistetaan. Jo laskutetuksi merkityt kuukaudet ovat kirjanpitoaineistoa ja säilyvät.
+// keepTicketIds: avoimet tehtävät, joiden tietoja tarvitaan asian hoitamiseen (peruste keepReason). Ne
+// anonymisoidaan, kun tehtävä suljetaan.
 residentsRouter.delete("/residents/:residentId", requireManager, async (req, res) => {
   const resident = getAuthorizedResident(req.params.residentId);
   if (!resident) return res.status(404).json({ error: "Asukasta ei löytynyt." });
+  const options = z.object({
+    keepTicketIds: z.array(z.string()).max(200).default([]),
+    keepReason: z.string().trim().max(300).default("")
+  }).safeParse(req.body ?? {});
+  if (!options.success) return res.status(400).json({ error: "Tarkista säilytettävät tehtävät." });
+  const openIds = new Set(openResidentTickets(resident.id).map(ticket => ticket.id));
+  const keep = new Set(options.data.keepTicketIds.filter(ticketId => openIds.has(ticketId)));
+  if (keep.size > 0 && !options.data.keepReason) {
+    return res.status(400).json({ error: "Kirjoita peruste, miksi tehtävät säilytetään." });
+  }
+  const actor = res.locals.user?.name ?? "Isännöitsijä";
 
   const date = today();
   const removedFiles: string[] = [];
 
   db.transaction(() => {
     for (const ticketId of residentTicketIds(resident.id)) {
-      const others = db.prepare(`
-        SELECT r.id, r.apartment_id FROM ticket_reporters tr JOIN residents r ON r.id = tr.resident_id
-        WHERE tr.ticket_id = ? AND tr.resident_id != ? ORDER BY r.name
-      `).all(ticketId, resident.id) as { id: string; apartment_id: string }[];
-
-      if (others.length === 0) {
-        // Asukkaan oma tehtävä: koko keskustelu ja asukkaan lähettämät liitteet poistetaan.
-        db.prepare("UPDATE messages SET body = ? WHERE ticket_id = ? AND channel != 'contractor'").run(ERASED_TEXT, ticketId);
-        db.prepare("UPDATE messages SET sender = ? WHERE ticket_id = ? AND direction = 'inbound'").run(ERASED_NAME, ticketId);
-        db.prepare("UPDATE tickets SET draft = '' WHERE id = ?").run(ticketId);
-        const files = db.prepare(
-          "SELECT id FROM attachments WHERE ticket_id = ? AND direction IN ('inbound', 'portal')"
-        ).all(ticketId) as { id: string }[];
-        removedFiles.push(...files.map(file => file.id));
-        db.prepare("DELETE FROM attachments WHERE ticket_id = ? AND direction IN ('inbound', 'portal')").run(ticketId);
-      } else {
-        // Yhteinen tehtävä: vain tämän asukkaan viestit poistetaan, ja tehtävä jää muille ilmoittajille.
-        const messages = db.prepare(
-          "SELECT id, sender FROM messages WHERE ticket_id = ? AND direction = 'inbound'"
-        ).all(ticketId) as { id: string; sender: string }[];
-        for (const message of messages.filter(item => sentByResident(item.sender, resident))) {
-          db.prepare("UPDATE messages SET sender = ?, body = ? WHERE id = ?").run(ERASED_NAME, ERASED_TEXT, message.id);
-        }
-        db.prepare("DELETE FROM ticket_reporters WHERE ticket_id = ? AND resident_id = ?").run(ticketId, resident.id);
-        db.prepare("UPDATE tickets SET resident_id = ?, apartment_id = ? WHERE id = ? AND resident_id = ?")
-          .run(others[0].id, others[0].apartment_id, ticketId, resident.id);
+      if (keep.has(ticketId)) {
+        deferTicketErasure(ticketId, resident, options.data.keepReason, actor);
+        continue;
       }
-
-      db.prepare("UPDATE audit_log SET actor = ? WHERE ticket_id = ? AND actor = ?").run(ERASED_NAME, ticketId, resident.name);
-      db.prepare(`
-        UPDATE audit_log SET details = '{}'
-        WHERE ticket_id = ? AND action IN ('reporter_linked', 'reply_received', 'reply_received_reopened')
-      `).run(ticketId);
+      removedFiles.push(...eraseResidentFromTicket(ticketId, resident));
     }
 
     db.prepare("DELETE FROM resident_credentials WHERE resident_id = ?").run(resident.id);
@@ -385,11 +360,11 @@ residentsRouter.delete("/residents/:residentId", requireManager, async (req, res
 
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
       id("audit"), null, res.locals.user?.name ?? "Isännöitsijä", "resident_erased",
-      JSON.stringify({ resident_id: resident.id, company_id: resident.company_id }), now()
+      JSON.stringify({ resident_id: resident.id, company_id: resident.company_id, kept_tickets: keep.size, reason: keep.size ? options.data.keepReason : undefined }), now()
     );
   })();
 
-  for (const fileId of removedFiles) await fs.rm(path.join(attachmentsDir, fileId), { force: true });
+  await removeAttachmentFiles(removedFiles);
 
   res.json({ ok: true });
 });

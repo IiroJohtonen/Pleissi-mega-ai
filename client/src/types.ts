@@ -155,6 +155,8 @@ export type TicketDetail = {
   signature: string;
   // Remonttitehtävän muutostyöilmoitus; muilla tehtävillä null.
   renovation?: RenovationNotice | null;
+  // Asukas on pyytänyt tietojensa poistoa, mutta tehtävä säilytetään perusteella; anonymisoidaan suljettaessa.
+  erasurePending?: { reason: string; requested_by: string; created_at: string } | null;
 };
 
 export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
