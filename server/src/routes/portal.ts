@@ -44,13 +44,23 @@ portalRouter.post("/portal/tickets", async (req, res) => {
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Kirjoita otsikko ja kuvaus. Liitteitä voi olla enintään 5." });
 
+  const { ticketId, attachmentError } = await createPortalTicket(resident, parsed.data);
+  res.status(201).json({ ok: true, ticketId, attachmentError });
+});
+
+// Luo asukkaan tehtävän (myös portaalin lomakkeista). Yhtiö, asunto ja ilmoittaja tulevat kirjautumisesta.
+export async function createPortalTicket(
+  resident: ResidentAccount,
+  input: { subject: string; description: string; type: string; attachments: z.infer<typeof portalAttachmentsSchema> },
+  beforeAttachments?: (ticketId: string) => void
+) {
   const company = db.prepare("SELECT maintenance_emergency_phone FROM companies WHERE id = ?").get(resident.companyId) as
     | { maintenance_emergency_phone: string }
     | undefined;
   // Arkaluonteista ilmoitusta ei lähetetä AI:lle, joten se luokitellaan avainsanoilla.
-  const sensitive = sensitiveMatches(`${parsed.data.subject}\n${parsed.data.description}`).length > 0;
+  const sensitive = sensitiveMatches(`${input.subject}\n${input.description}`).length > 0;
   const result = await triage(
-    parsed.data.subject, parsed.data.description, [], company?.maintenance_emergency_phone || undefined,
+    input.subject, input.description, [], company?.maintenance_emergency_phone || undefined,
     // Kirjautuneen asukkaan ilmoitus koskee aina taloyhtiötä, joten asiaankuuluvuutta ei tarkisteta.
     { aiPriority: aiPriorityEnabled() && !sensitive, sender: resident.name }
   );
@@ -67,10 +77,10 @@ portalRouter.post("/portal/tickets", async (req, res) => {
     resident.companyId,
     resident.apartmentId || null,
     resident.id,
-    parsed.data.type,
+    input.type,
     result.priority,
     "open",
-    parsed.data.subject,
+    input.subject,
     result.summary,
     "portal",
     result.emergency ? "emergency" : "pending_decision",
@@ -88,27 +98,28 @@ portalRouter.post("/portal/tickets", async (req, res) => {
     ticketId,
     "inbound",
     resident.email ? `${resident.name} <${resident.email}>` : resident.name,
-    parsed.data.subject,
-    parsed.data.description,
+    input.subject,
+    input.description,
     timestamp,
     "portal"
   );
-  if (sensitive) detectSensitivity(ticketId, `${parsed.data.subject}\n${parsed.data.description}`);
+  if (sensitive) detectSensitivity(ticketId, `${input.subject}\n${input.description}`);
 
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
     ticketId,
     resident.name,
     "ticket_created_portal",
-    JSON.stringify({ subject: parsed.data.subject, source_channel: "portal" }),
+    JSON.stringify({ subject: input.subject, source_channel: "portal" }),
     timestamp
   );
+  beforeAttachments?.(ticketId);
 
   if (result.emergency) void alertEmergency(ticketId);
 
-  const attachmentError = await savePortalAttachments(ticketId, parsed.data.attachments, timestamp);
-  res.status(201).json({ ok: true, ticketId, attachmentError });
-});
+  const attachmentError = await savePortalAttachments(ticketId, input.attachments, timestamp);
+  return { ticketId, attachmentError };
+}
 
 // Asukkaan liitteet (kuvat ja PDF:t) tehtävälle. Tallennetaan suunnalla 'portal'.
 export const portalAttachmentsSchema = z.array(z.object({

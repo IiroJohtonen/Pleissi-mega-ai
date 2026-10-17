@@ -1498,6 +1498,35 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .ai-reason-close:hover { background: rgba(122, 82, 0, .12); }
 
+/* Lomakkeet-taulu: lomaketyypin välilehdet ja lomakkeen tiivistelmä rivillä */
+.form-tabs { flex-wrap: wrap; margin: 4px 0 14px; border-bottom: 1px solid #e2e4e6; }
+.form-tabs b { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: #eef0f2; color: #4a535c; font-size: 11px; }
+.form-tabs button.active b { background: #171c22; color: #fff; }
+.form-summary { display: grid; gap: 2px; margin: 0; }
+.form-summary > div { min-width: 0; font-size: 13px; line-height: 1.45; }
+.form-summary dt, .form-summary dd { display: inline; margin: 0; }
+.form-summary dt { color: #6b7682; font-size: 12px; }
+.form-summary dt::after { content: ": "; }
+.form-summary dd { white-space: pre-line; overflow-wrap: anywhere; }
+.form-table td > span.muted { display: block; font-size: 12px; }
+/* Ilmoittajan nimi ja asunto omille riveilleen myös raporttitaulukoissa. */
+.report-topics td .reporter-cell { display: grid; gap: 2px; }
+.form-table td:nth-child(2) .type { white-space: nowrap; }
+
+/* Asukasportaalin lomakkeelta tulleen tehtävän kentät */
+.ticket-form-card { margin: 18px 0 4px; }
+.ticket-form-card h3 { margin: 0 0 6px; color: #2b3540; font-size: 13px; font-weight: 600; }
+.ticket-form-card h3 small { margin-left: 6px; color: #6b7682; font-weight: 400; }
+.ticket-form-card dl { display: grid; margin: 0; border: 1px solid #cdd3da; border-radius: 10px; overflow: hidden; }
+.ticket-form-card dl > div { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 12px; padding: 9px 14px; border-top: 1px solid #e3e7eb; }
+.ticket-form-card dl > div:first-child { border-top: 0; }
+.ticket-form-card dl > div.warning { background: #fff4dc; }
+.ticket-form-card dt { color: #5a6570; font-size: 13px; }
+.ticket-form-card dd { margin: 0; color: #1d2329; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .ticket-form-card dl > div { grid-template-columns: 1fr; gap: 2px; }
+}
+
 .ticket-description { margin: 18px 0 4px; }
 
 .ticket-description h3 {
@@ -2669,6 +2698,16 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .portal-tickets-head p { margin: 0; font-size: 13px; }
 .portal-tickets-head .portal-new { flex: none; }
 .portal-new:disabled { opacity: .6; cursor: not-allowed; }
+/* Asukasportaalin lomakkeet */
+.portal-form-intro { max-width: 760px; margin: 0 0 12px; font-size: 13px; line-height: 1.5; }
+.portal-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.portal-form-warning { margin: 0; padding: 10px 14px; border-radius: 10px; background: #fff4dc; color: #7a5200; font-size: 13px; }
+.portal-sent .link-button { padding: 0; font-size: 13px; }
+.portal-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.portal-chips legend { width: 100%; margin-bottom: 6px; color: #2b3540; font-size: 13px; font-weight: 600; }
+.portal-chips button { padding: 8px 14px; border: 1px solid #cdd3da; border-radius: 999px; background: #fff; color: #1d2329; font-size: 13px; font-weight: 600; }
+.portal-chips button.active { border-color: #171c22; background: #171c22; color: #fff; }
+
 .portal-sent { margin: 0; padding: 10px 14px; border-radius: 10px; background: #e6f1fb; color: #24527f; font-size: 13px; font-weight: 600; }
 
 .portal-ticket-form {

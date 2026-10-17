@@ -30,6 +30,7 @@ import { type HistoryEntry, readHistory, rememberTicket } from "../history";
 import { type SearchResponse, SearchResults, ticketNumberQuery } from "./Search";
 import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
+import { FormSubmissions } from "./Forms";
 import { t } from "../i18n";
 
 // Taloyhtiöt-valikon alasivut ryhmiteltyinä.
@@ -38,7 +39,7 @@ const navGroups: { key: string; label: string; tabs: TicketTab[] }[] = [
   { key: "docs", label: t("Dokumentaatio"), tabs: ["knowledge", "knowledge-ai", "knowledge-internal"] },
   { key: "residents", label: t("Asukkaat"), tabs: ["residents", "moves", "waitlist"] },
   { key: "facilities", label: t("Tilat"), tabs: ["sauna", "laundry", "parking", "keys"] },
-  { key: "notices", label: t("Ilmoitukset"), tabs: ["announcements", "renovations", "meters"] }
+  { key: "notices", label: t("Ilmoitukset"), tabs: ["forms", "announcements", "renovations", "meters"] }
 ];
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 // Ryhmän alasivun nimi, kun se poikkeaa näkymän otsikosta.
@@ -751,6 +752,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "renovations" ? (
             <RenovationNotices key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
+          )
+          : tab === "forms" ? (
+            <FormSubmissions key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "keys" ? (
             <KeyRegister key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />

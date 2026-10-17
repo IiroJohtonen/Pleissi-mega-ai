@@ -8,11 +8,15 @@ import { BookingCalendar, type QueueEntry, SlotQueueList } from "./Bookings";
 import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
 import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
 import { PARKING_TYPES } from "./Parking";
+import { PortalForm, type PortalFormKey } from "./PortalForms";
 import { type RenovationNotice, RenovationFields, renovationFieldsError, renovationPayload, renovationPeriod, renovationStatusLabels, renovationValues } from "./Renovations";
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
 import { t } from "../i18n";
 
-type PortalView = "announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves" | "renovations" | "meters";
+type PortalView = "announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves" | "renovations" | "meters" | "heating" | PortalFormKey;
+
+const PORTAL_FORMS: PortalFormKey[] = ["service", "disturbance", "termination", "application"];
+const isPortalForm = (view: PortalView): view is PortalFormKey => (PORTAL_FORMS as PortalView[]).includes(view);
 
 const portalViews: { view: PortalView; label: string }[] = [
   { view: "announcements", label: t("Tiedotteet") },
@@ -20,16 +24,22 @@ const portalViews: { view: PortalView; label: string }[] = [
   { view: "laundry", label: t("Pyykkitupavuorot") },
   { view: "tickets", label: t("Tehtävät") },
   { view: "waitlist", label: t("Jonot") },
+  { view: "service", label: t("Huoltotyötilaus") },
+  { view: "disturbance", label: t("Häiriöilmoitus") },
+  { view: "meters", label: t("Mittarilukemat") },
   { view: "moves", label: t("Muuttoilmoitus") },
   { view: "renovations", label: t("Remontti-ilmoitus") },
-  { view: "meters", label: t("Kulutuslukemat") }
+  { view: "heating", label: t("Auton lämmityspaikka") },
+  { view: "termination", label: t("Irtisanomisilmoitus") },
+  { view: "application", label: t("Yleinen asuntohakemus") }
 ];
 
 // Työpöydän sivupalkin ryhmät: tiedotteet, vuorovaraukset ja asiointi isännöitsijän kanssa.
 const portalNavGroups: { label: string; views: PortalView[] }[] = [
   { label: "", views: ["announcements"] },
   { label: t("Varaukset"), views: ["sauna", "laundry"] },
-  { label: t("Asiointi"), views: ["tickets", "waitlist", "moves", "renovations", "meters"] }
+  { label: t("Asiointi"), views: ["tickets", "waitlist"] },
+  { label: t("Lomakkeet"), views: ["service", "disturbance", "meters", "moves", "renovations", "heating", "termination", "application"] }
 ];
 
 const portalIcons: Record<PortalView, string> = {
@@ -40,7 +50,12 @@ const portalIcons: Record<PortalView, string> = {
   waitlist: "M8 7a3 3 0 1 0 0-.01M3 20c0-3 2-5 5-5s5 2 5 5M16 8h5M16 12h5M16 16h3",
   moves: "M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01",
   renovations: "M14 4l6 6-9 9H5v-6zM12 6l6 6",
-  meters: "M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"
+  meters: "M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z",
+  service: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z",
+  disturbance: "M11 5L6 9H3v6h3l5 4zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12",
+  heating: "M5 17h14v-4l-2-5H7l-2 5zM7 17v2M17 17v2M8 13h.01M16 13h.01M12 3v3",
+  termination: "M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4",
+  application: "M3 11l9-7 9 7v9H3zM10 20v-5h4v5"
 };
 
 // Puhelimen alapalkin näkymät lyhyine nimineen; muut ovat Lisää-valikossa.
@@ -126,6 +141,8 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           : view === "moves" ? <PortalMoves resident={resident} />
           : view === "renovations" ? <PortalRenovations resident={resident} />
           : view === "meters" ? <PortalMeters resident={resident} />
+          : view === "heating" ? <PortalWaitlist heating />
+          : isPortalForm(view) ? <PortalForm key={view} form={view} resident={resident} onOpenTickets={() => open("tickets")} />
           : (
           <BookingCalendar
             key={view}
@@ -238,7 +255,7 @@ function FilePreview({ file, onRemove }: { file: File; onRemove: () => void }) {
   );
 }
 
-function PortalFilePicker({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
+export function PortalFilePicker({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
   const [busy, setBusy] = useState(false);
   const total = files.reduce((sum, file) => sum + file.size, 0);
 
@@ -320,7 +337,7 @@ function PortalAttachmentThumb({ attachment }: { attachment: PortalThread["attac
   );
 }
 
-async function portalAttachments(files: File[]) {
+export async function portalAttachments(files: File[]) {
   return Promise.all(files.map(async file => ({ filename: file.name, mimeType: file.type, data: await fileToBase64(file) })));
 }
 
@@ -633,11 +650,12 @@ function PortalAnnouncements() {
 // Asukkaan jonot: ilmoittautuminen autopaikka- ja saunavuorojonoon sekä oma sija.
 // Asukkaan jonot: sauna- ja pyykkitupavuorojen jonopaikat (liittyminen kalenterista) sekä
 // autopaikka- ja saunavuorojonot, joihin ilmoittaudutaan tältä sivulta.
-function PortalWaitlist() {
+// heating: vain auton lämmityspaikan jono (paikkatyyppi Lämmityspaikka valmiiksi valittuna).
+function PortalWaitlist({ heating = false }: { heating?: boolean }) {
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [slotEntries, setSlotEntries] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [parkingType, setParkingType] = useState("");
+  const [parkingType, setParkingType] = useState(heating ? "Lämmityspaikka" : "");
   const [notes, setNotes] = useState<Record<string, string>>({ parking: "", sauna: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -717,14 +735,16 @@ function PortalWaitlist() {
     )
   );
 
-  const queues: { resource: "parking" | "sauna"; title: string; hint: string }[] = [
+  const queues: { resource: "parking" | "sauna"; title: string; hint: string }[] = heating ? [
+    { resource: "parking", title: t("Auton lämmityspaikka"), hint: t("Vapautuva lämmityspaikka tarjotaan jonossa ensimmäisenä olevalle. Jos olet jo autopaikkajonossa, poistu siitä ja ilmoittaudu uudelleen tästä.") }
+  ] : [
     { resource: "parking", title: t("Autopaikkajono"), hint: t("Vapautuva autopaikka tarjotaan jonossa ensimmäisenä olevalle.") },
     { resource: "sauna", title: t("Saunan vakiovuorojono"), hint: t("Vapautuva vakiovuoro tarjotaan jonossa ensimmäisenä olevalle.") }
   ];
 
   return (
     <div className="portal-queues">
-      {slotQueue}
+      {!heating && slotQueue}
       {queues.map(queue => {
         const entry = entries.find(item => item.resource === queue.resource);
         return (
@@ -744,7 +764,7 @@ function PortalWaitlist() {
               </>
             ) : (
               <div className="ticket-form">
-                {queue.resource === "parking" && (
+                {queue.resource === "parking" && !heating && (
                   <label>
                     <span>{t("Toivottu paikkatyyppi")}</span>
                     <select value={parkingType} onChange={event => setParkingType(event.target.value)}>
@@ -759,7 +779,7 @@ function PortalWaitlist() {
                     value={notes[queue.resource]}
                     onChange={event => setNotes(current => ({ ...current, [queue.resource]: event.target.value }))}
                     maxLength={300}
-                    placeholder={queue.resource === "parking" ? t("Esim. sähköauton latausmahdollisuus") : t("Esim. perjantai-ilta")}
+                    placeholder={heating ? t("Esim. auton rekisterinumero") : queue.resource === "parking" ? t("Esim. sähköauton latausmahdollisuus") : t("Esim. perjantai-ilta")}
                   />
                 </label>
                 <div className="portal-ticket-actions">

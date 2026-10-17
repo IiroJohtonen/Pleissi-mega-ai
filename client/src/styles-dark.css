@@ -561,6 +561,41 @@
     border-color: #3d714c;
     color: #a8e2bb
 }
+:root[data-theme="dark"] .form-tabs {
+    border-bottom: 1px solid #384454
+}
+:root[data-theme="dark"] .form-tabs b {
+    background: #1d2630;
+    color: #c9cfd6
+}
+:root[data-theme="dark"] .form-tabs button.active b {
+    background: #d6dbe1;
+    color: #19222e
+}
+:root[data-theme="dark"] .form-summary dt {
+    color: #b8bfc9
+}
+:root[data-theme="dark"] .ticket-form-card h3 {
+    color: #d7dbe1
+}
+:root[data-theme="dark"] .ticket-form-card h3 small {
+    color: #b8bfc9
+}
+:root[data-theme="dark"] .ticket-form-card dl {
+    border: 1px solid #333e4d
+}
+:root[data-theme="dark"] .ticket-form-card dl > div {
+    border-top: 1px solid #394555
+}
+:root[data-theme="dark"] .ticket-form-card dl > div.warning {
+    background: #4a4230
+}
+:root[data-theme="dark"] .ticket-form-card dt {
+    color: #c0c7d0
+}
+:root[data-theme="dark"] .ticket-form-card dd {
+    color: #e0e3e7
+}
 :root[data-theme="dark"] .ticket-description h3 {
     color: #d7dbe1
 }
@@ -1050,6 +1085,23 @@
 }
 :root[data-theme="dark"] .repeat-choice small {
     color: #b6bec8
+}
+:root[data-theme="dark"] .portal-form-warning {
+    background: #4a4230;
+    color: #efd39b
+}
+:root[data-theme="dark"] .portal-chips legend {
+    color: #d7dbe1
+}
+:root[data-theme="dark"] .portal-chips button {
+    border: 1px solid #333e4d;
+    background: #283341;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .portal-chips button.active {
+    border-color: #a6b1bf;
+    background: #d6dbe1;
+    color: #19222e
 }
 :root[data-theme="dark"] .portal-sent {
     background: #2f3d49;

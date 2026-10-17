@@ -16,7 +16,7 @@ export type ParkingSpace = {
   apartment_number: string | null;
 };
 
-export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka"];
+export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka", "Lämmityspaikka"];
 
 // Autopaikat: kaikkien taloyhtiöiden paikat yhdessä taulukossa. Riviä klikkaamalla paikkaa voi muokata.
 export function ParkingSpaces({
