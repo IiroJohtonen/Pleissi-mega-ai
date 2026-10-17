@@ -1707,4 +1707,13 @@ export const en: Record<string, string> = {
   "Palvelimen oletus": "Server default",
   "Haiku on edullisin ja nopein, Opus tarkin ja kallein. Palvelimen oletus: vastausehdotukset Sonnet, pilkonta Haiku, muut Opus.": "Haiku is the cheapest and fastest, Opus the most accurate and most expensive. Server default: reply suggestions Sonnet, splitting Haiku, others Opus.",
   "Tallenna perustiedot": "Save master data",
+  "Merkitty arkaluonteiseksi": "Marked as sensitive",
+  "Arkaluonteisuusmerkintä poistettu": "Sensitive marking removed",
+  "Poistetaanko arkaluonteisuusmerkintä? Tehtävän tekstit voidaan sen jälkeen lähettää AI:lle.": "Remove the sensitive marking? The task's texts may then be sent to the AI.",
+  "Merkinnän tallennus epäonnistui.": "Saving the marking failed.",
+  "Tehtävä on arkaluonteinen, joten sitä ei lähetetty AI:lle. Ehdotus tehtiin avainsanahaulla dokumentaatiosta.": "The task is sensitive, so it was not sent to the AI. The suggestion was made with a keyword search of the documentation.",
+  "Pyydä ehdotus dokumentaatiosta": "Request a suggestion from the documentation",
+  "🔒 Arkaluonteinen tehtävä: sitä ei lähetetä AI:lle. Ehdotus tehdään avainsanahaulla dokumentaatiosta.": "🔒 Sensitive task: it is not sent to the AI. Suggestions are made with a keyword search of the documentation.",
+  "Poista arkaluonteisuusmerkintä": "Remove sensitive marking",
+  "Merkitse arkaluonteiseksi": "Mark as sensitive",
 };

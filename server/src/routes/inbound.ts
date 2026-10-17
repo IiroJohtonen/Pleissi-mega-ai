@@ -5,7 +5,8 @@ import { triage } from "../ai.js";
 import { db } from "../db.js";
 import { alertEmergency } from "../notify.js";
 import { id, now, statusAfterResidentReply } from "../util.js";
-import { getKnowledge } from "./knowledge.js";
+import { sensitiveMatches } from "../privacy-filter.js";
+import { detectSensitivity } from "../ticket-sensitivity.js";
 import { aiPriorityEnabled, aiRelevanceEnabled } from "./office.js";
 import { findResident } from "./residents.js";
 import { assignToCompanyManager } from "./tickets.js";
@@ -93,6 +94,7 @@ if (input.sourceMessageId) {
         timestamp,
         existingTicket.id
       );
+      detectSensitivity(existingTicket.id, `${input.subject}\n${input.body}`);
 
       db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
         id("audit"),
@@ -119,13 +121,14 @@ if (input.sourceMessageId) {
     .get(companyId) as any;
   if (!company) return res.status(404).json({ error: "Company not found" });
 
-  const knowledge = getKnowledge(companyId);
-
   const resident = findResident(
     companyId,
     input.senderEmail,
     input.senderName
   );
+
+  // Arkaluonteista viestiä ei lähetetä AI:lle, joten se luokitellaan avainsanoilla.
+  const sensitiveWords = sensitiveMatches(`${input.subject}\n${input.body}`);
 
   // Saapuva viesti vain luokitellaan. Dokumentaatiota ei haeta eikä ehdoteta ennen kuin
   // käsittelijä pyytää tehtävällä AI-ehdotuksen.
@@ -135,16 +138,15 @@ if (input.sourceMessageId) {
     [],
     company.maintenance_emergency_phone || undefined,
     {
-      aiPriority: aiPriorityEnabled(),
+      aiPriority: aiPriorityEnabled() && sensitiveWords.length === 0,
       // Asiaankuuluvuus tarkistetaan vain sähköposteista; käsin kirjattu asia kuuluu aina jonoon.
-      aiRelevance: input.channel === "email" && aiRelevanceEnabled(),
+      aiRelevance: input.channel === "email" && aiRelevanceEnabled() && sensitiveWords.length === 0,
       sender: input.senderEmail ? `${input.senderName} <${input.senderEmail}>` : input.senderName
     }
   );
   // AI:n suodattama viesti tallennetaan suljettuna tehtävänä: se ei mene päätösjonoon eikä hälytä,
   // mutta löytyy kaikista tehtävistä ja sen voi avata uudelleen.
   const filtered = Boolean(result.filtered);
-  const source = knowledge.find(item => item.id === result.sourceId);
 
   const ticketId = id("ticket");
   const messageId = id("message");
@@ -189,12 +191,6 @@ if (input.sourceMessageId) {
     db.prepare("UPDATE tickets SET mail_account_id = ? WHERE id = ?").run(input.mailAccountId, ticketId);
   }
 
-  if (source) {
-    db.prepare(
-      "UPDATE tickets SET knowledge_source_id = ?, knowledge_source_title = ? WHERE id = ?"
-    ).run(source.id, source.title, ticketId);
-  }
-
   db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
     messageId,
     ticketId,
@@ -207,6 +203,7 @@ if (input.sourceMessageId) {
     timestamp,
     input.channel
   );
+  if (sensitiveWords.length) detectSensitivity(ticketId, `${input.subject}\n${input.body}`);
 
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     auditId,

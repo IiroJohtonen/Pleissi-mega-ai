@@ -239,9 +239,11 @@ export async function suggestReply(
   conversation: string,
   chunks: KnowledgeChunk[],
   // Käsittelijän lisätieto tehtävästä, esimerkiksi "huoltomies käy torstaina".
-  managerContext = ""
+  managerContext = "",
+  // allowAi = false: arkaluonteinen tehtävä, ehdotus tehdään ilman AI:ta.
+  options: { allowAi?: boolean } = {}
 ): Promise<ReplySuggestion> {
-  const ai = claudeClient();
+  const ai = options.allowAi === false ? null : claudeClient();
   if (!ai) return localSuggestion(chunks);
   const model = replyModel();
 

@@ -304,6 +304,21 @@ export function TicketDrawer({
     else void requestSuggestion("");
   }
 
+  const [sensitiveSaving, setSensitiveSaving] = useState(false);
+  async function toggleSensitive() {
+    const next = !ticket.sensitive;
+    if (!next && !window.confirm(t("Poistetaanko arkaluonteisuusmerkintä? Tehtävän tekstit voidaan sen jälkeen lähettää AI:lle."))) return;
+    setSensitiveSaving(true);
+    try {
+      await api(`/tickets/${ticket.id}/sensitive`, { method: "PUT", body: JSON.stringify({ sensitive: next }) });
+      await onChanged();
+    } catch (error) {
+      setSuggestError(errorMessage(error, t("Merkinnän tallennus epäonnistui.")));
+    } finally {
+      setSensitiveSaving(false);
+    }
+  }
+
   async function requestSuggestion(context: string) {
     setAiPromptOpen(false);
     setSuggesting(true);
@@ -314,11 +329,14 @@ export function TicketDrawer({
         reason: string;
         source: { id: string; title: string; chunkId?: string | null; page?: number | string | null } | null;
         usedAi: boolean;
+        sensitive?: boolean;
       }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
       setSuggestionToast({
         title: result.usedAi
           ? t("AI on luonut ehdotuksen tälle tehtävälle. Tarkista ja muokkaa tekstiä ennen lähettämistä.")
+          : result.sensitive
+          ? t("Tehtävä on arkaluonteinen, joten sitä ei lähetetty AI:lle. Ehdotus tehtiin avainsanahaulla dokumentaatiosta.")
           : t("AI ei ollut käytettävissä, joten ehdotus tehtiin avainsanahaulla dokumentaatiosta."),
         message: result.reason
       });
@@ -959,9 +977,19 @@ export function TicketDrawer({
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2l1.900 5.600a4 4 0 0 0 2.500 2.500L22 12l-5.600 1.900a4 4 0 0 0-2.500 2.500L12 22l-1.900-5.600a4 4 0 0 0-2.500-2.500L2 12l5.600-1.900a4 4 0 0 0 2.500-2.500z" />
               </svg>
-              {suggesting ? t("AI kirjoittaa…") : suggestionUsed ? t("AI-ehdotus pyydetty") : t("Pyydä AI-ehdotus")}
+              {suggesting ? t("AI kirjoittaa…") : suggestionUsed ? t("AI-ehdotus pyydetty")
+                : ticket.sensitive ? t("Pyydä ehdotus dokumentaatiosta") : t("Pyydä AI-ehdotus")}
             </button>
           </div>
+          {/* Arkaluonteinen tehtävä (esim. terveystietoja) ei mene AI:lle; merkinnän voi asettaa ja poistaa. */}
+          <p className={ticket.sensitive ? "sensitive-note active" : "sensitive-note"}>
+            {ticket.sensitive ? (
+              <span>{t("🔒 Arkaluonteinen tehtävä: sitä ei lähetetä AI:lle. Ehdotus tehdään avainsanahaulla dokumentaatiosta.")}</span>
+            ) : null}
+            <button type="button" className="back-link" disabled={sensitiveSaving} onClick={() => void toggleSensitive()}>
+              {ticket.sensitive ? t("Poista arkaluonteisuusmerkintä") : t("Merkitse arkaluonteiseksi")}
+            </button>
+          </p>
           {/* Ehdotuksen valmistuminen ja sen peruste näytetään hetken ilmoituksena näytön yläreunassa. */}
           {suggestionToast && (
             <Toast

@@ -75,6 +75,8 @@ export function actionLabel(action: string) {
     resident_erased: t("Asukkaan henkilötiedot poistettu"),
     retention_purge: t("Säilytysajan ylittäneet tiedot poistettu"),
     master_data_updated: t("Perustietoja muutettu"),
+    sensitive_marked: t("Merkitty arkaluonteiseksi"),
+    sensitive_cleared: t("Arkaluonteisuusmerkintä poistettu"),
     reporter_linked: t("Asukas linkitetty tehtävään"),
     renovation_reported: t("Remontti ilmoitettu"),
     renovation_updated: t("Remontti-ilmoituksen tietoja muutettu"),

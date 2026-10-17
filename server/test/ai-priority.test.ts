@@ -248,4 +248,40 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     // Muut tietueet eivät osu kysymykseen, joten niitä ei lähetetä.
     assert.doesNotMatch(content, /Hiljaisuus/);
   });
+
+  it("arkaluonteista tehtävää ei lähetetä AI:lle, ja merkinnän voi poistaa ja asettaa käsin", async () => {
+    const before = requests.length;
+    const sick = await inbound("Home", "Lapsellani on astma ja epäilen kylpyhuoneessa hometta.");
+    // AI-arviointi on päällä, mutta arkaluonteista viestiä ei lähetetty.
+    assert.equal(requests.length, before);
+    assert.equal(sick.ticket.sensitive, 1);
+    assert.equal(sick.ticket.sensitive_source, "keywords");
+    const marked = sick.audit.find(row => row.action === "sensitive_marked");
+    assert.deepEqual(JSON.parse(marked.details).words, ["astma"]);
+
+    const suggested = await call(server, admin, "POST", `/tickets/${sick.id}/suggest`, {});
+    assert.equal(suggested.data.usedAi, false);
+    assert.equal(suggested.data.sensitive, true);
+    assert.equal(requests.length, before);
+
+    // Raportti jättää arkaluonteisen tehtävän pois.
+    await call(server, admin, "POST", "/companies/demo-company/reports/topics", {
+      period: "month", since: new Date(Date.now() - 30 * 86_400_000).toISOString()
+    });
+    assert.doesNotMatch(JSON.stringify(requests.at(-1).body.messages), /astma|hometta/);
+
+    // Tavallisen tehtävän voi merkitä arkaluonteiseksi käsin.
+    const plain = await inbound("Ovikello", "Ovikello ei soi.");
+    assert.equal(plain.ticket.sensitive, 0);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${plain.id}/sensitive`, { sensitive: true })).status, 200);
+    let detail = (await call(server, admin, "GET", `/tickets/${plain.id}`)).data;
+    assert.equal(detail.ticket.sensitive, 1);
+    assert.equal(detail.ticket.sensitive_source, "manual");
+
+    // Poistettu merkintä pysyy poistettuna, vaikka teksti osuisi sanalistaan.
+    assert.equal((await call(server, admin, "PUT", `/tickets/${sick.id}/sensitive`, { sensitive: false })).status, 200);
+    detail = (await call(server, admin, "GET", `/tickets/${sick.id}`)).data;
+    assert.equal(detail.ticket.sensitive, 0);
+    assert.ok(detail.audit.some((row: any) => row.action === "sensitive_cleared"));
+  });
 });

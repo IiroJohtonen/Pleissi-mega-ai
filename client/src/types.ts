@@ -33,6 +33,9 @@ export type Ticket = {
   knowledge_source_id?: string | null;
   knowledge_source_title?: string | null;
   knowledge_source_chunk_id?: string | null;
+  // 1 = arkaluonteinen tehtävä, jota ei lähetetä AI:lle.
+  sensitive?: number;
+  sensitive_source?: string | null;
   knowledge_source_page?: string | number | null;
   draft?: string;
   created_at: string;

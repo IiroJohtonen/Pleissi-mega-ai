@@ -9,6 +9,8 @@ import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
 import { QUEUE_POSITION_SQL } from "../booking-queue.js";
 import { id, now, unsafeFileMessage, statusAfterResidentReply } from "../util.js";
+import { sensitiveMatches } from "../privacy-filter.js";
+import { detectSensitivity } from "../ticket-sensitivity.js";
 import {
   BOOKING_RESOURCES, bookingKindError, bookingRules, bookingTimes, createBookings, deleteBooking,
   MAX_BOOKING_OCCURRENCES
@@ -45,10 +47,12 @@ portalRouter.post("/portal/tickets", async (req, res) => {
   const company = db.prepare("SELECT maintenance_emergency_phone FROM companies WHERE id = ?").get(resident.companyId) as
     | { maintenance_emergency_phone: string }
     | undefined;
+  // Arkaluonteista ilmoitusta ei lähetetä AI:lle, joten se luokitellaan avainsanoilla.
+  const sensitive = sensitiveMatches(`${parsed.data.subject}\n${parsed.data.description}`).length > 0;
   const result = await triage(
     parsed.data.subject, parsed.data.description, [], company?.maintenance_emergency_phone || undefined,
     // Kirjautuneen asukkaan ilmoitus koskee aina taloyhtiötä, joten asiaankuuluvuutta ei tarkisteta.
-    { aiPriority: aiPriorityEnabled(), sender: resident.name }
+    { aiPriority: aiPriorityEnabled() && !sensitive, sender: resident.name }
   );
 
   const ticketId = id("ticket");
@@ -89,6 +93,7 @@ portalRouter.post("/portal/tickets", async (req, res) => {
     timestamp,
     "portal"
   );
+  if (sensitive) detectSensitivity(ticketId, `${parsed.data.subject}\n${parsed.data.description}`);
 
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
@@ -189,6 +194,7 @@ portalRouter.post("/portal/tickets/:id/messages", async (req, res) => {
     resident.email ? `${resident.name} <${resident.email}>` : resident.name,
     ticket.subject, parsed.data.body, timestamp, "portal"
   );
+  detectSensitivity(ticket.id, parsed.data.body);
   // Suljettu tai vastattu tehtävä palaa päätösjonoon, kuten sähköpostivastauksessakin.
   const nextStatus = statusAfterResidentReply(ticket.status);
   const reopened = nextStatus !== ticket.status;

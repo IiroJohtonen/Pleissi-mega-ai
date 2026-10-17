@@ -508,6 +508,14 @@ if (!(db.prepare("PRAGMA table_info(knowledge_chunks)").all() as { name: string 
   db.exec("ALTER TABLE knowledge_chunks ADD COLUMN suggested_valid_until TEXT");
 }
 
+// Arkaluonteinen tehtävä (terveys ym. erityiset tietoryhmät) ei mene AI:lle. sensitive_source:
+// 'keywords' (perustietojen sanalista), 'manual' (käsittelijä) tai 'cleared' (käsittelijä poisti merkinnän).
+{
+  const columns = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
+  if (!columns.includes("sensitive")) db.exec("ALTER TABLE tickets ADD COLUMN sensitive INTEGER NOT NULL DEFAULT 0");
+  if (!columns.includes("sensitive_source")) db.exec("ALTER TABLE tickets ADD COLUMN sensitive_source TEXT");
+}
+
 const ticketSourceColumns = db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];
 for (const column of ["knowledge_source_id", "knowledge_source_title", "knowledge_source_chunk_id", "knowledge_source_page"]) {
   if (!ticketSourceColumns.some(existing => existing.name === column)) {

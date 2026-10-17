@@ -4473,3 +4473,8 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .master-data h3:first-of-type { margin-top: 12px; }
 .master-data textarea { font-family: inherit; }
 .master-data .back-link { font-size: 12px; margin-top: 4px; }
+
+/* Arkaluonteinen tehtävä */
+.sensitive-note { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -6px 0 12px; font-size: 12px; }
+.sensitive-note.active { background: #f3eefb; color: #4f2f86; border-radius: 8px; padding: 8px 12px; margin-top: 0; }
+.sensitive-note .back-link { font-size: 12px; }

@@ -2032,3 +2032,7 @@
 :root[data-theme="dark"] .version-chunk small {
     color: #b7bec9
 }
+:root[data-theme="dark"] .sensitive-note.active {
+    background: #382e47;
+    color: #b8a2de
+}
