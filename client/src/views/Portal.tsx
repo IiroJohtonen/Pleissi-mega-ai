@@ -8,7 +8,7 @@ import { BookingCalendar, type QueueEntry, SlotQueueList } from "./Bookings";
 import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
 import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
 import { PARKING_TYPES } from "./Parking";
-import { PortalForm, type PortalFormKey } from "./PortalForms";
+import { PortalForm, type PortalFormKey, PortalHeating } from "./PortalForms";
 import { type RenovationNotice, RenovationFields, renovationFieldsError, renovationPayload, renovationPeriod, renovationStatusLabels, renovationValues } from "./Renovations";
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
 import { t } from "../i18n";
@@ -141,7 +141,7 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           : view === "moves" ? <PortalMoves resident={resident} />
           : view === "renovations" ? <PortalRenovations resident={resident} />
           : view === "meters" ? <PortalMeters resident={resident} />
-          : view === "heating" ? <PortalWaitlist heating />
+          : view === "heating" ? <PortalHeating resident={resident} />
           : isPortalForm(view) ? <PortalForm key={view} form={view} resident={resident} onOpenTickets={() => open("tickets")} />
           : (
           <BookingCalendar
@@ -650,12 +650,11 @@ function PortalAnnouncements() {
 // Asukkaan jonot: ilmoittautuminen autopaikka- ja saunavuorojonoon sekä oma sija.
 // Asukkaan jonot: sauna- ja pyykkitupavuorojen jonopaikat (liittyminen kalenterista) sekä
 // autopaikka- ja saunavuorojonot, joihin ilmoittaudutaan tältä sivulta.
-// heating: vain auton lämmityspaikan jono (paikkatyyppi Lämmityspaikka valmiiksi valittuna).
-function PortalWaitlist({ heating = false }: { heating?: boolean }) {
+function PortalWaitlist() {
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [slotEntries, setSlotEntries] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [parkingType, setParkingType] = useState(heating ? "Lämmityspaikka" : "");
+  const [parkingType, setParkingType] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({ parking: "", sauna: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -735,16 +734,14 @@ function PortalWaitlist({ heating = false }: { heating?: boolean }) {
     )
   );
 
-  const queues: { resource: "parking" | "sauna"; title: string; hint: string }[] = heating ? [
-    { resource: "parking", title: t("Auton lämmityspaikka"), hint: t("Vapautuva lämmityspaikka tarjotaan jonossa ensimmäisenä olevalle. Jos olet jo autopaikkajonossa, poistu siitä ja ilmoittaudu uudelleen tästä.") }
-  ] : [
+  const queues: { resource: "parking" | "sauna"; title: string; hint: string }[] = [
     { resource: "parking", title: t("Autopaikkajono"), hint: t("Vapautuva autopaikka tarjotaan jonossa ensimmäisenä olevalle.") },
     { resource: "sauna", title: t("Saunan vakiovuorojono"), hint: t("Vapautuva vakiovuoro tarjotaan jonossa ensimmäisenä olevalle.") }
   ];
 
   return (
     <div className="portal-queues">
-      {!heating && slotQueue}
+      {slotQueue}
       {queues.map(queue => {
         const entry = entries.find(item => item.resource === queue.resource);
         return (
@@ -764,7 +761,7 @@ function PortalWaitlist({ heating = false }: { heating?: boolean }) {
               </>
             ) : (
               <div className="ticket-form">
-                {queue.resource === "parking" && !heating && (
+                {queue.resource === "parking" && (
                   <label>
                     <span>{t("Toivottu paikkatyyppi")}</span>
                     <select value={parkingType} onChange={event => setParkingType(event.target.value)}>
@@ -779,7 +776,7 @@ function PortalWaitlist({ heating = false }: { heating?: boolean }) {
                     value={notes[queue.resource]}
                     onChange={event => setNotes(current => ({ ...current, [queue.resource]: event.target.value }))}
                     maxLength={300}
-                    placeholder={heating ? t("Esim. auton rekisterinumero") : queue.resource === "parking" ? t("Esim. sähköauton latausmahdollisuus") : t("Esim. perjantai-ilta")}
+                    placeholder={queue.resource === "parking" ? t("Esim. sähköauton latausmahdollisuus") : t("Esim. perjantai-ilta")}
                   />
                 </label>
                 <div className="portal-ticket-actions">

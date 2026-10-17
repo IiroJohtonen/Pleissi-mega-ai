@@ -165,7 +165,7 @@ export type TicketDetail = {
   erasurePending?: { reason: string; requested_by: string; created_at: string } | null;
 };
 
-export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "forms" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
+export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
 
 export type Resident = {
   id: string;

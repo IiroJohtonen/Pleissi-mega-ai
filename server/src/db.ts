@@ -840,6 +840,102 @@ function backfillKnowledge() {
   db.prepare("UPDATE knowledge SET created_at = ? WHERE created_at IS NULL").run(new Date().toISOString());
 }
 
+// Verkkosivun lomakkeilta tulevat lukemat, muuttoilmoitukset ja lämmityspaikkatilaukset: asunto voi
+// puuttua, jos lomakkeen osoitetta ei tunnisteta (isännöitsijä valitsee sen muokkaamalla), eikä
+// ilmoittaja ole välttämättä asukastaulussa. details: lomakkeen kentät JSON-oliona (avain → arvo).
+{
+  const meterColumns = db.prepare("PRAGMA table_info(meter_readings)").all() as { name: string; notnull: number }[];
+  if (meterColumns.find(column => column.name === "apartment_id")?.notnull) {
+    db.transaction(() => {
+      db.exec(`
+        ALTER TABLE meter_readings RENAME TO meter_readings_old;
+        CREATE TABLE meter_readings (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          apartment_id TEXT,
+          resident_id TEXT,
+          meter_type TEXT NOT NULL,
+          reading_date TEXT NOT NULL,
+          value REAL NOT NULL,
+          source TEXT NOT NULL,
+          recorded_by TEXT NOT NULL,
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO meter_readings (id, company_id, apartment_id, resident_id, meter_type, reading_date, value, source, recorded_by, note, created_at)
+        SELECT id, company_id, apartment_id, resident_id, meter_type, reading_date, value, source, recorded_by, note, created_at
+        FROM meter_readings_old;
+        DROP TABLE meter_readings_old;
+      `);
+    })();
+  }
+  if (!meterColumns.some(column => column.name === "details")) {
+    db.exec("ALTER TABLE meter_readings ADD COLUMN details TEXT NOT NULL DEFAULT '{}'");
+  }
+
+  const moveColumns = db.prepare("PRAGMA table_info(move_notices)").all() as { name: string; notnull: number }[];
+  if (moveColumns.find(column => column.name === "resident_id")?.notnull) {
+    db.transaction(() => {
+      db.exec(`
+        ALTER TABLE move_notices RENAME TO move_notices_old;
+        CREATE TABLE move_notices (
+          id TEXT PRIMARY KEY,
+          company_id TEXT NOT NULL,
+          apartment_id TEXT,
+          resident_id TEXT,
+          move_date TEXT NOT NULL,
+          moves_out INTEGER NOT NULL DEFAULT 0,
+          new_residents TEXT NOT NULL DEFAULT '[]',
+          door_name TEXT NOT NULL DEFAULT '',
+          note TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at TEXT NOT NULL,
+          decided_by TEXT,
+          decided_at TEXT,
+          result TEXT
+        );
+        INSERT INTO move_notices (id, company_id, apartment_id, resident_id, move_date, moves_out, new_residents, door_name, note,
+          status, created_at, decided_by, decided_at, result)
+        SELECT id, company_id, apartment_id, resident_id, move_date, moves_out, new_residents, door_name, note,
+          status, created_at, decided_by, decided_at, result
+        FROM move_notices_old;
+        DROP TABLE move_notices_old;
+      `);
+    })();
+  }
+  const moveColumnNames = (db.prepare("PRAGMA table_info(move_notices)").all() as { name: string }[]).map(column => column.name);
+  if (!moveColumnNames.includes("details")) db.exec("ALTER TABLE move_notices ADD COLUMN details TEXT NOT NULL DEFAULT '{}'");
+  if (!moveColumnNames.includes("source")) db.exec("ALTER TABLE move_notices ADD COLUMN source TEXT NOT NULL DEFAULT 'portal'");
+
+  // Lomakeviestit, joista tehtiin tietue (lukema, muutto, lämmityspaikka) eikä tehtävää: ei tuoda uudelleen.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS form_imports (
+      message_id TEXT PRIMARY KEY,
+      record_kind TEXT NOT NULL,
+      record_ids TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  // Auton lämmityspaikan tilaukset. status: pending (odottaa), approved (myönnetty), rejected, ended.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS heating_orders (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      apartment_id TEXT,
+      resident_id TEXT,
+      start_date TEXT,
+      end_date TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      note TEXT NOT NULL DEFAULT '',
+      details TEXT NOT NULL DEFAULT '{}',
+      source TEXT NOT NULL DEFAULT 'office',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+}
+
 // Kiireellisiä esimerkkitehtäviä samankaltaisista aiheista (vesi- ja lämmitysviat). Lisätään myös
 // olemassa olevaan demokantaan, jos niitä ei vielä ole.
 const urgentExamples = [

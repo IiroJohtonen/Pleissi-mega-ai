@@ -659,6 +659,8 @@ function KnowledgeDetailDrawer({
   const isCurrent = detail?.status === "active";
   // Mitä AI poimi tästä näkyy vain pääkäyttäjälle.
   const showChunks = Boolean(detail && isAdmin() && detail.kind === "document" && detail.state !== "unreadable" && detail.status !== "pending");
+  // Välilehti: dokumentista luettu teksti tai AI:n poiminnat. Tehtävän lähdelinkki avaa poiminnat.
+  const [docView, setDocView] = useState<"text" | "chunks">(highlightChunkId ? "chunks" : "text");
   const canEdit = isCurrent && isManager();
   // Voimassa olevan tietueen tilaksi voi valita AI:n käytön tai sisäisen dokumentaation.
   const stateEditable = canEdit && (detail?.state === "in_use" || detail?.state === "internal");
@@ -787,9 +789,19 @@ function KnowledgeDetailDrawer({
               />
             )}
 
-            {/* Pääkäyttäjälle AI:n poimimat tiedot ja dokumentista luettu teksti vierekkäin. */}
-            <div className={`knowledge-columns${showChunks ? "" : " single"}`}>
-              {showChunks && (
+            {/* Pääkäyttäjä valitsee välilehdeltä, katsooko dokumentista luettua tekstiä vai AI:n poimimia tietoja. */}
+            {showChunks && (
+              <div className="billing-tabs knowledge-view-tabs" role="tablist" aria-label={t("Dokumentin näkymä")}>
+                <button role="tab" aria-selected={docView === "text"} className={docView === "text" ? "active" : ""} onClick={() => setDocView("text")}>
+                  {t("Dokumentista luettu teksti")}
+                </button>
+                <button role="tab" aria-selected={docView === "chunks"} className={docView === "chunks" ? "active" : ""} onClick={() => setDocView("chunks")}>
+                  {t("Mitä AI poimi tästä")}
+                </button>
+              </div>
+            )}
+            <div className="knowledge-columns single">
+              {showChunks && docView === "chunks" && (
                 <KnowledgeChunks
                   detail={detail}
                   highlightChunkId={highlightChunkId}
@@ -799,12 +811,14 @@ function KnowledgeDetailDrawer({
                   }}
                 />
               )}
+              {(!showChunks || docView === "text") && (
               <section className="drawer-section knowledge-text">
-                <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>
+                {!showChunks && <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>}
                 <p className="knowledge-content">
                   {detail.content || t("Tekstiä ei saatu luettua, joten AI ei voi käyttää tätä dokumenttia.")}
                 </p>
               </section>
+              )}
             </div>
 
             <section className="drawer-section">

@@ -4,6 +4,7 @@ import { api, errorMessage } from "../session";
 import type { Company, Resident } from "../types";
 import { t } from "../i18n";
 import { OpenResidentButton } from "../components/Reporter";
+import { HeatingOrders } from "./HeatingOrders";
 
 export type ParkingSpace = {
   id: string;
@@ -335,6 +336,8 @@ export function ParkingSpaces({
           </aside>
         </div>
       )}
+
+      <HeatingOrders companies={companies} companyFilter={embedded ? defaultCompanyId : companyFilter} />
     </section>
   );
 }

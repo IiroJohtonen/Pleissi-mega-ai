@@ -561,19 +561,24 @@
     border-color: #3d714c;
     color: #a8e2bb
 }
-:root[data-theme="dark"] .form-tabs {
-    border-bottom: 1px solid #384454
+:root[data-theme="dark"] .portal-own-orders {
+    border: 1px solid #384454;
+    background: #283341
 }
-:root[data-theme="dark"] .form-tabs b {
-    background: #1d2630;
-    color: #c9cfd6
-}
-:root[data-theme="dark"] .form-tabs button.active b {
-    background: #d6dbe1;
-    color: #19222e
-}
-:root[data-theme="dark"] .form-summary dt {
+:root[data-theme="dark"] .portal-own-orders li span {
     color: #b8bfc9
+}
+:root[data-theme="dark"] .detail-editor {
+    border: 1px solid #384454
+}
+:root[data-theme="dark"] .detail-editor legend {
+    color: #d7dbe1
+}
+:root[data-theme="dark"] .heating-orders .residents-toolbar h2 {
+    color: #b9c7d9
+}
+:root[data-theme="dark"] .inline-check {
+    color: #c8ced6
 }
 :root[data-theme="dark"] .ticket-form-card h3 {
     color: #d7dbe1
@@ -750,6 +755,32 @@
 :root[data-theme="dark"] .audit-email p {
     border: 1px solid #384454;
     background: #2d3847
+}
+:root[data-theme="dark"] .settings-nav span {
+    color: #abb4c0
+}
+:root[data-theme="dark"] .settings-nav button {
+    color: #cfd4db
+}
+:root[data-theme="dark"] .settings-nav button:hover {
+    border-left-color: #5a697c;
+    background: #1d2630;
+    color: #e3e6ea
+}
+:root[data-theme="dark"] .settings-subtabs {
+    border-bottom: 1px solid #384454
+}
+:root[data-theme="dark"] .settings-subtabs button {
+    color: #b8c0ca
+}
+:root[data-theme="dark"] .settings-subtabs button.active {
+    border-bottom-color: #5a697c;
+    color: #e3e6ea
+}
+@media (max-width: 900px) {
+    :root[data-theme="dark"] .settings-nav button {
+        border: 1px solid #384454
+    }
 }
 :root[data-theme="dark"] .settings-users li {
     border-top: 1px solid #3b4858
@@ -2263,4 +2294,7 @@
 }
 :root[data-theme="dark"] .chunk-verify:hover:not(:disabled) {
     background: #314c3c
+}
+:root[data-theme="dark"] .knowledge-view-tabs {
+    border-bottom: 1px solid #384454
 }

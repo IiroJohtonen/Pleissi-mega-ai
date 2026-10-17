@@ -1,4 +1,7 @@
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { detailValue } from "../components/FormDetails";
+import { formatDateOnly, formatDay } from "../format";
+import { type HeatingOrder, heatingStatusLabels } from "./HeatingOrders";
 import { t } from "../i18n";
 import { api, errorMessage, type ResidentAccount } from "../session";
 import { PortalFilePicker, portalAttachments } from "./Portal";
@@ -344,5 +347,99 @@ function ApplicationForm({ resident, saving, error, submit }: FormProps) {
       {checkError && <p className="send-error">{checkError}</p>}
       <Actions saving={saving} error={error} label={t("Lähetä asuntohakemus")} />
     </form>
+  );
+}
+
+const HEATING_SPOTS = ["Lämmitystolppapaikan", "Paikan katoksesta / tallista"];
+const HEATING_ORDER_TYPES = ["Toistaiseksi voimassa oleva", "Määräaikainen"];
+
+// Auton lämmityspaikan tilaus: samat valinnat kuin isännöitsijäyrityksen verkkosivun lomakkeella.
+// Kohde ja tilaajan tiedot tulevat kirjautumisesta. Tilaus näkyy toimistolle Autopaikat-sivulla.
+export function PortalHeating({ resident }: { resident: ResidentAccount }) {
+  const [orders, setOrders] = useState<HeatingOrder[]>([]);
+  const [spot, setSpot] = useState(HEATING_SPOTS[0]);
+  const [orderType, setOrderType] = useState(HEATING_ORDER_TYPES[0]);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [phone, setPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  const fixedTerm = orderType === HEATING_ORDER_TYPES[1];
+
+  const load = () => api<HeatingOrder[]>("/portal/heating-orders").then(setOrders).catch(() => setOrders([]));
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await api("/portal/heating-orders", {
+        method: "POST",
+        body: JSON.stringify({ spot, orderType, startDate, endDate: fixedTerm ? endDate : "", phone: phone.trim() })
+      });
+      setSent(true);
+      setStartDate("");
+      setEndDate("");
+      await load();
+    } catch (submitError) {
+      setError(errorMessage(submitError, t("Tilauksen lähetys epäonnistui. Yritä uudelleen.")));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <p className="muted portal-form-intro">{t("Tilaa auton lämmityspaikka taloyhtiöstä. Isännöitsijä käsittelee tilauksen ja ilmoittaa paikasta.")}</p>
+      {sent && <p className="portal-sent">{t("Lämmityspaikan tilaus on lähetetty.")}</p>}
+      <form className="ticket-form portal-ticket-form" onSubmit={submit}>
+        <ReporterFacts resident={resident} />
+        <Field label={t("Tilaan")}>
+          <select value={spot} onChange={event => setSpot(event.target.value)}>
+            {HEATING_SPOTS.map(option => <option key={option} value={option}>{t(option)}</option>)}
+          </select>
+        </Field>
+        <Field label={t("Tilaustyyppi")}>
+          <select value={orderType} onChange={event => setOrderType(event.target.value)}>
+            {HEATING_ORDER_TYPES.map(option => <option key={option} value={option}>{t(option)}</option>)}
+          </select>
+        </Field>
+        <div className="portal-form-row">
+          <Field label={t("Tarve lämmityspaikalle alkaen")}>
+            <input type="date" value={startDate} onChange={event => setStartDate(event.target.value)} required />
+          </Field>
+          {fixedTerm && (
+            <Field label={t("Loppumispäivä")}>
+              <input type="date" value={endDate} min={startDate || undefined} onChange={event => setEndDate(event.target.value)} required />
+            </Field>
+          )}
+        </div>
+        <Field label={t("Puhelinnumero (valinnainen)")}>
+          <input type="tel" value={phone} onChange={event => setPhone(event.target.value)} maxLength={40} />
+        </Field>
+        <Actions saving={saving} error={error} label={t("Lähetä tilaus")} />
+      </form>
+
+      {orders.length > 0 && (
+        <article className="portal-own-orders">
+          <h2>{t("Omat tilaukset")}</h2>
+          <ul>
+            {orders.map(order => (
+              <li key={order.id}>
+                <strong>{t(detailValue(order.details, "spot") || "Lämmityspaikka")}</strong>
+                <span>
+                  {[order.start_date ? formatDay(order.start_date) : "", order.end_date ? formatDay(order.end_date) : t("toistaiseksi")].filter(Boolean).join(" – ")}
+                  {" · "}{heatingStatusLabels[order.status]}{" · "}{t("tilattu")}{" "}{formatDateOnly(order.created_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      )}
+    </>
   );
 }

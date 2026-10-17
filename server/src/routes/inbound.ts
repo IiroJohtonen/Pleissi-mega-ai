@@ -5,6 +5,7 @@ import { triage } from "../ai.js";
 import { db } from "../db.js";
 import { apartmentForForm, detectEmailForm, formContact, formSubject, parseFormFields } from "../email-forms.js";
 import { FORM_TYPES } from "../portal-form-data.js";
+import { importSiteForm } from "../site-forms.js";
 import { alertEmergency } from "../notify.js";
 import { id, now, statusAfterResidentReply } from "../util.js";
 import { sensitiveMatches } from "../privacy-filter.js";
@@ -53,6 +54,11 @@ if (input.sourceMessageId) {
       ticketId: existing.ticket_id,
       duplicate: true
     });
+  }
+
+  // Lomakeviestistä tehtiin jo tietue (lukema, muutto tai lämmityspaikka).
+  if (db.prepare("SELECT 1 FROM form_imports WHERE message_id = ?").get(input.sourceMessageId)) {
+    return res.json({ duplicate: true });
   }
 
   // Viesti kuului tehtävään, joka on poistettu: sitä ei tuoda uudelleen.
@@ -129,6 +135,19 @@ if (input.sourceMessageId) {
   if (formPlace) companyId = formPlace.companyId;
   const contact = form ? formContact(formFields) : null;
 
+  // Mittarilukemat, muuttoilmoitukset ja lämmityspaikat menevät taloyhtiön tauluihin, eivät tehtäviksi.
+  if (form === "meter" || form === "move" || form === "heating") {
+    const fallbackCompany = db.prepare("SELECT 1 FROM companies WHERE id = ?").get(companyId) ? companyId : null;
+    const record = fallbackCompany ? importSiteForm(form, formFields, fallbackCompany, input.senderName) : null;
+    if (record) {
+      if (input.sourceMessageId) {
+        db.prepare("INSERT OR IGNORE INTO form_imports (message_id, record_kind, record_ids, created_at) VALUES (?, ?, ?, ?)")
+          .run(input.sourceMessageId, record.kind, JSON.stringify(record.ids), now());
+      }
+      return res.status(201).json({ record: record.kind, recordIds: record.ids, companyId: record.companyId });
+    }
+  }
+
   const company = db.prepare("SELECT * FROM companies WHERE id = ?")
     .get(companyId) as any;
   if (!company) return res.status(404).json({ error: "Company not found" });
@@ -178,7 +197,8 @@ if (input.sourceMessageId) {
     // Lomakkeen asunto ratkaisee, vaikka ilmoittaja asuisi muualla (esim. omistaja ilmoittaa vuokra-asunnosta).
     formPlace?.apartmentId ?? resident?.apartment_id ?? null,
     resident?.id ?? null,
-    form ? FORM_TYPES[form] : result.type,
+    // Tietueeksi kelpaamaton lukema-, muutto- tai lämmityspaikkalomake on tavallinen tehtävä lomakekortin kera.
+    form && !["meter", "move", "heating"].includes(form) ? FORM_TYPES[form] : result.type,
     result.priority,
     filtered ? "closed" : "open",
     form ? formSubject(form, formFields, input.subject) : input.subject,

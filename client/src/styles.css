@@ -1498,20 +1498,24 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .ai-reason-close:hover { background: rgba(122, 82, 0, .12); }
 
-/* Lomakkeet-taulu: lomaketyypin välilehdet ja lomakkeen tiivistelmä rivillä */
-.form-tabs { flex-wrap: wrap; margin: 4px 0 14px; border-bottom: 1px solid #e2e4e6; }
-.form-tabs b { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: #eef0f2; color: #4a535c; font-size: 11px; }
-.form-tabs button.active b { background: #171c22; color: #fff; }
-.form-summary { display: grid; gap: 2px; margin: 0; }
-.form-summary > div { min-width: 0; font-size: 13px; line-height: 1.45; }
-.form-summary dt, .form-summary dd { display: inline; margin: 0; }
-.form-summary dt { color: #6b7682; font-size: 12px; }
-.form-summary dt::after { content: ": "; }
-.form-summary dd { white-space: pre-line; overflow-wrap: anywhere; }
-.form-table td > span.muted { display: block; font-size: 12px; }
 /* Ilmoittajan nimi ja asunto omille riveilleen myös raporttitaulukoissa. */
 .report-topics td .reporter-cell { display: grid; gap: 2px; }
-.form-table td:nth-child(2) .type { white-space: nowrap; }
+
+.portal-own-orders { margin-top: 16px; padding: 18px 22px; border: 1px solid #e2e4e6; border-radius: 14px; background: #fff; }
+.portal-own-orders h2 { margin: 0 0 8px; font-size: 16px; }
+.portal-own-orders ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.portal-own-orders li { display: grid; gap: 2px; font-size: 13px; }
+.portal-own-orders li span { color: #6b7682; }
+
+/* Verkkosivun lomakkeen kentät tietueella ja niiden muokkaus */
+.detail-facts { margin-top: 14px; }
+.detail-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 12px; margin: 6px 0 0; padding: 12px 14px; border: 1px solid #e2e4e6; border-radius: 10px; }
+.detail-editor legend { padding: 0 6px; color: #2b3540; font-size: 13px; font-weight: 600; }
+.record-edit { margin-top: 14px; }
+.record-edit h3 { margin: 0; font-size: 15px; }
+.heating-orders { margin-top: 28px; }
+.heating-orders .residents-toolbar h2 { margin: 0; color: #17202b; font-size: 17px; }
+.inline-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #4b535d; }
 
 /* Asukasportaalin lomakkeelta tulleen tehtävän kentät */
 .ticket-form-card { margin: 18px 0 4px; }
@@ -1894,6 +1898,50 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 }
 
 .settings { max-width: 640px; }
+
+/* Asetukset: välilehdet ylhäällä, aliotsikot vasemmalla ja osiot leveämmässä palstassa. */
+.settings-page { max-width: 1180px; }
+.settings-shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; align-items: start; }
+.settings-main.settings { max-width: 900px; display: grid; gap: 16px; }
+.settings-main > * { margin: 0; }
+.settings-nav { position: sticky; top: 76px; display: grid; gap: 2px; padding: 4px 0; }
+.settings-nav span { margin: 0 0 6px 10px; color: #8a9097; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.settings-nav button {
+  padding: 8px 10px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 8px 8px 0;
+  background: none;
+  color: #3d4650;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-nav button:hover { border-left-color: #171c22; background: #eef0f2; color: #171c22; }
+.settings-subtabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 20px; border-bottom: 1px solid #e2e4e6; }
+.settings-subtabs button {
+  margin-bottom: -1px;
+  padding: 9px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #6b7280;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.settings-subtabs button.active { border-bottom-color: #171c22; color: #171c22; }
+.settings-main .collapse-heading { scroll-margin-top: 80px; }
+#section-log, #section-system-alerts { scroll-margin-top: 80px; }
+@media (max-width: 900px) {
+  .settings-shell { grid-template-columns: 1fr; }
+  .settings-nav { position: static; display: flex; flex-wrap: wrap; gap: 6px; }
+  .settings-nav span { width: 100%; margin-left: 0; }
+  .settings-nav button { border: 1px solid #e2e4e6; border-radius: 99px; padding: 6px 12px; }
+}
 
 /* Asetukset: lomakkeet vasemmalla, käyttäjät oikealla. */
 .settings-layout {
@@ -4775,3 +4823,7 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .login-card input.login-code-input { font-size: 24px; font-weight: 700; letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; }
 .login-card label.login-remember { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .login-card label.login-remember input { width: 16px; height: 16px; margin: 0; padding: 0; }
+
+/* Dokumentin näkymän välilehdet: luettu teksti / AI:n poiminnat */
+.knowledge-view-tabs { margin-top: 16px; border-bottom: 1px solid #e2e4e6; }
+.knowledge-view-tabs + .knowledge-columns { margin-top: 12px; }
