@@ -21,7 +21,10 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => !Number.isN
 const optionalText = (max: number) => z.string().trim().max(max).default("");
 const phone = optionalText(40);
 
-const schemas: Record<FormKey, z.ZodTypeAny> = {
+// Asukasportaalin omat lomakkeet; mittarilukema, muutto ja lämmityspaikka ovat portaalissa omina näkyminään.
+type PortalFormKey = Exclude<FormKey, "meter" | "move" | "heating">;
+
+const schemas: Record<PortalFormKey, z.ZodTypeAny> = {
   service: z.object({
     target: z.enum(SERVICE_TARGETS),
     location: optionalText(120),
@@ -79,7 +82,7 @@ export function earliestTerminationDate(from = today()) {
 }
 
 // Lomakkeen otsikko tehtävälle ja kentät otsikoineen. Tyhjät valinnaiset kentät jätetään pois.
-function describe(form: FormKey, data: any, resident: ResidentAccount): { subject: string; fields: FormField[] } {
+function describe(form: PortalFormKey, data: any, resident: ResidentAccount): { subject: string; fields: FormField[] } {
   const fields: FormField[] = [];
   const add = (label: string, value: string) => {
     if (value.trim()) fields.push({ label, value: value.trim() });
@@ -136,7 +139,7 @@ function describe(form: FormKey, data: any, resident: ResidentAccount): { subjec
   return { subject: `Asuntohakemus: ${data.sizes.join(", ")}`, fields };
 }
 
-const formErrors: Record<FormKey, string> = {
+const formErrors: Record<PortalFormKey, string> = {
   service: "Valitse kohde ja kirjoita vian kuvaus.",
   disturbance: "Valitse häiriön laji, päivä ja kirjoita kuvaus.",
   termination: "Anna päättymispäivä, vuokralaisten nimet ja vahvista irtisanominen.",
@@ -146,7 +149,7 @@ const formErrors: Record<FormKey, string> = {
 export const portalFormsRouter: Router = express.Router();
 
 portalFormsRouter.post("/portal/forms/:form", async (req, res) => {
-  const form = req.params.form as FormKey;
+  const form = req.params.form as PortalFormKey;
   if (!Object.hasOwn(schemas, form)) return res.status(404).json({ error: "Lomaketta ei löytynyt." });
   const resident = portalResident(res);
   const parsed = schemas[form].safeParse(req.body);

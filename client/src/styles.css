@@ -1498,6 +1498,21 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .ai-reason-close:hover { background: rgba(122, 82, 0, .12); }
 
+/* Lomakkeet-taulu: lomaketyypin välilehdet ja lomakkeen tiivistelmä rivillä */
+.form-tabs { flex-wrap: wrap; margin: 4px 0 14px; border-bottom: 1px solid #e2e4e6; }
+.form-tabs b { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: #eef0f2; color: #4a535c; font-size: 11px; }
+.form-tabs button.active b { background: #171c22; color: #fff; }
+.form-summary { display: grid; gap: 2px; margin: 0; }
+.form-summary > div { min-width: 0; font-size: 13px; line-height: 1.45; }
+.form-summary dt, .form-summary dd { display: inline; margin: 0; }
+.form-summary dt { color: #6b7682; font-size: 12px; }
+.form-summary dt::after { content: ": "; }
+.form-summary dd { white-space: pre-line; overflow-wrap: anywhere; }
+.form-table td > span.muted { display: block; font-size: 12px; }
+/* Ilmoittajan nimi ja asunto omille riveilleen myös raporttitaulukoissa. */
+.report-topics td .reporter-cell { display: grid; gap: 2px; }
+.form-table td:nth-child(2) .type { white-space: nowrap; }
+
 /* Asukasportaalin lomakkeelta tulleen tehtävän kentät */
 .ticket-form-card { margin: 18px 0 4px; }
 .ticket-form-card h3 { margin: 0 0 6px; color: #2b3540; font-size: 13px; font-weight: 600; }

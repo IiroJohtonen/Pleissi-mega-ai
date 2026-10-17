@@ -561,6 +561,20 @@
     border-color: #3d714c;
     color: #a8e2bb
 }
+:root[data-theme="dark"] .form-tabs {
+    border-bottom: 1px solid #384454
+}
+:root[data-theme="dark"] .form-tabs b {
+    background: #1d2630;
+    color: #c9cfd6
+}
+:root[data-theme="dark"] .form-tabs button.active b {
+    background: #d6dbe1;
+    color: #19222e
+}
+:root[data-theme="dark"] .form-summary dt {
+    color: #b8bfc9
+}
 :root[data-theme="dark"] .ticket-form-card h3 {
     color: #d7dbe1
 }

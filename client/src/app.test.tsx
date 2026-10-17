@@ -271,6 +271,27 @@ describe("sovellus", () => {
     expect(screen.getByText("Mittarilukemat")).toBeTruthy();
   });
 
+  it("näyttää verkkosivun lomakkeet lomaketyypeittäin", async () => {
+    responses["/companies/demo-company/forms"] = [
+      { ticketId: "ticket-f1", ticketNumber: 12, form: "service", title: "Huoltotyötilaus", source: "email", status: "open", createdAt: "2026-10-17T08:00:00Z",
+        subject: "Huoltotyötilaus: Koivikkotie 10, B 34", reporter: "Liisa Mallikas", reporterEmail: "liisa@example.com", apartmentNumber: "B 34", linked: true,
+        assigneeName: "", summary: [{ label: "Huoltotyö", value: "Keittiön hana vuotaa." }], restricted: false },
+      { ticketId: "ticket-f2", ticketNumber: 13, form: "disturbance", title: "Häiriöilmoitus", source: "email", status: "open", createdAt: "2026-10-16T08:00:00Z",
+        subject: "Häiriöilmoitus: Koivikkotie 10", reporter: "Ville Vieras", reporterEmail: "", apartmentNumber: "", linked: false,
+        assigneeName: "", summary: [{ label: "Häiriön laatu", value: "kovaääninen juhliminen" }], restricted: false }
+    ];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/forms");
+      expect(await screen.findByText("Keittiön hana vuotaa.")).toBeTruthy();
+      expect(screen.getByText("kovaääninen juhliminen")).toBeTruthy();
+      fireEvent.click(screen.getByRole("tab", { name: /Huoltotyötilaukset/ }));
+      expect(screen.queryByText("kovaääninen juhliminen")).toBeNull();
+      expect(screen.getByText("Keittiön hana vuotaa.")).toBeTruthy();
+    } finally {
+      delete responses["/companies/demo-company/forms"];
+    }
+  });
+
   it("asukas lähettää huoltotyötilauksen portaalin lomakkeella", async () => {
     const calls = mockApi();
     const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };

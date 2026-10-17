@@ -1,7 +1,8 @@
 import { language, locale, t } from "./i18n";
 export const ticketPriorities = ["emergency", "urgent", "normal", "low"];
 export const ticketTypeOptions = [
-  "Kysymys", "Ilmoitus", "Pyyntö", "Toimenpide", "Vikailmoitus", "Huoltotyötilaus", "Häiriöilmoitus", "Irtisanomisilmoitus", "Asuntohakemus", "Muutto", "Muu"
+  "Kysymys", "Ilmoitus", "Pyyntö", "Toimenpide", "Vikailmoitus", "Huoltotyötilaus", "Häiriöilmoitus", "Irtisanomisilmoitus", "Asuntohakemus",
+  "Mittarilukemailmoitus", "Muuttoilmoitus", "Auton lämmityspaikka", "Muutto", "Muu"
 ];
 
 export function priorityLabel(priority: string) {
