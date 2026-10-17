@@ -71,11 +71,11 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.equal(mailboxOwnerId("user:abc"), "abc");
     assert.equal(mailboxOwnerId("office"), null);
     // Tunnettu asukas: hänen taloyhtiönsä, vaikka isännöitsijä hoitaa toista yhtiötä.
-    assert.equal(companyForUserMailbox("isannoitsija-2", "MATTI@example.com"), "demo-company");
+    assert.deepEqual(companyForUserMailbox("isannoitsija-2", "MATTI@example.com"), { companyId: "demo-company", unknown: false });
     // Tuntematon lähettäjä: isännöitsijän ainoa oma yhtiö.
-    assert.equal(companyForUserMailbox("isannoitsija-2", "tuntematon@example.com"), "toinen-yhtio");
-    // Ei omaa yhtiötä: oletusyhtiö.
-    assert.equal(companyForUserMailbox("joku-muu", ""), "demo-company");
+    assert.deepEqual(companyForUserMailbox("isannoitsija-2", "tuntematon@example.com"), { companyId: "toinen-yhtio", unknown: false });
+    // Yhtiötä ei tunnisteta: tehtävä menee jonoon oletusyhtiö paikkamerkkinä.
+    assert.deepEqual(companyForUserMailbox("joku-muu", ""), { companyId: "demo-company", unknown: true });
   });
 
   it("kertoo Microsoftin kirjautumisvirheen koodin ja korjauksen", () => {

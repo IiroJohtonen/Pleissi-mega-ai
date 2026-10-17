@@ -2212,3 +2212,34 @@
 :root[data-theme="dark"] .chunk-verify:hover:not(:disabled) {
     background: #314c3c
 }
+:root[data-theme="dark"] .queue-access legend {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .unidentified-panel {
+    background: #4b4430;
+    border: 1px solid #71643d
+}
+:root[data-theme="dark"] .unidentified-panel strong {
+    color: #efd69c
+}
+:root[data-theme="dark"] .unidentified-panel p {
+    color: #e6d3a4
+}
+:root[data-theme="dark"] .unidentified-fields select {
+    border: 1px solid #374353;
+    background: #283341
+}
+:root[data-theme="dark"] .unidentified-fields .primary {
+    background: #d6dbe1;
+    border: 1px solid #a6b1bf;
+    color: #19222e
+}
+:root[data-theme="dark"] .move-company select {
+    border: 1px solid #374353;
+    background: #283341
+}
+:root[data-theme="dark"] .move-company .primary {
+    background: #d6dbe1;
+    border: 1px solid #a6b1bf;
+    color: #19222e
+}

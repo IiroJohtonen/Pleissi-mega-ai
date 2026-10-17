@@ -514,6 +514,21 @@ if (!(db.prepare("PRAGMA table_info(knowledge_chunks)").all() as { name: string 
   const columns = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
   if (!columns.includes("sensitive")) db.exec("ALTER TABLE tickets ADD COLUMN sensitive INTEGER NOT NULL DEFAULT 0");
   if (!columns.includes("sensitive_source")) db.exec("ALTER TABLE tickets ADD COLUMN sensitive_source TEXT");
+  // 1 = taloyhtiötä ei tunnistettu: tehtävä on Taloyhtiö tunnistamatta -jonossa, kunnes yhtiö valitaan.
+  // company_id on silloin vain paikkamerkki (oletusyhtiö), eikä tehtävä näy yhtiön muille käsittelijöille.
+  if (!columns.includes("company_pending")) db.exec("ALTER TABLE tickets ADD COLUMN company_pending INTEGER NOT NULL DEFAULT 0");
+}
+
+// Kuka käsittelee Taloyhtiö tunnistamatta -jonoa: roolit ja yksittäiset käyttäjät (JSON-taulukot).
+// Pääkäyttäjä näkee jonon aina.
+{
+  const columns = (db.prepare("PRAGMA table_info(office_settings)").all() as { name: string }[]).map(column => column.name);
+  if (!columns.includes("unidentified_queue_roles")) {
+    db.exec(`ALTER TABLE office_settings ADD COLUMN unidentified_queue_roles TEXT NOT NULL DEFAULT '["Pääkäyttäjä","Asiakaspalvelu"]'`);
+  }
+  if (!columns.includes("unidentified_queue_users")) {
+    db.exec("ALTER TABLE office_settings ADD COLUMN unidentified_queue_users TEXT NOT NULL DEFAULT '[]'");
+  }
 }
 
 const ticketSourceColumns = db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];

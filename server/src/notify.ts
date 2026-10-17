@@ -1,3 +1,5 @@
+import { isQueueHandler } from "./access.js";
+import type { User } from "./auth.js";
 import { db } from "./db.js";
 import { sendEmail } from "./mail.js";
 import { id, now, VALID_EMAIL } from "./util.js";
@@ -14,7 +16,7 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
            r.name AS resident, a.apartment_number AS apartment,
            (SELECT m.sender FROM messages m WHERE m.ticket_id = t.id ORDER BY m.created_at LIMIT 1) AS sender,
            (SELECT m.body FROM messages m WHERE m.ticket_id = t.id ORDER BY m.created_at LIMIT 1) AS message,
-           t.summary, t.sensitive
+           t.summary, t.sensitive, t.company_pending
     FROM tickets t
     JOIN companies c ON c.id = t.company_id
     LEFT JOIN users u ON u.id = c.manager_id
@@ -25,20 +27,35 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
     ticket_number: number | null; subject: string; company: string; emergency_phone: string | null;
     manager_id: string | null; manager_name: string | null; manager_email: string | null;
     resident: string | null; apartment: string | null; sender: string | null; message: string | null;
-    summary: string; sensitive: number;
+    summary: string; sensitive: number; company_pending: number;
   } | undefined;
-  if (!ticket || (ticket.manager_id && ticket.manager_id === actorId)) return;
+  if (!ticket || (!ticket.company_pending && ticket.manager_id && ticket.manager_id === actorId)) return;
 
   const log = (action: string, details: Record<string, string>) =>
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
       id("audit"), ticketId, "system", action, JSON.stringify(details), now()
     );
 
-  const email = (ticket.manager_email ?? "").trim();
-  if (!ticket.manager_id) return log("emergency_alert_failed", { error: "Taloyhtiöllä ei ole vastuuisännöitsijää." });
-  if (!VALID_EMAIL.test(email)) {
-    return log("emergency_alert_failed", { to: ticket.manager_name ?? "", error: "Vastuuisännöitsijän sähköpostiosoite puuttuu." });
+  // Hälytyksen saajat: taloyhtiön vastuuisännöitsijä. Jos taloyhtiötä ei tunnistettu, oletusyhtiön
+  // isännöitsijä ei ole oikea vastaanottaja, joten hälytys menee Taloyhtiö tunnistamatta -jonon käsittelijöille.
+  const pending = Boolean(ticket.company_pending);
+  const recipients = pending
+    ? (db.prepare("SELECT id, name, email, role FROM users").all() as User[])
+        .filter(user => user.id !== actorId && isQueueHandler(user) && VALID_EMAIL.test((user.email ?? "").trim()))
+        .map(user => ({ name: user.name, email: user.email.trim() }))
+    : [];
+  if (pending && recipients.length === 0) {
+    return log("emergency_alert_failed", { error: "Taloyhtiö tunnistamatta, eikä jonon käsittelijöillä ole sähköpostiosoitetta." });
   }
+  if (!pending) {
+    const email = (ticket.manager_email ?? "").trim();
+    if (!ticket.manager_id) return log("emergency_alert_failed", { error: "Taloyhtiöllä ei ole vastuuisännöitsijää." });
+    if (!VALID_EMAIL.test(email)) {
+      return log("emergency_alert_failed", { to: ticket.manager_name ?? "", error: "Vastuuisännöitsijän sähköpostiosoite puuttuu." });
+    }
+    recipients.push({ name: ticket.manager_name ?? "", email });
+  }
+  if (pending) ticket.company = "taloyhtiö tunnistamatta";
 
   const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string };
   const number = String(ticket.ticket_number ?? "").padStart(4, "0");
@@ -49,32 +66,36 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
   const message = sensitive
     ? "Viesti sisältää arkaluonteisia tietoja, joten se näytetään vain Pleississä."
     : (ticket.message ?? ticket.summary).trim();
-  try {
-    await sendEmail({
-      to: email,
-      notification: true,
-      subject: `HÄTÄTAPAUS: ${ticket.subject} (${ticket.company})`,
-      body: [
-        `Hei ${ticket.manager_name},`,
-        "",
-        `taloyhtiössä ${ticket.company} on kirjattu hätätapaus.`,
-        "",
-        `Tehtävä: #${number} ${ticket.subject}`,
-        ...(reporter ? [`Ilmoittaja: ${reporter}`] : []),
-        ...(ticket.emergency_phone ? [`Huoltoyhtiön päivystys: ${ticket.emergency_phone}`] : []),
-        "",
-        "Viesti:",
-        message.length > ALERT_MESSAGE_MAX ? `${message.slice(0, ALERT_MESSAGE_MAX)}…` : message,
-        "",
-        `Avaa tehtävä Pleississä: ${process.env.APP_URL || "http://localhost:5173"}`,
-        "",
-        office.name
-      ].join("\n")
-    });
-    log("emergency_alert_sent", { to: ticket.manager_name ?? email });
-  } catch (error: any) {
-    console.error("Hätätapauksen hälytys epäonnistui:", error?.message ?? error);
-    log("emergency_alert_failed", { to: ticket.manager_name ?? email, error: String(error?.message ?? error) });
+  for (const recipient of recipients) {
+    try {
+      await sendEmail({
+        to: recipient.email,
+        notification: true,
+        subject: `HÄTÄTAPAUS: ${ticket.subject} (${ticket.company})`,
+        body: [
+          `Hei ${recipient.name},`,
+          "",
+          pending
+            ? "on kirjattu hätätapaus, jonka taloyhtiötä ei tunnistettu. Valitse taloyhtiö Pleississä Taloyhtiö tunnistamatta -jonosta."
+            : `taloyhtiössä ${ticket.company} on kirjattu hätätapaus.`,
+          "",
+          `Tehtävä: #${number} ${ticket.subject}`,
+          ...(reporter ? [`Ilmoittaja: ${reporter}`] : []),
+          ...(!pending && ticket.emergency_phone ? [`Huoltoyhtiön päivystys: ${ticket.emergency_phone}`] : []),
+          "",
+          "Viesti:",
+          message.length > ALERT_MESSAGE_MAX ? `${message.slice(0, ALERT_MESSAGE_MAX)}…` : message,
+          "",
+          `Avaa tehtävä Pleississä: ${process.env.APP_URL || "http://localhost:5173"}`,
+          "",
+          office.name
+        ].join("\n")
+      });
+      log("emergency_alert_sent", { to: recipient.name || recipient.email });
+    } catch (error: any) {
+      console.error("Hätätapauksen hälytys epäonnistui:", error?.message ?? error);
+      log("emergency_alert_failed", { to: recipient.name || recipient.email, error: String(error?.message ?? error) });
+    }
   }
 }
 

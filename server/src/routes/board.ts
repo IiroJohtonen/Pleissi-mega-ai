@@ -116,7 +116,7 @@ boardRouter.get("/board/overview", (_req, res) => {
   const month = runReport({ from: daysAgo(29), to: localDay(day), groupBy: "company" }, [companyId]).totals;
   const quarter = runReport({ from: daysAgo(89), to: localDay(day), groupBy: "company" }, [companyId]).totals;
   const open = (db.prepare(`
-    SELECT COUNT(*) AS count FROM tickets WHERE company_id = ? AND status != 'closed' AND ai_action != 'filtered'
+    SELECT COUNT(*) AS count FROM tickets WHERE company_id = ? AND status != 'closed' AND ai_action != 'filtered' AND company_pending = 0
   `).get(companyId) as { count: number }).count;
 
   // Roskapostiksi suodatetut viestit eivät ole taloyhtiön asioita, joten ne jätetään pois.
@@ -126,7 +126,7 @@ boardRouter.get("/board/overview", (_req, res) => {
            CASE WHEN sensitive = 1 THEN 'Arkaluonteinen tehtävä' ELSE subject END AS subject,
            type, status, priority, created_at, closed_at, due_date
     FROM tickets
-    WHERE company_id = ? AND ai_action != 'filtered' AND (status != 'closed' OR created_at >= ?)
+    WHERE company_id = ? AND ai_action != 'filtered' AND company_pending = 0 AND (status != 'closed' OR created_at >= ?)
     ORDER BY status = 'closed', created_at DESC
     LIMIT 300
   `).all(companyId, new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString());

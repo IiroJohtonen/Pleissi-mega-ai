@@ -36,7 +36,9 @@ async function sendReminderDigests() {
     SELECT * FROM (
       SELECT t.company_id, t.ticket_number,
              CASE WHEN t.sensitive = 1 THEN 'Arkaluonteinen tehtävä' ELSE t.subject END AS subject, t.due_date, c.name AS company,
-             COALESCE(t.assignee_id, c.manager_id) AS user_id, ${WAITING_SINCE_SQL} AS waiting_since
+             -- Tunnistamattoman yhtiön tehtävästä muistutetaan vain sen käsittelijää, ei oletusyhtiön isännöitsijää.
+             CASE WHEN t.company_pending = 1 THEN t.assignee_id ELSE COALESCE(t.assignee_id, c.manager_id) END AS user_id,
+             ${WAITING_SINCE_SQL} AS waiting_since
       FROM tickets t
       JOIN companies c ON c.id = t.company_id
       WHERE t.status != 'closed'

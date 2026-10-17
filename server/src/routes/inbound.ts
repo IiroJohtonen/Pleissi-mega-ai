@@ -1,6 +1,6 @@
 import express, { type Router } from "express";
 import { z } from "zod";
-import { companyIdForRecipients, companyIdFromContext, getAuthorizedTicket } from "../access.js";
+import { companyIdForRecipients, companyIdFromContext, getAuthorizedTicket, visibleCompanyIds } from "../access.js";
 import { triage } from "../ai.js";
 import { db } from "../db.js";
 import { alertEmergency } from "../notify.js";
@@ -27,16 +27,32 @@ const inboundSchema = z.object({
   // Isännöitsijän omaan postilaatikkoon tullut viesti annetaan suoraan hänelle, ja vastaukset
   // lähetetään samasta laatikosta.
   assigneeId: z.string().optional(),
-  mailAccountId: z.string().optional()
+  mailAccountId: z.string().optional(),
+  // Postin tuonti ei tunnistanut taloyhtiötä: companyId on vain paikkamerkki.
+  companyUnknown: z.boolean().optional()
 });
+
+// Taloyhtiö lähettäjän sähköpostiosoitteesta, jos osoite on täsmälleen yhden yhtiön asukkaalla.
+function companyByResidentEmail(senderEmail: string | undefined, companyIds: string[]) {
+  if (!senderEmail || companyIds.length === 0) return null;
+  const rows = db.prepare(`
+    SELECT DISTINCT company_id FROM residents
+    WHERE lower(email) = lower(?) AND erased_at IS NULL AND company_id IN (${companyIds.map(() => "?").join(", ")})
+  `).all(senderEmail, ...companyIds) as { company_id: string }[];
+  return rows.length === 1 ? rows[0].company_id : null;
+}
 
 inboundRouter.post("/inbound/messages", async (req, res) => {
   const parsed = inboundSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
   const input = parsed.data;
-  const companyId = companyIdForRecipients(input.recipientEmails)
-    ?? companyIdFromContext(input.companyId);
+  // Taloyhtiö vastaanottajan osoitteesta; jos postin tuonti ei tunnistanut yhtiötä, lähettäjästä. Muuten
+  // tehtävä menee Taloyhtiö tunnistamatta -jonoon, eikä sitä anneta oletusyhtiön isännöitsijälle.
+  const recipientCompany = companyIdForRecipients(input.recipientEmails);
+  const residentCompany = !recipientCompany && input.companyUnknown ? companyByResidentEmail(input.senderEmail, visibleCompanyIds()) : null;
+  const companyPending = !recipientCompany && !residentCompany && Boolean(input.companyUnknown);
+  const companyId = recipientCompany ?? residentCompany ?? companyIdFromContext(input.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
 
 if (input.sourceMessageId) {
@@ -184,8 +200,14 @@ if (input.sourceMessageId) {
     // Suodatettu viesti ei mene kenenkään käsiteltäväksi.
   } else if (mailboxOwner) {
     db.prepare("UPDATE tickets SET assignee_id = ? WHERE id = ?").run(mailboxOwner.id, ticketId);
-  } else {
+  } else if (!companyPending) {
     assignToCompanyManager(ticketId, companyId);
+  }
+  if (companyPending) {
+    db.prepare("UPDATE tickets SET company_pending = 1, resident_id = NULL, apartment_id = NULL WHERE id = ?").run(ticketId);
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+      id("audit"), ticketId, "system", "company_unidentified", "{}", timestamp
+    );
   }
   if (input.mailAccountId) {
     db.prepare("UPDATE tickets SET mail_account_id = ? WHERE id = ?").run(input.mailAccountId, ticketId);

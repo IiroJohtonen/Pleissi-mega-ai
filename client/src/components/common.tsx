@@ -32,6 +32,13 @@ export function DownloadLink({ path, filename, className, title, children }: {
 
 // Paikkamerkkikuvakkeet näkymille (24×24, viivapiirros).
 const tabIcons: Record<TicketTab, string[]> = {
+  // Kysymysmerkki talon päällä: taloyhtiö tunnistamatta.
+  unidentified: [
+    "M3 21h18",
+    "M5 21V10l7-5 7 5v11",
+    "M10 12a2 2 0 1 1 3 1.7c-.6.4-1 .8-1 1.3v.5",
+    "M12 18h.01"
+  ],
   unassigned: [
     "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
     "M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0",

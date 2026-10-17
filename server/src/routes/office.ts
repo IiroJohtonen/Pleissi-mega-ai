@@ -1,7 +1,7 @@
 import express, { type Router } from "express";
 import { z } from "zod";
-import { canSeeSensitiveTicket, RESTRICTED_SUBJECT, visibleCompanyIds } from "../access.js";
-import { isAdmin, requireAdmin, requireManager } from "../auth.js";
+import { canSeeTicket, isQueueHandler, RESTRICTED_SUBJECT, unidentifiedQueueSettings, visibleCompanyIds } from "../access.js";
+import { isAdmin, requireAdmin, requireManager, USER_ROLES } from "../auth.js";
 import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
@@ -24,8 +24,13 @@ const OFFICE_SELECT = `
 // aiAvailable kertoo, onko palvelimelle asetettu AI-avain; ilman sitä AI-asetukset eivät vaikuta.
 // twoFactorOverridden: palvelimen ympäristömuuttuja on kytkenyt kirjautumiskoodin pois asetuksesta huolimatta.
 function officeSettings() {
+  const queue = unidentifiedQueueSettings();
   return {
     ...(db.prepare(OFFICE_SELECT).get() as Record<string, unknown>),
+    // Taloyhtiö tunnistamatta -jonon käsittelijät ja se, kuuluuko pyynnön tekijä heihin.
+    unidentifiedQueueRoles: queue.roles,
+    unidentifiedQueueUsers: queue.users,
+    canHandleUnidentified: isQueueHandler(),
     aiAvailable: Boolean(process.env.ANTHROPIC_API_KEY),
     twoFactorOverridden: process.env.TWO_FACTOR_DISABLED === "1"
   };
@@ -63,6 +68,8 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina.
     aiMonthlyLimit: z.number().min(0).max(100000).optional(),
     aiWarningPercent: z.number().int().min(0).max(100).optional(),
+    unidentifiedQueueRoles: z.array(z.enum(USER_ROLES)).max(10).optional(),
+    unidentifiedQueueUsers: z.array(z.string().min(1)).max(500).optional(),
     // Kirjautumiskoodi sähköpostiin henkilökunnalle.
     twoFactor: z.boolean().optional(),
     // Asukas saa sähköpostin, kun hänen tehtävänsä tila muuttuu.
@@ -88,6 +95,14 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   }
   if (parsed.data.dueReminderDays !== undefined) {
     db.prepare("UPDATE office_settings SET due_reminder_days = ? WHERE id = 1").run(parsed.data.dueReminderDays);
+  }
+  if (parsed.data.unidentifiedQueueRoles !== undefined) {
+    db.prepare("UPDATE office_settings SET unidentified_queue_roles = ? WHERE id = 1").run(JSON.stringify(parsed.data.unidentifiedQueueRoles));
+  }
+  if (parsed.data.unidentifiedQueueUsers !== undefined) {
+    const known = new Set((db.prepare("SELECT id FROM users").all() as { id: string }[]).map(user => user.id));
+    db.prepare("UPDATE office_settings SET unidentified_queue_users = ? WHERE id = 1")
+      .run(JSON.stringify(parsed.data.unidentifiedQueueUsers.filter(userId => known.has(userId))));
   }
   if (parsed.data.aiRelevance !== undefined) {
     db.prepare("UPDATE office_settings SET ai_relevance = ? WHERE id = 1").run(parsed.data.aiRelevance ? 1 : 0);
@@ -116,7 +131,7 @@ officeRouter.get("/audit", requireManager, (_req, res) => {
   const companyIds = visibleCompanyIds();
   const rows = db.prepare(`
     SELECT a.id, a.ticket_id, a.actor, a.action, a.details, a.created_at,
-           t.ticket_number, t.subject AS ticket_subject, c.name AS company_name, t.company_id, t.sensitive, t.assignee_id,
+           t.ticket_number, t.subject AS ticket_subject, c.name AS company_name, t.company_id, t.sensitive, t.assignee_id, t.company_pending,
            (SELECT m.body FROM messages m
             WHERE a.action = 'reply_sent' AND m.ticket_id = a.ticket_id
               AND m.direction = 'outbound' AND m.created_at = a.created_at
@@ -129,11 +144,11 @@ officeRouter.get("/audit", requireManager, (_req, res) => {
     ORDER BY a.created_at DESC
     LIMIT 2000
   `).all(...companyIds, isAdmin(res) ? 1 : 0) as ({
-    company_id: string | null; sensitive: number | null; assignee_id: string | null;
+    company_id: string | null; sensitive: number | null; assignee_id: string | null; company_pending: number | null;
   } & Record<string, unknown>)[];
   // Arkaluonteisen tehtävän sisältö ei näy lokissa käyttäjälle, jolta tehtävä on rajattu.
-  res.json(rows.map(({ company_id, sensitive, assignee_id, ...row }) =>
-    company_id && !canSeeSensitiveTicket({ company_id, sensitive, assignee_id })
+  res.json(rows.map(({ company_id, sensitive, assignee_id, company_pending, ...row }) =>
+    company_id && !canSeeTicket({ company_id, sensitive, assignee_id, company_pending })
       ? { ...row, ticket_subject: RESTRICTED_SUBJECT, email_body: null, details: "{}" }
       : row));
 });

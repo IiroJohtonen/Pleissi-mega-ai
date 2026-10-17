@@ -82,6 +82,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [, setOfficeVersion] = useState(0);
   const [reminderSettings, setReminderSettings] = useState<ReminderSettings>({ replyDays: 2, dueDays: 1 });
+  // Käsitteleekö käyttäjä Taloyhtiö tunnistamatta -jonoa (toimiston asetuksista).
+  const [canHandleUnidentified, setCanHandleUnidentified] = useState(false);
   // Toimiston käyttäjät tehtävien käsittelijän näyttämistä ja vaihtamista varten.
   const [officeUsers, setOfficeUsers] = useState<OfficeUser[]>([]);
   useEffect(() => {
@@ -101,6 +103,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
         MANAGEMENT_OFFICE.name = office.name;
         setOfficeVersion(version => version + 1);
         setReminderSettings({ replyDays: office.replyReminderDays ?? 2, dueDays: office.dueReminderDays ?? 1 });
+        setCanHandleUnidentified(Boolean(office.canHandleUnidentified));
       })
       .catch(() => undefined);
   }, []);
@@ -235,7 +238,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   // Alavalikko aukeaa itsestään, kun sen näkymään siirrytään muuta kautta (esim. päätöksen jälkeen).
   useEffect(() => {
-    if (tab === "my-tickets" || tab === "ai-handled" || tab === "unassigned") setMyTicketsOpen(true);
+    if (tab === "my-tickets" || tab === "ai-handled" || tab === "unassigned" || tab === "unidentified") setMyTicketsOpen(true);
     // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään.
     const group = navGroups.find(item => item.tabs.includes(tab));
     if (group) setClosedGroups(current => current.filter(key => key !== group.key));
@@ -450,17 +453,23 @@ export function Workspace({ user }: { user: OfficeUser }) {
       || compareTickets(a.ticket, b.ticket, "priority"));
   // Kaikkien yhtiöiden keskeneräiset tehtävät, joita ei ole vielä annettu kenenkään käsiteltäväksi.
   const unassignedTickets = allCompanyTickets
-    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id && ticket.kind !== "renovation")
+    .filter(ticket => ticket.status !== "closed" && !ticket.assignee_id && ticket.kind !== "renovation" && !ticket.company_pending)
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created"));
   // Keskeneräiset remonttitehtävät kaikista yhtiöistä.
   const openRenovations = allCompanyTickets.filter(ticket => ticket.kind === "renovation" && ticket.status !== "closed");
   const tickets = allCompanyTickets;
+  // Taloyhtiö tunnistamatta: avoimet tehtävät, joille jonon käsittelijä valitsee yhtiön. Palvelin lähettää
+  // ne vain jonon käsittelijöille ja tehtävän omalle käsittelijälle.
+  const unidentifiedTickets = allCompanyTickets
+    .filter(ticket => ticket.company_pending && ticket.status !== "closed")
+    .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(a, b, "created"));
   // Omat tehtävät: käsittelijän kaikki aloitetut tehtävät kaikista yhtiöistä.
   const myTickets = allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && MY_TICKET_STATUSES.includes(ticket.status));
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
   const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unassigned";
   // Muistutukset koskevat kaikkia omia keskeneräisiä tehtäviä kaikista yhtiöistä, myös päätösjonon avoimia.
   const sourceTickets = tab === "queue" ? queueTickets : tab === "unassigned" ? unassignedTickets
+    : tab === "unidentified" ? unidentifiedTickets
     : tab === "my-tickets" ? (dueFilter === "reminders" ? reminderTickets.map(item => item.ticket) : myTickets)
     : tab === "ai-handled" ? aiTickets : tickets;
   // Päätösjonossa ei ole suodattimia; ne koskevat vain tehtävälistoja.
@@ -597,6 +606,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 {t("Ilman käsittelijää")}
                 <b>{unassignedTickets.length}</b>
               </button>
+              {(canHandleUnidentified || unidentifiedTickets.length > 0) && (
+                <button className={`nav-sub ${tab === "unidentified" ? "active" : ""}`} onClick={() => setTab("unidentified")}>
+                  <TabIcon tab="unidentified" />
+                  {t("Tunnistamattomat")}
+                  <b>{unidentifiedTickets.length}</b>
+                </button>
+              )}
               <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => setTab("my-tickets")}>
                 <TabIcon tab="my-tickets" />
                 {t("Omat tehtävät")}
@@ -696,6 +712,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
             onClose={closeTicket}
             onDecision={(d) => requestDecision(selected.ticket.id, d)}
             company={companies.find(company => company.id === selected.ticket.company_id)}
+            companies={companies}
             onDraftSaved={(draft) => updateTicketDraft(selected.ticket.id, draft)}
             onChanged={() => load()}
             onDirtyChange={dirty => { ticketDirty.current = dirty; }}
@@ -1052,7 +1069,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   reminders={ticketReminders(ticket, reminderSettings).filter(reminder =>
                     tab === "queue" ? reminder.kind === "waiting" : reminder.kind !== "overdue")}
                   compact={tab !== "queue"}
-                  companyName={companies.find(company => company.id === ticket.company_id)?.name}
+                  companyName={ticket.company_pending
+                    ? t("Taloyhtiö tunnistamatta")
+                    : companies.find(company => company.id === ticket.company_id)?.name}
                   users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}
                   allUsers={officeUsers}
                   canAssign={canAssignTickets(companies.find(company => company.id === ticket.company_id))}

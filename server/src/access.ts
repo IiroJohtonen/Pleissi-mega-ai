@@ -65,11 +65,55 @@ export function canSeeSensitiveTicket(ticket: { sensitive?: number | null; assig
   return company?.manager_id === user.id;
 }
 
+type TicketAccessRow = {
+  sensitive?: number | null; assignee_id?: string | null; company_id: string; company_pending?: number | null;
+};
+
+function jsonList(value: string | null | undefined): string[] {
+  try {
+    const parsed = JSON.parse(value ?? "[]");
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Taloyhtiö tunnistamatta -jonon käsittelijät: toimiston asetuksissa valitut roolit ja käyttäjät.
+// Pääkäyttäjä käsittelee jonoa aina.
+export function unidentifiedQueueSettings() {
+  const row = db.prepare("SELECT unidentified_queue_roles AS roles, unidentified_queue_users AS users FROM office_settings WHERE id = 1")
+    .get() as { roles: string; users: string } | undefined;
+  return { roles: jsonList(row?.roles), users: jsonList(row?.users) };
+}
+
+export function isQueueHandler(user = requestUser.getStore()) {
+  if (!user) return true;
+  if (user.role === "Pääkäyttäjä") return true;
+  const settings = unidentifiedQueueSettings();
+  return settings.roles.includes(user.role) || settings.users.includes(user.id);
+}
+
+// Näkeekö pyynnön tekijä tehtävän. Tunnistamattoman yhtiön tehtävän näkevät jonon käsittelijät ja
+// tehtävän käsittelijä; muuten ratkaisee arkaluonteisuus.
+export function canSeeTicket(ticket: TicketAccessRow) {
+  if (ticket.company_pending) {
+    const user = requestUser.getStore();
+    return !user || Boolean(ticket.assignee_id && ticket.assignee_id === user.id) || isQueueHandler(user);
+  }
+  return canSeeSensitiveTicket(ticket);
+}
+
+// Listan rivit pyynnön tekijälle: tunnistamattoman yhtiön tehtävät jäävät pois muilta kuin jonon
+// käsittelijöiltä, ja rajattu arkaluonteinen tehtävä näkyy ilman sisältöä.
+export function visibleTicketRows<T extends TicketAccessRow>(rows: T[]) {
+  return rows.filter(row => !row.company_pending || canSeeTicket(row)).map(redactRestrictedTicket);
+}
+
 export const RESTRICTED_SUBJECT = "Arkaluonteinen tehtävä";
 
 // Listoissa rajattu tehtävä näkyy ilman sisältöä ja asukkaan nimeä, jotta se ei katoa jonosta.
-export function redactRestrictedTicket<T extends { sensitive?: number | null; assignee_id?: string | null; company_id: string }>(row: T) {
-  if (canSeeSensitiveTicket(row)) return row;
+export function redactRestrictedTicket<T extends TicketAccessRow>(row: T) {
+  if (canSeeTicket(row)) return row;
   return {
     ...row,
     subject: RESTRICTED_SUBJECT, summary: "", draft: "", ai_reason: "", resident_name: null,
@@ -77,7 +121,7 @@ export function redactRestrictedTicket<T extends { sensitive?: number | null; as
   };
 }
 
-type TicketRow = { id: string; company_id: string; sensitive?: number | null; assignee_id?: string | null } & Record<string, unknown>;
+type TicketRow = { id: string } & TicketAccessRow & Record<string, unknown>;
 
 export function getAuthorizedTicket(ticketId: string) {
   const companyIds = visibleCompanyIds();
@@ -87,14 +131,15 @@ export function getAuthorizedTicket(ticketId: string) {
     FROM tickets
     WHERE id = ? AND company_id IN (${placeholders})
   `).get(ticketId, ...companyIds) as TicketRow | undefined;
-  return ticket && canSeeSensitiveTicket(ticket) ? ticket : undefined;
+  return ticket && canSeeTicket(ticket) ? ticket : undefined;
 }
 
 // Tehtävä on yhtiössä, jonka käyttäjä näkee, mutta arkaluonteisena rajattu häneltä.
 export function isRestrictedTicket(ticketId: string) {
   const companyIds = visibleCompanyIds();
   const ticket = db.prepare(`
-    SELECT company_id, sensitive, assignee_id FROM tickets WHERE id = ? AND company_id IN (${companyIds.map(() => "?").join(", ")})
+    SELECT id, company_id, sensitive, assignee_id, company_pending FROM tickets
+    WHERE id = ? AND company_id IN (${companyIds.map(() => "?").join(", ")})
   `).get(ticketId, ...companyIds) as TicketRow | undefined;
-  return Boolean(ticket && !canSeeSensitiveTicket(ticket));
+  return Boolean(ticket && !ticket.company_pending && !canSeeTicket(ticket));
 }
