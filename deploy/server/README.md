@@ -32,6 +32,8 @@ UpCloudin hallintapaneelissa **Servers → Deploy server**:
 
 Kun palvelin on käynnissä, kopioi sen julkinen IPv4-osoite.
 
+**Tarkista levyn salaus.** Tietokannassa ja liitteissä on asukkaiden henkilötietoja, joskus myös terveystietoja, eikä Kotilo salaa niitä itse. Siksi palvelimen levyn pitää olla salattu (UpCloudin Encryption at Rest, AES-256). Tarkista hallintapaneelista palvelimen **Storage**-tiedoista, että levy on merkitty salatuksi, ja että myös varmuuskopiot (levykuvat) ovat salattuja. Jos salaus täytyy valita levyä luotaessa eikä levy ole salattu, luo palvelin uudelleen salatulla levyllä ennen kuin siihen tuodaan oikeita tietoja.
+
 ## 3. Domain osoittamaan palvelimeen
 
 Lisää domainin DNS-hallinnassa A-tietue, joka osoittaa palvelimen IP-osoitteeseen:
@@ -138,6 +140,7 @@ Tietokanta, liitteet ja asetukset säilyvät.
 
 - Kotilo ottaa tietokannasta ja liitteistä varmuuskopion kerran päivässä kansioon `/opt/kotilo/varmuuskopiot` ja säilyttää 14 uusinta.
 - UpCloudin oma varmuuskopiointi (kohta 2) kopioi koko palvelimen levyn, eli myös nämä kopiot. Se suojaa tilanteelta, jossa palvelin tai sen levy menetetään.
+- Varmuuskopiotiedostot eivät ole erikseen salattuja: ne ovat suojassa vain niin kauan kuin ne ovat salatulla levyllä. Jos kopioita siirretään palvelimen ulkopuolelle, ne pitää salata ennen siirtoa.
 
 Palautus: pysäytä kontit, kopioi varmuuskopion `kotilo.sqlite`, `attachments` ja `knowledge-files` data-levylle ja käynnistä uudelleen.
 

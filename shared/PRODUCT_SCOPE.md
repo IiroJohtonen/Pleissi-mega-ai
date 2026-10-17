@@ -18,7 +18,7 @@ Lähde: Kiito – tuotespeksi V1 (projektin aiempi nimi). Päivitetty 12.10.2026
 - Vastausehdotus taloyhtiön tietopankin pohjalta, pyydettäessä. AI saa vain tehtävään osuvat tietopalat (enintään viisi), ei koko tietopankkia, ja ehdotuksen lähde tallentuu tehtävälle palan ja sivun tarkkuudella
 - Raportti toistuvista aiheista ja ehdotukset uusiksi vakiotiedoiksi
 - Avainsanahaku varalla, kun AI-avainta ei ole
-- Arkaluonteinen tehtävä (terveys ja muut erityiset tietoryhmät) tunnistetaan sanalistalla tai käsittelijä merkitsee sen; sitä ei lähetetä AI:lle arviointiin, vastausehdotukseen eikä raporttiin
+- Arkaluonteinen tehtävä (terveys ja muut erityiset tietoryhmät) tunnistetaan sanalistalla tai käsittelijä merkitsee sen; sitä ei lähetetä AI:lle arviointiin, vastausehdotukseen eikä raporttiin. Sen sisällön näkevät vain käsittelijä, vastuuisännöitsijä ja pääkäyttäjät; muille se näkyy listassa ilman sisältöä, ja avaukset kirjataan lokiin. Hätäilmoitus- ja muistutussähköposteissa ei ole sen sisältöä
 - Asukkaan tekstistä maskataan puhelinnumerot, sähköpostiosoitteet, henkilötunnukset ja tilinumerot ennen AI:ta; saapuvan viestin arviointi saa lähettäjästä vain sähköpostin verkkotunnuksen
 - AI arvioi saapuvan tehtävän prioriteetin, kun pääkäyttäjä kytkee sen päälle toimiston asetuksista (oletuksena pois)
 - AI tarkistaa, koskeeko saapuva sähköposti taloyhtiön asioita, ja pitää muut poissa päätösjonosta (oletuksena pois)

@@ -34,7 +34,8 @@ async function sendReminderDigests() {
   const replyCutoff = new Date(Date.now() - replyDays * 24 * 60 * 60 * 1000).toISOString();
   const rows = (db.prepare(`
     SELECT * FROM (
-      SELECT t.company_id, t.ticket_number, t.subject, t.due_date, c.name AS company,
+      SELECT t.company_id, t.ticket_number,
+             CASE WHEN t.sensitive = 1 THEN 'Arkaluonteinen tehtävä' ELSE t.subject END AS subject, t.due_date, c.name AS company,
              COALESCE(t.assignee_id, c.manager_id) AS user_id, ${WAITING_SINCE_SQL} AS waiting_since
       FROM tickets t
       JOIN companies c ON c.id = t.company_id

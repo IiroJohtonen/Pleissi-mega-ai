@@ -1729,4 +1729,10 @@ export const en: Record<string, string> = {
   "Kesken oleva vahinko- tai korjausasia": "Damage or repair matter in progress",
   "Mahdollinen korvaus- tai vakuutusasia": "Possible compensation or insurance claim",
   "Muu peruste": "Other ground",
+  "Avasi arkaluonteisen tehtävän": "Opened a sensitive task",
+  "Arkaluonteinen tehtävä": "Sensitive task",
+  "Poistetaanko arkaluonteisuusmerkintä? Tehtävän tekstit voidaan sen jälkeen lähettää AI:lle, ja tehtävän näkevät kaikki taloyhtiön käsittelijät.": "Remove the sensitive marking? The task's texts may then be sent to the AI, and all handlers of the housing company will see the task.",
+  "Merkitäänkö tehtävä arkaluonteiseksi? Sitä ei lähetetä AI:lle, ja sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät.": "Mark the task as sensitive? It is not sent to the AI, and only its handler, the housing company's responsible manager and administrators can see it.",
+  "🔒 Arkaluonteinen tehtävä: sitä ei lähetetä AI:lle, ja sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät. Avaukset kirjataan lokiin.": "🔒 Sensitive task: it is not sent to the AI, and only its handler, the housing company's responsible manager and administrators can see it. Openings are logged.",
+  "Tehtävä on arkaluonteinen. Sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät.": "The task is sensitive. Only its handler, the housing company's responsible manager and administrators can see it.",
 };

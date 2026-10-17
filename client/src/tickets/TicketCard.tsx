@@ -227,7 +227,7 @@ export function TicketCard({
         <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
         <div className="ticket-row-main">
           <strong>
-            {ticket.subject}
+            {ticket.restricted ? `🔒 ${t("Arkaluonteinen tehtävä")}` : ticket.subject}
             {ticket.has_new_reply ? <em className="new-reply">{t("Uusi viesti")}</em> : null}
             {ticket.ai_action === "filtered" && ticket.status === "closed"
               ? <em className="new-reply filtered" title={ticket.ai_reason}>{t("AI suodatti")}</em>

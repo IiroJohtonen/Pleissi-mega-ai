@@ -36,6 +36,8 @@ export type Ticket = {
   // 1 = arkaluonteinen tehtävä, jota ei lähetetä AI:lle.
   sensitive?: number;
   sensitive_source?: string | null;
+  // Arkaluonteinen tehtävä, jonka sisältö on rajattu tältä käyttäjältä.
+  restricted?: boolean;
   knowledge_source_page?: string | number | null;
   draft?: string;
   created_at: string;

@@ -307,7 +307,8 @@ export function TicketDrawer({
   const [sensitiveSaving, setSensitiveSaving] = useState(false);
   async function toggleSensitive() {
     const next = !ticket.sensitive;
-    if (!next && !window.confirm(t("Poistetaanko arkaluonteisuusmerkintä? Tehtävän tekstit voidaan sen jälkeen lähettää AI:lle."))) return;
+    if (!next && !window.confirm(t("Poistetaanko arkaluonteisuusmerkintä? Tehtävän tekstit voidaan sen jälkeen lähettää AI:lle, ja tehtävän näkevät kaikki taloyhtiön käsittelijät."))) return;
+    if (next && !window.confirm(t("Merkitäänkö tehtävä arkaluonteiseksi? Sitä ei lähetetä AI:lle, ja sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät."))) return;
     setSensitiveSaving(true);
     try {
       await api(`/tickets/${ticket.id}/sensitive`, { method: "PUT", body: JSON.stringify({ sensitive: next }) });
@@ -991,7 +992,7 @@ export function TicketDrawer({
           {/* Arkaluonteinen tehtävä (esim. terveystietoja) ei mene AI:lle; merkinnän voi asettaa ja poistaa. */}
           <p className={ticket.sensitive ? "sensitive-note active" : "sensitive-note"}>
             {ticket.sensitive ? (
-              <span>{t("🔒 Arkaluonteinen tehtävä: sitä ei lähetetä AI:lle. Ehdotus tehdään avainsanahaulla dokumentaatiosta.")}</span>
+              <span>{t("🔒 Arkaluonteinen tehtävä: sitä ei lähetetä AI:lle, ja sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät. Avaukset kirjataan lokiin.")}</span>
             ) : null}
             <button type="button" className="back-link" disabled={sensitiveSaving} onClick={() => void toggleSensitive()}>
               {ticket.sensitive ? t("Poista arkaluonteisuusmerkintä") : t("Merkitse arkaluonteiseksi")}

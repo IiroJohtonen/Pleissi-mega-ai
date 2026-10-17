@@ -52,12 +52,49 @@ export function companyIdForRecipients(recipientEmails: string[] = []) {
   return match?.id ?? null;
 }
 
+// Arkaluonteisen tehtävän (terveys ym. erityiset tietoryhmät) sisällön näkevät vain sen käsittelijä,
+// taloyhtiön vastuuisännöitsijä ja pääkäyttäjät. Palvelimen omissa kutsuissa (posti, ajastetut työt)
+// käyttäjää ei ole, ja ne näkevät kaiken.
+export function canSeeSensitiveTicket(ticket: { sensitive?: number | null; assignee_id?: string | null; company_id: string }) {
+  if (!ticket.sensitive) return true;
+  const user = requestUser.getStore();
+  if (!user || user.role === "Pääkäyttäjä") return true;
+  if (ticket.assignee_id && ticket.assignee_id === user.id) return true;
+  const company = db.prepare("SELECT manager_id FROM companies WHERE id = ?").get(ticket.company_id) as
+    { manager_id: string | null } | undefined;
+  return company?.manager_id === user.id;
+}
+
+export const RESTRICTED_SUBJECT = "Arkaluonteinen tehtävä";
+
+// Listoissa rajattu tehtävä näkyy ilman sisältöä ja asukkaan nimeä, jotta se ei katoa jonosta.
+export function redactRestrictedTicket<T extends { sensitive?: number | null; assignee_id?: string | null; company_id: string }>(row: T) {
+  if (canSeeSensitiveTicket(row)) return row;
+  return {
+    ...row,
+    subject: RESTRICTED_SUBJECT, summary: "", draft: "", ai_reason: "", resident_name: null,
+    knowledge_source_title: null, restricted: true
+  };
+}
+
+type TicketRow = { id: string; company_id: string; sensitive?: number | null; assignee_id?: string | null } & Record<string, unknown>;
+
 export function getAuthorizedTicket(ticketId: string) {
   const companyIds = visibleCompanyIds();
   const placeholders = companyIds.map(() => "?").join(", ");
-  return db.prepare(`
+  const ticket = db.prepare(`
     SELECT *
     FROM tickets
     WHERE id = ? AND company_id IN (${placeholders})
-  `).get(ticketId, ...companyIds);
+  `).get(ticketId, ...companyIds) as TicketRow | undefined;
+  return ticket && canSeeSensitiveTicket(ticket) ? ticket : undefined;
+}
+
+// Tehtävä on yhtiössä, jonka käyttäjä näkee, mutta arkaluonteisena rajattu häneltä.
+export function isRestrictedTicket(ticketId: string) {
+  const companyIds = visibleCompanyIds();
+  const ticket = db.prepare(`
+    SELECT company_id, sensitive, assignee_id FROM tickets WHERE id = ? AND company_id IN (${companyIds.map(() => "?").join(", ")})
+  `).get(ticketId, ...companyIds) as TicketRow | undefined;
+  return Boolean(ticket && !canSeeSensitiveTicket(ticket));
 }
