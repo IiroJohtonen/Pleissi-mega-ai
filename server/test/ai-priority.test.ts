@@ -228,7 +228,8 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     const request = requests.at(-1);
     assert.match(JSON.stringify(request.body.messages), /Manager's notes:\\nHuoltomies käy torstaina klo 10\./);
     // Asukkaan yhteystiedot ja tunnisteet eivät mene AI:lle, mutta käsittelijän lisätieto menee sellaisenaan.
-    const sent = JSON.stringify(request.body.messages);
+    // Vain asukkaan teksti maskataan; dokumentaatiossa saa olla toimiston omia numeroita.
+    const sent = JSON.stringify(request.body.messages).split("Conversation so far:")[1].split("Manager's notes:")[0];
     assert.match(sent, /Soittakaa \[puhelin\] tai \[sähköposti\], tilini \[tilinumero\], hetu \[henkilötunnus\]/);
     assert.doesNotMatch(sent, /4567|example\.com|010190/);
     // Vastausehdotus: oma malli, lyhyt tokenraja ja vakio-ohje välimuistilohkona.

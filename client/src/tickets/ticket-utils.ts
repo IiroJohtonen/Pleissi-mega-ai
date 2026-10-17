@@ -48,6 +48,14 @@ export function isOverdue(ticket: Ticket) {
     && (ticket.due_date as string) < new Date().toLocaleDateString("sv-SE");
 }
 
+// Määräaika umpeutumassa: kesken, määräaika tänään tai muistutusrajan (päivää ennen) sisällä.
+export function isDueSoon(ticket: Ticket, dueDays: number) {
+  if (ticket.status === "closed" || !ticket.due_date) return false;
+  const today = new Date().toLocaleDateString("sv-SE");
+  const limit = new Date(Date.now() + Math.max(0, dueDays) * 86_400_000).toLocaleDateString("sv-SE");
+  return ticket.due_date >= today && ticket.due_date <= limit;
+}
+
 // Työtilauksen valmis kuvaus tehtävän otsikosta ja tiivistelmästä. Sama teksti tulee vain kerran:
 // lyhyen viestin tiivistelmä on usein sama kuin otsikko tai sisältää sen.
 export function workOrderDescription(subject: string, summary: string): string {

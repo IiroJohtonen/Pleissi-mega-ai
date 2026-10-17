@@ -211,7 +211,9 @@ function scoreChunk(query: Set<string>, chunk: KnowledgeChunk): number | null {
   const distinct = new Set([...titleHits, ...contentHits]);
   const strongTitleHit = tagHits.length > 0 || titleHits.some(word => word.length >= 7);
 
-  if (distinct.size < 2 && !strongTitleHit) return null;
+  // Yhden sanan kysymyksessä ("remontista?") yksi pitkä, tekstissä esiintyvä sana riittää.
+  const strongContentHit = query.size === 1 && contentHits.some(word => word.length >= 6);
+  if (distinct.size < 2 && !strongTitleHit && !strongContentHit) return null;
   // Dokumentin palassa itse tekstin tai avainsanan pitää osua; pelkkä dokumentin nimi ei riitä.
   if (chunk.kind === "document" && contentHits.length === 0 && tagHits.length === 0) return null;
   return titleHits.length * 2 + contentHits.length;

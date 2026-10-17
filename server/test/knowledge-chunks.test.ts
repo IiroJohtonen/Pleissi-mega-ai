@@ -57,6 +57,13 @@ describe("tietopalat ja niiden valinta vastausehdotukseen", () => {
     assert.doesNotMatch(result.chunks[0].content, /Pysäköinti/);
   });
 
+  it("taivutettu sana osuu: remontista ~ remontti", async () => {
+    const knowledgeId = await upload("demo-company", "Remonttiohje", "Remontti on ilmoitettava isännöitsijälle kaksi viikkoa ennen töiden alkua.");
+    const [hit] = (await select("Pitääkö remontista ilmoittaa?")).chunks;
+    assert.equal(hit?.knowledgeId, knowledgeId);
+    assert.equal((await select("Remontista?")).chunks[0]?.knowledgeId, knowledgeId);
+  });
+
   it("ilman osumaa palautetaan tyhjä lista eikä koko tietopankkia", async () => {
     const result = await select("Kuinka monta kissaa Brasiliassa asuu?");
     assert.equal(result.found, false);

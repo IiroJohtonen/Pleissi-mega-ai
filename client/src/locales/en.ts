@@ -2048,4 +2048,7 @@ export const en: Record<string, string> = {
   "Paikan katoksesta / tallista": "A spot in a carport / garage",
   "Toistaiseksi voimassa oleva": "Until further notice",
   "Määräaikainen": "Fixed-term",
+  "Ei mitään": "None",
+  "{0} valittu": "{0} selected",
+  "Umpeutumassa": "Due soon",
 };

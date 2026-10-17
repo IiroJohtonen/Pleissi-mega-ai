@@ -3,6 +3,30 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 17.10.2026 · Tila-monivalinta, Umpeutumassa-suodatin ja dokumenttihaun korjaus
+
+**Mitä muutettiin**
+- Tehtävälistan Tila-suodatin on nyt monivalinta. Oletuksena kaikki tilat ovat valittuina, ja niistä voi
+  poistaa tai lisätä haluamansa. Vanha Keskeneräiset-valinta poistui, koska se oli päällekkäinen muiden
+  tilojen kanssa. Kaikki kuusi tilaa säilyvät ennallaan.
+- Määräaika-suodattimessa on uusi valinta Umpeutumassa: avoimet tehtävät, joiden määräaika on lähipäivinä.
+  Myöhässä-valinta näyttää edelleen tehtävät, joiden määräaika on jo mennyt.
+- Taloyhtiösuodatin poistettiin näkymistä, jotka avataan taloyhtiön alta: Jonot, Asukkaat, Muutot,
+  Tiedotteet, Remontit ja Lukemat. Ne näyttävät aina sivupalkissa valitun taloyhtiön tiedot.
+  Taloyhtiö-sarake näkyy vain, jos näkymässä on useamman yhtiön tietoja.
+- Dokumentin Kokeile kysymyksellä löytää nyt myös taivutetut sanat: esimerkiksi kysymys remontista osuu
+  dokumentin kohtaan, jossa puhutaan remontista tai remontin tekemisestä.
+  Haku on edelleen Pleissin oma sanahaku. AI ei valitse tietoja, vaan kirjoittaa vastausehdotuksen
+  haun löytämien tietojen pohjalta.
+
+**Miten**
+- Kaikki tehtävät → suodatinkuvake → Tila: avaa valikko ja valitse tai poista tiloja. Kaikki-ruutu valitsee
+  tai poistaa kaikki kerralla.
+- Kaikki tehtävät → suodatinkuvake → Määräaika → Umpeutumassa.
+- Valitse sivupalkista taloyhtiö ja avaa esimerkiksi Asukkaat: taloyhtiövalintaa ei enää ole sivulla.
+- Dokumentaatio → avaa dokumentti → Kokeile kysymyksellä → kirjoita asukkaan kysymys, jossa sana on
+  eri muodossa kuin dokumentissa.
+
 ## 17.10.2026 · Taloyhtiö tunnistamatta -jono ja tehtävän siirto toiseen taloyhtiöön
 
 **Mitä muutettiin**
@@ -20,7 +44,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Sivupalkki → Kaikki tehtävät → Tunnistamattomat. Avaa tehtävä → keltainen laatikko: valitse taloyhtiö
   (ehdotus on valmiina) ja käsittelijä → Siirrä taloyhtiöön.
 - Tehtäväsivu → Yhtiö-kentän alla Väärä yhtiö? Siirrä → valitse yhtiö → Siirrä.
-- Asetukset → Isännöitsijätoimiston tiedot → Taloyhtiö tunnistamatta -jono: roolit ja lisäkäyttäjät.
+- Asetukset → Toimisto → Taloyhtiö tunnistamatta -jono: roolit ja lisäkäyttäjät.
 
 **Testit** (lisättävä testaussivulle)
 - Tunnistamaton viesti menee jonoon: lähetä toimiston sähköpostiin viesti osoitteesta, jota ei ole

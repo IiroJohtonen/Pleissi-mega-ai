@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Dropdown, FactDropdown, NavToggle, TabIcon, usePaged } from "../components/common";
+import { Dropdown, FactDropdown, MultiSelect, NavToggle, TabIcon, usePaged } from "../components/common";
 import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
 import { actorName, api, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
-  assignableUsers, canAssignTickets, compareQueue, compareTickets, fetchTicketDetail, isOverdue, type ReminderSettings, ticketColumns,
+  assignableUsers, canAssignTickets, compareQueue, compareTickets, fetchTicketDetail, isDueSoon, isOverdue, type ReminderSettings, ticketColumns,
   ticketColumnText, ticketReminders, type TicketSort, type TicketSortKey
 } from "../tickets/ticket-utils";
 import { TicketCard } from "../tickets/TicketCard";
@@ -125,11 +125,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   // Tilasuodatin on käytössä Kaikki tehtävät- ja Omat tehtävät -näkymissä; muut näkymät on jo rajattu tilan mukaan.
-  // Oletuksena näytetään keskeneräiset; suljetut saa esiin suodattimesta.
-  const [statusFilter, setStatusFilter] = useState("unclosed");
+  // Valitut tilat; null = kaikki tilat (oletus).
+  const [statusFilter, setStatusFilter] = useState<string[] | null>(null);
   // Tehtävälistojen rajaus yhteen taloyhtiöön; oletuksena kaikki yhtiöt.
   const [companyFilter, setCompanyFilter] = useState("all");
-  // Määräaikasuodatin: "overdue" näyttää vain myöhässä olevat tehtävät.
+  // Määräaikasuodatin: "overdue" = myöhässä, "due_soon" = umpeutumassa, "reminders" = muistutus.
   const [dueFilter, setDueFilter] = useState("all");
   // Tehtävälistan järjestys sarakeotsikosta; null = palvelimen oletusjärjestys.
   const [ticketSort, setTicketSort] = useState<TicketSort | null>(null);
@@ -218,6 +218,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const navCompany = companies.find(company => company.id === navCompanyId);
   // Alasivut näyttävät vain valitun taloyhtiön tiedot.
   const navCompanyKey = navCompany?.id ?? selectedCompany;
+  // Yhtiön näkymät (asukkaat, jonot, ilmoitukset…) näyttävät vain sivupalkissa valitun yhtiön, joten
+  // niissä ei ole omaa taloyhtiösuodatinta.
+  const companyScope = navCompany ? [navCompany] : companies;
 
   // Yläpalkin taloyhtiövalinnalla on aina arvo: oletuksena tehtävänäkymän yhtiö tai ensimmäinen yhtiö.
   useEffect(() => {
@@ -467,6 +470,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const myTickets = allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && MY_TICKET_STATUSES.includes(ticket.status));
   const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
   const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unassigned";
+  // Tilasuodattimen vaihtoehdot: näkymän mahdolliset tilat.
+  const statusOptions = tab === "my-tickets" ? ownTicketStatuses : tab === "unassigned" ? openTicketStatuses : ticketStatuses;
   // Muistutukset koskevat kaikkia omia keskeneräisiä tehtäviä kaikista yhtiöistä, myös päätösjonon avoimia.
   const sourceTickets = tab === "queue" ? queueTickets : tab === "unassigned" ? unassignedTickets
     : tab === "unidentified" ? unidentifiedTickets
@@ -477,9 +482,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
     (companyFilter === "all" || ticket.company_id === companyFilter)
     && (priorityFilter === "all" || ticket.priority === priorityFilter)
     && (typeFilter === "all" || ticket.type === typeFilter)
-    && (!statusFilterTab || statusFilter === "all"
-      || (statusFilter === "unclosed" ? ticket.status !== "closed" : ticket.status === statusFilter))
-    && (dueFilter === "all" || (dueFilter === "reminders" ? ticketReminders(ticket, reminderSettings).length > 0 : isOverdue(ticket)))
+    && (!statusFilterTab || statusFilter === null || statusFilter.includes(ticket.status))
+    && (dueFilter === "all"
+      || (dueFilter === "reminders" ? ticketReminders(ticket, reminderSettings).length > 0
+        : dueFilter === "due_soon" ? isDueSoon(ticket, reminderSettings.dueDays)
+        : isOverdue(ticket)))
     && ticketColumns.every(column => {
       const search = (columnSearch[column.key] ?? "").trim().toLowerCase();
       return !search || ticketColumnText(ticket, column.key).toLowerCase().includes(search);
@@ -510,16 +517,19 @@ export function Workspace({ user }: { user: OfficeUser }) {
     ...(typeFilter !== "all"
       ? [{ key: "type", label: t("Tyyppi"), value: t(typeFilter), clear: () => setTypeFilter("all") }]
       : []),
-    // Keskeneräiset on oletus; merkki näkyy vain Kaikissa tehtävissä, joissa se oikeasti rajaa listaa.
-    ...(statusFilterTab && statusFilter !== "all" && (statusFilter !== "unclosed" || tab === "tickets")
+    ...(statusFilterTab && statusFilter !== null && statusFilter.length < statusOptions.length
       ? [{
           key: "status", label: t("Tila"),
-          value: statusFilter === "unclosed" ? t("Keskeneräiset") : statusLabel(statusFilter),
-          clear: () => setStatusFilter("all")
+          value: statusFilter.length === 0 ? t("Ei mitään") : statusFilter.map(statusLabel).join(", "),
+          clear: () => setStatusFilter(null)
         }]
       : []),
     ...(dueFilter !== "all"
-      ? [{ key: "due", label: t("Määräaika"), value: dueFilter === "reminders" ? t("Muistutus") : t("Myöhässä"), clear: () => setDueFilter("all") }]
+      ? [{
+          key: "due", label: t("Määräaika"),
+          value: dueFilter === "reminders" ? t("Muistutus") : dueFilter === "due_soon" ? t("Umpeutumassa") : t("Myöhässä"),
+          clear: () => setDueFilter("all")
+        }]
       : [])
   ];
   const listedTickets = ticketSort && tab !== "queue"
@@ -530,7 +540,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     : visibleTickets;
 
   const pagedTickets = usePaged(listedTickets, [
-    tab, companyFilter, priorityFilter, typeFilter, statusFilter, dueFilter,
+    tab, companyFilter, priorityFilter, typeFilter, (statusFilter ?? []).join(","), dueFilter,
     JSON.stringify(columnSearch), ticketSort?.key, ticketSort?.descending
   ].join("|"));
 
@@ -542,7 +552,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
 
   const filtersActive = companyFilter !== "all" || priorityFilter !== "all" || typeFilter !== "all" || dueFilter !== "all"
-    || (statusFilterTab && statusFilter !== "all" && (statusFilter !== "unclosed" || tab === "tickets"));
+    || (statusFilterTab && statusFilter !== null && statusFilter.length < statusOptions.length);
 
   // Päätösjonon laskurit: käyttäjän omat tehtävät kaikista yhtiöistä tiloittain.
   const ownStatusCounts = summaryTicketStatuses.map(status => ({
@@ -761,22 +771,22 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <ParkingSpaces key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "announcements" ? (
-            <Announcements key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
+            <Announcements key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} />
           )
           : tab === "moves" ? (
-            <MoveNotices key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
+            <MoveNotices key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "renovations" ? (
-            <RenovationNotices key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
+            <RenovationNotices key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "keys" ? (
-            <KeyRegister key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
+            <KeyRegister key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
           )
           : tab === "meters" ? (
-            <MeterReadings key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
+            <MeterReadings key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} />
           )
           : tab === "waitlist" ? (
-            <Waitlists key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
+            <Waitlists key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} />
           )
           : tab === "sauna" || tab === "laundry" ? (
             <BookingCalendar
@@ -809,10 +819,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <Residents
               key={navCompanyKey}
               companyId={navCompanyKey}
-              companies={companies}
+              companies={companyScope}
               openResidentId={routeParam}
               onResidentClosed={() => navigate("residents")}
-              onCompanyChange={() => undefined}
               onChanged={async () => setCompanies(await api<Company[]>("/companies"))}
             />
           )
@@ -832,7 +841,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <button
                   title={t("Näytä tehtävät, joilla ei ole käsittelijää")}
                   onClick={() => {
-                    setStatusFilter("all");
+                    setStatusFilter(null);
                     setPriorityFilter("all");
                     setTypeFilter("all");
                     setDueFilter("all");
@@ -848,7 +857,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     key={status}
                     title={t("Näytä nämä tehtävät")}
                     onClick={() => {
-                      setStatusFilter(status);
+                      setStatusFilter([status]);
                       setPriorityFilter("all");
                       setTypeFilter("all");
                       setDueFilter("all");
@@ -864,7 +873,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   className={reminderTickets.length > 0 ? "reminder-box active" : "reminder-box"}
                   title={t("Näytä omat tehtävät, jotka vaativat huomiota")}
                   onClick={() => {
-                    setStatusFilter("all");
+                    setStatusFilter(null);
                     setPriorityFilter("all");
                     setTypeFilter("all");
                     setDueFilter("reminders");
@@ -934,20 +943,22 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 </select>
               </label>
               {statusFilterTab && (
-                <label>
+                <div className="filter-field">
                   <span>{t("Tila")}</span>
-                  <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
-                    <option value="all">{t("Kaikki")}</option>
-                    <option value="unclosed">{t("Keskeneräiset")}</option>
-                    {(tab === "my-tickets" ? ownTicketStatuses : tab === "unassigned" ? openTicketStatuses : ticketStatuses).map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
-                  </select>
-                </label>
+                  <MultiSelect
+                    value={statusFilter}
+                    options={statusOptions.map(status => ({ value: status, label: statusLabel(status) }))}
+                    onChange={setStatusFilter}
+                    ariaLabel={t("Tila")}
+                  />
+                </div>
               )}
               <label>
                 <span>{t("Määräaika")}</span>
                 <select value={dueFilter} onChange={event => setDueFilter(event.target.value)}>
                   <option value="all">{t("Kaikki")}</option>
                   <option value="overdue">{t("Myöhässä")}</option>
+                  <option value="due_soon">{t("Umpeutumassa")}</option>
                   <option value="reminders">{t("Muistutus")}</option>
                 </select>
               </label>
@@ -955,7 +966,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 <button className="clear-filters" onClick={() => {
                   setPriorityFilter("all");
                   setTypeFilter("all");
-                  setStatusFilter("all");
+                  setStatusFilter(null);
                   setDueFilter("all");
                 }}>{t("Tyhjennä suodattimet")}</button>
               )}

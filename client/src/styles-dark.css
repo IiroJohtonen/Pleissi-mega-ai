@@ -2329,3 +2329,27 @@
 :root[data-theme="dark"] .knowledge-view-tabs {
     border-bottom: 1px solid #384454
 }
+:root[data-theme="dark"] .ticket-filters .filter-field {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .multi-select-trigger {
+    border: 1px solid #374353;
+    background: #242e3b;
+    color: #dadee3
+}
+:root[data-theme="dark"] .multi-select-trigger svg {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .multi-select-menu {
+    background: #283341;
+    border: 1px solid #374353
+}
+:root[data-theme="dark"] .multi-select-menu label {
+    color: #dadee3
+}
+:root[data-theme="dark"] .multi-select-menu label:hover {
+    background: #2e3a49
+}
+:root[data-theme="dark"] .multi-select-menu .multi-select-all {
+    border-bottom: 1px solid #3a4758
+}

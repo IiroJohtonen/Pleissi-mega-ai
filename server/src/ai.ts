@@ -62,9 +62,19 @@ export function stems(text: string): Set<string> {
   );
 }
 
+// Kaksi vartaloa ovat saman sanan taivutusmuotoja, kun niiden yhteinen alku on vähintään viisi kirjainta
+// ja kattaa lyhyemmästä kaikki paitsi enintään kaksi viimeistä kirjainta:
+// "remontis" (remontista) ~ "remont" (remontti), "ilmoitt" (ilmoittaa) ~ "ilmoitet" (ilmoitettava).
+export function sameStem(a: string, b: string): boolean {
+  if (a === b) return true;
+  let common = 0;
+  while (common < a.length && common < b.length && a[common] === b[common]) common++;
+  return common >= Math.max(5, Math.min(a.length, b.length) - 2);
+}
+
 export function overlap(query: Set<string>, text: string): string[] {
-  const target = stems(text);
-  return [...query].filter(word => target.has(word));
+  const target = [...stems(text)];
+  return [...query].filter(word => target.some(candidate => sameStem(word, candidate)));
 }
 
 export function chunks(content: string): string[] {
