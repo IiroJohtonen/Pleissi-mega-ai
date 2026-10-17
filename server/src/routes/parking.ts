@@ -8,7 +8,7 @@ import { id, now, today } from "../util.js";
 export const parkingRouter: Router = express.Router();
 
 // Autopaikat: taloyhtiön paikat, niiden tyyppi ja haltija.
-export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka"] as const;
+export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka", "Lämmityspaikka"] as const;
 
 const parkingSchema = z.object({
   label: z.string().trim().min(1).max(40),
@@ -163,7 +163,7 @@ parkingRouter.put("/companies/:companyId/parking-prices", requireAdmin, (req, re
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
 
   const price = z.number().min(0).max(10000);
-  const parsed = z.object({ Autotalli: price, Ulkopaikka: price, Hallipaikka: price }).safeParse(req.body);
+  const parsed = z.object({ Autotalli: price, Ulkopaikka: price, Hallipaikka: price, Lämmityspaikka: price.default(0) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista hinnat." });
 
   const save = db.prepare(`

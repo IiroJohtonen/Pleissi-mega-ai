@@ -3,6 +3,25 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 17.10.2026 · Asukasportaalin lomakkeet: huoltotyötilaus, häiriöilmoitus, irtisanomisilmoitus, asuntohakemus ja lämmityspaikka
+
+**Mitä muutettiin**
+- Asukasportaaliin uusi Lomakkeet-osio, jossa ovat isännöitsijäyrityksen sivujen lomakkeet: huoltotyötilaus,
+  häiriöilmoitus, mittarilukemat, muuttoilmoitus, remontti-ilmoitus, auton lämmityspaikka, irtisanomisilmoitus
+  ja yleinen asuntohakemus
+- Lähetetystä lomakkeesta tulee isännöitsijälle tehtävä, jolla lomakkeen tiedot näkyvät selkeänä taulukkona;
+  asukas näkee lomakkeen ja vastaukset Tehtävät-sivulla
+- Irtisanomisilmoitus kertoo aikaisimman päättymispäivän; liian aikaisesta päivästä näkyy huomio myös isännöitsijälle
+- Autopaikoille uusi paikkatyyppi Lämmityspaikka (hinta asetuksissa, jono portaalissa)
+- Kulutuslukemat-sivu on nyt nimeltään Mittarilukemat
+
+**Miten**
+- Asukasportaali → sivupalkin Lomakkeet (puhelimella Lisää-valikko).
+- Isännöitsijä: päätösjono ja Kaikki tehtävät → avaa tehtävä, jonka tyyppi on Huoltotyötilaus, Häiriöilmoitus,
+  Irtisanomisilmoitus tai Asuntohakemus.
+
+**Testit:** T-067–T-073
+
 ## 16.10.2026 · Kirjautumiskoodi sähköpostiin ja tilapäivitykset asukkaalle
 
 **Mitä muutettiin**

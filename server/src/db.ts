@@ -245,6 +245,16 @@ CREATE TABLE IF NOT EXISTS move_notices (
 );
 
 -- Jonotuslista autopaikalle tai saunavuorolle. status: 'waiting', 'offered', 'done' tai 'cancelled'.
+-- Asukasportaalin lomakkeet (huoltotyötilaus, häiriöilmoitus, irtisanomisilmoitus, asuntohakemus).
+-- Lomake luo tehtävän; fields on JSON-lista {label, value}, joka näytetään tehtävällä sellaisenaan.
+CREATE TABLE IF NOT EXISTS portal_forms (
+  ticket_id TEXT PRIMARY KEY,
+  form TEXT NOT NULL,
+  resident_id TEXT,
+  fields TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 -- Remontti-ilmoitukset: asukas ilmoittaa portaalissa, isännöitsijä hyväksyy (ehdoin) tai hylkää.
 -- status: pending, approved, rejected, completed.
 CREATE TABLE IF NOT EXISTS renovation_notices (

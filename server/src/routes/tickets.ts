@@ -12,6 +12,7 @@ import { renderSignature } from "../signature.js";
 import { alertEmergency, notifyTicketStatus, statusEventFor } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL, TICKET_STATUSES } from "../util.js";
 import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
+import { ticketForm } from "../portal-form-data.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -35,6 +36,7 @@ export async function deleteTicket(ticketId: string) {
       db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
     }
     db.prepare("DELETE FROM renovation_notices WHERE ticket_id = ?").run(ticketId);
+    db.prepare("DELETE FROM portal_forms WHERE ticket_id = ?").run(ticketId);
     db.prepare("DELETE FROM tickets WHERE id = ?").run(ticketId);
   })();
   for (const file of files) await fs.rm(path.join(attachmentsDir, file.id), { force: true });
@@ -300,12 +302,15 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
   // Remonttitehtävän muutostyöilmoituksen tiedot.
   const renovation = db.prepare("SELECT * FROM renovation_notices WHERE ticket_id = ?").get(req.params.id) ?? null;
 
+  // Asukasportaalin lomakkeen kentät (huoltotyötilaus, häiriöilmoitus jne.).
+  const form = ticketForm(req.params.id);
+
   // Poistopyynnön vuoksi säilytetty tehtävä: anonymisoidaan, kun tehtävä suljetaan.
   const erasurePending = pendingErasure(req.params.id) ?? null;
 
   res.json({
     ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature,
-    renovation, erasurePending
+    renovation, form, erasurePending
   });
 });
 

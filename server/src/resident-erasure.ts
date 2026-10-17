@@ -87,6 +87,8 @@ export function eraseResidentFromTicket(ticketId: string, resident: ErasedReside
       .run(others[0].id, others[0].apartment_id, ticketId, resident.id);
   }
 
+  // Asukkaan täyttämän lomakkeen kentät (esim. uusi osoite) poistetaan; tehtävän viesti on jo tyhjennetty.
+  db.prepare("DELETE FROM portal_forms WHERE ticket_id = ? AND resident_id = ?").run(ticketId, resident.id);
   db.prepare("UPDATE audit_log SET actor = ? WHERE ticket_id = ? AND actor = ?").run(ERASED_NAME, ticketId, resident.name);
   db.prepare(`
     UPDATE audit_log SET details = '{}'

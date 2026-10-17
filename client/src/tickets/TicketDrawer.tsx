@@ -956,6 +956,18 @@ export function TicketDrawer({
 
         {detail.renovation ? (
           <RenovationPanel notice={detail.renovation} onChanged={onChanged} />
+        ) : detail.form ? (
+          <section className="ticket-form-card" aria-label={t(detail.form.title)}>
+            <h3>{t(detail.form.title)} <small>{t("asukasportaalin lomake")}</small></h3>
+            <dl>
+              {detail.form.fields.map(field => (
+                <div key={field.label} className={field.label === "Huomio" ? "warning" : ""}>
+                  <dt>{t(field.label)}</dt>
+                  <dd>{field.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         ) : (
           <div className="ticket-description">
             <h3>{t("Kuvaus")}</h3>

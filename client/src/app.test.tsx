@@ -268,7 +268,25 @@ describe("sovellus", () => {
     const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };
     await renderApp({ token: "asukastunniste", kind: "resident", user: { id: resident.id, name: resident.name, email: resident.email, role: "Asukas" }, resident });
     expect(await screen.findByText("Remontti-ilmoitus")).toBeTruthy();
-    expect(screen.getByText("Kulutuslukemat")).toBeTruthy();
+    expect(screen.getByText("Mittarilukemat")).toBeTruthy();
+  });
+
+  it("asukas lähettää huoltotyötilauksen portaalin lomakkeella", async () => {
+    const calls = mockApi();
+    const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };
+    await renderApp({ token: "asukastunniste", kind: "resident", user: { id: resident.id, name: resident.name, email: resident.email, role: "Asukas" }, resident });
+    for (const label of ["Häiriöilmoitus", "Irtisanomisilmoitus", "Yleinen asuntohakemus", "Auton lämmityspaikka"]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    }
+    fireEvent.click(screen.getAllByRole("button", { name: /Huoltotyötilaus/ })[0]);
+    fireEvent.change(await screen.findByLabelText("Tarkempi paikka (valinnainen)"), { target: { value: "Keittiö" } });
+    fireEvent.change(screen.getByLabelText("Vian kuvaus"), { target: { value: "Hana vuotaa tiskipöydän alle." } });
+    fireEvent.click(screen.getByRole("button", { name: "Lähetä huoltotyötilaus" }));
+
+    await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/portal/forms/service"))).toBe(true));
+    const sent = JSON.parse(calls.find(request => request.url.endsWith("/portal/forms/service"))?.body ?? "{}");
+    expect(sent).toMatchObject({ target: "Oma asunto", location: "Keittiö", description: "Hana vuotaa tiskipöydän alle.", entry: "Huolto saa mennä asuntoon yleisavaimella" });
+    expect(await screen.findByText(/Huoltotyötilaus on lähetetty/)).toBeTruthy();
   });
 
   it("näyttää käyttöliittymän englanniksi, kun kieli on valittu", async () => {
