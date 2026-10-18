@@ -293,7 +293,8 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
   ).all(req.params.id);
 
   const audit = db.prepare(
-    "SELECT * FROM audit_log WHERE ticket_id = ? ORDER BY created_at DESC"
+    // AI:lle lähetetty tieto näkyy vain Lokissa, ei tehtävän aikajanalla.
+    "SELECT * FROM audit_log WHERE ticket_id = ? AND action != 'ai_request' ORDER BY created_at DESC"
   ).all(req.params.id);
 
   const reporters = db.prepare(`

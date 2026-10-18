@@ -39,17 +39,27 @@ export function companyIdFromContext(requestedCompanyId?: unknown) {
   return visibleCompanyIds().includes(companyId) ? companyId : null;
 }
 
-// Saapuva sähköposti ohjataan yhtiölle, jonka vastaanotto-osoitteeseen se on lähetetty.
+// Saapuva sähköposti ohjataan yhtiölle, jonka vastaanotto-osoitteeseen se on lähetetty. Osoite kertoo
+// yhtiön vain, jos se on täsmälleen yhden yhtiön osoite: toimiston yhteinen osoite tai usean yhtiön
+// käyttämä osoite ei kerro yhtiötä, jolloin viesti menee Tunnistamattomat-jonoon (ellei lähettäjä ole asukas).
 export function companyIdForRecipients(recipientEmails: string[] = []) {
-  const recipients = new Set(recipientEmails.map(email => email.trim().toLowerCase()));
+  const normalize = (email: string) => email.trim().toLowerCase();
+  const recipients = new Set(recipientEmails.map(normalize));
   if (recipients.size === 0) return null;
+  const office = db.prepare("SELECT email FROM gmail_accounts WHERE id = 'office'").get() as { email: string } | undefined;
+  const officeEmail = normalize(office?.email ?? "");
   const companies = db.prepare("SELECT id, email_address FROM companies").all() as
     { id: string; email_address: string }[];
-  const match = companies.find(company =>
-    AUTHORIZED_COMPANY_IDS.has(company.id)
-    && recipients.has(company.email_address.trim().toLowerCase())
-  );
-  return match?.id ?? null;
+  const matches = companies.filter(company => {
+    const address = normalize(company.email_address ?? "");
+    return AUTHORIZED_COMPANY_IDS.has(company.id) && address && address !== officeEmail && recipients.has(address);
+  });
+  // Osoite, jota käyttää useampi yhtiö, ei ole minkään yhtiön oma.
+  const sharedAddresses = new Set(companies
+    .map(company => normalize(company.email_address ?? ""))
+    .filter((address, index, all) => address && all.indexOf(address) !== index));
+  const unique = [...new Set(matches.filter(company => !sharedAddresses.has(normalize(company.email_address))).map(company => company.id))];
+  return unique.length === 1 ? unique[0] : null;
 }
 
 // Arkaluonteisen tehtävän (terveys ym. erityiset tietoryhmät) sisällön näkevät vain sen käsittelijä,

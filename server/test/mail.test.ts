@@ -117,6 +117,24 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     for (const accountId of ["office", "user:isannoitsija-2", "user:isannoitsija-3", "demo-company"]) common.disconnectMailAccount(accountId);
   });
 
+  it("vastaanottaja kertoo taloyhtiön vain, jos osoite on yhden yhtiön oma", async () => {
+    const { common, secrets } = modules;
+    const { db } = await import("../src/db.js");
+    const { companyIdForRecipients } = await import("../src/access.js");
+    common.saveMailAccount({ accountId: "office", email: "toimisto@toimisto.fi", provider: "imap", token: secrets.encryptSecret("x"), connectedBy: "testi" });
+    db.prepare("UPDATE companies SET email_address = ? WHERE id = 'demo-company'").run("koivikko@toimisto.fi");
+    db.prepare("UPDATE companies SET email_address = ? WHERE id = 'toinen-yhtio'").run("toimisto@toimisto.fi");
+    // Yhtiön oma osoite tunnistaa yhtiön.
+    assert.equal(companyIdForRecipients(["Koivikko@Toimisto.fi"]), "demo-company");
+    // Toimiston yhteinen osoite ei kerro yhtiötä, vaikka se olisi kirjattu jonkin yhtiön osoitteeksi.
+    assert.equal(companyIdForRecipients(["toimisto@toimisto.fi"]), null);
+    // Usean yhtiön käyttämä osoite ei kerro yhtiötä.
+    db.prepare("UPDATE companies SET email_address = ? WHERE id = 'toinen-yhtio'").run("koivikko@toimisto.fi");
+    assert.equal(companyIdForRecipients(["koivikko@toimisto.fi"]), null);
+    db.prepare("UPDATE companies SET email_address = '' WHERE id IN ('demo-company', 'toinen-yhtio')").run();
+    common.disconnectMailAccount("office");
+  });
+
   it("kertoo, mihin sama osoite on jo yhdistetty, ja vapauttaa poistetun yhtiön tai käyttäjän tilin", async () => {
     const { common, secrets } = modules;
     const save = (accountId: string, email: string) => common.saveMailAccount({

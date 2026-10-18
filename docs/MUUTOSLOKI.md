@@ -3,6 +3,23 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · AI-tieto pois aikajanalta, yhteinen osoite Tunnistamattomiin ja turhat tehtävätyypit pois
+
+**Mitä muutettiin**
+- AI:lle lähetetty tieto ei enää näy tehtävän aikajanalla. Se näkyy edelleen Lokissa.
+- Vastaanottajan osoite kertoo taloyhtiön vain, jos osoite on yhden taloyhtiön oma. Jos viesti on lähetetty toimiston
+  yhteiseen osoitteeseen tai osoitteeseen, jota käyttää useampi taloyhtiö, tehtävä menee Tunnistamattomat-jonoon.
+  Taloyhtiö tunnistetaan silti, jos lähettäjä on tunnettu asukas.
+- Tehtävän tyyppivalikosta poistettiin Muuttoilmoitus, Mittarilukemailmoitus, Muutto ja Auton lämmityspaikka
+  (ne kuuluvat taloyhtiön omille tauluille). Vanhat tehtävät, joilla oli jokin näistä tyypeistä, muuttuvat tyypiksi Ilmoitus.
+
+**Miten**
+- Tehtävän sivu: aikajanalla ei ole "Lähetetty AI:lle" -merkintöjä. Asetukset → Tietoturva → Loki: merkinnät löytyvät sieltä.
+- Tunnistamattomat-jono: yhteiseen osoitteeseen tulleet viestit tuntemattomalta lähettäjältä.
+- Tehtävän tyyppi -valikko.
+
+**Testit:** T-106–T-108 · PR #28
+
 ## 18.10.2026 · AI:lle lähtevä tieto lokiin, tehtävän taloyhtiö ilmoittajasta ja arkaluonteisen tehtävän tägi
 
 **Mitä muutettiin**

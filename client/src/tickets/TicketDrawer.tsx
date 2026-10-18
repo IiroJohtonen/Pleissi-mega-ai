@@ -1,5 +1,4 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { AiRequestDetails, aiRequestLabel } from "../components/AiRequest";
 import { DownloadLink, FactDropdown } from "../components/common";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
@@ -389,12 +388,12 @@ export function TicketDrawer({
     setNote("");
   }, [ticket.id]);
 
-  // reply_sent ja message_created näkyvät aikajanalla jo itse viesteinä.
+  // reply_sent ja message_created näkyvät aikajanalla jo itse viesteinä. AI:lle lähetetty tieto näkyy vain Lokissa.
   const timeline = [
     ...detail.messages.map(m => ({ kind: "message" as const, id: m.id, created_at: m.created_at, message: m })),
     ...detail.notes.map(n => ({ kind: "note" as const, id: n.id, created_at: n.created_at, note: n })),
     ...detail.audit
-      .filter(a => a.action !== "reply_sent" && a.action !== "message_created")
+      .filter(a => a.action !== "reply_sent" && a.action !== "message_created" && a.action !== "ai_request")
       .map(a => ({ kind: "event" as const, id: a.id, created_at: a.created_at, event: a }))
   ].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
@@ -1216,9 +1215,8 @@ export function TicketDrawer({
             </div>
           ) : (
             <div className="timeline-event" key={item.id}>
-              <span>{item.event.action === "ai_request" ? aiRequestLabel(item.event.details) : actionLabel(item.event.action)}</span>
+              <span>{actionLabel(item.event.action)}</span>
               {eventNote(item.event.details) && <span className="event-note">{eventNote(item.event.details)}</span>}
-              {item.event.action === "ai_request" && <AiRequestDetails auditId={item.event.id} />}
               <small>{actorLabel(item.event.actor)} · {formatDate(item.created_at)}</small>
             </div>
           ))}

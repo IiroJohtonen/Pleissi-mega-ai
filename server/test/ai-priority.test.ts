@@ -136,8 +136,11 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
   it("kirjaa AI:lle lähtevän tiedon lokiin täsmälleen lähetetyssä muodossa", async () => {
     const created = await inbound("Hana", "Keittiön hana on jäykkä. Soita 040 123 4567.");
     const sent = requests.at(-1).body;
-    const entry = created.audit.find(row => row.action === "ai_request");
-    assert.ok(entry, "AI-pyyntö näkyy tehtävän lokissa");
+    // AI-pyyntö ei näy tehtävän aikajanalla, vaan Lokissa tehtävään liitettynä.
+    assert.ok(!created.audit.some(row => row.action === "ai_request"));
+    const entry = ((await call(server, admin, "GET", "/audit")).data as any[])
+      .find(row => row.action === "ai_request" && row.ticket_id === created.id);
+    assert.ok(entry, "AI-pyyntö näkyy Lokissa");
     assert.equal(JSON.parse(entry.details).feature, "assess");
     const logged = await call(server, admin, "GET", `/audit/${entry.id}/ai-request`);
     assert.equal(logged.status, 200);
@@ -147,10 +150,8 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.deepEqual(payload.system, sent.system);
     // Puhelinnumero on maskattu jo ennen lähetystä, ja loki näyttää saman maskatun tekstin.
     assert.doesNotMatch(JSON.stringify(payload.messages), /040 123 4567/);
-    // Tuntematonta merkintää ei löydy, ja merkintä on liitetty luotuun tehtävään.
+    // Tuntematonta merkintää ei löydy.
     assert.equal((await call(server, admin, "GET", "/audit/olematon/ai-request")).status, 404);
-    const all = (await call(server, admin, "GET", "/audit")).data as any[];
-    assert.ok(all.some(row => row.id === entry.id && row.ticket_id === created.id));
   });
 
   it("AI:n tunnistama hätätapaus hälyttää, vaikka viestissä ei ole avainsanaa", async () => {
