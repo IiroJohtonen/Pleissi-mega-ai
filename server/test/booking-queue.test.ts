@@ -209,4 +209,41 @@ describe("vuorojen jono", () => {
     const staff = (await call(server, manager, "GET", "/companies/demo-company/booking-queue")).data as any[];
     assert.ok(staff.every(row => row.company_id === "demo-company"));
   });
+
+  it("toimisto lisää asukkaan varatun vuoron jonoon myös, kun asukkaiden jono ei ole käytössä", async () => {
+    await settings("demo-company", { sauna: { queueEnabled: false, queueSize: 2 }, laundry: { queueEnabled: true, queueSize: 1 } });
+    const time = slot("sauna", 8 * DAY);
+    const add = (residentId: string) => call(server, manager, "POST", "/companies/demo-company/booking-queue", { ...time, residentId });
+    // Vapaaseen vuoroon ei lisätä jonoa.
+    assert.equal((await add("resident-2")).status, 409);
+    assert.equal((await call(server, matti, "POST", "/portal/bookings", time)).status, 201);
+    assert.equal((await add("resident-1")).status, 409);
+    const added = await add("resident-2");
+    assert.equal(added.status, 201);
+    assert.equal(added.data.position, 1);
+    assert.equal((await add("resident-2")).status, 409);
+    const [queued] = (await myQueue(liisa)).filter(row => row.starts_at === time.startsAt);
+    assert.equal(queued.position, 1);
+    // Toisen taloyhtiön asukasta ei voi lisätä.
+    const other = (await call(server, admin, "GET", `/companies/${otherCompanyId}/residents`)).data[0];
+    assert.equal((await add(other.id)).status, 404);
+    await settings("demo-company", { sauna: { queueEnabled: true, queueSize: 2 }, laundry: { queueEnabled: true, queueSize: 1 } });
+  });
+
+  it("varattava aikaikkuna on taloyhtiökohtainen", async () => {
+    const defaults = (await call(server, manager, "GET", "/companies/demo-company/booking-settings")).data;
+    assert.deepEqual([defaults.sauna.firstHour, defaults.sauna.lastHour], [15, 22]);
+    await settings("demo-company", { sauna: { queueEnabled: true, queueSize: 2, firstHour: 8, lastHour: 22 } });
+    const saved = (await call(server, manager, "GET", "/companies/demo-company/booking-settings")).data;
+    assert.deepEqual([saved.sauna.firstHour, saved.sauna.lastHour], [8, 22]);
+    assert.deepEqual([saved.laundry.firstHour, saved.laundry.lastHour], [7, 21]);
+    // Toisen taloyhtiön aikaikkuna ei muutu.
+    const other = (await call(server, manager, "GET", `/companies/${otherCompanyId}/booking-settings`)).data;
+    assert.equal(other.sauna.firstHour, 15);
+    const base = { single: true, weekly: true, weeklyWeeks: 12, singlePrice: 0, monthlyPrice: 0 };
+    const invalid = await call(server, admin, "PUT", "/companies/demo-company/booking-settings", {
+      sauna: { ...base, firstHour: 20, lastHour: 10 }, laundry: base
+    });
+    assert.equal(invalid.status, 400);
+  });
 });

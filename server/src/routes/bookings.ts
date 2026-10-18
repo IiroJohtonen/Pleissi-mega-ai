@@ -18,10 +18,13 @@ export const bookingTimes = z.object({ startsAt: z.iso.datetime(), endsAt: z.iso
 // weeklyWeeks = kuinka monelle viikolle viikoittainen vuoro varataan kerralla.
 // singlePrice = yhden vuoron hinta, monthlyPrice = viikoittaisen vuoron hinta kuukaudessa (euroa).
 // queueEnabled = voiko varatun vuoron jonoon liittyä, queueSize = jonopaikkoja yhdellä vuorolla.
+// firstHour–lastHour = varattava aikaikkuna (esim. 8–22), taloyhtiökohtainen.
 type BookingRule = {
   single: boolean; weekly: boolean; weeklyWeeks: number; singlePrice: number; monthlyPrice: number;
-  queueEnabled: boolean; queueSize: number;
+  queueEnabled: boolean; queueSize: number; firstHour: number; lastHour: number;
 };
+// Tilan oletusaikaikkuna, kun taloyhtiölle ei ole asetettu omaa.
+export const DEFAULT_BOOKING_HOURS = { sauna: { firstHour: 15, lastHour: 22 }, laundry: { firstHour: 7, lastHour: 21 } } as const;
 export const DEFAULT_QUEUE_SIZE = 3;
 export const MAX_QUEUE_SIZE = 20;
 type BookingRules = Record<(typeof BOOKING_RESOURCES)[number], BookingRule>;
@@ -29,15 +32,23 @@ type BookingRules = Record<(typeof BOOKING_RESOURCES)[number], BookingRule>;
 // Taloyhtiön asetukset: saako tilaan varata yksittäisiä ja viikoittaisia vuoroja.
 export function bookingRules(companyId: string): BookingRules {
   const rules: BookingRules = {
-    sauna: { single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0, queueEnabled: false, queueSize: DEFAULT_QUEUE_SIZE },
-    laundry: { single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0, queueEnabled: false, queueSize: DEFAULT_QUEUE_SIZE }
+    sauna: {
+      single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0, queueEnabled: false,
+      queueSize: DEFAULT_QUEUE_SIZE, ...DEFAULT_BOOKING_HOURS.sauna
+    },
+    laundry: {
+      single: true, weekly: true, weeklyWeeks: DEFAULT_WEEKLY_WEEKS, singlePrice: 0, monthlyPrice: 0, queueEnabled: false,
+      queueSize: DEFAULT_QUEUE_SIZE, ...DEFAULT_BOOKING_HOURS.laundry
+    }
   };
   const rows = db.prepare(`
-    SELECT resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price, queue_enabled, queue_size
+    SELECT resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price, queue_enabled, queue_size,
+           first_hour, last_hour
     FROM booking_settings WHERE company_id = ?
   `).all(companyId) as {
     resource: string; allow_single: number; allow_weekly: number; weekly_weeks: number;
     single_price: number; monthly_price: number; queue_enabled: number; queue_size: number;
+    first_hour: number | null; last_hour: number | null;
   }[];
   for (const row of rows) {
     if (row.resource === "sauna" || row.resource === "laundry") {
@@ -48,7 +59,9 @@ export function bookingRules(companyId: string): BookingRules {
         singlePrice: row.single_price,
         monthlyPrice: row.monthly_price,
         queueEnabled: Boolean(row.queue_enabled),
-        queueSize: row.queue_size
+        queueSize: row.queue_size,
+        firstHour: row.first_hour ?? DEFAULT_BOOKING_HOURS[row.resource].firstHour,
+        lastHour: row.last_hour ?? DEFAULT_BOOKING_HOURS[row.resource].lastHour
       };
     }
   }
@@ -87,26 +100,34 @@ bookingsRouter.put("/companies/:companyId/booking-settings", requireAdmin, (req,
     monthlyPrice: z.number().min(0).max(10000).default(0),
     // Puuttuessa jonon asetus säilyy ennallaan.
     queueEnabled: z.boolean().optional(),
-    queueSize: z.number().int().min(1).max(MAX_QUEUE_SIZE).optional()
-  });
+    queueSize: z.number().int().min(1).max(MAX_QUEUE_SIZE).optional(),
+    // Varattava aikaikkuna tunteina; puuttuessa ennallaan.
+    firstHour: z.number().int().min(0).max(23).optional(),
+    lastHour: z.number().int().min(1).max(24).optional()
+  }).refine(value => value.firstHour === undefined || value.lastHour === undefined || value.firstHour < value.lastHour);
   const parsed = z.object({ sauna: rule, laundry: rule }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista asetukset." });
 
   const current = bookingRules(companyId);
   const save = db.prepare(`
     INSERT INTO booking_settings
-      (company_id, resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price, queue_enabled, queue_size)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (company_id, resource, allow_single, allow_weekly, weekly_weeks, single_price, monthly_price, queue_enabled, queue_size,
+       first_hour, last_hour)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(company_id, resource) DO UPDATE SET
       allow_single = excluded.allow_single, allow_weekly = excluded.allow_weekly,
       weekly_weeks = excluded.weekly_weeks, single_price = excluded.single_price,
-      monthly_price = excluded.monthly_price, queue_enabled = excluded.queue_enabled, queue_size = excluded.queue_size
+      monthly_price = excluded.monthly_price, queue_enabled = excluded.queue_enabled, queue_size = excluded.queue_size,
+      first_hour = excluded.first_hour, last_hour = excluded.last_hour
   `);
   for (const resource of BOOKING_RESOURCES) {
     const value = parsed.data[resource];
+    const firstHour = value.firstHour ?? current[resource].firstHour;
+    const lastHour = value.lastHour ?? current[resource].lastHour;
+    if (firstHour >= lastHour) return res.status(400).json({ error: "Varausajan alun pitää olla ennen loppua." });
     save.run(companyId, resource, value.single ? 1 : 0, value.weekly ? 1 : 0, value.weeklyWeeks,
       value.singlePrice, value.monthlyPrice, (value.queueEnabled ?? current[resource].queueEnabled) ? 1 : 0,
-      value.queueSize ?? current[resource].queueSize);
+      value.queueSize ?? current[resource].queueSize, firstHour, lastHour);
   }
   res.json(bookingRules(companyId));
 });

@@ -2392,3 +2392,23 @@
 :root[data-theme="dark"] .parking-option-add > input {
     border: 1px solid #374353
 }
+:root[data-theme="dark"] .record-page > .drawer {
+    border: 1px solid #374353
+}
+:root[data-theme="dark"] .resident-parking > span {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .booking-hours select {
+    border: 1px solid #374353;
+    background: #242d3a
+}
+:root[data-theme="dark"] .booking-slot-queue h3 b {
+    color: #c1c7d0
+}
+:root[data-theme="dark"] .booking-queue-add select {
+    border: 1px solid #374353;
+    background: #283341
+}
+:root[data-theme="dark"] .data-table td {
+    color: #c7cdd5
+}

@@ -4,6 +4,7 @@ import { companyIdFromContext } from "../access.js";
 import { isAdmin, requireManager, setResidentPassword } from "../auth.js";
 import { deleteBookingsAndRelease } from "../booking-queue.js";
 import { db } from "../db.js";
+import { syncParkingHolders } from "./parking.js";
 import { ACTIVE_RESIDENT, id, now, today } from "../util.js";
 import {
   deferTicketErasure, ERASED_NAME, eraseResidentFromTicket, openResidentTickets, removeAttachmentFiles, residentTicketIds,
@@ -40,15 +41,22 @@ residentsRouter.get("/companies/:companyId/residents", (req, res) => {
   if (!companyIdFromContext(req.params.companyId)) {
     return res.status(403).json({ error: "Company not authorized" });
   }
+  syncParkingHolders();
   res.json(
     db.prepare(`
-      SELECT r.id, r.name, r.email, a.apartment_number, a.address,
-             EXISTS(SELECT 1 FROM resident_credentials rc WHERE rc.resident_id = r.id) AS has_password
+      SELECT r.id, r.name, r.email, a.apartment_number, a.address, a.staircase,
+             EXISTS(SELECT 1 FROM resident_credentials rc WHERE rc.resident_id = r.id) AS has_password,
+             (SELECT json_group_array(json_object('id', p.id, 'label', p.label, 'type', p.type))
+              FROM parking_spaces p WHERE p.resident_id = r.id) AS parking
       FROM residents r
       JOIN apartments a ON a.id = r.apartment_id
       WHERE r.company_id = ? AND ${ACTIVE_RESIDENT}
       ORDER BY r.name
-    `).all(req.params.companyId)
+    `).all(req.params.companyId).map(row => {
+      const resident = row as Record<string, unknown> & { parking: string };
+      // Asukkaan autopaikat (haltijana tänään) näkyvät asukkaan tiedoissa.
+      return { ...resident, parking: JSON.parse(resident.parking || "[]") };
+    })
   );
 });
 
@@ -56,15 +64,22 @@ const residentSchema = z.object({
   name: z.string().trim().min(1),
   email: z.string().trim().pipe(z.union([z.literal(""), z.email()])).default(""),
   address: z.string().trim().min(1),
-  apartmentNumber: z.string().trim().min(1)
+  apartmentNumber: z.string().trim().min(1),
+  // Asunnon rappu; puuttuessa ennallaan.
+  staircase: z.string().trim().max(20).optional()
 });
+
+// Asunnon rappu on asunnon tieto, joten se on sama kaikilla saman asunnon asukkailla.
+function setStaircase(apartmentId: string, staircase: string | undefined) {
+  if (staircase !== undefined) db.prepare("UPDATE apartments SET staircase = ? WHERE id = ?").run(staircase, apartmentId);
+}
 
 // Lisää asukkaan yhtiöön ja luo asunnon, jos sitä ei vielä ole. Palauttaa virheen tekstinä.
 function addResident(companyId: string, input: unknown): { residentId: string } | { error: string; status: number } {
   const parsed = residentSchema.safeParse(input);
   if (!parsed.success) return { error: "Tarkista nimi, sähköposti, osoite ja asunto.", status: 400 };
 
-  const { name, email, address, apartmentNumber } = parsed.data;
+  const { name, email, address, apartmentNumber, staircase } = parsed.data;
 
   if (email) {
     const existing = db.prepare(
@@ -80,11 +95,12 @@ function addResident(companyId: string, input: unknown): { residentId: string } 
 
   if (!apartment) {
     apartment = { id: id("apt") };
-    db.prepare("INSERT INTO apartments VALUES (?, ?, ?, ?)").run(
+    db.prepare("INSERT INTO apartments (id, company_id, apartment_number, address) VALUES (?, ?, ?, ?)").run(
       apartment.id, companyId, apartmentNumber, address
     );
   }
 
+  setStaircase(apartment.id, staircase);
   const residentId = id("resident");
   db.prepare("INSERT INTO residents (id, company_id, apartment_id, name, email) VALUES (?, ?, ?, ?, ?)").run(
     residentId, companyId, apartment.id, name, email || null
@@ -127,7 +143,8 @@ residentsRouter.post("/companies/:companyId/residents/import", (req, res) => {
       name: z.string().default(""),
       email: z.string().default(""),
       address: z.string().default(""),
-      apartmentNumber: z.string().default("")
+      apartmentNumber: z.string().default(""),
+      staircase: z.string().optional()
     })).min(1).max(2000)
   }).safeParse(req.body);
   if (!parsed.success) {
@@ -155,18 +172,12 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
   const companyId = resident && companyIdFromContext(resident.company_id);
   if (!resident || !companyId) return res.status(404).json({ error: "Asukasta ei löytynyt." });
 
-  const schema = z.object({
-    name: z.string().trim().min(1),
-    email: z.string().trim().pipe(z.union([z.literal(""), z.email()])).default(""),
-    address: z.string().trim().min(1),
-    apartmentNumber: z.string().trim().min(1)
-  });
-  const parsed = schema.safeParse(req.body);
+  const parsed = residentSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Tarkista nimi, sähköposti, osoite ja asunto." });
   }
 
-  const { name, email, address, apartmentNumber } = parsed.data;
+  const { name, email, address, apartmentNumber, staircase } = parsed.data;
 
   if (email) {
     const existing = db.prepare(
@@ -184,7 +195,7 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
 
   if (!apartment) {
     apartment = { id: id("apt") };
-    db.prepare("INSERT INTO apartments VALUES (?, ?, ?, ?)").run(
+    db.prepare("INSERT INTO apartments (id, company_id, apartment_number, address) VALUES (?, ?, ?, ?)").run(
       apartment.id, companyId, apartmentNumber, address
     );
   }
@@ -201,6 +212,7 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
   db.prepare("UPDATE residents SET name = ?, email = ?, apartment_id = ? WHERE id = ?").run(
     name, email || null, apartment.id, resident.id
   );
+  setStaircase(apartment.id, staircase);
 
   // Asukkaan tehtävät seuraavat asukasta uuteen asuntoon.
   db.prepare("UPDATE tickets SET apartment_id = ? WHERE resident_id = ? AND apartment_id = ?").run(

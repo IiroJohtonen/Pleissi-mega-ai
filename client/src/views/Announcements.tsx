@@ -21,15 +21,25 @@ type AnnouncementAudience = {
   stairwells: { stairwell: string; residents: number; emails: number }[];
 };
 
-// Tiedotteet: isännöitsijän viestit taloyhtiön tai yhden rapun asukkaille.
-export function Announcements({ companies, defaultCompanyId }: { companies: Company[]; defaultCompanyId: string }) {
+// Tiedotteet: isännöitsijän viestit taloyhtiön tai yhden rapun asukkaille. Osoitteen ohjaamana (routeParam)
+// uusi tiedote (#/announcements/new) ja avattu tiedote (#/announcements/<tiedote>) ovat omia sivujaan.
+export function Announcements({ companies, defaultCompanyId, routeParam = null, onNavigate }: {
+  companies: Company[];
+  defaultCompanyId: string;
+  routeParam?: string | null;
+  onNavigate?: (param: string | null) => void;
+}) {
+  const routed = Boolean(onNavigate);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [open, setOpen] = useState<Announcement | null>(null);
+  const [localOpen, setLocalOpen] = useState<Announcement | null>(null);
   // Oletuksena yläpalkissa valitun taloyhtiön tiedotteet; suodattimesta voi valita toisen tai kaikki.
   const [companyFilter, setCompanyFilter] = useState(companies.some(company => company.id === defaultCompanyId) ? defaultCompanyId : "all");
-  const [creating, setCreating] = useState(false);
+  const [localCreating, setLocalCreating] = useState(false);
+  const creating = routed ? routeParam === "new" : localCreating;
+  // Rappusuodatin: "all" = kaikki, "" = koko taloyhtiölle kohdistetut, muuten rapun tunnus.
+  const [stairwellFilter, setStairwellFilter] = useState("all");
   const [formCompany, setFormCompany] = useState(defaultCompanyId);
   const [audience, setAudience] = useState<AnnouncementAudience | null>(null);
   const [stairwell, setStairwell] = useState("");
@@ -39,6 +49,16 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
+
+  const open = routed ? announcements.find(item => item.id === routeParam) ?? null : localOpen;
+  function setOpen(item: Announcement | null) {
+    if (onNavigate) onNavigate(item ? item.id : null);
+    else setLocalOpen(item);
+  }
+  function setCreating(next: boolean) {
+    if (onNavigate) onNavigate(next ? "new" : null);
+    else setLocalCreating(next);
+  }
 
   const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
   const targetLabel = (item: { stairwell: string }) => item.stairwell ? t("Rappu {0}", item.stairwell) : t("Koko taloyhtiö");
@@ -61,6 +81,11 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
   }, [companies.length]);
 
   // Vastaanottajien määrä ja raput lomakkeen taloyhtiölle.
+  // Uuden tiedotteen sivu avattuna suoraan osoitteesta: lomake alustetaan.
+  useEffect(() => {
+    if (routed && creating) resetForm();
+  }, [routed && creating]);
+
   useEffect(() => {
     if (!creating || !formCompany) return;
     setAudience(null);
@@ -72,14 +97,26 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
 
   const target = stairwell ? audience?.stairwells.find(item => item.stairwell === stairwell) : audience?.all;
 
-  function openForm() {
+  function resetForm() {
     setFormCompany(defaultCompanyId || companies[0]?.id || "");
     setTitle("");
     setBody("");
     setSendEmail(true);
     setFormError("");
+  }
+
+  function openForm() {
+    resetForm();
     setCreating(true);
   }
+
+  // Rappusuodattimen vaihtoehdot: taloyhtiön raput ja tiedotteissa käytetyt raput.
+  const [stairwellOptions, setStairwellOptions] = useState<string[]>([]);
+  useEffect(() => {
+    Promise.all(companies.map(company =>
+      api<AnnouncementAudience>(`/companies/${encodeURIComponent(company.id)}/announcement-audience`).catch(() => null)))
+      .then(all => setStairwellOptions([...new Set(all.flatMap(item => item?.stairwells.map(row => row.stairwell) ?? []))]));
+  }, [companies.length]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -115,9 +152,98 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
     }
   }
 
-  const visible = announcements.filter(item => companyFilter === "all" || item.company_id === companyFilter);
+  const visible = announcements.filter(item => (companyFilter === "all" || item.company_id === companyFilter)
+    && (stairwellFilter === "all" || item.stairwell === stairwellFilter));
   const showCompany = companies.length > 1;
-  const paged = usePaged(visible, companyFilter);
+  const paged = usePaged(visible, `${companyFilter}|${stairwellFilter}`);
+  const stairwells = [...new Set([...stairwellOptions, ...announcements.map(item => item.stairwell).filter(Boolean)])].sort();
+
+  const Frame = routed ? "section" : "div";
+  const openView = open ? (
+        <Frame className={routed ? "record-page" : "overlay"}>
+          <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={() => setOpen(null)}>{t("← Takaisin")}</button>
+            <button className="close" onClick={() => setOpen(null)}>×</button>
+            <h2>{open.title}</h2>
+            <p className="muted">
+              {companyName(open.company_id)} · {targetLabel(open)} · {formatDate(open.created_at)} · {open.created_by}
+              {open.emailed_count ? t(" · lähetetty {0} sähköpostiosoitteeseen", open.emailed_count) : t(" · vain asukasportaalissa")}
+            </p>
+            <p className="announcement-body">{open.body}</p>
+            {isManager() && (
+              <div className="draft-actions">
+                <button className="danger" onClick={() => void handleDelete(open)}>{t("Poista tiedote")}</button>
+              </div>
+            )}
+          </aside>
+        </Frame>
+  ) : null;
+  const createView = creating ? (
+        <Frame className={routed ? "record-page" : "overlay"}>
+          <aside className="drawer form-drawer">
+            <button type="button" className="drawer-back" onClick={() => setCreating(false)} disabled={saving}>{t("← Takaisin")}</button>
+            <button className="close" onClick={() => setCreating(false)} disabled={saving}>×</button>
+            <h2>{t("Uusi tiedote")}</h2>
+            <p className="muted">{t("Tiedote näkyy asukkaille asukasportaalissa ja lähtee haluttaessa sähköpostilla.")}</p>
+
+            <form className="ticket-form" onSubmit={handleSubmit}>
+              <Dropdown
+                label={t("Taloyhtiö")}
+                value={formCompany}
+                options={companies.map(company => ({ value: company.id, label: company.name }))}
+                onChange={setFormCompany}
+              />
+              <Dropdown
+                label={t("Kohde")}
+                value={stairwell}
+                options={[
+                  { value: "", label: t("Koko taloyhtiö") },
+                  ...(audience?.stairwells ?? []).map(item => ({ value: item.stairwell, label: t("Rappu {0}", item.stairwell) }))
+                ]}
+                onChange={setStairwell}
+              />
+              <label>
+                <span>{t("Otsikko")}</span>
+                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={150} placeholder={t("Esim. Vesikatko ti 20.10. klo 9–12")} required />
+              </label>
+              <label>
+                <span>{t("Teksti")}</span>
+                <textarea value={body} onChange={event => setBody(event.target.value)} rows={9} maxLength={8000} required />
+              </label>
+              <label className="switch-row">
+                <span>
+                  <strong>{t("Lähetä myös sähköpostilla")}</strong>
+                  <small>
+                    {target
+                      ? t("{0} asukasta, joista {1} sähköpostiosoitetta. Osoitteet ovat piilokopiona.", target.residents, target.emails)
+                      : t("Vastaanottajien määrää ei saatu ladattua.")}
+                  </small>
+                </span>
+                <input type="checkbox" role="switch" checked={sendEmail} onChange={() => setSendEmail(!sendEmail)} />
+                <i aria-hidden="true" />
+              </label>
+
+              {formError && <p className="send-error">{formError}</p>}
+
+              <div className="draft-actions">
+                <button className="primary" type="submit" disabled={saving || title.trim().length < 3 || body.trim().length < 5}>
+                  {saving ? t("Julkaistaan…") : sendEmail ? t("Julkaise ja lähetä") : t("Julkaise")}
+                </button>
+                <button type="button" onClick={() => setCreating(false)} disabled={saving}>{t("Peruuta")}</button>
+              </div>
+            </form>
+          </aside>
+        </Frame>
+  ) : null;
+
+  // Uusi tiedote ja avattu tiedote omina sivuinaan.
+  if (routed && routeParam) {
+    return (
+      <section className="content">
+        {creating ? createView : openView ?? (loading ? <div className="empty">{t("Ladataan…")}</div> : <div className="empty">{t("Tiedotetta ei löytynyt.")}</div>)}
+      </section>
+    );
+  }
 
   return (
     <section className="content">
@@ -126,7 +252,19 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
       <NoticeFilters companies={companies} company={companyFilter} onCompany={setCompanyFilter} />
 
       <div className="residents-toolbar">
-        <span>{visible.length}{" "}{t("tiedotetta")}</span>
+        <div className="announcement-toolbar-left">
+          <span>{visible.length}{" "}{t("tiedotetta")}</span>
+          <Dropdown
+            label={t("Rappu")}
+            value={stairwellFilter}
+            options={[
+              { value: "all", label: t("Kaikki") },
+              { value: "", label: t("Koko taloyhtiö") },
+              ...stairwells.map(item => ({ value: item, label: t("Rappu {0}", item) }))
+            ]}
+            onChange={setStairwellFilter}
+          />
+        </div>
         {isManager() && <button className="secondary" onClick={openForm}>{t("Uusi tiedote")}</button>}
       </div>
 
@@ -181,83 +319,8 @@ export function Announcements({ companies, defaultCompanyId }: { companies: Comp
         )}
       {paged.pager}
 
-      {open && (
-        <div className="overlay">
-          <aside className="drawer form-drawer">
-            <button type="button" className="drawer-back" onClick={() => setOpen(null)}>{t("← Takaisin")}</button>
-            <button className="close" onClick={() => setOpen(null)}>×</button>
-            <h2>{open.title}</h2>
-            <p className="muted">
-              {companyName(open.company_id)} · {targetLabel(open)} · {formatDate(open.created_at)} · {open.created_by}
-              {open.emailed_count ? t(" · lähetetty {0} sähköpostiosoitteeseen", open.emailed_count) : t(" · vain asukasportaalissa")}
-            </p>
-            <p className="announcement-body">{open.body}</p>
-            {isManager() && (
-              <div className="draft-actions">
-                <button className="danger" onClick={() => void handleDelete(open)}>{t("Poista tiedote")}</button>
-              </div>
-            )}
-          </aside>
-        </div>
-      )}
-
-      {creating && (
-        <div className="overlay">
-          <aside className="drawer form-drawer">
-            <button type="button" className="drawer-back" onClick={() => setCreating(false)} disabled={saving}>{t("← Takaisin")}</button>
-            <button className="close" onClick={() => setCreating(false)} disabled={saving}>×</button>
-            <h2>{t("Uusi tiedote")}</h2>
-            <p className="muted">{t("Tiedote näkyy asukkaille asukasportaalissa ja lähtee haluttaessa sähköpostilla.")}</p>
-
-            <form className="ticket-form" onSubmit={handleSubmit}>
-              <Dropdown
-                label={t("Taloyhtiö")}
-                value={formCompany}
-                options={companies.map(company => ({ value: company.id, label: company.name }))}
-                onChange={setFormCompany}
-              />
-              <Dropdown
-                label={t("Kohde")}
-                value={stairwell}
-                options={[
-                  { value: "", label: t("Koko taloyhtiö") },
-                  ...(audience?.stairwells ?? []).map(item => ({ value: item.stairwell, label: t("Rappu {0}", item.stairwell) }))
-                ]}
-                onChange={setStairwell}
-              />
-              <label>
-                <span>{t("Otsikko")}</span>
-                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={150} placeholder={t("Esim. Vesikatko ti 20.10. klo 9–12")} required />
-              </label>
-              <label>
-                <span>{t("Teksti")}</span>
-                <textarea value={body} onChange={event => setBody(event.target.value)} rows={9} maxLength={8000} required />
-              </label>
-              <label className="switch-row">
-                <span>
-                  <strong>{t("Lähetä myös sähköpostilla")}</strong>
-                  <small>
-                    {target
-                      ? t("{0} asukasta, joista {1} sähköpostiosoitetta. Osoitteet ovat piilokopiona.", target.residents, target.emails)
-                      : t("Vastaanottajien määrää ei saatu ladattua.")}
-                  </small>
-                </span>
-                <input type="checkbox" role="switch" checked={sendEmail} onChange={() => setSendEmail(!sendEmail)} />
-                <i aria-hidden="true" />
-              </label>
-
-              {formError && <p className="send-error">{formError}</p>}
-
-              <div className="draft-actions">
-                <button className="primary" type="submit" disabled={saving || title.trim().length < 3 || body.trim().length < 5}>
-                  {saving ? t("Julkaistaan…") : sendEmail ? t("Julkaise ja lähetä") : t("Julkaise")}
-                </button>
-                <button type="button" onClick={() => setCreating(false)} disabled={saving}>{t("Peruuta")}</button>
-              </div>
-            </form>
-          </aside>
-        </div>
-      )}
+      {!routed && openView}
+      {!routed && createView}
     </section>
   );
 }

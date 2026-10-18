@@ -179,6 +179,10 @@ export type Resident = {
   email?: string;
   apartment_number: string;
   address: string;
+  // Asunnon rappu (esim. A).
+  staircase?: string;
+  // Autopaikat, joiden haltija asukas on.
+  parking?: { id: string; label: string; type: string }[];
   // 1, kun asukkaalle on asetettu salasana ja hän voi kirjautua asukasportaaliin.
   has_password?: number;
   // Täytetään selaimessa, kun asukkaat haetaan kaikista taloyhtiöistä.
