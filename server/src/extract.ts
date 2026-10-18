@@ -1,4 +1,5 @@
 import path from "node:path";
+import { htmlToMarkdown, plainToMarkdown } from "./rich-text.js";
 
 export class UnsupportedDocumentError extends Error {}
 
@@ -21,6 +22,22 @@ export async function extractPages(
     return text.map(page => page.trim());
   }
   return [await extractText(content, fileName, mimeType)];
+}
+
+// Dokumentin muotoiltu teksti. Wordin otsikot, lihavoinnit ja luettelot säilyvät sellaisinaan; muista
+// muodoista muotoilu päätellään luetusta tekstistä (otsikkorivit, luettelot, kappaleet).
+export async function extractFormatted(content: Buffer, fileName: string, text: string): Promise<string> {
+  if (path.extname(fileName).toLowerCase() === ".docx") {
+    try {
+      const mammoth = await import("mammoth");
+      const { value } = await mammoth.convertToHtml({ buffer: content }, { styleMap: ["u => u"] });
+      const formatted = htmlToMarkdown(value);
+      if (formatted) return formatted;
+    } catch {
+      // Muotoilun lukeminen ei saa estää tallennusta: käytetään luettua tekstiä.
+    }
+  }
+  return plainToMarkdown(text);
 }
 
 // Lukee dokumentin tekstin: PDF, Word (.docx), kuva (tekstintunnistus) tai tekstitiedosto.

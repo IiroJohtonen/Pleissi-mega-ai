@@ -2363,3 +2363,32 @@
     background: #232d39;
     color: #e0e3e7
 }
+:root[data-theme="dark"] .rich-text {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .rich-page {
+    border: 1px solid #384454;
+    background: #283341
+}
+:root[data-theme="dark"] .rich-toolbar {
+    border: 1px solid #384454;
+    background: #2d3a47
+}
+:root[data-theme="dark"] .rich-toolbar-group {
+    border-left: 1px solid #374352
+}
+:root[data-theme="dark"] .rich-toolbar button {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .rich-toolbar button:hover {
+    border-color: #333e4d;
+    background: #283341
+}
+:root[data-theme="dark"] .rich-toolbar button.active {
+    border-color: #3d5571;
+    background: #303c4b;
+    color: #9ec2ea
+}
+:root[data-theme="dark"] .rich-editor .rich-page:focus {
+    border-color: #3d5571
+}

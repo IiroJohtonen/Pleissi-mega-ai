@@ -6,12 +6,13 @@ import { companyIdFromContext } from "../access.js";
 import { chunkDocumentWithAi, formatKnowledgeEntry, type KnowledgeItem } from "../ai.js";
 import { requireManager } from "../auth.js";
 import { db, knowledgeFilesDir } from "../db.js";
-import { extractPages, isPdf, UnsupportedDocumentError } from "../extract.js";
+import { extractFormatted, extractPages, isPdf, UnsupportedDocumentError } from "../extract.js";
 import { applyVersion, compareVersions, likelyPreviousVersion, previousVersion } from "../knowledge-versions.js";
 import {
   chunkSourceLabel, documentPages, findSimilarChunk, hasUnknownNumbers, insertChunk, listChunks, localChunks, pagesInNote,
   processDocument, saveChunks, selectKnowledgeChunks, setChunksStatus
 } from "../knowledge-chunks.js";
+import { markdownToPlain, plainToMarkdown } from "../rich-text.js";
 import { id, now, today, unsafeFileMessage } from "../util.js";
 
 export const knowledgeRouter: Router = express.Router();
@@ -63,7 +64,9 @@ function knowledgeState(row: KnowledgeRow) {
   return row.audience === "internal" ? "internal" : "in_use";
 }
 
-function serializeKnowledge({ pages: _pages, comparison: _comparison, ...row }: KnowledgeRow & { pages?: string | null; comparison?: string | null }) {
+type StoredKnowledgeRow = KnowledgeRow & { pages?: string | null; comparison?: string | null; formatted?: string | null };
+
+function serializeKnowledge({ pages: _pages, comparison: _comparison, formatted: _formatted, ...row }: StoredKnowledgeRow) {
   return {
     ...row,
     content: row.kind === "document" ? row.content.slice(0, 600) : row.content,
@@ -95,6 +98,8 @@ function saveKnowledge(input: {
   extractionOk?: boolean;
   // PDF:n teksti sivuittain.
   pages?: string[] | null;
+  // Muotoiltu teksti (dokumentit).
+  formatted?: string | null;
   tags?: string[];
   // Puuttuessaan uusi versio perii korvattavan tietueen kohteen; uusi tietue on AI-dokumentaatiota.
   audience?: (typeof KNOWLEDGE_AUDIENCES)[number];
@@ -151,6 +156,7 @@ function saveKnowledge(input: {
       localChunks({ title: input.title, content: input.content, kind: input.kind }, input.pages)
     );
     if (input.pages) db.prepare("UPDATE knowledge SET pages = ? WHERE id = ?").run(JSON.stringify(input.pages), knowledgeId);
+    if (input.formatted) db.prepare("UPDATE knowledge SET formatted = ? WHERE id = ?").run(input.formatted, knowledgeId);
   })();
 
   return knowledgeId;
@@ -230,12 +236,14 @@ knowledgeRouter.post(
     if (unsafe) return res.status(400).json({ error: unsafe });
     let text = "";
     let pages: string[] | null = null;
+    let formatted: string | null = null;
     let extractionOk: boolean;
     try {
       const extracted = await extractPages(req.body, fileName, parsed.data.mimeType);
       if (isPdf(fileName, parsed.data.mimeType)) pages = extracted;
       text = extracted.filter(Boolean).join("\n\n");
       extractionOk = text.length > 0;
+      if (extractionOk) formatted = await extractFormatted(req.body, fileName, text);
     } catch (error) {
       if (error instanceof UnsupportedDocumentError) {
         return res.status(400).json({ error: error.message });
@@ -256,6 +264,7 @@ knowledgeRouter.post(
       mimeType: parsed.data.mimeType || "application/octet-stream",
       extractionOk,
       pages,
+      formatted,
       audience: parsed.data.audience
     });
     if (!knowledgeId) return res.status(404).json({ error: "Korvattavaa tietuetta ei löytynyt." });
@@ -431,15 +440,55 @@ knowledgeRouter.get("/knowledge/:id", (req, res) => {
     "SELECT * FROM knowledge WHERE group_id = ? ORDER BY version DESC"
   ).all(row.group_id) as KnowledgeRow[];
 
-  const { pages: _pages, comparison: _comparison, ...fields } = row as KnowledgeRow & { pages?: string | null; comparison?: string | null };
+  const { pages: _pages, comparison: _comparison, ...fields } = row as StoredKnowledgeRow;
   res.json({
     ...fields,
+    // Ennen muotoilua tallennetuille dokumenteille muotoilu päätellään luetusta tekstistä.
+    formatted: row.kind === "document" ? fields.formatted || plainToMarkdown(row.content) : null,
     content_length: row.content.length,
     state: knowledgeState(row),
     company_name: company?.name ?? "",
     pending_version_id: row.status === "active" ? versions.find(version => version.status === "pending")?.id ?? null : null,
     versions: versions.map(serializeKnowledge)
   });
+});
+
+// Dokumentin tekstin muokkaus luo uuden version, joka odottaa hyväksyntää samoin kuin ladattu uusi versio:
+// muutokset näytetään ennen kuin se korvaa nykyisen, ja isännöitsijän tarkistamat tiedot säilyvät.
+knowledgeRouter.post("/knowledge/:id/text-version", requireManager, async (req, res) => {
+  const row = getAuthorizedKnowledge(req.params.id) as StoredKnowledgeRow | null;
+  if (!row || row.status !== "active" || row.kind !== "document") return res.status(404).json({ error: "Knowledge not found" });
+  const parsed = z.object({
+    title: z.string().trim().min(1).max(200).optional(),
+    formatted: z.string().max(2_000_000)
+  }).safeParse(req.body);
+  const content = parsed.success ? markdownToPlain(parsed.data.formatted) : "";
+  if (!parsed.success || !content) return res.status(400).json({ error: "Dokumentin teksti ei voi olla tyhjä." });
+  const title = parsed.data.title ?? row.title;
+  const previous = row.formatted || plainToMarkdown(row.content);
+  if (parsed.data.formatted.trim() === previous.trim() && title === row.title) {
+    return res.status(400).json({ error: "Tekstiin ei tehty muutoksia." });
+  }
+
+  const knowledgeId = saveKnowledge({
+    companyId: row.company_id,
+    kind: "document",
+    title,
+    content,
+    validFrom: row.valid_from ?? "",
+    validUntil: row.valid_until ?? "",
+    replaces: row.id,
+    fileName: row.file_name ?? undefined,
+    mimeType: row.mime_type ?? undefined,
+    // Muokatun tekstin sivujako ei enää vastaa alkuperäistä tiedostoa.
+    pages: null,
+    formatted: parsed.data.formatted.trim()
+  });
+  if (!knowledgeId) return res.status(404).json({ error: "Korvattavaa tietuetta ei löytynyt." });
+  // Alkuperäinen tiedosto pysyy ladattavissa myös uudesta versiosta.
+  await fs.copyFile(path.join(knowledgeFilesDir, row.id), path.join(knowledgeFilesDir, knowledgeId)).catch(() => undefined);
+  void processDocument(knowledgeId);
+  res.status(201).json({ ok: true, knowledgeId });
 });
 
 // Tietueen palat, eli mitä AI poimi dokumentista.

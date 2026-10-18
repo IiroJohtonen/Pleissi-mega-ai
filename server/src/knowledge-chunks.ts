@@ -40,7 +40,8 @@ type KnowledgeSource = { id: string; company_id: string; title: string; content:
 
 // Kappaleen otsikoksi sen ensimmäinen virke lyhennettynä, jotta palat erottuvat toisistaan listassa.
 export function previewTitle(content: string) {
-  const sentence = content.split(/(?<=[.!?])\s/)[0].trim();
+  // Luettelon numero tai merkki ei ole otsikko.
+  const sentence = content.replace(/^\s*(\d+(\.\d+)*\.?|[-•])\s+/, "").split(/(?<=[.!?])\s/)[0].trim();
   return sentence.length <= 70 ? sentence.replace(/[.!?]$/, "") : `${sentence.slice(0, 67).replace(/\s+\S*$/, "")}…`;
 }
 

@@ -479,7 +479,9 @@ for (const [column, definition] of [
   // PDF:n teksti sivuittain (JSON-taulukko), jotta tiedon sivu säilyy ja sivun voi lukea uudelleen.
   ["pages", "TEXT"],
   // Odottavan uuden version vertailu edelliseen (JSON), lasketaan kerran pilkonnan valmistuttua.
-  ["comparison", "TEXT"]
+  ["comparison", "TEXT"],
+  // Dokumentin muotoiltu teksti (otsikot, lihavoinnit, luettelot), ks. rich-text.ts. content on sama ilman muotoilua.
+  ["formatted", "TEXT"]
 ]) {
   if (!knowledgeColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE knowledge ADD COLUMN ${column} ${definition}`);
