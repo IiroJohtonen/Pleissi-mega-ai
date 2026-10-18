@@ -4,12 +4,13 @@ import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
-import { actorName, api, errorMessage, fetchObjectUrl, isManager, type OfficeUser, session } from "../session";
+import { actorName, api, errorMessage, fetchObjectUrl, isAdmin, isManager, type OfficeUser, session } from "../session";
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { MoveCompanyControl, UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
 import { storedAiPrompt } from "../preferences";
 import { Toast } from "../components/Toast";
@@ -194,11 +195,14 @@ export function TicketDrawer({
   onDeleted,
   onDirtyChange,
   backLabel,
-  company
+  company,
+  companies = []
 }: {
   detail: TicketDetail;
   // Tehtävän taloyhtiö: määrää, kenelle tehtävän voi antaa ja kuka saa antaa.
   company?: Company;
+  // Taloyhtiöt, joihin tehtävän voi siirtää.
+  companies?: Company[];
   onClose: () => void;
   onDecision: (d: "ai" | "human" | "skip") => void;
   onDraftSaved: (draft: string) => void;
@@ -728,6 +732,9 @@ export function TicketDrawer({
             {t("Jos viesti kuuluu toimistolle, avaa tehtävä uudelleen.")}
           </p>
         )}
+        {ticket.company_pending ? (
+          <UnidentifiedCompanyPanel ticket={ticket} companies={companies} users={officeUsers} onChanged={onChanged} />
+        ) : null}
         <h2>{ticket.subject}</h2>
 
         <dl className="ticket-facts">
@@ -737,7 +744,13 @@ export function TicketDrawer({
           </div>
           <div>
             <dt>{t("Yhtiö")}</dt>
-            <dd>{ticket.company_name || "-"}</dd>
+            <dd>
+              {ticket.company_pending ? t("Taloyhtiö tunnistamatta") : ticket.company_name || "-"}
+              {/* Väärään yhtiöön mennyt tehtävä: käsittelijä, vastuuisännöitsijä tai pääkäyttäjä siirtää sen. */}
+              {!ticket.company_pending && (ticket.assignee_id === session?.user.id || isAdmin() || (company?.manager_id && company.manager_id === session?.user.id)) && (
+                <MoveCompanyControl ticket={ticket} companies={companies} onChanged={onChanged} />
+              )}
+            </dd>
           </div>
           <div className={reporterEdited ? "changed" : ""}>
             <dt>{t("Osoite")}</dt>
@@ -1247,8 +1260,14 @@ export function TicketDrawer({
 // Lokimerkinnän vapaa teksti, esim. remontin valvontakäynnin havainnot.
 function eventNote(details: string) {
   try {
-    const parsed = JSON.parse(details) as { note?: unknown };
-    return typeof parsed?.note === "string" ? parsed.note : "";
+    const parsed = JSON.parse(details) as { note?: unknown; from?: unknown; to?: unknown; number?: unknown };
+    if (typeof parsed?.note === "string") return parsed.note;
+    // Taloyhtiön valinta tai siirto: mistä mihin ja uusi tehtävänumero.
+    if (typeof parsed?.to === "string" && typeof parsed.number === "number") {
+      const target = t("{0}, uusi numero #{1}", parsed.to, formatTicketNumber(parsed.number));
+      return typeof parsed.from === "string" ? `${parsed.from} → ${target}` : target;
+    }
+    return "";
   } catch {
     return "";
   }

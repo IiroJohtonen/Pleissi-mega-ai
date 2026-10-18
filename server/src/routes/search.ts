@@ -1,6 +1,6 @@
 import express, { type Router } from "express";
 import { z } from "zod";
-import { canSeeSensitiveTicket, visibleCompanyIds } from "../access.js";
+import { canSeeTicket, visibleCompanyIds } from "../access.js";
 import { db } from "../db.js";
 import { ACTIVE_RESIDENT } from "../util.js";
 
@@ -53,7 +53,7 @@ searchRouter.get("/search", (req, res) => {
 
   const tickets = (db.prepare(`
     SELECT t.id, t.ticket_number, t.subject, t.status, t.priority, t.created_at, t.company_id, c.name AS company_name,
-           t.sensitive, t.assignee_id,
+           t.sensitive, t.assignee_id, t.company_pending,
            r.name AS resident_name, a.apartment_number,
            t.subject || ' ' || t.summary || ' ' || COALESCE(r.name, '') || ' ' || COALESCE(r.email, '') || ' '
              || COALESCE(a.apartment_number, '') || ' ' || COALESCE(a.address, '') || ' ' || t.type || ' '
@@ -69,9 +69,10 @@ searchRouter.get("/search", (req, res) => {
     ORDER BY t.created_at DESC
   `).all(...companyIds) as (Record<string, unknown> & {
     haystack: string; ticket_number: number | null; company_id: string; sensitive: number; assignee_id: string | null;
+    company_pending: number;
   })[])
-    // Arkaluonteinen tehtävä ei löydy haulla käyttäjältä, jolta se on rajattu.
-    .filter(ticket => canSeeSensitiveTicket(ticket))
+    // Arkaluonteinen tai tunnistamattoman yhtiön tehtävä ei löydy haulla käyttäjältä, jolta se on rajattu.
+    .filter(ticket => canSeeTicket(ticket))
     .filter(ticket => (ticketNumber !== null && ticket.ticket_number === ticketNumber) || matches(ticket.haystack, terms))
     // Numerolla löytynyt tehtävä ensin, sitten uusimmat.
     .sort((a, b) => Number(b.ticket_number === ticketNumber) - Number(a.ticket_number === ticketNumber));

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { TicketTab } from "./types";
 import { t } from "./i18n";
 
-const ticketTabs: TicketTab[] = ["queue", "unassigned", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log", "search"];
+const ticketTabs: TicketTab[] = ["queue", "unassigned", "unidentified", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log", "search"];
 
 type Route = { tab: TicketTab; param: string | null };
 
@@ -18,7 +18,7 @@ export function parseRoute(): Route {
 // Osoitteen jälkimmäinen osa on tehtävän tunniste vain tehtävänäkymissä; Taloyhtiöissä se on
 // yhtiön ja Dokumentaatiossa dokumentin tunniste.
 export function paramIsTicket(tab: TicketTab) {
-  return tab === "queue" || tab === "unassigned" || tab === "tickets" || tab === "my-tickets" || tab === "ai-handled";
+  return tab === "queue" || tab === "unassigned" || tab === "unidentified" || tab === "tickets" || tab === "my-tickets" || tab === "ai-handled";
 }
 
 export function navigate(tab: TicketTab, param?: string) {
@@ -38,6 +38,7 @@ export function useRoute() {
 export const tabTitles: Record<TicketTab, string> = {
   queue: t("Päätösjono"),
   unassigned: t("Ilman käsittelijää"),
+  unidentified: t("Taloyhtiö tunnistamatta"),
   "my-tickets": t("Omat tehtävät"),
   "ai-handled": t("AI tehtävät"),
   tickets: t("Kaikki tehtävät"),
@@ -64,6 +65,7 @@ export const tabTitles: Record<TicketTab, string> = {
 export const emptyTicketMessages: Partial<Record<TicketTab, string>> = {
   queue: t("Ei sinulle osoitettuja avoimia tehtäviä."),
   unassigned: t("Kaikilla tehtävillä on käsittelijä."),
+  unidentified: t("Kaikkien tehtävien taloyhtiö on tunnistettu."),
   "my-tickets": t("Ei omia tehtäviä."),
   "ai-handled": t("Ei AI:n hoidossa olevia tehtäviä.")
 };

@@ -47,6 +47,10 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
   const [slotEntries, setSlotEntries] = useState<(QueueEntry & { company_id: string })[]>([]);
   const [slotError, setSlotError] = useState("");
 
+  // Taloyhtiö-sarake vain, kun näkymässä on useita yhtiöitä.
+
+  const multiCompany = companies.length > 1;
+
   const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
 
   async function loadEntries() {
@@ -135,7 +139,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
                   <th>{t("Sija")}</th>
                   <th>{t("Ilmoittaja")}</th>
                   <th>{t("Asunto")}</th>
-                  <th>{t("Taloyhtiö")}</th>
+                  {multiCompany && <th>{t("Taloyhtiö")}</th>}
                   <th>{t("Jono")}</th>
                   <th>{t("Jonossa alkaen")}</th>
                   <th>{t("Tila")}</th>
@@ -164,7 +168,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
                       {entry.note && <span>{entry.note}</span>}
                     </td>
                     <td>{entry.apartment_number || "–"}</td>
-                    <td>{companyName(entry.company_id)}</td>
+                    {multiCompany && <td>{companyName(entry.company_id)}</td>}
                     <td>{waitlistLabel(entry)}</td>
                     <td>{formatDate(entry.created_at)}</td>
                     <td><span className={`work-order-status ${entry.status === "offered" ? "done" : ""}`}>{entry.status === "offered" ? t("Tarjottu") : t("Jonossa")}</span></td>
@@ -189,7 +193,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
                 <th>{t("Sija")}</th>
                 <th>{t("Ilmoittaja")}</th>
                 <th>{t("Asunto")}</th>
-                <th>{t("Taloyhtiö")}</th>
+                {multiCompany && <th>{t("Taloyhtiö")}</th>}
                 <th>{t("Nyt varattu")}</th>
                 <th>{t("Jonossa alkaen")}</th>
                 <th />
@@ -205,7 +209,7 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
                   <td><strong>{entry.position}.</strong></td>
                   <td><ReporterCell name={entry.resident_name} email={entry.resident_email} /></td>
                   <td>{entry.apartment_number || "–"}</td>
-                  <td>{companyName(entry.company_id)}</td>
+                  {multiCompany && <td>{companyName(entry.company_id)}</td>}
                   <td>{entry.current_holder || "–"}</td>
                   <td>{formatDate(entry.created_at)}</td>
                   <td><button className="link-button" onClick={() => void removeFromSlotQueue(entry.id)}>{t("Poista jonosta")}</button></td>

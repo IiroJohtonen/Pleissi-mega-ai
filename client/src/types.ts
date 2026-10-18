@@ -5,6 +5,8 @@ import type { RenovationNotice } from "./views/Renovations";
 export type Ticket = {
   // Taloyhtiön nimi; palvelin liittää sen tehtävälistaan.
   company_name?: string;
+  // 1 = taloyhtiötä ei tunnistettu: tehtävä on Taloyhtiö tunnistamatta -jonossa.
+  company_pending?: number;
   id: string;
   ticket_number?: number;
   company_id: string;
@@ -165,7 +167,7 @@ export type TicketDetail = {
   erasurePending?: { reason: string; requested_by: string; created_at: string } | null;
 };
 
-export type TicketTab = "queue" | "unassigned" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
+export type TicketTab = "queue" | "unassigned" | "unidentified" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
 
 export type Resident = {
   id: string;

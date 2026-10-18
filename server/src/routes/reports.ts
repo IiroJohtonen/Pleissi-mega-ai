@@ -67,7 +67,7 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
             WHERE m.ticket_id = t.id AND m.direction = 'outbound'
             ORDER BY m.created_at LIMIT 1) AS reply
     FROM tickets t
-    WHERE t.company_id = ? AND t.created_at >= ? AND t.sensitive = 0
+    WHERE t.company_id = ? AND t.created_at >= ? AND t.sensitive = 0 AND t.company_pending = 0
     ORDER BY created_at DESC
     LIMIT ?
   `).all(companyId, parsed.data.since, MAX_TOPIC_TICKETS) as TopicTicket[])
@@ -212,6 +212,8 @@ export function runReport(query: ReportQuery, visible: string[]) {
     JOIN companies c ON c.id = t.company_id
     LEFT JOIN users u ON u.id = t.assignee_id
     WHERE t.company_id IN (${companyIds.map(() => "?").join(", ")})
+      -- Tunnistamattoman yhtiön tehtävä ei vielä kuulu millekään yhtiölle.
+      AND t.company_pending = 0
       AND t.created_at >= ? AND t.created_at < ?
       ${filters.join(" ")}
   `).all(...params) as ReportTicket[];

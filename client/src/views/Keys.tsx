@@ -88,6 +88,10 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Taloyhtiö-sarake vain, kun näkymässä on useita yhtiöitä.
+
+  const multiCompany = companies.length > 1;
+
   const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
 
   async function loadKeys() {
@@ -275,7 +279,7 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
               <thead>
                 <tr>
                   <th>{t("Asunto")}</th>
-                  <th>{t("Taloyhtiö")}</th>
+                  {multiCompany && <th>{t("Taloyhtiö")}</th>}
                   <th>{t("Avaimia")}</th>
                   <th>{t("Avainnumerot")}</th>
                 </tr>
@@ -284,7 +288,7 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
                 {pagedApartments.items.map(({ apartment, keys: apartmentKeys }) => (
                   <tr key={apartment.id}>
                     <td><strong>{apartment.apartment_number}</strong>{apartment.address && <span>{apartment.address}</span>}</td>
-                    <td>{companyName(apartment.company_id)}</td>
+                    {multiCompany && <td>{companyName(apartment.company_id)}</td>}
                     <td>{apartmentKeys.length}</td>
                     <td>
                       {apartmentKeys.length === 0 ? "–" : (
@@ -317,7 +321,7 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
                 <tr>
                   <th>{t("Tunnus")}</th>
                   <th>{t("Tyyppi")}</th>
-                  <th>{t("Taloyhtiö")}</th>
+                  {multiCompany && <th>{t("Taloyhtiö")}</th>}
                   <th>{t("Asunto")}</th>
                   <th>{t("Tila")}</th>
                   <th>{t("Haltija")}</th>
@@ -342,7 +346,7 @@ export function KeyRegister({ companies, defaultCompanyId, onChanged }: {
                   >
                     <td><strong>{key.code}</strong></td>
                     <td><span className="type">{t(key.type)}</span></td>
-                    <td>{companyName(key.company_id)}</td>
+                    {multiCompany && <td>{companyName(key.company_id)}</td>}
                     <td>{key.apartment_number || "–"}</td>
                     <td><span className={`work-order-status ${key.status === "lost" ? "rejected" : key.loan_id ? "" : "done"}`}>{keyState(key)}</span></td>
                     <td>{key.holder_name || "–"}</td>

@@ -226,8 +226,9 @@ export function skipMessage(sourceMessageId: string) {
 }
 
 // Taloyhtiö isännöitsijän omaan laatikkoon tulleelle viestille: lähettäjän asuintalo, jos lähettäjä on
-// asukas; muuten yhtiö, jonka vastuuisännöitsijä laatikon omistaja on, jos niitä on yksi; muuten oletusyhtiö.
-export function companyForUserMailbox(userId: string, senderEmail: string): string {
+// asukas; muuten yhtiö, jonka vastuuisännöitsijä laatikon omistaja on, jos niitä on yksi. Muuten yhtiötä ei
+// tunnisteta (unknown), ja tehtävä menee Taloyhtiö tunnistamatta -jonoon oletusyhtiö paikkamerkkinä.
+export function companyForUserMailbox(userId: string, senderEmail: string): { companyId: string; unknown: boolean } {
   const authorized = [...AUTHORIZED_COMPANY_IDS];
   const inList = (column: string) => `${column} IN (${authorized.map(() => "?").join(", ") || "NULL"})`;
   if (senderEmail) {
@@ -236,11 +237,11 @@ export function companyForUserMailbox(userId: string, senderEmail: string): stri
       WHERE lower(email) = lower(?) AND erased_at IS NULL AND ${inList("company_id")}
       ORDER BY (moved_out_at IS NOT NULL), name LIMIT 1
     `).get(senderEmail, ...authorized) as { company_id: string } | undefined;
-    if (resident) return resident.company_id;
+    if (resident) return { companyId: resident.company_id, unknown: false };
   }
   const managed = db.prepare(`SELECT id FROM companies WHERE manager_id = ? AND ${inList("id")}`)
     .all(userId, ...authorized) as { id: string }[];
-  return managed.length === 1 ? managed[0].id : DEFAULT_COMPANY_ID;
+  return managed.length === 1 ? { companyId: managed[0].id, unknown: false } : { companyId: DEFAULT_COMPANY_ID, unknown: true };
 }
 
 // Tuo yhden saapuneen viestin. Taloyhtiön oman tilin viestit kuuluvat aina sille taloyhtiölle;
@@ -254,9 +255,14 @@ export async function importInboundEmail(accountId: string, email: InboundEmail,
   }
   const sender = parseSender(email.from);
   const owner = mailboxOwnerId(accountId);
-  const target = owner
-    ? { companyId: companyForUserMailbox(owner, sender.email), assigneeId: owner, mailAccountId: accountId }
-    : { companyId: accountId === OFFICE_ACCOUNT ? DEFAULT_COMPANY_ID : accountId, mailAccountId: accountId };
+  // Toimiston yhteisen tilin viestin yhtiö päätellään vastaanottajasta tai lähettäjästä; jos kumpikaan ei
+  // kerro sitä, tehtävä menee Taloyhtiö tunnistamatta -jonoon.
+  const mailbox = owner ? companyForUserMailbox(owner, sender.email) : null;
+  const target = owner && mailbox
+    ? { companyId: mailbox.companyId, companyUnknown: mailbox.unknown, assigneeId: owner, mailAccountId: accountId }
+    : accountId === OFFICE_ACCOUNT
+      ? { companyId: DEFAULT_COMPANY_ID, companyUnknown: true, mailAccountId: accountId }
+      : { companyId: accountId, mailAccountId: accountId };
   const response = await fetch(`http://127.0.0.1:${process.env.PORT || 4000}/api/inbound/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-token": INTERNAL_TOKEN },

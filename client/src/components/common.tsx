@@ -32,6 +32,13 @@ export function DownloadLink({ path, filename, className, title, children }: {
 
 // Paikkamerkkikuvakkeet näkymille (24×24, viivapiirros).
 const tabIcons: Record<TicketTab, string[]> = {
+  // Kysymysmerkki talon päällä: taloyhtiö tunnistamatta.
+  unidentified: [
+    "M3 21h18",
+    "M5 21V10l7-5 7 5v11",
+    "M10 12a2 2 0 1 1 3 1.7c-.6.4-1 .8-1 1.3v.5",
+    "M12 18h.01"
+  ],
   unassigned: [
     "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
     "M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0",
@@ -433,6 +440,61 @@ export function FactDropdown({
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+// Monivalinta suodattimiin: valitut arvot, null = kaikki. Painike näyttää valinnan tiiviisti, ja
+// avautuva lista on valintaruutuja; Kaikki valitsee tai poistaa kaikki kerralla.
+export function MultiSelect({ value, options, onChange, ariaLabel }: {
+  value: string[] | null;
+  options: { value: string; label: string }[];
+  onChange: (value: string[] | null) => void;
+  ariaLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = value === null ? options.map(option => option.value) : value.filter(item => options.some(option => option.value === item));
+  const all = selected.length === options.length;
+  const summary = all ? t("Kaikki")
+    : selected.length === 0 ? t("Ei mitään")
+    : selected.length <= 2 ? options.filter(option => selected.includes(option.value)).map(option => option.label).join(", ")
+    : t("{0} valittu", String(selected.length));
+
+  function toggle(item: string) {
+    const next = selected.includes(item) ? selected.filter(entry => entry !== item) : [...selected, item];
+    onChange(next.length === options.length ? null : next);
+  }
+
+  return (
+    <div
+      className="multi-select"
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={event => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
+      <button type="button" className="multi-select-trigger" aria-label={ariaLabel} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span>{summary}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="multi-select-menu" role="group" aria-label={ariaLabel} onMouseDown={event => event.preventDefault()}>
+          <label className="multi-select-all">
+            <input type="checkbox" checked={all} onChange={() => onChange(all ? [] : null)} />
+            {t("Kaikki")}
+          </label>
+          {options.map(option => (
+            <label key={option.value}>
+              <input type="checkbox" checked={selected.includes(option.value)} onChange={() => toggle(option.value)} />
+              {option.label}
+            </label>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -66,6 +66,7 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
       { id: "office-details", label: t("Toimiston tiedot") },
       { id: "office-reminders", label: t("Muistutukset") },
       { id: "office-resident-updates", label: t("Asukasviestintä") },
+      { id: "office-unidentified", label: t("Taloyhtiö tunnistamatta -jono") },
       { id: "gmail-office", label: t("Toimiston sähköpostitili") }
     ]
   },
@@ -374,6 +375,9 @@ export type OfficeInfo = {
   twoFactor?: number; twoFactorOverridden?: boolean;
   // residentStatusUpdates: asukas saa sähköpostin, kun tehtävän tila muuttuu.
   residentStatusUpdates?: number;
+  // Taloyhtiö tunnistamatta -jonon käsittelijät: roolit ja käyttäjät. canHandleUnidentified: kuuluuko
+  // kirjautunut käyttäjä heihin.
+  unidentifiedQueueRoles?: string[]; unidentifiedQueueUsers?: string[]; canHandleUnidentified?: boolean;
 };
 
 const providerNames: Record<MailProvider, string> = {
@@ -640,6 +644,12 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   // Kasvaa jokaisella tallennuksella, jotta kulumittari hakee tilanteen uudelleen.
   const [savedCount, setSavedCount] = useState(0);
   const [retentionMonths, setRetentionMonths] = useState(0);
+  const [queueRoles, setQueueRoles] = useState<string[]>([]);
+  const [queueUsers, setQueueUsers] = useState<string[]>([]);
+  const [queueUserOptions, setQueueUserOptions] = useState<OfficeUser[]>([]);
+  useEffect(() => {
+    api<OfficeUser[]>("/users").then(setQueueUserOptions).catch(() => setQueueUserOptions([]));
+  }, []);
   // Viimeksi tallennettu säilytysaika; lyhentäminen varmistetaan, koska se poistaa tietoja pysyvästi.
   const [storedRetention, setStoredRetention] = useState(0);
 
@@ -663,6 +673,8 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         setAiWarningPercent(office.aiWarningPercent ?? 80);
         setRetentionMonths(office.retentionMonths ?? 0);
         setStoredRetention(office.retentionMonths ?? 0);
+        setQueueRoles(office.unidentifiedQueueRoles ?? []);
+        setQueueUsers(office.unidentifiedQueueUsers ?? []);
       })
       .catch(() => setError(t("Toimiston tietojen lataus epäonnistui.")));
   }, []);
@@ -690,7 +702,8 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         method: "PUT",
         body: JSON.stringify({
           name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance,
-          aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates
+          aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates,
+          unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
         })
       });
       MANAGEMENT_OFFICE.name = office.name;
@@ -820,6 +833,48 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
           {t("Viesti lähtee, kun tehtävästä tehdään työtilaus huoltoyhtiölle, huoltoyhtiö kuittaa työn tehdyksi, tehtävä otetaan käsittelyyn, se siirretään kolmannelle osapuolelle tai se suljetaan. Viesti menee tehtävän ilmoittajille, joilla on sähköpostiosoite, taloyhtiön sähköpostitililtä. Roskapostiksi merkityistä tehtävistä ei ilmoiteta. Lähetetty päivitys näkyy tehtävän aikajanalla.")}
         </p>
 
+        </CollapseSection>
+
+        <CollapseSection id="office-unidentified" title={t("Taloyhtiö tunnistamatta -jono")}>
+        <p className="reply-hint">
+          {t("Kun saapuvan viestin taloyhtiötä ei tunnisteta vastaanottajasta eikä lähettäjästä, tehtävä menee Taloyhtiö tunnistamatta -jonoon. Valitse, ketkä näkevät jonon ja valitsevat tehtäville taloyhtiön ja käsittelijän. Pääkäyttäjät käsittelevät jonoa aina.")}
+        </p>
+        <fieldset className="queue-access">
+          <legend>{t("Roolit")}</legend>
+          {USER_ROLES.map(role => (
+            <label key={role} className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={role === "Pääkäyttäjä" || queueRoles.includes(role)}
+                disabled={role === "Pääkäyttäjä"}
+                onChange={event => {
+                  setQueueRoles(current => event.target.checked ? [...new Set([...current, role])] : current.filter(item => item !== role));
+                  setSaved(false);
+                }}
+              />
+              {t(role)}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="queue-access">
+          <legend>{t("Lisäksi nämä käyttäjät")}</legend>
+          {queueUserOptions.filter(user => user.role !== "Pääkäyttäjä" && !queueRoles.includes(user.role)).map(user => (
+            <label key={user.id} className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={queueUsers.includes(user.id)}
+                onChange={event => {
+                  setQueueUsers(current => event.target.checked ? [...new Set([...current, user.id])] : current.filter(item => item !== user.id));
+                  setSaved(false);
+                }}
+              />
+              {user.name}{" "}<span className="muted">({t(user.role)})</span>
+            </label>
+          ))}
+          {queueUserOptions.every(user => user.role === "Pääkäyttäjä" || queueRoles.includes(user.role)) && (
+            <p className="muted">{t("Kaikki käyttäjät näkevät jonon jo roolinsa perusteella.")}</p>
+          )}
+        </fieldset>
         </CollapseSection>
           </>
         )}

@@ -3,6 +3,87 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 17.10.2026 · Tila-monivalinta, Umpeutumassa-suodatin ja dokumenttihaun korjaus
+
+**Mitä muutettiin**
+- Tehtävälistan Tila-suodatin on nyt monivalinta. Oletuksena kaikki tilat ovat valittuina, ja niistä voi
+  poistaa tai lisätä haluamansa. Vanha Keskeneräiset-valinta poistui, koska se oli päällekkäinen muiden
+  tilojen kanssa. Kaikki kuusi tilaa säilyvät ennallaan.
+- Määräaika-suodattimessa on uusi valinta Umpeutumassa: avoimet tehtävät, joiden määräaika on lähipäivinä.
+  Myöhässä-valinta näyttää edelleen tehtävät, joiden määräaika on jo mennyt.
+- Taloyhtiösuodatin poistettiin näkymistä, jotka avataan taloyhtiön alta: Jonot, Asukkaat, Muutot,
+  Tiedotteet, Remontit ja Lukemat. Ne näyttävät aina sivupalkissa valitun taloyhtiön tiedot.
+  Taloyhtiö-sarake näkyy vain, jos näkymässä on useamman yhtiön tietoja.
+- Dokumentin Kokeile kysymyksellä löytää nyt myös taivutetut sanat: esimerkiksi kysymys remontista osuu
+  dokumentin kohtaan, jossa puhutaan remontista tai remontin tekemisestä.
+  Haku on edelleen Pleissin oma sanahaku. AI ei valitse tietoja, vaan kirjoittaa vastausehdotuksen
+  haun löytämien tietojen pohjalta.
+
+**Miten**
+- Kaikki tehtävät → suodatinkuvake → Tila: avaa valikko ja valitse tai poista tiloja. Kaikki-ruutu valitsee
+  tai poistaa kaikki kerralla.
+- Kaikki tehtävät → suodatinkuvake → Määräaika → Umpeutumassa.
+- Valitse sivupalkista taloyhtiö ja avaa esimerkiksi Asukkaat: taloyhtiövalintaa ei enää ole sivulla.
+- Dokumentaatio → avaa dokumentti → Kokeile kysymyksellä → kirjoita asukkaan kysymys, jossa sana on
+  eri muodossa kuin dokumentissa.
+
+## 17.10.2026 · Taloyhtiö tunnistamatta -jono ja tehtävän siirto toiseen taloyhtiöön
+
+**Mitä muutettiin**
+- Jos saapuvasta sähköpostista ei selviä, mitä taloyhtiötä se koskee, tehtävä menee uuteen jonoon
+  Taloyhtiö tunnistamatta. Aiemmin se meni aina oletusyhtiölle ja sen isännöitsijälle.
+- Lähettäjä, joka löytyy asukasrekisteristä, tunnistetaan edelleen automaattisesti.
+- Jonon näkevät pääkäyttäjät ja asetuksissa valitut roolit ja käyttäjät (oletuksena asiakaspalvelu).
+- Jonon käsittelijä valitsee tehtävälle taloyhtiön ja halutessaan käsittelijän. Pleissi ehdottaa yhtiötä,
+  jos lähettäjä tai viestissä mainittu yhtiön nimi tai osoite sen kertoo.
+- Väärään taloyhtiöön mennyt tehtävä voidaan siirtää oikeaan. Se menee uuden yhtiön vastuuisännöitsijälle
+  ja saa uuden tehtävänumeron. Siirron voi tehdä tehtävän käsittelijä, yhtiön vastuuisännöitsijä tai pääkäyttäjä.
+- Tunnistamattoman hätätapauksen hälytys menee jonon käsittelijöille.
+
+**Miten**
+- Sivupalkki → Kaikki tehtävät → Tunnistamattomat. Avaa tehtävä → keltainen laatikko: valitse taloyhtiö
+  (ehdotus on valmiina) ja käsittelijä → Siirrä taloyhtiöön.
+- Tehtäväsivu → Yhtiö-kentän alla Väärä yhtiö? Siirrä → valitse yhtiö → Siirrä.
+- Asetukset → Toimisto → Taloyhtiö tunnistamatta -jono: roolit ja lisäkäyttäjät.
+
+**Testit** (lisättävä testaussivulle)
+- Tunnistamaton viesti menee jonoon: lähetä toimiston sähköpostiin viesti osoitteesta, jota ei ole
+  asukasrekisterissä, ja jossa ei mainita taloyhtiötä. Odotus: tehtävä näkyy kohdassa Tunnistamattomat
+  eikä kenenkään Päätösjonossa.
+- Asukkaan viesti tunnistetaan: lähetä viesti asukasrekisterissä olevasta osoitteesta. Odotus: tehtävä
+  menee asukkaan taloyhtiöön, ei jonoon.
+- Yhtiöehdotus: viestissä mainitaan taloyhtiön nimi (esim. "Männikön pihavalo"). Odotus: tehtävällä näkyy
+  ehdotus kyseisestä yhtiöstä.
+- Yhtiön valinta: valitse jonon tehtävälle yhtiö → Siirrä taloyhtiöön. Odotus: tehtävä katoaa jonosta,
+  menee yhtiön vastuuisännöitsijälle ja saa yhtiön seuraavan tehtävänumeron.
+- Näkyvyys asetuksista: poista Asiakaspalvelu jonon rooleista. Odotus: asiakaspalvelun käyttäjä ei näe
+  Tunnistamattomat-kohtaa eikä jonon tehtäviä. Lisää yksittäinen isännöitsijä: hän näkee jonon.
+- Siirto väärästä yhtiöstä: avaa oma tehtävä → Väärä yhtiö? Siirrä → valitse toinen yhtiö. Odotus:
+  tehtävä siirtyy, aikajanalla näkyy "Siirretty toiseen taloyhtiöön" ja vanha → uusi yhtiö.
+- Siirto-oikeus: asiakaspalvelun käyttäjä, joka ei ole tehtävän käsittelijä. Odotus: siirtoa ei voi tehdä.
+
+## 17.10.2026 · Tehtävät kaikista taloyhtiöistä ja taloyhtiön valinta sivupalkissa
+
+**Mitä muutettiin**
+- Kaikki tehtävät, Omat tehtävät ja AI tehtävät näyttävät kaikkien taloyhtiöiden tehtävät; yhtiön voi
+  rajata Taloyhtiö-suodattimella.
+- Tehtävälistassa on Taloyhtiö-sarake (yhtiö ja sen alla yhteyshenkilö).
+- Kaikki tehtävät näyttää oletuksena keskeneräiset; suljetut saa esiin poistamalla Tila-merkin.
+- Taloyhtiön valinta siirtyi yläpalkista sivupalkin yhtiöosion otsikoksi. Valikon lopussa on Kaikki
+  taloyhtiöt…, josta pääsee taloyhtiöiden listaan.
+- Yhtiöosiossa ovat Yhtiön tiedot ja Dokumentaatio asukkaiden, tilojen ja ilmoitusten lisäksi.
+- Dokumentin näkymän asettelu korjattu: sisältö ei enää puristu kapeaksi palstaksi.
+
+**Miten**
+- Sivupalkki → Kaikki tehtävät: suodatinkuvake → Taloyhtiö.
+- Sivupalkin alaosa: taloyhtiön nimi on valikko; sen alla Yhtiön tiedot, Dokumentaatio, Asukkaat, Tilat ja Ilmoitukset.
+
+**Testit** (lisättävä testaussivulle)
+- Kaikki tehtävät näyttää usean yhtiön tehtävät ja Taloyhtiö-sarakkeen; suodatin rajaa yhteen yhtiöön.
+- Tila-merkin poisto näyttää myös suljetut tehtävät.
+- Sivupalkin yhtiövalikosta vaihdettu yhtiö vaihtaa Asukkaat-, Sauna- ja Dokumentaatio-näkymien yhtiön.
+- Kaikki taloyhtiöt… avaa yhtiölistan; listasta avattu yhtiö vaihtaa sivupalkin valinnan.
+- Dokumentin avaaminen leveällä näytöllä: poiminnat ja luettu teksti näkyvät vierekkäin täysleveänä.
 ## 17.10.2026 · Lomakkeet taloyhtiön tauluihin, uusi Asetukset-sivu ja dokumentin välilehdet
 
 **Mitä muutettiin**

@@ -3,7 +3,8 @@ import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import {
-  companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket, isRestrictedTicket, redactRestrictedTicket, visibleCompanyIds
+  companyIdFromContext, DEFAULT_COMPANY_ID, getAuthorizedTicket, isQueueHandler, isRestrictedTicket, visibleCompanyIds,
+  visibleTicketRows
 } from "../access.js";
 import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
@@ -12,6 +13,7 @@ import { renderSignature } from "../signature.js";
 import { alertEmergency, notifyTicketStatus, statusEventFor } from "../notify.js";
 import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL, TICKET_STATUSES } from "../util.js";
 import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
+import { moveTicketToCompany, suggestCompany } from "../ticket-company.js";
 import { ticketForm } from "../portal-form-data.js";
 
 export const ticketsRouter: Router = express.Router();
@@ -80,8 +82,8 @@ ticketsRouter.get("/tickets", (req, res) => {
         ELSE 4
       END,
       t.created_at DESC
-  `).all(...companyIds) as Parameters<typeof redactRestrictedTicket>[0][];
-  res.json(rows.map(redactRestrictedTicket));
+  `).all(...companyIds) as Parameters<typeof visibleTicketRows>[0];
+  res.json(visibleTicketRows(rows));
 });
 
 ticketsRouter.post("/tickets", (req, res) => {
@@ -166,8 +168,8 @@ ticketsRouter.get("/my-tickets", (req, res) => {
       AND t.status IN ('active', 'waiting_manager', 'answered', 'waiting_third_party')
       AND t.assignee_id = ?
     ORDER BY t.updated_at DESC
-  `).all(companyId, res.locals.user?.id ?? "") as Parameters<typeof redactRestrictedTicket>[0][];
-  res.json(rows.map(redactRestrictedTicket));
+  `).all(companyId, res.locals.user?.id ?? "") as Parameters<typeof visibleTicketRows>[0];
+  res.json(visibleTicketRows(rows));
 });
 
 ticketsRouter.get("/decision-queue", (req, res) => {
@@ -184,8 +186,8 @@ ticketsRouter.get("/decision-queue", (req, res) => {
       -- Remonttitehtävät ovat auki pitkään, joten ne ovat Remontit-osiossa eivätkä päätösjonossa.
       AND t.kind != 'renovation'
     ORDER BY t.priority = 'emergency' DESC, t.created_at DESC
-  `).all(companyId) as Parameters<typeof redactRestrictedTicket>[0][];
-  res.json(rows.map(redactRestrictedTicket));
+  `).all(companyId) as Parameters<typeof visibleTicketRows>[0];
+  res.json(visibleTicketRows(rows));
 });
 
 const PREVIEW_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]);
@@ -207,6 +209,46 @@ export function linkAttachmentsToMessages<T extends TicketAttachment>(attachment
     return { ...attachment, message_id: (sameTime ?? previousEmail)?.id ?? null };
   });
 }
+
+// Ehdotus taloyhtiöksi tunnistamattomalle tai väärään yhtiöön menneelle tehtävälle.
+ticketsRouter.get("/tickets/:id/company-suggestion", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id);
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  res.json({ suggestion: suggestCompany(ticket.id) });
+});
+
+// Valitsee tunnistamattomalle tehtävälle taloyhtiön tai siirtää tehtävän toiseen yhtiöön. Jonon tehtävän
+// yhtiön valitsevat jonon käsittelijät; muun tehtävän siirtää sen käsittelijä, taloyhtiön
+// vastuuisännöitsijä tai pääkäyttäjä.
+ticketsRouter.put("/tickets/:id/company", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as
+    | { id: string; company_id: string; ticket_number: number | null; assignee_id: string | null; company_pending: number; mail_account_id: string | null }
+    | undefined;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ companyId: z.string().min(1), assigneeId: z.string().nullable().optional() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse taloyhtiö." });
+
+  const user = res.locals.user as { id: string; name: string; role: string } | undefined;
+  const isAssignee = Boolean(user && ticket.assignee_id === user.id);
+  const manager = db.prepare("SELECT manager_id FROM companies WHERE id = ?").get(ticket.company_id) as { manager_id: string | null };
+  const allowed = ticket.company_pending
+    ? isAssignee || isQueueHandler()
+    : isAssignee || isAdmin(res) || Boolean(user && manager.manager_id === user.id);
+  if (!allowed) {
+    return res.status(403).json({ error: ticket.company_pending
+      ? "Vain Taloyhtiö tunnistamatta -jonon käsittelijät voivat valita taloyhtiön."
+      : "Tehtävän voi siirtää sen käsittelijä, taloyhtiön vastuuisännöitsijä tai pääkäyttäjä." });
+  }
+  const companyId = companyIdFromContext(parsed.data.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  if (!ticket.company_pending && companyId === ticket.company_id) return res.status(400).json({ error: "Tehtävä on jo tässä taloyhtiössä." });
+  if (parsed.data.assigneeId && !db.prepare("SELECT 1 FROM users WHERE id = ?").get(parsed.data.assigneeId)) {
+    return res.status(404).json({ error: "Käyttäjää ei löytynyt." });
+  }
+
+  moveTicketToCompany(ticket, companyId, parsed.data.assigneeId, user?.name ?? "Käsittelijä");
+  res.json({ ok: true });
+});
 
 // Arkaluonteisen tehtävän avaukset kirjataan lokiin, kukin käyttäjä kerran päivässä.
 function logSensitiveView(ticketId: string, actor: string | undefined) {

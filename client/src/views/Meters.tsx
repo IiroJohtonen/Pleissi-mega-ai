@@ -76,6 +76,10 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
     apartmentId: string; meterType: string; valueText: string; readingDate: string; note: string; details: Record<string, string>;
   } | null>(null);
 
+  // Taloyhtiö-sarake vain, kun näkymässä on useita yhtiöitä.
+
+  const multiCompany = companies.length > 1;
+
   const companyName = (id: string) => companies.find(company => company.id === id)?.name ?? "";
 
   async function loadReadings() {
@@ -227,12 +231,14 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
       <a className="back-link" href="#/companies">{t("← Taloyhtiöt")}</a>
 
       <div className="ticket-filters">
-        <Dropdown
-          label={t("Taloyhtiö")}
-          value={companyFilter}
-          options={[{ value: "all", label: t("Kaikki") }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
-          onChange={setCompanyFilter}
-        />
+        {companies.length > 1 && (
+          <Dropdown
+            label={t("Taloyhtiö")}
+            value={companyFilter}
+            options={[{ value: "all", label: t("Kaikki") }, ...companies.map(company => ({ value: company.id, label: company.name }))]}
+            onChange={setCompanyFilter}
+          />
+        )}
         <Dropdown
           label={t("Mittari")}
           value={typeFilter}
@@ -258,7 +264,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
               <thead>
                 <tr>
                   <th>{t("Asunto")}</th>
-                  <th>{t("Taloyhtiö")}</th>
+                  {multiCompany && <th>{t("Taloyhtiö")}</th>}
                   <th>{t("Mittari")}</th>
                   <th>{t("Lukupäivä")}</th>
                   <th>{t("Lukema")}</th>
@@ -289,7 +295,7 @@ export function MeterReadings({ companies, defaultCompanyId }: { companies: Comp
                       <strong>{reading.apartment_number || "–"}</strong>
                       {!reading.apartment_id && <span className="late-note">{t("Valitse asunto")}</span>}
                     </td>
-                    <td>{companyName(reading.company_id)}</td>
+                    {multiCompany && <td>{companyName(reading.company_id)}</td>}
                     <td><span className="type">{meterLabel(reading.meter_type)}</span></td>
                     <td>{formatDay(reading.reading_date)}</td>
                     <td>{formatReading(reading.value, reading.meter_type)}</td>

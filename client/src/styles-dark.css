@@ -2295,6 +2295,61 @@
 :root[data-theme="dark"] .chunk-verify:hover:not(:disabled) {
     background: #314c3c
 }
+:root[data-theme="dark"] .queue-access legend {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .unidentified-panel {
+    background: #4b4430;
+    border: 1px solid #71643d
+}
+:root[data-theme="dark"] .unidentified-panel strong {
+    color: #efd69c
+}
+:root[data-theme="dark"] .unidentified-panel p {
+    color: #e6d3a4
+}
+:root[data-theme="dark"] .unidentified-fields select {
+    border: 1px solid #374353;
+    background: #283341
+}
+:root[data-theme="dark"] .unidentified-fields .primary {
+    background: #d6dbe1;
+    border: 1px solid #a6b1bf;
+    color: #19222e
+}
+:root[data-theme="dark"] .move-company select {
+    border: 1px solid #374353;
+    background: #283341
+}
+:root[data-theme="dark"] .move-company .primary {
+    background: #d6dbe1;
+    border: 1px solid #a6b1bf;
+    color: #19222e
+}
 :root[data-theme="dark"] .knowledge-view-tabs {
     border-bottom: 1px solid #384454
+}
+:root[data-theme="dark"] .ticket-filters .filter-field {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .multi-select-trigger {
+    border: 1px solid #374353;
+    background: #242e3b;
+    color: #dadee3
+}
+:root[data-theme="dark"] .multi-select-trigger svg {
+    color: #b6bec8
+}
+:root[data-theme="dark"] .multi-select-menu {
+    background: #283341;
+    border: 1px solid #374353
+}
+:root[data-theme="dark"] .multi-select-menu label {
+    color: #dadee3
+}
+:root[data-theme="dark"] .multi-select-menu label:hover {
+    background: #2e3a49
+}
+:root[data-theme="dark"] .multi-select-menu .multi-select-all {
+    border-bottom: 1px solid #3a4758
 }
