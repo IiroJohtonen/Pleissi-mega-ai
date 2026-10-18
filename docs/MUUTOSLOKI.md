@@ -18,7 +18,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Tunnistamattomat-jono: yhteiseen osoitteeseen tulleet viestit tuntemattomalta lähettäjältä.
 - Tehtävän tyyppi -valikko.
 
-**Testit:** T-106–T-108
+**Testit:** T-106–T-108 · PR #28
 
 ## 18.10.2026 · AI:lle lähtevä tieto lokiin, tehtävän taloyhtiö ilmoittajasta ja arkaluonteisen tehtävän tägi
 
