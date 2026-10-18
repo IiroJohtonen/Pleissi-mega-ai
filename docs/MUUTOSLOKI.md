@@ -21,7 +21,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Dokumentaatio → avaa dokumentti → Muokkaa tekstiä → muokkaa → Tallenna uutena versiona → Hyväksy muutokset.
 
-**Testit:** T-109–T-112
+**Testit:** T-109–T-112 · PR #29
 
 ## 18.10.2026 · AI-tieto pois aikajanalta, yhteinen osoite Tunnistamattomiin ja turhat tehtävätyypit pois
 
