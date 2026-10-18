@@ -17,7 +17,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Asetukset → hakukenttä. Asetukset → Isännöitsijätoimiston tiedot → Tietoturva / AI / Perustiedot.
 
-**Testit:** T-113–T-116
+**Testit:** T-113–T-116 · PR #32
 
 ## 18.10.2026 · Asukkaan rappu ja autopaikat, vuorojen jono ja aikaikkuna, omat sivut ja isommat näkymät
 
