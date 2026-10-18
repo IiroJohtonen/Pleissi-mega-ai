@@ -5,7 +5,6 @@ export type QueueSort = "oldest" | "newest" | "priority" | "due";
 export const QUEUE_SORTS: QueueSort[] = ["oldest", "newest", "priority", "due"];
 
 const QUEUE_SORT_KEY = "kotilo.queueSort";
-const AI_PROMPT_KEY = "kotilo.aiPrompt";
 const NAV_PINNED_KEY = "kotilo.navPinned";
 
 function read(key: string): string | null {
@@ -31,15 +30,6 @@ export function storedQueueSort(): QueueSort {
 
 export function saveQueueSort(sort: QueueSort) {
   write(QUEUE_SORT_KEY, sort);
-}
-
-// Avataanko AI-ehdotusta pyydettäessä ikkuna lisätiedoille. Oletuksena kyllä.
-export function storedAiPrompt(): boolean {
-  return read(AI_PROMPT_KEY) !== "off";
-}
-
-export function saveAiPrompt(enabled: boolean) {
-  write(AI_PROMPT_KEY, enabled ? "on" : "off");
 }
 
 // Onko sivupalkki kiinnitetty auki. Kiinnittämätön palkki näkyy kapeana kuvakerivinä.

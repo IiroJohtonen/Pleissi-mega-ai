@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const company = { id: "demo-company", name: "As Oy Koivikko", email_address: "", manager_id: null, manager_ids: [] };
@@ -431,6 +431,36 @@ describe("sovellus", () => {
       expect(screen.queryByText("Vara-avaimen säilytys")).toBeNull();
     } finally {
       delete responses["/companies/demo-company/knowledge"];
+    }
+  });
+
+  it("asetusten haku avaa osion oikealta välilehdeltä", async () => {
+    responses["/master-data"] = {
+      values: { emergencyKeywords: [], sensitiveKeywords: ["sairau"], masking: { phone: true, email: true, personalId: true, iban: true },
+        priorityDays: { emergency: 0, urgent: 1, normal: 7, low: 30 }, aiModels: { reply: "", assess: "", fast: "", reports: "" } },
+      defaults: { emergencyKeywords: [], sensitiveKeywords: [], masking: { phone: true, email: true, personalId: true, iban: true },
+        priorityDays: { emergency: 0, urgent: 1, normal: 7, low: 30 }, aiModels: { reply: "", assess: "", fast: "", reports: "" } },
+      modelChoices: []
+    };
+    try {
+      await renderApp(staff("Pääkäyttäjä"), "#/settings");
+      const search = await screen.findByRole("searchbox", { name: "Hae asetuksista" });
+      fireEvent.change(search, { target: { value: "henkilötunnus" } });
+      fireEvent.click(screen.getByRole("option", { name: /Maskaus ennen AI:ta/ }));
+      // Toimiston Tietoturva-välilehti avautuu, ja siellä ovat arkaluonteiset tiedot ja maskaus.
+      expect((await screen.findByRole("tab", { name: "Tietoturva" })).getAttribute("aria-selected")).toBe("true");
+      expect(await screen.findByText("Henkilötunnukset")).toBeTruthy();
+      expect(screen.getAllByRole("button", { name: "Arkaluonteiset tiedot" })).toHaveLength(2);
+
+      // AI-ehdotusten lisätietoikkuna on toimiston AI-asetuksissa, ei käyttäjän asetuksissa.
+      fireEvent.change(search, { target: { value: "AI-ehdotukset" } });
+      const options = within(screen.getByRole("listbox", { name: "Hakutulokset" })).getAllByRole("option");
+      expect(options.map(option => option.textContent)).toEqual(["AI-ehdotuksetIsännöitsijätoimiston tiedot › AI"]);
+      fireEvent.click(options[0]);
+      expect(await screen.findByText("Kysy lisätietoa ennen AI-ehdotusta")).toBeTruthy();
+      expect(screen.getAllByRole("button", { name: "AI-mallit" })).toHaveLength(2);
+    } finally {
+      delete responses["/master-data"];
     }
   });
 

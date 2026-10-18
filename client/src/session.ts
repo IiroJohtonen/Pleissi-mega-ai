@@ -6,7 +6,9 @@ export const API: string = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV 
 // Alustaa käyttävä isännöitsijätoimisto. Testitieto, kunnes toimistot tulevat kirjautumisen mukana.
 export const MANAGEMENT_OFFICE = {
   name: "Pohjantähti Isännöinti Oy",
-  email: "toimisto@pohjantahti-isannointi.fi"
+  email: "toimisto@pohjantahti-isannointi.fi",
+  // Avataanko AI-ehdotusta pyydettäessä ikkuna lisätiedoille (toimiston asetus).
+  aiPrompt: true
 };
 
 // mail_email = käyttäjän oman, Kotiloon yhdistetyn postilaatikon osoite.

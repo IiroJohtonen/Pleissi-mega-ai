@@ -116,6 +116,14 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal((await call(server, admin, "PUT", "/office", { name: "Testitoimisto" })).data.aiPriority, 1);
   });
 
+  it("AI-ehdotuksen lisätietoikkuna on toimiston asetus, jonka kaikki käyttäjät näkevät", async () => {
+    assert.equal((await call(server, service, "GET", "/office")).data.aiPrompt, 1);
+    assert.equal((await call(server, service, "PUT", "/office", { name: "Testitoimisto", aiPrompt: false })).status, 403);
+    assert.equal((await call(server, admin, "PUT", "/office", { name: "Testitoimisto", aiPrompt: false })).data.aiPrompt, 0);
+    assert.equal((await call(server, service, "GET", "/office")).data.aiPrompt, 0);
+    await call(server, admin, "PUT", "/office", { name: "Testitoimisto", aiPrompt: true });
+  });
+
   it("päällä AI päättää prioriteetin avainsanojen sijaan", async () => {
     const stiff = await inbound("Pyöräkellari", "Pyöräkellarin lukko on jäykkä.");
     assert.equal(stiff.emergency, false);

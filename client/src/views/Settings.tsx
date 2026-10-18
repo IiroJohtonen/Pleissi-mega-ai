@@ -8,7 +8,6 @@ import {
 import type { MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { ParkingOptionsEditor } from "./Parking";
-import { saveAiPrompt, storedAiPrompt } from "../preferences";
 import { t } from "../i18n";
 import { setTheme, storedTheme } from "../theme";
 import { MasterDataSettings } from "./MasterData";
@@ -19,9 +18,27 @@ import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 export function Settings({ initialTab = "user", ...props }: { onSaved: () => Promise<void>; initialTab?: "user" | "office" }) {
   const admin = isAdmin();
   const [tab, setTab] = useState<"user" | "office">(initialTab);
+  const [officeTab, setOfficeTab] = useState<OfficeTab>("office");
+  // Hakutuloksesta valittu osio: siirrytään oikealle välilehdelle ja vieritetään osioon, kun se on piirretty.
+  const [jumpTo, setJumpTo] = useState<string | null>(null);
+  useEffect(() => {
+    if (!jumpTo) return;
+    const frame = requestAnimationFrame(() => {
+      jumpToSection(jumpTo);
+      setJumpTo(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [jumpTo, tab, officeTab]);
+
+  function openResult(result: SettingsSearchEntry) {
+    setTab(result.scope);
+    if (result.officeTab) setOfficeTab(result.officeTab);
+    setJumpTo(result.id);
+  }
 
   return (
     <div className="settings-page">
+      <SettingsSearch admin={admin} onOpen={openResult} />
       <div className="card-tabs settings-tabs" role="tablist">
         <button role="tab" aria-selected={tab === "user"} className={tab === "user" ? "active" : ""} onClick={() => setTab("user")}>
           {t("Käyttäjän asetukset")}
@@ -32,7 +49,92 @@ export function Settings({ initialTab = "user", ...props }: { onSaved: () => Pro
           </button>
         )}
       </div>
-      {tab === "office" && admin ? <OfficeSettings {...props} /> : <UserSettings />}
+      {tab === "office" && admin ? <OfficeSettings {...props} officeTab={officeTab} onTabChange={setOfficeTab} /> : <UserSettings />}
+    </div>
+  );
+}
+
+type SettingsSearchEntry = { id: string; label: string; scope: "user" | "office"; officeTab?: OfficeTab; place: string; keywords: string };
+
+// Hakusanat osioittain: haku osuu myös asetuksiin, joiden nimi ei ole osion otsikossa.
+const SECTION_KEYWORDS: Record<string, string> = {
+  "user-details": "nimi sähköposti salasana kirjautuminen",
+  "mail-personal": "gmail outlook microsoft imap posti postilaatikko yhdistä",
+  signature: "allekirjoitus titteli puhelin vastaus",
+  appearance: "tumma tila teema värit",
+  language: "kieli englanti suomi language",
+  "office-details": "nimi y-tunnus osoite puhelin",
+  "office-reminders": "muistutus kooste määräaika odottanut",
+  "office-resident-updates": "tilapäivitys asukas sähköposti ilmoitus",
+  "office-unidentified": "tunnistamattomat jono käsittelijät roolit",
+  "gmail-office": "gmail outlook microsoft imap posti postilaatikko toimiston tili",
+  "office-security": "kirjautumiskoodi kaksivaiheinen tunnistautuminen koodi",
+  "office-retention": "säilytysaika poisto gdpr vanhat tehtävät",
+  "sensitive-data": "arkaluonteinen terveys sairaus avainsanat",
+  "ai-masking": "maskaus puhelinnumero henkilötunnus tilinumero iban sähköposti peitto tietosuoja",
+  log: "loki muutokset tapahtumat ai:lle lähetetty",
+  "office-ai": "kulut kuukausiraja prioriteetti suodatus relevanssi budjetti",
+  "ai-prompt": "lisätieto ikkuna vastausehdotus ehdotus",
+  "ai-models": "malli opus sonnet haiku claude",
+  "master-data": "hätäsanat hätä määräajat prioriteetti päivät",
+  users: "käyttäjät roolit lisää käyttäjä",
+  "system-alerts": "järjestelmän tila hälytykset virheet varmuuskopio",
+  "contact-requests": "yhteydenotto pyynnöt"
+};
+
+function settingsSearchIndex(admin: boolean): SettingsSearchEntry[] {
+  const user = userSections.map(section => ({
+    ...section, scope: "user" as const, place: t("Käyttäjän asetukset"), keywords: SECTION_KEYWORDS[section.id] ?? ""
+  }));
+  if (!admin) return user;
+  return [...user, ...officeTabs.flatMap(tab => tab.sections.map(section => ({
+    ...section, scope: "office" as const, officeTab: tab.tab, place: `${t("Isännöitsijätoimiston tiedot")} › ${tab.label}`,
+    keywords: SECTION_KEYWORDS[section.id] ?? ""
+  })))];
+}
+
+// Haku asetuksista: osuu osioiden otsikoihin ja hakusanoihin; valinta avaa osion.
+function SettingsSearch({ admin, onOpen }: { admin: boolean; onOpen: (entry: SettingsSearchEntry) => void }) {
+  const [query, setQuery] = useState("");
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const results = words.length
+    ? settingsSearchIndex(admin).filter(entry => {
+      const text = `${entry.label} ${entry.place} ${entry.keywords}`.toLowerCase();
+      return words.every(word => text.includes(word));
+    })
+    : [];
+  return (
+    <div className="settings-search">
+      <input
+        type="search"
+        value={query}
+        onChange={event => setQuery(event.target.value)}
+        onKeyDown={event => {
+          if (event.key === "Enter" && results[0]) {
+            onOpen(results[0]);
+            setQuery("");
+          }
+        }}
+        placeholder={t("Hae asetuksista, esim. maskaus tai allekirjoitus")}
+        aria-label={t("Hae asetuksista")}
+      />
+      {words.length > 0 && (
+        <div className="settings-search-results" role="listbox" aria-label={t("Hakutulokset")}>
+          {results.length === 0 && <p className="muted">{t("Ei osumia.")}</p>}
+          {results.map(entry => (
+            <button
+              key={`${entry.scope}-${entry.id}`}
+              type="button"
+              role="option"
+              aria-selected={false}
+              onClick={() => { onOpen(entry); setQuery(""); }}
+            >
+              <strong>{entry.label}</strong>
+              <small>{entry.place}</small>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -54,12 +156,11 @@ const userSections = [
   { id: "mail-personal", label: t("Oma sähköpostitili") },
   { id: "signature", label: t("Sähköpostin allekirjoitus") },
   { id: "appearance", label: t("Ulkoasu") },
-  { id: "ai-prompt", label: t("AI-ehdotukset") },
   { id: "language", label: t("Kieli") }
 ];
 
 // Isännöitsijätoimiston asetukset välilehdittäin; kunkin välilehden osiot ovat aliotsikoina.
-type OfficeTab = "office" | "security" | "ai" | "master" | "users" | "system";
+type OfficeTab = "office" | "security" | "ai" | "master" | "users";
 const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label: string }[] }[] = [
   {
     tab: "office", label: t("Toimisto"), sections: [
@@ -74,18 +175,26 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
     tab: "security", label: t("Tietoturva"), sections: [
       { id: "office-security", label: t("Kirjautuminen") },
       { id: "office-retention", label: t("Tietojen säilytys") },
+      { id: "sensitive-data", label: t("Arkaluonteiset tiedot") },
+      { id: "ai-masking", label: t("Maskaus ennen AI:ta") },
       { id: "log", label: t("Loki") }
     ]
   },
-  { tab: "ai", label: t("AI"), sections: [{ id: "office-ai", label: t("AI-käyttö ja -asetukset") }] },
-  { tab: "master", label: t("Perustiedot"), sections: [{ id: "master-data", label: t("Perustiedot") }] },
-  { tab: "users", label: t("Käyttäjät"), sections: [{ id: "users", label: t("Käyttäjät") }] },
   {
-    tab: "system", label: t("Järjestelmä"), sections: [
+    tab: "ai", label: t("AI"), sections: [
+      { id: "office-ai", label: t("AI-käyttö ja -asetukset") },
+      { id: "ai-prompt", label: t("AI-ehdotukset") },
+      { id: "ai-models", label: t("AI-mallit") }
+    ]
+  },
+  {
+    tab: "master", label: t("Perustiedot"), sections: [
+      { id: "master-data", label: t("Hätäsanat ja määräajat") },
       { id: "system-alerts", label: t("Järjestelmän tila") },
       { id: "contact-requests", label: t("Yhteydenottopyynnöt") }
     ]
-  }
+  },
+  { tab: "users", label: t("Käyttäjät"), sections: [{ id: "users", label: t("Käyttäjät") }] }
 ];
 
 // Kirjautuneen käyttäjän omat tiedot, salasana ja kieli.
@@ -107,34 +216,6 @@ function AppearanceCard() {
             onChange={event => {
               setDark(event.target.checked);
               setTheme(event.target.checked ? "dark" : "light");
-            }}
-          />
-          <i aria-hidden="true" />
-        </label>
-        <p className="reply-hint">{t("Valinta tallentuu tähän selaimeen.")}</p>
-      </CollapseSection>
-    </div>
-  );
-}
-
-// AI-ehdotuksen lisätietoikkuna: pois päältä ehdotus pyydetään suoraan ilman ikkunaa.
-function AiPromptCard() {
-  const [enabled, setEnabled] = useState(storedAiPrompt);
-  return (
-    <div className="settings-card ticket-form">
-      <CollapseSection id="ai-prompt" title={t("AI-ehdotukset")}>
-        <label className="switch-row">
-          <span>
-            <strong>{t("Kysy lisätietoa ennen AI-ehdotusta")}</strong>
-            <small>{t("Pyydä AI-ehdotus avaa ikkunan, johon voi kirjoittaa tehtävästä lisätietoa AI:n huomioitavaksi. Pois päältä ehdotus tehdään heti.")}</small>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            checked={enabled}
-            onChange={event => {
-              setEnabled(event.target.checked);
-              saveAiPrompt(event.target.checked);
             }}
           />
           <i aria-hidden="true" />
@@ -346,7 +427,6 @@ function UserSettings() {
       <SignatureCard />
 
       <AppearanceCard />
-      <AiPromptCard />
 
       <div className="settings-card ticket-form">
         <CollapseSection id="language" title={t("Kieli")}>
@@ -375,6 +455,8 @@ export type OfficeInfo = {
   twoFactor?: number; twoFactorOverridden?: boolean;
   // residentStatusUpdates: asukas saa sähköpostin, kun tehtävän tila muuttuu.
   residentStatusUpdates?: number;
+  // aiPrompt: AI-ehdotusta pyydettäessä avataan ikkuna lisätiedoille.
+  aiPrompt?: number;
   // Taloyhtiö tunnistamatta -jonon käsittelijät: roolit ja käyttäjät. canHandleUnidentified: kuuluuko
   // kirjautunut käyttäjä heihin.
   unidentifiedQueueRoles?: string[]; unidentifiedQueueUsers?: string[]; canHandleUnidentified?: boolean;
@@ -625,7 +707,11 @@ export function MailAccountCard({ target }: { target: string }) {
 }
 
 // Isännöitsijätoimiston omat tiedot. Ne eivät riipu valitusta taloyhtiöstä.
-function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
+function OfficeSettings({ onSaved, officeTab, onTabChange }: {
+  onSaved: () => Promise<void>;
+  officeTab: OfficeTab;
+  onTabChange: (tab: OfficeTab) => void;
+}) {
   const [name, setName] = useState(MANAGEMENT_OFFICE.name);
   const [businessId, setBusinessId] = useState("");
   const [address, setAddress] = useState("");
@@ -640,6 +726,7 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [twoFactor, setTwoFactor] = useState(false);
   const [twoFactorOverridden, setTwoFactorOverridden] = useState(false);
   const [residentStatusUpdates, setResidentStatusUpdates] = useState(true);
+  const [aiPrompt, setAiPrompt] = useState(true);
   const [aiWarningPercent, setAiWarningPercent] = useState(80);
   // Kasvaa jokaisella tallennuksella, jotta kulumittari hakee tilanteen uudelleen.
   const [savedCount, setSavedCount] = useState(0);
@@ -670,6 +757,7 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         setTwoFactor(Boolean(office.twoFactor));
         setTwoFactorOverridden(Boolean(office.twoFactorOverridden));
         setResidentStatusUpdates(office.residentStatusUpdates !== 0);
+        setAiPrompt(office.aiPrompt !== 0);
         setAiWarningPercent(office.aiWarningPercent ?? 80);
         setRetentionMonths(office.retentionMonths ?? 0);
         setStoredRetention(office.retentionMonths ?? 0);
@@ -681,7 +769,6 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [officeTab, setOfficeTab] = useState<OfficeTab>("office");
   const activeTab = officeTabs.find(item => item.tab === officeTab) ?? officeTabs[0];
   // Välilehdet, joiden asetukset tallennetaan yhteisellä Tallenna asetukset -painikkeella.
   const formTab = officeTab === "office" || officeTab === "security" || officeTab === "ai";
@@ -702,11 +789,12 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         method: "PUT",
         body: JSON.stringify({
           name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance,
-          aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates,
+          aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates, aiPrompt,
           unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
         })
       });
       MANAGEMENT_OFFICE.name = office.name;
+      MANAGEMENT_OFFICE.aiPrompt = office.aiPrompt !== 0;
       setStoredRetention(office.retentionMonths ?? 0);
       await onSaved();
       setSaved(true);
@@ -734,7 +822,7 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
             role="tab"
             aria-selected={officeTab === item.tab}
             className={officeTab === item.tab ? "active" : ""}
-            onClick={() => setOfficeTab(item.tab)}
+            onClick={() => onTabChange(item.tab)}
           >
             {item.label}
           </button>
@@ -1001,6 +1089,23 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         )}
 
         </CollapseSection>
+
+        <CollapseSection id="ai-prompt" title={t("AI-ehdotukset")}>
+        <label className="switch-row">
+          <span>
+            <strong>{t("Kysy lisätietoa ennen AI-ehdotusta")}</strong>
+            <small>{t("Pyydä AI-ehdotus avaa ikkunan, johon voi kirjoittaa tehtävästä lisätietoa AI:n huomioitavaksi. Pois päältä ehdotus tehdään heti.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={aiPrompt}
+            onChange={event => { setAiPrompt(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">{t("Valinta koskee kaikkia toimiston käyttäjiä.")}</p>
+        </CollapseSection>
           </>
         )}
 
@@ -1017,6 +1122,9 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
 
       {officeTab === "office" && <MailAccountCard target="office" />}
 
+      {officeTab === "security" && <MasterDataSettings part="security" />}
+      {officeTab === "ai" && <MasterDataSettings part="ai" />}
+
       {officeTab === "security" && (
         <a className="settings-card settings-link" href="#/log" id="section-log">
           <div>
@@ -1027,14 +1135,14 @@ function OfficeSettings({ onSaved }: { onSaved: () => Promise<void> }) {
         </a>
       )}
 
-      {officeTab === "master" && <MasterDataSettings />}
-      {officeTab === "users" && <OfficeUsers />}
-      {officeTab === "system" && (
+      {officeTab === "master" && (
         <>
+          <MasterDataSettings part="basic" />
           <div id="section-system-alerts"><SystemAlertsCard /></div>
           <ContactRequests />
         </>
       )}
+      {officeTab === "users" && <OfficeUsers />}
       </div>
       </div>
     </div>

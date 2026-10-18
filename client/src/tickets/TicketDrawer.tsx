@@ -4,7 +4,7 @@ import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
 } from "../format";
-import { actorName, api, errorMessage, fetchObjectUrl, isAdmin, isManager, type OfficeUser, session } from "../session";
+import { actorName, api, errorMessage, fetchObjectUrl, isAdmin, isManager, MANAGEMENT_OFFICE, type OfficeUser, session } from "../session";
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
 import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
@@ -12,7 +12,6 @@ import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
 import { UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
-import { storedAiPrompt } from "../preferences";
 import { Toast } from "../components/Toast";
 import { t } from "../i18n";
 import { OpenResidentButton } from "../components/Reporter";
@@ -304,8 +303,8 @@ export function TicketDrawer({
       && !window.confirm(t("Luonnoksessa on tallentamattomia muutoksia. Korvataanko se AI:n ehdotuksella?"))) {
       return;
     }
-    // Lisätietoikkunan voi ottaa asetuksista pois, jolloin ehdotus pyydetään suoraan.
-    if (storedAiPrompt()) setAiPromptOpen(true);
+    // Lisätietoikkunan voi ottaa toimiston AI-asetuksista pois, jolloin ehdotus pyydetään suoraan.
+    if (MANAGEMENT_OFFICE.aiPrompt) setAiPromptOpen(true);
     else void requestSuggestion("");
   }
 
