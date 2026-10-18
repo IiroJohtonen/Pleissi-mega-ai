@@ -254,6 +254,9 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal(suggested.status, 200);
     assert.equal(suggested.data.draft, "Huoltomies tulee torstaina.");
     assert.equal(suggested.data.usedAi, true);
+    // Lisätieto tallentuu aikajanalle sisäiseksi muistiinpanoksi.
+    const notes = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data.notes as { body: string }[];
+    assert.ok(notes.some(note => note.body === "Lisätieto AI:n vastausehdotukseen:\nHuoltomies käy torstaina klo 10."));
     const request = requests.at(-1);
     assert.match(JSON.stringify(request.body.messages), /Manager's notes:\\nHuoltomies käy torstaina klo 10\./);
     // Asukkaan yhteystiedot ja tunnisteet eivät mene AI:lle, mutta käsittelijän lisätieto menee sellaisenaan.

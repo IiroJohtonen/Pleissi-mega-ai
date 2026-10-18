@@ -316,17 +316,6 @@ CREATE TABLE IF NOT EXISTS meter_readings (
   created_at TEXT NOT NULL
 );
 
--- Kotisivun yhteydenottolomakkeella jätetyt yhteystiedot.
-CREATE TABLE IF NOT EXISTS contact_requests (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT NOT NULL DEFAULT '',
-  company TEXT NOT NULL DEFAULT '',
-  message TEXT NOT NULL DEFAULT '',
-  created_at TEXT NOT NULL
-);
-
 -- Jonotuslista autopaikalle tai saunavuorolle. status: 'waiting', 'offered', 'done' tai 'cancelled'.
 CREATE TABLE IF NOT EXISTS waitlist (
   id TEXT PRIMARY KEY,
@@ -739,7 +728,10 @@ for (const column of ["reminder_emails", "retention_months", "ai_priority", "ai_
     db.exec(`ALTER TABLE office_settings ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`);
   }
 }
-// Osoite, johon kotisivun yhteydenottopyynnöt lähetetään sähköpostina; tyhjä = ei lähetetä.
+// Kotisivun yhteydenottopyynnöt eivät kuulu järjestelmään: niitä ei tallenneta, vaan ne välitetään sähköpostina.
+// Aiemmin tallennetut pyynnöt poistetaan.
+db.exec("DROP TABLE IF EXISTS contact_requests");
+// Osoite, johon kotisivun yhteydenottopyynnöt välitetään (ympäristömuuttuja CONTACT_FORWARD_EMAIL ohittaa tämän).
 if (!officeColumns.some(existing => existing.name === "contact_email")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN contact_email TEXT NOT NULL DEFAULT ''");
 }

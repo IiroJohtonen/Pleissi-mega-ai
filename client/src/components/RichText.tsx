@@ -275,6 +275,38 @@ const STYLE_LABELS: Record<Style, string> = {
 // execCommand on vanhentunut, mutta kaikki selaimet tukevat sitä edelleen, ja se säilyttää kumoamishistorian.
 const exec = (command: string, value?: string) => document.execCommand(command, false, value);
 
+// Muokkaimen numerot (1., 1.1., 1.1.2.) lasketaan luettelojen rakenteesta samalla tavalla kuin tallennettaessa.
+// Selain tekee sisennyksessä alatason luettelon edellisen kohdan sisarukseksi (<ol><li>1</li><ol>…</ol></ol>),
+// jolloin CSS-laskuri jatkuisi alatason numeroista ulkonnuksen jälkeen (1.1.2 → 1.1.3 eikä 1.2).
+export function numberListItems(root: HTMLElement) {
+  const visit = (list: Element, prefix: string) => {
+    const ordered = list.tagName === "OL";
+    let number = ordered ? Number(list.getAttribute("start") || 1) : 1;
+    // Sisaruksena oleva alatason luettelo kuuluu edelliselle kohdalle.
+    let previous = prefix;
+    for (const child of list.children) {
+      if (child.tagName === "OL" || child.tagName === "UL") {
+        visit(child, previous);
+        continue;
+      }
+      if (child.tagName !== "LI") continue;
+      const path = ordered ? `${prefix}${number}.` : prefix;
+      if (ordered) {
+        if (child.getAttribute("data-number") !== path) child.setAttribute("data-number", path);
+        number += 1;
+      }
+      previous = path;
+      for (const nested of child.children) {
+        if (nested.tagName === "OL" || nested.tagName === "UL") visit(nested, path);
+      }
+    }
+  };
+  for (const list of root.querySelectorAll("ol, ul")) {
+    const outer = list.parentElement?.closest("ol, ul, li");
+    if (!outer || !root.contains(outer)) visit(list, "");
+  }
+}
+
 export function RichTextEditor({ initial, ref, onDirty }: {
   initial: string;
   ref?: Ref<RichTextEditorHandle>;
@@ -290,6 +322,16 @@ export function RichTextEditor({ initial, ref, onDirty }: {
     editor.current.innerHTML = richTextToHtml(initial);
     exec("defaultParagraphSeparator", "p");
   }, [initial]);
+
+  // Luettelojen numerot päivittyvät aina, kun muokkaimen rakenne muuttuu (kirjoitus, sisennys, kumoa).
+  useEffect(() => {
+    const root = editor.current;
+    if (!root) return;
+    numberListItems(root);
+    const observer = new MutationObserver(() => numberListItems(root));
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   // Työkalurivi näyttää kohdistimen kohdan muotoilun.
   useEffect(() => {

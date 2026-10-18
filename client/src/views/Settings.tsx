@@ -78,8 +78,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   "ai-models": "malli opus sonnet haiku claude",
   "master-data": "hätäsanat hätä määräajat prioriteetti päivät",
   users: "käyttäjät roolit lisää käyttäjä",
-  "system-alerts": "järjestelmän tila hälytykset virheet varmuuskopio",
-  "contact-requests": "yhteydenotto pyynnöt"
+  "system-alerts": "järjestelmän tila hälytykset virheet varmuuskopio"
 };
 
 function settingsSearchIndex(admin: boolean): SettingsSearchEntry[] {
@@ -190,8 +189,7 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
   {
     tab: "master", label: t("Perustiedot"), sections: [
       { id: "master-data", label: t("Hätäsanat ja määräajat") },
-      { id: "system-alerts", label: t("Järjestelmän tila") },
-      { id: "contact-requests", label: t("Yhteydenottopyynnöt") }
+      { id: "system-alerts", label: t("Järjestelmän tila") }
     ]
   },
   { tab: "users", label: t("Käyttäjät"), sections: [{ id: "users", label: t("Käyttäjät") }] }
@@ -1139,7 +1137,6 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         <>
           <MasterDataSettings part="basic" />
           <div id="section-system-alerts"><SystemAlertsCard /></div>
-          <ContactRequests />
         </>
       )}
       {officeTab === "users" && <OfficeUsers />}
@@ -1744,119 +1741,5 @@ function OfficeUsers() {
         </div>
       )}
     </aside>
-  );
-}
-
-type ContactRequest = {
-  id: string; name: string; email: string; phone: string; company: string; message: string; created_at: string;
-};
-
-// Kotisivun lomakkeella jätetyt yhteystiedot. Näkymä on vain pääkäyttäjälle.
-function ContactRequests() {
-  const [requests, setRequests] = useState<ContactRequest[]>([]);
-  const [error, setError] = useState("");
-  // Osoite, johon uudet pyynnöt lähetetään sähköpostina; tyhjä = ei lähetetä.
-  const [notifyEmail, setNotifyEmail] = useState("");
-  const [savedEmail, setSavedEmail] = useState("");
-  const [savingEmail, setSavingEmail] = useState(false);
-  const [emailSaved, setEmailSaved] = useState(false);
-
-  useEffect(() => {
-    api<{ email?: string }>("/contact-settings")
-      .then(settings => {
-        setNotifyEmail(settings.email ?? "");
-        setSavedEmail(settings.email ?? "");
-      })
-      .catch(() => undefined);
-  }, []);
-
-  async function saveNotifyEmail(event: FormEvent) {
-    event.preventDefault();
-    setSavingEmail(true);
-    setEmailSaved(false);
-    setError("");
-    try {
-      const saved = await api<{ email: string }>("/contact-settings", {
-        method: "PUT",
-        body: JSON.stringify({ email: notifyEmail.trim() })
-      });
-      setNotifyEmail(saved.email);
-      setSavedEmail(saved.email);
-      setEmailSaved(true);
-    } catch (caught) {
-      setError(errorMessage(caught, t("Osoitteen tallennus epäonnistui.")));
-    } finally {
-      setSavingEmail(false);
-    }
-  }
-
-  async function load() {
-    try {
-      setRequests(await api<ContactRequest[]>("/contact-requests"));
-      setError("");
-    } catch (caught) {
-      setError(errorMessage(caught, t("Yhteydenottopyyntöjen haku epäonnistui.")));
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  async function remove(request: ContactRequest) {
-    if (!window.confirm(t("Poistetaanko yhteydenottopyyntö lähettäjältä {0}?", request.name))) return;
-    try {
-      await api(`/contact-requests/${encodeURIComponent(request.id)}`, { method: "DELETE" });
-      await load();
-    } catch (caught) {
-      setError(errorMessage(caught, t("Yhteydenottopyynnön poisto epäonnistui.")));
-    }
-  }
-
-  return (
-    <div className="settings-card contact-requests">
-      <CollapseSection id="contact-requests" title={t("Yhteydenottopyynnöt")}>
-        <p className="muted">{t("Kotisivun lomakkeella jätetyt yhteystiedot, uusin ensin.")}</p>
-        <form className="ticket-form contact-notify" onSubmit={saveNotifyEmail}>
-          <label>
-            <span>{t("Lähetä uudet pyynnöt sähköpostiin")}</span>
-            <input
-              type="email"
-              value={notifyEmail}
-              onChange={event => { setNotifyEmail(event.target.value); setEmailSaved(false); }}
-              placeholder={t("esim. myynti@yritys.fi")}
-              maxLength={200}
-            />
-          </label>
-          <div className="draft-actions">
-            <button type="submit" className="primary" disabled={savingEmail || notifyEmail.trim() === savedEmail}>
-              {savingEmail ? t("Tallennetaan…") : t("Tallenna")}
-            </button>
-            {emailSaved && <span className="saved-indicator">{t("Tallennettu")}</span>}
-          </div>
-          <p className="reply-hint">
-            {t("Viesti lähtee toimiston sähköpostitililtä. Vastaus viestiin menee suoraan yhteydenottajalle. Jätä tyhjäksi, jos et halua sähköpostia.")}
-          </p>
-        </form>
-        {error && <p className="send-error">{error}</p>}
-        {!error && requests.length === 0 && <p className="drawer-empty">{t("Ei yhteydenottopyyntöjä.")}</p>}
-        <ul>
-          {requests.map(request => (
-            <li key={request.id}>
-              <div>
-                <strong>{request.name}{request.company ? ` · ${request.company}` : ""}</strong>
-                <span>
-                  <a href={`mailto:${request.email}`}>{request.email}</a>
-                  {request.phone ? ` · ${request.phone}` : ""}
-                </span>
-                {request.message && <p>{request.message}</p>}
-                <small>{formatDate(request.created_at)}</small>
-              </div>
-              <button type="button" className="secondary" onClick={() => void remove(request)}>{t("Poista")}</button>
-            </li>
-          ))}
-        </ul>
-      </CollapseSection>
-    </div>
   );
 }

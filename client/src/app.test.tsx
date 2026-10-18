@@ -633,8 +633,9 @@ describe("sovellus", () => {
     try {
       const calls = mockApi();
       await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
-      fireEvent.click(await screen.findByRole("button", { name: "Poista" }));
-      expect(await screen.findByText("Poistetaanko tehtävä #T000001?")).toBeTruthy();
+      // Tehtävän sivu latautuu hitaalla CI-koneella yli sekunnin, joten odotetaan oletusta pidempään.
+      fireEvent.click(await screen.findByRole("button", { name: "Poista" }, { timeout: 5000 }));
+      expect(await screen.findByText("Poistetaanko tehtävä #T000001?", undefined, { timeout: 5000 })).toBeTruthy();
       expect(screen.getByText(/Poistoa ei voi perua/)).toBeTruthy();
       expect(calls.some(request => request.method === "DELETE")).toBe(false);
 

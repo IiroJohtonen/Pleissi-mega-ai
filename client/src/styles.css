@@ -504,15 +504,15 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .queue-summary-large > div,
 .queue-summary-large > button {
   flex: 1 1 0;
-  min-width: 240px;
-  min-height: 190px;
-  padding: 32px 36px 30px;
-  border-radius: 20px;
+  min-width: 220px;
+  min-height: 160px;
+  padding: 26px 28px 24px;
+  border-radius: 14px;
   row-gap: 10px;
   align-content: center;
 }
 .queue-summary.queue-summary-large span { font-size: 17px; }
-.queue-summary.queue-summary-large strong { font-size: 64px; line-height: 1; }
+.queue-summary.queue-summary-large strong { font-size: 52px; line-height: 1; }
 .queue-summary.queue-summary-large small { font-size: 15px; }
 
 /* Laskuri: otsikko ylhäällä, luku isona sen alla ja selite pienenä alimpana. */
@@ -3499,16 +3499,6 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .overlay.skip-overlay { z-index: 68; }
 }
 .overlay.skip-overlay { z-index: 75; }
-/* Asetukset: kotisivun yhteydenottopyynnöt */
-.contact-requests ul { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
-.contact-requests li { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid #dfe3e7; border-radius: 10px; background: #fff; }
-.contact-requests li > div { display: grid; gap: 3px; min-width: 0; }
-.contact-requests li strong { font-size: 14px; }
-.contact-requests li span, .contact-requests li p { margin: 0; color: #4b535d; font-size: 13px; overflow-wrap: anywhere; }
-.contact-requests li p { white-space: pre-wrap; }
-.contact-requests li small { color: #898f95; font-size: 12px; }
-.contact-requests li a { color: #28548f; }
-.contact-requests li button { flex: none; }
 
 /* Päätösjonon alaotsikko laskureiden ja listan välissä. */
 .queue-subheading { margin: 14px 0 0; color: #191f25; font-size: 20px; letter-spacing: -.01em; }
@@ -3688,30 +3678,30 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
   .booking-request-actions button { flex: 1; min-height: 44px; }
 }
 
-/* Päätösjonon värit: laatikoilla oma sävy ja kuvake, korteilla prioriteetin värinen reuna. */
+/* Päätösjonon laskurit: hillityt valkoiset kortit ilman liukuvärejä. Otsikko pienellä, luku tummana ja selite
+   himmeänä; vie hiiri päälle, niin reuna tummuu ja kortti nousee hieman. */
 .queue-summary-large > div, .queue-summary-large > button {
-  --tone: #2f6fb8;
-  --tone-soft: #e3effb;
   position: relative;
-  overflow: hidden;
-  border-color: color-mix(in srgb, var(--tone) 25%, #e1e4e7);
-  background: linear-gradient(140deg, var(--tone-soft) 0%, #fff 70%);
+  border: 1px solid #e3e6ea;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(17, 24, 32, .04);
   transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
-.queue-summary-large > *::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 4px;
-  background: var(--tone);
-}
 .queue-summary-large > button:hover {
-  transform: translateY(-2px);
-  border-color: var(--tone);
-  background: linear-gradient(140deg, var(--tone-soft) 0%, #fff 85%);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--tone) 18%, transparent);
+  transform: translateY(-1px);
+  border-color: #b9c2cc;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(17, 24, 32, .08);
 }
-.queue-summary.queue-summary-large strong { color: var(--tone); }
+.queue-summary.queue-summary-large span {
+  color: #5d656e;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.queue-summary.queue-summary-large strong { color: #141a20; font-weight: 650; letter-spacing: -.03em; }
+.queue-summary.queue-summary-large small { color: #8a9199; }
 
 .queue-subheading { display: flex; align-items: center; gap: 10px; }
 .queue-subheading b { padding: 2px 10px; border-radius: 99px; background: #171c22; color: #fff; font-size: 13px; }
@@ -3826,12 +3816,18 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .signature-preview > span { color: #4d627a; font-size: 12px; font-weight: 700; }
 
 /* Muistutukset: laskuri päätösjonossa ja syyt tehtäväkorteissa */
-.queue-summary.queue-summary-large > button.reminder-box.active {
-  border-color: #e6c46a;
-  background: linear-gradient(180deg, #fffaf0 0%, #fff4dc 100%);
+/* Muistutuksia odottamassa: pieni meripihkan värinen merkki otsikon edessä ja luku samalla sävyllä. */
+.queue-summary.queue-summary-large > button.reminder-box.active span::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #c98a12;
+  vertical-align: 2px;
 }
-
-.queue-summary.queue-summary-large > button.reminder-box.active strong { color: #a86b00; }
+.queue-summary.queue-summary-large > button.reminder-box.active strong { color: #9a6a0c; }
 
 .reminder-chip {
   padding: 2px 8px;
@@ -5050,3 +5046,12 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
 .settings-search-results small { color: #6a7178; font-size: 12px; }
 .settings-search-results .muted { margin: 6px 10px; }
 @media (max-width: 640px) { .settings-search { max-width: none; } }
+
+/* Muokkaimessa numerot tulevat rakenteesta (data-number), ks. numberListItems. */
+.rich-editor .rich-page ol > li::before { content: attr(data-number); }
+/* Syvemmillä tasoilla numero on pidempi (1.2.1.), joten teksti alkaa kauempaa. */
+.rich-text ol ol > li { padding-left: 3.2em; }
+.rich-text ol ol ol > li { padding-left: 4em; }
+/* Laskureiden luvut samalla korkeudella, vaikka otsikko rivittyisi kahdelle riville. */
+.queue-summary-large > div, .queue-summary-large > button { align-content: start; }
+.queue-summary.queue-summary-large span { min-height: 2.6em; display: flex; align-items: flex-end; }

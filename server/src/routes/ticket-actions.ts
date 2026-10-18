@@ -141,6 +141,15 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     timestamp
   );
 
+  // Lisätieto tallennetaan tehtävän aikajanalle sisäiseksi muistiinpanoksi, jotta se säilyy tehtävän tiedoissa.
+  // Vasta onnistuneen ehdotuksen jälkeen, jotta epäonnistunut ja uudelleen yritetty pyyntö ei tee kahta muistiinpanoa.
+  if (options.data.context) {
+    db.prepare("INSERT INTO ticket_notes VALUES (?, ?, ?, ?, ?)").run(
+      id("note"), req.params.id, res.locals.user?.name ?? "Käsittelijä",
+      `Lisätieto AI:n vastausehdotukseen:\n${options.data.context}`, timestamp
+    );
+  }
+
   res.json({
     draft: suggestion.draft,
     reason: suggestion.reason,

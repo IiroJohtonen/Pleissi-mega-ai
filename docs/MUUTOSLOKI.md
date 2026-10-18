@@ -3,6 +3,33 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · Sisennyksen numerointi, päätösjonon laatikot, AI:n lisätieto muistiinpanoksi ja yhteydenottopyynnöt pois
+
+**Mitä muutettiin**
+- Dokumentin tekstin muokkaus: kun alatason kohdan (esim. 1.1.2) jälkeen sisennystä vähennetään (Shift+Sarkain tai ⇤),
+  seuraava kohta saa ylemmän tason numeron (1.2) eikä enää jatka alatason numerointia (1.1.3). Syvempien tasojen numerot
+  eivät enää mene tekstin päälle.
+- Päätösjonon laatikoissa ei ole enää liukuväriä eikä värillistä alareunaa. Laatikot ovat hillityt valkoiset kortit:
+  otsikko pienellä, luku tummana ja selite himmeänä. Luvut ovat kaikissa laatikoissa samalla korkeudella. Muistutuksista kertoo
+  pieni meripihkan värinen merkki.
+- Kun AI:lta pyydetään vastausehdotusta lisätiedon kanssa, lisätieto tallentuu tehtävän aikajanalle sisäiseksi muistiinpanoksi
+  ("Lisätieto AI:n vastausehdotukseen: …").
+- Kotisivun yhteydenottopyynnöt poistettiin alustalta (Asetukset → Perustiedot). Pyyntöjä ei enää tallenneta, vaan lomakkeen
+  pyyntö välitetään sähköpostina. Vastaanottaja asetetaan palvelimen asetuksissa (CONTACT_FORWARD_EMAIL). Aiemmin tallennetut
+  pyynnöt poistettiin.
+
+**Miten**
+- Dokumentaatio → avaa dokumentti → Muokkaa tekstiä → numeroitu luettelo, Sarkain ja Shift+Sarkain.
+- Päätösjono: laskurilaatikot.
+- Tehtävä → AI-ehdotus → kirjoita lisätieto → Luo ehdotus → aikajanalla näkyy muistiinpano.
+- Asetukset → Perustiedot: Yhteydenottopyynnöt-osiota ei enää ole.
+
+**Testit:** T-118–T-121 · PR #33
+- Sisennys: kirjoita 1., sisennä 1.1., sisennä 1.1.1. ja 1.1.2., paina Enter ja Shift+Sarkain. Odotus: uusi kohta on 1.2.
+  Tallenna ja avaa uudelleen. Odotus: numerot ovat samat.
+- AI:n lisätieto: pyydä ehdotus lisätiedon kanssa. Odotus: lisätieto näkyy aikajanalla sisäisenä muistiinpanona.
+- Yhteydenotto: lähetä kotisivun lomake. Odotus: viesti tulee asetettuun sähköpostiin, eikä alustalla ole yhteydenottopyyntöjä.
+
 ## 18.10.2026 · Asetusten haku ja selkeämpi jako välilehdille
 
 **Mitä muutettiin**

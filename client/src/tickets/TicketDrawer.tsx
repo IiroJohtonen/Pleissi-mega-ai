@@ -359,6 +359,8 @@ export function TicketDrawer({
       } catch {
         setSuggestError(t("AI-ehdotus on kentässä, mutta sen tallennus luonnokseksi epäonnistui. Paina Tallenna luonnos."));
       }
+      // Lisätieto tallentui aikajanalle sisäiseksi muistiinpanoksi.
+      if (context) await onChanged();
     } catch (error) {
       let message = t("AI-ehdotuksen hakeminen epäonnistui. Yritä uudelleen.");
       try {

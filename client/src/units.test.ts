@@ -1,4 +1,5 @@
 import { tableToKeys } from "./views/Keys";
+import { htmlToRichText, numberListItems } from "./components/RichText";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatDay, formatTicketNumber } from "./format";
 import { t } from "./i18n";
@@ -176,5 +177,16 @@ describe("avainten tuonti", () => {
       { line: 3, apartment: "", code: "Y-1", type: "", note: "Varavain", state: "kadonnut" }
     ]);
     expect(tableToKeys(parseCsv("asunto;tyyppi\nA 12;Asunto\n")).missing).toEqual(["avainnumero"]);
+  });
+});
+
+describe("muokkaimen luettelot", () => {
+  it("ulkonnus alatason jälkeen jatkaa ylemmän tason numerointia (1.1.2 → 1.2)", () => {
+    // Selaimen sisennys tekee alatason luettelosta edellisen kohdan sisaruksen.
+    const root = document.createElement("div");
+    root.innerHTML = "<ol><li>Yksi</li><ol><li>A</li><ol><li>B</li><li>C</li></ol><li>D</li></ol><li>Kaksi</li></ol>";
+    numberListItems(root);
+    expect([...root.querySelectorAll("li")].map(li => li.getAttribute("data-number"))).toEqual(["1.", "1.1.", "1.1.1.", "1.1.2.", "1.2.", "2."]);
+    expect(htmlToRichText(root)).toBe("1. Yksi\n  1. A\n    1. B\n    2. C\n  2. D\n2. Kaksi");
   });
 });
