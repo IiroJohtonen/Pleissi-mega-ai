@@ -252,9 +252,9 @@ export function skipMessage(sourceMessageId: string) {
 }
 
 // Taloyhtiö isännöitsijän omaan laatikkoon tulleelle viestille: lähettäjän asuintalo, jos lähettäjä on
-// asukas; muuten yhtiö, jonka vastuuisännöitsijä laatikon omistaja on, jos niitä on yksi. Muuten yhtiötä ei
+// asukas. Yhtiötä ei päätellä laatikon omistajasta (käsittelijästä): jos lähettäjä ei ole asukas, yhtiötä ei
 // tunnisteta (unknown), ja tehtävä menee Taloyhtiö tunnistamatta -jonoon oletusyhtiö paikkamerkkinä.
-export function companyForUserMailbox(userId: string, senderEmail: string): { companyId: string; unknown: boolean } {
+export function companyForUserMailbox(_userId: string, senderEmail: string): { companyId: string; unknown: boolean } {
   const authorized = [...AUTHORIZED_COMPANY_IDS];
   const inList = (column: string) => `${column} IN (${authorized.map(() => "?").join(", ") || "NULL"})`;
   if (senderEmail) {
@@ -265,9 +265,7 @@ export function companyForUserMailbox(userId: string, senderEmail: string): { co
     `).get(senderEmail, ...authorized) as { company_id: string } | undefined;
     if (resident) return { companyId: resident.company_id, unknown: false };
   }
-  const managed = db.prepare(`SELECT id FROM companies WHERE manager_id = ? AND ${inList("id")}`)
-    .all(userId, ...authorized) as { id: string }[];
-  return managed.length === 1 ? { companyId: managed[0].id, unknown: false } : { companyId: DEFAULT_COMPANY_ID, unknown: true };
+  return { companyId: DEFAULT_COMPANY_ID, unknown: true };
 }
 
 // Tuo yhden saapuneen viestin. Taloyhtiön oman tilin viestit kuuluvat aina sille taloyhtiölle;

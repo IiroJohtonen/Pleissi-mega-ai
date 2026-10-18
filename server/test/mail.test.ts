@@ -72,8 +72,8 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.equal(mailboxOwnerId("office"), null);
     // Tunnettu asukas: hänen taloyhtiönsä, vaikka isännöitsijä hoitaa toista yhtiötä.
     assert.deepEqual(companyForUserMailbox("isannoitsija-2", "MATTI@example.com"), { companyId: "demo-company", unknown: false });
-    // Tuntematon lähettäjä: isännöitsijän ainoa oma yhtiö.
-    assert.deepEqual(companyForUserMailbox("isannoitsija-2", "tuntematon@example.com"), { companyId: "toinen-yhtio", unknown: false });
+    // Tuntematon lähettäjä: yhtiötä ei päätellä käsittelijästä, vaikka hänellä on vain yksi oma yhtiö.
+    assert.deepEqual(companyForUserMailbox("isannoitsija-2", "tuntematon@example.com"), { companyId: "demo-company", unknown: true });
     // Yhtiötä ei tunnisteta: tehtävä menee jonoon oletusyhtiö paikkamerkkinä.
     assert.deepEqual(companyForUserMailbox("joku-muu", ""), { companyId: "demo-company", unknown: true });
   });

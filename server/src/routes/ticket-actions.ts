@@ -4,6 +4,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
+import { withAiLog } from "../ai-log.js";
 import { selectKnowledgeChunks } from "../knowledge-chunks.js";
 import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
 import { attachmentsDir, db } from "../db.js";
@@ -116,7 +117,8 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
   const chunks = selectKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? ""].join("\n"));
   // Arkaluonteinen tehtävä ei mene AI:lle: ehdotus tehdään dokumentaatiohaulla.
   const sensitive = detectSensitivity(ticket.id, `${ticket.subject}\n${conversation}`);
-  const suggestion = await suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", { allowAi: !sensitive });
+  const { result: suggestion } = await withAiLog(ticket.id, () =>
+    suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", { allowAi: !sensitive }));
   const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
   const timestamp = now();
 

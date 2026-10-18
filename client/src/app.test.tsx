@@ -295,6 +295,18 @@ describe("sovellus", () => {
     }
   });
 
+  it("näyttää arkaluonteisen tehtävän tägin päätösjonossa", async () => {
+    const original = responses["/tickets?companyId=all"];
+    responses["/tickets?companyId=all"] = [{ ...overdueTicket, id: "ticket-s", ticket_number: 7, subject: "Luiska rollaattorille", sensitive: 1 }];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      expect(await screen.findByText("Luiska rollaattorille")).toBeTruthy();
+      expect(screen.getAllByText(/Arkaluonteinen/).length).toBeGreaterThan(0);
+    } finally {
+      responses["/tickets?companyId=all"] = original;
+    }
+  });
+
   it("asukas lähettää huoltotyötilauksen portaalin lomakkeella", async () => {
     const calls = mockApi();
     const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };

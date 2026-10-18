@@ -3,6 +3,22 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · AI:lle lähtevä tieto lokiin, tehtävän taloyhtiö ilmoittajasta ja arkaluonteisen tehtävän tägi
+
+**Mitä muutettiin**
+- Jokainen AI:lle lähtevä pyyntö kirjataan Lokiin täsmälleen siinä muodossa kuin se lähtee (malli, ohje ja viestit,
+  henkilötiedot jo peitettyinä). Merkintä "Lähetetty AI:lle" näkyy Lokissa ja tehtävän aikajanalla, ja sisällön saa auki.
+- Isännöitsijän omaan postilaatikkoon tulleen viestin taloyhtiö päätellään vain ilmoittajasta. Jos ilmoittaja ei ole
+  asukastaulussa, taloyhtiötä ei aseteta (tehtävä menee Tunnistamattomat-jonoon) eikä yhtiötä päätellä käsittelijästä.
+- Arkaluonteinen tehtävä näkyy päätösjonossa ja tehtävälistoissa violetilla 🔒 Arkaluonteinen -tägillä.
+
+**Miten**
+- Asetukset → Isännöitsijätoimiston tiedot → Tietoturva → Loki: merkintä "Lähetetty AI:lle: …" → Näytä AI:lle lähetetty tieto.
+  Sama tehtävän aikajanalla.
+- Päätösjono ja Kaikki tehtävät: tägi tehtävän kortissa ja otsikon alla.
+
+**Testit:** T-102–T-105
+
 ## 18.10.2026 · Sähköpostitilin yhdistäminen: selkeä ilmoitus, missä osoite jo on
 
 **Mitä muutettiin**

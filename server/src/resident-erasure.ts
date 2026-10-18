@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { deleteAiRequests } from "./ai-log.js";
 import { attachmentsDir, db } from "./db.js";
 import { id, now } from "./util.js";
 
@@ -70,6 +71,8 @@ export function eraseResidentFromTicket(ticketId: string, resident: ErasedReside
     db.prepare("UPDATE messages SET body = ?, subject = ? WHERE ticket_id = ? AND channel != 'contractor'").run(ERASED_TEXT, ERASED_TEXT, ticketId);
     db.prepare("UPDATE messages SET sender = ? WHERE ticket_id = ? AND direction = 'inbound'").run(ERASED_NAME, ticketId);
     db.prepare("UPDATE tickets SET draft = '', subject = ?, summary = '', ai_reason = '' WHERE id = ?").run(ERASED_TEXT, ticketId);
+    // AI:lle lähetetty sisältö sisälsi asukkaan viestin.
+    deleteAiRequests(ticketId);
     const files = db.prepare(
       "SELECT id FROM attachments WHERE ticket_id = ? AND direction IN ('inbound', 'portal')"
     ).all(ticketId) as { id: string }[];

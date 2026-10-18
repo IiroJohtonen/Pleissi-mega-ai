@@ -3,6 +3,7 @@ import { z } from "zod";
 import { canSeeTicket, isQueueHandler, RESTRICTED_SUBJECT, unidentifiedQueueSettings, visibleCompanyIds } from "../access.js";
 import { isAdmin, requireAdmin, requireManager, USER_ROLES } from "../auth.js";
 import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
+import { aiRequestPayload } from "../ai-log.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
 import { id, now } from "../util.js";
@@ -151,6 +152,23 @@ officeRouter.get("/audit", requireManager, (_req, res) => {
     company_id && !canSeeTicket({ company_id, sensitive, assignee_id, company_pending })
       ? { ...row, ticket_subject: RESTRICTED_SUBJECT, email_body: null, details: "{}" }
       : row));
+});
+
+// AI:lle lähetetty sisältö lokimerkinnästä. Tehtävään liittyvän näkee se, joka näkee tehtävän;
+// muut (esim. dokumenttien pilkonta) vain pääkäyttäjä.
+officeRouter.get("/audit/:id/ai-request", requireManager, (req, res) => {
+  const request = aiRequestPayload(req.params.id);
+  if (!request) return res.status(404).json({ error: "AI-pyynnön sisältöä ei löytynyt." });
+  if (request.ticket_id) {
+    const ticket = db.prepare("SELECT company_id, sensitive, assignee_id, company_pending FROM tickets WHERE id = ?").get(request.ticket_id) as
+      Parameters<typeof canSeeTicket>[0] | undefined;
+    if (!ticket || !visibleCompanyIds().includes(ticket.company_id) || !canSeeTicket(ticket)) {
+      return res.status(404).json({ error: "AI-pyynnön sisältöä ei löytynyt." });
+    }
+  } else if (!isAdmin(res)) {
+    return res.status(404).json({ error: "AI-pyynnön sisältöä ei löytynyt." });
+  }
+  res.json(request);
 });
 
 // AI:n käyttö ja kustannusarvio tältä kuulta sekä kuuden edellisen kuukauden historia.

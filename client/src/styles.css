@@ -4865,3 +4865,37 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .multi-select-menu label:hover { background: #eef1f5; }
 .multi-select-menu input { width: auto !important; min-width: 0 !important; margin: 0; padding: 0; }
 .multi-select-menu .multi-select-all { border-bottom: 1px solid #eceef0; border-radius: 8px 8px 0 0; padding-bottom: 8px; margin-bottom: 2px; font-weight: 700; }
+
+/* Arkaluonteisen tehtävän tägi päätösjonossa ja tehtävälistassa */
+.sensitive-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid #c9a7e8;
+  border-radius: 99px;
+  background: #f4ebfc;
+  color: #5b2a86;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
+
+/* AI:lle lähetetty sisältö lokissa ja tehtävän aikajanalla */
+.ai-request pre {
+  max-height: 420px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid #e2e4e6;
+  border-radius: 8px;
+  background: #f7f8f9;
+  color: #1d2329;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.timeline-event .ai-request { margin-top: 4px; font-size: 12px; }

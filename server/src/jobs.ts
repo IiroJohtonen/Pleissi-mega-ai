@@ -1,5 +1,6 @@
 import { AUTHORIZED_COMPANY_IDS } from "./access.js";
 import { refreshBudgetAlerts } from "./ai-budget.js";
+import { purgeOrphanAiRequests } from "./ai-log.js";
 import { raiseAlert, resolveAlert } from "./alerts.js";
 import { createBackup, hasBackupToday } from "./backup.js";
 import { processPendingErasures } from "./resident-erasure.js";
@@ -101,6 +102,7 @@ async function purgeExpiredData() {
   const tickets = db.prepare("SELECT id FROM tickets WHERE status = 'closed' AND updated_at < ?").all(cutoff) as { id: string }[];
   for (const ticket of tickets) await deleteTicket(ticket.id);
   const logRows = db.prepare("DELETE FROM audit_log WHERE created_at < ?").run(cutoff).changes;
+  purgeOrphanAiRequests();
 
   if (tickets.length > 0 || logRows > 0) {
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(

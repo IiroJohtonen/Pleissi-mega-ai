@@ -15,6 +15,7 @@ import { AI_SUGGESTED_SQL, id, NEW_REPLY_SQL, now, WAITING_SINCE_SQL, TICKET_STA
 import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
 import { moveTicketToCompany, suggestCompany } from "../ticket-company.js";
 import { ticketForm } from "../portal-form-data.js";
+import { deleteAiRequests } from "../ai-log.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -39,6 +40,7 @@ export async function deleteTicket(ticketId: string) {
     }
     db.prepare("DELETE FROM renovation_notices WHERE ticket_id = ?").run(ticketId);
     db.prepare("DELETE FROM portal_forms WHERE ticket_id = ?").run(ticketId);
+    deleteAiRequests(ticketId);
     db.prepare("DELETE FROM tickets WHERE id = ?").run(ticketId);
   })();
   for (const file of files) await fs.rm(path.join(attachmentsDir, file.id), { force: true });
