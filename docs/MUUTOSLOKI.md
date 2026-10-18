@@ -24,7 +24,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Tehtävä → AI-ehdotus → kirjoita lisätieto → Luo ehdotus → aikajanalla näkyy muistiinpano.
 - Asetukset → Perustiedot: Yhteydenottopyynnöt-osiota ei enää ole.
 
-**Testit** (lisättävä testaussivulle)
+**Testit:** T-118–T-121 · PR #33
 - Sisennys: kirjoita 1., sisennä 1.1., sisennä 1.1.1. ja 1.1.2., paina Enter ja Shift+Sarkain. Odotus: uusi kohta on 1.2.
   Tallenna ja avaa uudelleen. Odotus: numerot ovat samat.
 - AI:n lisätieto: pyydä ehdotus lisätiedon kanssa. Odotus: lisätieto näkyy aikajanalla sisäisenä muistiinpanona.

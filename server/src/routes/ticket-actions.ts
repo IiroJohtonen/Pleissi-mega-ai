@@ -103,16 +103,6 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
   const options = z.object({ context: z.string().trim().max(2000).optional() }).safeParse(req.body ?? {});
   if (!options.success) return res.status(400).json({ error: "Lisätieto saa olla enintään 2000 merkkiä." });
 
-  // Lisätieto tallennetaan tehtävän aikajanalle sisäiseksi muistiinpanoksi, jotta se säilyy tehtävän tiedoissa.
-  if (options.data.context) {
-    const noted = now();
-    db.prepare("INSERT INTO ticket_notes VALUES (?, ?, ?, ?, ?)").run(
-      id("note"), req.params.id, res.locals.user?.name ?? "Käsittelijä",
-      `Lisätieto AI:n vastausehdotukseen:\n${options.data.context}`, noted
-    );
-    db.prepare("UPDATE tickets SET updated_at = ? WHERE id = ?").run(noted, req.params.id);
-  }
-
   const messages = db.prepare(
     "SELECT direction, body FROM messages WHERE ticket_id = ? ORDER BY created_at"
   ).all(req.params.id) as { direction: string; body: string }[];
@@ -150,6 +140,15 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     JSON.stringify({ source_id: source?.knowledgeId ?? null, chunk_id: source?.id ?? null, used_ai: suggestion.usedAi, sensitive }),
     timestamp
   );
+
+  // Lisätieto tallennetaan tehtävän aikajanalle sisäiseksi muistiinpanoksi, jotta se säilyy tehtävän tiedoissa.
+  // Vasta onnistuneen ehdotuksen jälkeen, jotta epäonnistunut ja uudelleen yritetty pyyntö ei tee kahta muistiinpanoa.
+  if (options.data.context) {
+    db.prepare("INSERT INTO ticket_notes VALUES (?, ?, ?, ?, ?)").run(
+      id("note"), req.params.id, res.locals.user?.name ?? "Käsittelijä",
+      `Lisätieto AI:n vastausehdotukseen:\n${options.data.context}`, timestamp
+    );
+  }
 
   res.json({
     draft: suggestion.draft,
