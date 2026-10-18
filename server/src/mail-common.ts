@@ -92,18 +92,44 @@ export function mailAccountFor(companyId?: string): string {
   return db.prepare("SELECT 1 FROM gmail_accounts WHERE id = ?").get(companyId) ? companyId : OFFICE_ACCOUNT;
 }
 
+// Kertoo, mihin sama osoite on jo yhdistetty. Tili, jonka taloyhtiötä tai käyttäjää ei enää ole,
+// poistetaan, jotta se ei estä yhdistämistä. Palauttaa null, jos osoitteen voi yhdistää.
+export function mailAccountConflict(email: string, accountId: string): string | null {
+  const others = db.prepare("SELECT id FROM gmail_accounts WHERE lower(trim(email)) = lower(trim(?)) AND id != ?")
+    .all(email, accountId) as { id: string }[];
+  for (const { id } of others) {
+    if (id === OFFICE_ACCOUNT) {
+      return "Tämä sähköpostiosoite on jo toimiston sähköpostitilinä (Asetukset → Isännöitsijätoimiston tiedot → Toimisto). "
+        + "Taloyhtiö käyttää toimiston tiliä automaattisesti ilman omaa tiliä. Jos haluat osoitteen taloyhtiölle, poista se ensin toimiston tililtä.";
+    }
+    const owner = mailboxOwnerId(id);
+    if (owner) {
+      const user = db.prepare("SELECT name FROM users WHERE id = ?").get(owner) as { name: string } | undefined;
+      if (!user) {
+        db.prepare("DELETE FROM gmail_accounts WHERE id = ?").run(id);
+        continue;
+      }
+      return `Tämä sähköpostiosoite on jo käyttäjän ${user.name} oma postilaatikko (Asetukset → Käyttäjän asetukset → Oma sähköpostitili). `
+        + "Poista se sieltä ensin, jos haluat yhdistää osoitteen tänne.";
+    }
+    const company = db.prepare("SELECT name FROM companies WHERE id = ?").get(id) as { name: string } | undefined;
+    if (!company) {
+      db.prepare("DELETE FROM gmail_accounts WHERE id = ?").run(id);
+      continue;
+    }
+    return `Tämä sähköpostiosoite on jo yhdistetty taloyhtiöön ${company.name} (taloyhtiön tiedot → Taloyhtiön sähköpostitili). `
+      + "Poista se sieltä ensin, jos haluat yhdistää osoitteen tänne. Samaa osoitetta ei voi käyttää kahdessa paikassa, koska viestit tuotaisiin kahdesti.";
+  }
+  return null;
+}
+
 // Tallentaa yhdistetyn tilin. Samaa osoitetta ei voi yhdistää kahteen paikkaan, koska silloin samat
 // viestit tuotaisiin kahdesti.
 export function saveMailAccount(input: {
   accountId: string; email: string; provider: MailProvider; settings?: Record<string, unknown>; token: string; connectedBy: string;
 }) {
-  const other = db.prepare("SELECT id FROM gmail_accounts WHERE lower(email) = lower(?) AND id != ?")
-    .get(input.email, input.accountId) as { id: string } | undefined;
-  if (other) {
-    throw new Error(other.id === OFFICE_ACCOUNT
-      ? "Tämä sähköpostitili on jo toimiston tilinä. Taloyhtiö käyttää sitä automaattisesti ilman omaa tiliä."
-      : "Tämä sähköpostitili on jo yhdistetty toiseen taloyhtiöön.");
-  }
+  const conflict = mailAccountConflict(input.email, input.accountId);
+  if (conflict) throw new Error(conflict);
   db.prepare(`
     INSERT INTO gmail_accounts (id, email, token, connected_at, connected_by, provider, settings) VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET email = excluded.email, token = excluded.token, connected_at = excluded.connected_at,

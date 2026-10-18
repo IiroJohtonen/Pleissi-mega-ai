@@ -117,6 +117,36 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     for (const accountId of ["office", "user:isannoitsija-2", "user:isannoitsija-3", "demo-company"]) common.disconnectMailAccount(accountId);
   });
 
+  it("kertoo, mihin sama osoite on jo yhdistetty, ja vapauttaa poistetun yhtiön tai käyttäjän tilin", async () => {
+    const { common, secrets } = modules;
+    const save = (accountId: string, email: string) => common.saveMailAccount({
+      accountId, email, provider: "imap", token: secrets.encryptSecret("salasana"), connectedBy: "testi"
+    });
+    save("toinen-yhtio", "Posti@Toimisto.fi");
+    assert.throws(() => save("demo-company", " posti@toimisto.fi "), /taloyhtiöön As Oy Toinen/);
+    // Saman paikan uudelleenyhdistäminen onnistuu.
+    save("toinen-yhtio", "posti@toimisto.fi");
+    common.disconnectMailAccount("toinen-yhtio");
+
+    const { db } = await import("../src/db.js");
+    db.prepare("INSERT OR IGNORE INTO users (id, name, email, role, password_hash, created_at) VALUES ('kayttaja-posti', 'Hanna Testi', 'hanna.testi@toimisto.fi', 'Isännöitsijä', 'x', '2026-01-01')").run();
+    save("user:kayttaja-posti", "oma@toimisto.fi");
+    assert.throws(() => save("demo-company", "oma@toimisto.fi"), /käyttäjän Hanna Testi oma postilaatikko/);
+    common.disconnectMailAccount("user:kayttaja-posti");
+
+    save("office", "toimisto@toimisto.fi");
+    assert.throws(() => save("demo-company", "toimisto@toimisto.fi"), /toimiston sähköpostitilinä/);
+    common.disconnectMailAccount("office");
+
+    // Tili, jonka taloyhtiötä tai käyttäjää ei enää ole, ei estä yhdistämistä.
+    save("poistettu-yhtio", "vanha@toimisto.fi");
+    save("user:poistettu-kayttaja", "vanha2@toimisto.fi");
+    save("demo-company", "vanha@toimisto.fi");
+    save("toinen-yhtio", "vanha2@toimisto.fi");
+    for (const accountId of ["demo-company", "toinen-yhtio"]) common.disconnectMailAccount(accountId);
+    assert.equal(common.getMailAccount("poistettu-yhtio"), undefined);
+  });
+
   it("lähettää vastauksen Microsoft 365 -tililtä alkuperäiseen viestiin", async () => {
     const { mail, common, secrets } = modules;
     common.saveMailAccount({

@@ -3,6 +3,20 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · Sähköpostitilin yhdistäminen: selkeä ilmoitus, missä osoite jo on
+
+**Mitä muutettiin**
+- Kun saman sähköpostiosoitteen yrittää yhdistää toiseen paikkaan, ilmoitus kertoo tarkalleen, missä osoite jo on:
+  toimiston tilinä, tietyn käyttäjän omana postilaatikkona vai tietyssä taloyhtiössä, ja mistä sen voi poistaa.
+  Aiemmin ilmoitus väitti aina "yhdistetty toiseen taloyhtiöön", vaikka osoite olisi ollut esimerkiksi oma postilaatikko.
+- Isot ja pienet kirjaimet sekä välilyönnit osoitteen ympärillä eivät enää vaikuta vertailuun.
+- Jos osoite on jäänyt tilille, jonka taloyhtiötä tai käyttäjää ei enää ole, vanha tili poistetaan eikä se estä yhdistämistä.
+
+**Miten**
+- Asetukset tai taloyhtiön tiedot → Taloyhtiön sähköpostitili → Yhdistä. Jos osoite on jo käytössä, ilmoitus kertoo missä.
+
+**Testit:** T-100–T-101
+
 ## 17.10.2026 · Tila-monivalinta, Umpeutumassa-suodatin ja dokumenttihaun korjaus
 
 **Mitä muutettiin**
