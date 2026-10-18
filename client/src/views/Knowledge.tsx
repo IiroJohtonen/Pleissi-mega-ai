@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, FactDropdown, usePaged } from "../components/common";
 import { RichText, RichTextEditor, type RichTextEditorHandle } from "../components/RichText";
-import { formatDate, formatDateOnly, formatDay } from "../format";
+import { formatDate, formatDateOnly, formatDay, formatDocumentNumber } from "../format";
 import { api, API, errorMessage, isAdmin, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
 import { locale, t } from "../i18n";
@@ -59,11 +59,12 @@ function validityShort(entry: KnowledgeEntry) {
   return t("Toistaiseksi");
 }
 
-type KnowledgeSortKey = "title" | "kind" | "audience" | "state" | "validity" | "created";
+type KnowledgeSortKey = "number" | "title" | "kind" | "audience" | "state" | "validity" | "created";
 type KnowledgeSort = { key: KnowledgeSortKey; descending: boolean };
 
 // Listan sarakkeet samassa järjestyksessä kuin rivin kentät.
 const knowledgeColumns: { key: KnowledgeSortKey; label: string }[] = [
+  { key: "number", label: t("Numero") },
   { key: "title", label: t("Otsikko") },
   { key: "kind", label: t("Tyyppi") },
   { key: "audience", label: t("Käyttö") },
@@ -75,6 +76,7 @@ const knowledgeColumns: { key: KnowledgeSortKey; label: string }[] = [
 // Sarakkeessa näkyvä teksti, josta sarakekohtainen haku etsii.
 function knowledgeColumnText(entry: KnowledgeEntry, key: KnowledgeSortKey) {
   switch (key) {
+    case "number": return `#${formatDocumentNumber(entry.doc_number)}`;
     case "title": return `${entry.title} ${entry.tags ?? ""} ${entry.content}`;
     case "kind": return kindLabel(entry.kind);
     case "audience": return audienceLabel(entry.audience);
@@ -86,6 +88,7 @@ function knowledgeColumnText(entry: KnowledgeEntry, key: KnowledgeSortKey) {
 
 function compareKnowledge(a: KnowledgeEntry, b: KnowledgeEntry, key: KnowledgeSortKey) {
   switch (key) {
+    case "number": return (a.doc_number ?? 0) - (b.doc_number ?? 0);
     case "title": return a.title.localeCompare(b.title, "fi", { numeric: true });
     // Päättymätön voimassaolo järjestyy viimeiseksi.
     case "validity": return (a.valid_until ?? "9999").localeCompare(b.valid_until ?? "9999");
@@ -104,23 +107,28 @@ export function Knowledge({
   companies,
   initialEntryId,
   audience,
-  onCompanyChange
+  onCompanyChange,
+  onOpenEntry
 }: {
   companyId: string;
   companies: Company[];
+  // Avattu tietue osoitteesta (#/knowledge/<tietue>).
   initialEntryId: string | null;
   audience?: KnowledgeAudience;
   onCompanyChange: (companyId: string) => void;
+  // Tietueen avaaminen ja sulkeminen vaihtaa osoitetta, jolloin jokainen tietue on oma sivunsa.
+  onOpenEntry: (entryId: string | null) => void;
 }) {
   return (
     <section className="content">
-      {audience && <a className="back-link" href="#/knowledge">{t("← Dokumentaatio")}</a>}
+      {audience && !initialEntryId && <a className="back-link" href="#/knowledge">{t("← Dokumentaatio")}</a>}
       <KnowledgeBase
         companyId={companyId}
         initialEntryId={initialEntryId}
         audience={audience}
         companies={companies}
         onCompanyChange={onCompanyChange}
+        onOpenEntry={onOpenEntry}
       />
     </section>
   );
@@ -131,7 +139,8 @@ export function KnowledgeBase({
   initialEntryId = null,
   audience,
   companies,
-  onCompanyChange
+  onCompanyChange,
+  onOpenEntry
 }: {
   companyId: string;
   initialEntryId?: string | null;
@@ -139,6 +148,8 @@ export function KnowledgeBase({
   // Taloyhtiön valinta suodattimissa; puuttuu, kun näkymä on taloyhtiön omalla sivulla.
   companies?: Company[];
   onCompanyChange?: (companyId: string) => void;
+  // Annettuna avattu tietue on osoitteessa ja näytetään omana sivunaan listan tilalla.
+  onOpenEntry?: (entryId: string | null) => void;
 }) {
   const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +157,10 @@ export function KnowledgeBase({
   const [form, setForm] = useState<KnowledgeFormState | null>(null);
   // Tehtävän lähdelinkki on muotoa "<tietue>:<pala>", jolloin pala näytetään korostettuna.
   const [initialKnowledgeId, initialChunkId] = (initialEntryId ?? "").split(":");
-  const [openEntryId, setOpenEntryId] = useState<string | null>(initialKnowledgeId || null);
+  const [localEntryId, setLocalEntryId] = useState<string | null>(initialKnowledgeId || null);
+  const routed = Boolean(onOpenEntry);
+  const openEntryId = routed ? initialKnowledgeId || null : localEntryId;
+  const setOpenEntryId = (entryId: string | null) => (onOpenEntry ? onOpenEntry(entryId) : setLocalEntryId(entryId));
   const [notice, setNotice] = useState("");
   const [moveListError, setMoveListError] = useState("");
   const [question, setQuestion] = useState("");
@@ -269,6 +283,26 @@ export function KnowledgeBase({
 
   // Listan otsikkona taloyhtiö, jonka dokumentaatiota näytetään.
   const companyName = companies?.find(company => company.id === companyId)?.name;
+
+  // Osoitteesta avattu tietue näytetään omana sivunaan listan tilalla; selaimen takaisin-painike palaa listaan.
+  if (routed && openEntryId && !form) {
+    return (
+      <KnowledgeDetailDrawer
+        asPage
+          entryId={openEntryId}
+        highlightChunkId={openEntryId === initialKnowledgeId ? initialChunkId || null : null}
+        companies={companies}
+        onOpenVersion={setOpenEntryId}
+        onClose={() => setOpenEntryId(null)}
+        onEdit={(mode, entry) => setForm(mode === "validity" ? { mode, entry } : { mode: entry.kind, replaces: entry })}
+        onRemove={async entry => {
+          await removeEntry(entry);
+          setOpenEntryId(null);
+        }}
+        onChanged={loadEntries}
+      />
+    );
+  }
 
   return (
     <div className="knowledge-base">
@@ -444,7 +478,7 @@ export function KnowledgeBase({
             </button>
           )}
           {isManager() && <button className="secondary" onClick={() => setForm({ mode: "document" })}>{t("Lataa dokumentti")}</button>}
-          {isManager() && <button className="secondary" onClick={() => setForm({ mode: "fact" })}>{t("Lisää vakiotieto")}</button>}
+          {isManager() && <button className="secondary" onClick={() => setForm({ mode: "fact" })}>{t("Luo dokumentti")}</button>}
         </div>
       </div>
 
@@ -517,6 +551,7 @@ export function KnowledgeBase({
             role="button"
             tabIndex={0}
           >
+            <span className="ticket-number">#{formatDocumentNumber(entry.doc_number)}</span>
             <div className="ticket-row-main">
               <strong>{entry.title}</strong>
               <span>{entry.kind === "document" && entry.file_name ? `${entry.file_name} · ` : ""}{entry.content || t("Ei luettua tekstiä.")}</span>
@@ -539,7 +574,7 @@ export function KnowledgeBase({
 
       {!loading && !loadError && paged.pager}
 
-      {openEntryId && !form && (
+      {!routed && openEntryId && !form && (
         <KnowledgeDetailDrawer
           entryId={openEntryId}
           highlightChunkId={openEntryId === initialKnowledgeId ? initialChunkId || null : null}
@@ -574,6 +609,7 @@ export function KnowledgeBase({
 }
 
 function KnowledgeDetailDrawer({
+  asPage = false,
   entryId,
   highlightChunkId = null,
   onOpenVersion,
@@ -583,6 +619,8 @@ function KnowledgeDetailDrawer({
   onChanged,
   companies = []
 }: {
+  // true = tietue omana sivunaan (oma osoite), muuten sivulta avautuva paneeli.
+  asPage?: boolean;
   entryId: string;
   highlightChunkId?: string | null;
   companies?: Company[];
@@ -704,15 +742,19 @@ function KnowledgeDetailDrawer({
   // Voimassa olevan tietueen tilaksi voi valita AI:n käytön tai sisäisen dokumentaation.
   const stateEditable = canEdit && (detail?.state === "in_use" || detail?.state === "internal");
 
+  const Frame = asPage ? "section" : "div";
+  const Card = asPage ? "article" : "aside";
   return (
-    <div className="overlay">
-      <aside className={`drawer knowledge-drawer${showChunks ? " wide" : ""}`}>
-        <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>
-        <button className="close" onClick={onClose}>×</button>
+    <Frame className={asPage ? "knowledge-page" : "overlay"}>
+      {asPage && <button type="button" className="back-link" onClick={onClose}>{t("← Dokumentaatio")}</button>}
+      <Card className={`drawer knowledge-drawer${showChunks ? " wide" : ""}`}>
+        {!asPage && <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>}
+        {!asPage && <button className="close" onClick={onClose}>×</button>}
         {failed ? <p className="send-error">{t("Tietojen lataus epäonnistui.")}</p>
           : !detail ? <p className="muted">{t("Ladataan…")}</p> : (
           <>
             <div className="knowledge-head">
+              {detail.doc_number ? <span className="ticket-number">#{formatDocumentNumber(detail.doc_number)}</span> : null}
               <span className="type">{detail.kind === "document" ? t("Dokumentti") : t("Vakiotieto")}</span>
               <h2>{detail.title}</h2>
             </div>
@@ -874,7 +916,7 @@ function KnowledgeDetailDrawer({
               {!editingText && (!showChunks || docView === "text") && (
               <section className="drawer-section knowledge-text">
                 {!showChunks && <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>}
-                {detail.kind === "document" && detail.content
+                {(detail.kind === "document" && detail.content) || detail.formatted
                   ? <RichText className="rich-page" text={detail.formatted ?? detail.content} />
                   : (
                     <p className="knowledge-content">
@@ -902,8 +944,8 @@ function KnowledgeDetailDrawer({
             </section>
           </>
         )}
-      </aside>
-    </div>
+      </Card>
+    </Frame>
   );
 }
 
@@ -924,7 +966,10 @@ function KnowledgeFormModal({
 }) {
   const current = form.mode === "validity" ? form.entry : form.replaces;
   const [title, setTitle] = useState(current?.title ?? "");
-  const [answer, setAnswer] = useState(form.mode === "fact" ? current?.content ?? "" : "");
+  // Vakiotiedon vastaus muotoiltuna (otsikot, lihavoinnit, luettelot); muokkain kertoo arvon tallennettaessa.
+  const initialAnswer = form.mode === "fact" ? (current as { formatted?: string | null } | undefined)?.formatted ?? current?.content ?? "" : "";
+  const [answerFilled, setAnswerFilled] = useState(Boolean(initialAnswer.trim()));
+  const answerEditor = useRef<RichTextEditorHandle>(null);
   const [file, setFile] = useState<File | null>(null);
   const [validFrom, setValidFrom] = useState(current?.valid_from ?? "");
   const [validUntil, setValidUntil] = useState(current?.valid_until ?? "");
@@ -936,11 +981,11 @@ function KnowledgeFormModal({
 
   const heading = form.mode === "validity" ? t("Merkitse voimassaoloaika")
     : form.mode === "document" ? (form.replaces ? t("Muokkaa dokumenttia") : t("Lataa dokumentti"))
-    : (form.replaces ? t("Muokkaa vakiotietoa") : t("Lisää vakiotieto"));
+    : (form.replaces ? t("Muokkaa vakiotietoa") : t("Luo dokumentti"));
 
   const canSubmit = form.mode === "validity" ? true
     : form.mode === "document" ? Boolean(file)
-    : Boolean(title.trim() && answer.trim());
+    : Boolean(title.trim() && answerFilled);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -954,10 +999,12 @@ function KnowledgeFormModal({
         });
         await onDone("");
       } else if (form.mode === "fact") {
+        const formatted = answerEditor.current?.value() ?? initialAnswer;
         await api(`/companies/${encodeURIComponent(companyId)}/knowledge/facts`, {
           method: "POST",
           body: JSON.stringify({
-            question: title, answer, validFrom, validUntil, replaces: form.replaces?.id, audience: isNew ? target : undefined
+            question: title, answer: formatted, formatted, validFrom, validUntil, replaces: form.replaces?.id,
+            audience: isNew ? target : undefined
           })
         });
         await onDone("");
@@ -1002,7 +1049,8 @@ function KnowledgeFormModal({
 
   return (
     <div className="overlay">
-      <aside className="drawer form-drawer">
+      {/* Vakiotiedon luonti saa leveän näkymän, jotta pitkänkin vastauksen kirjoittaminen ja muotoilu onnistuu. */}
+      <aside className={`drawer form-drawer${form.mode === "fact" ? " knowledge-fact-form" : ""}`}>
         <button type="button" className="drawer-back" onClick={onClose}>{t("← Takaisin")}</button>
         <button className="close" onClick={onClose}>×</button>
         <h2>{heading}</h2>
@@ -1051,10 +1099,14 @@ function KnowledgeFormModal({
                 <span>{t("Kysymys tai aihe")}</span>
                 <input value={title} onChange={event => setTitle(event.target.value)} placeholder={t("Esim. Miten saunavuoro varataan?")} />
               </label>
-              <label>
+              <div className="knowledge-fact-answer">
                 <span>{t("Vastaus")}</span>
-                <textarea value={answer} onChange={event => setAnswer(event.target.value)} rows={5} placeholder={t("Esim. Saunavuorot varataan huoltoyhtiöltä.")} />
-              </label>
+                <RichTextEditor
+                  ref={answerEditor}
+                  initial={initialAnswer}
+                  onDirty={() => setAnswerFilled(Boolean(answerEditor.current?.value().trim()))}
+                />
+              </div>
             </>
           )}
 

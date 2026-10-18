@@ -4,7 +4,7 @@ import { companyIdFromContext } from "../access.js";
 import { db } from "../db.js";
 import { notifyResident } from "../notify.js";
 import { id, now } from "../util.js";
-import { PARKING_TYPES, setParkingHolder, syncParkingHolders } from "./parking.js";
+import { parkingOptions, setParkingHolder, syncParkingHolders } from "./parking.js";
 import { portalResident } from "./portal.js";
 
 export const waitlistRouter: Router = express.Router();
@@ -28,10 +28,14 @@ waitlistRouter.post("/portal/waitlist", (req, res) => {
   const resident = portalResident(res);
   const parsed = z.object({
     resource: z.enum(WAITLIST_RESOURCES),
-    parkingType: z.union([z.literal(""), z.enum(PARKING_TYPES)]).default(""),
+    parkingType: z.string().trim().max(60).default(""),
     note: z.string().trim().max(300).default("")
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista jonon tiedot." });
+  // Toivottu paikkatyyppi on jokin taloyhtiön autopaikkavaihtoehdoista; tyhjä = mikä tahansa paikka.
+  if (parsed.data.parkingType && !parkingOptions(resident.companyId).some(option => option.type === parsed.data.parkingType)) {
+    return res.status(400).json({ error: "Valitse paikkatyyppi taloyhtiön autopaikkavaihtoehdoista." });
+  }
 
   const existing = db.prepare(
     "SELECT 1 FROM waitlist WHERE resident_id = ? AND resource = ? AND status IN ('waiting', 'offered')"
@@ -43,6 +47,11 @@ waitlistRouter.post("/portal/waitlist", (req, res) => {
     .run(waitlistId, resident.companyId, parsed.data.resource,
       parsed.data.resource === "parking" ? parsed.data.parkingType : "", resident.id, parsed.data.note, now());
   res.status(201).json({ ok: true, waitlistId });
+});
+
+// Taloyhtiön autopaikkavaihtoehdot hintoineen asukkaan jonolomakkeelle.
+waitlistRouter.get("/portal/parking-options", (_req, res) => {
+  res.json(parkingOptions(portalResident(res).companyId));
 });
 
 // Asukas näkee vain omat jonopaikkansa ja sijansa, ei muiden jonottajien tietoja.

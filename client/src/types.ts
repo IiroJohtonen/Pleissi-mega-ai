@@ -88,6 +88,8 @@ export type KnowledgeEntry = {
   pending_version_id?: string | null;
   // Dokumentin pilkonta taustalla: processing | ready | failed.
   processing_state?: string;
+  // Dokumenttinumero (näytetään muodossa #K000123); sama kaikilla versioilla.
+  doc_number?: number | null;
 };
 
 // Tietopala: dokumentista tai vakiotiedosta poimittu yksi tieto.

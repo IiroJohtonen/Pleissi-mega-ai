@@ -8,6 +8,7 @@ import { db } from "./db.js";
 import { sendEmail } from "./mail.js";
 import { deleteTicket } from "./routes/tickets.js";
 import { id, now, today, WAITING_SINCE_SQL } from "./util.js";
+import { formatTicketNumber } from "./numbers.js";
 
 // ---------------------------------------------------------------------------------------------
 // Muistutukset: käsittelijä saa kerran päivässä koosteen tehtävistään, joiden määräaika on mennyt tai
@@ -57,7 +58,7 @@ async function sendReminderDigests() {
     if (!user) continue;
 
     const lines = rows.filter(row => row.user_id === userId).map(row => {
-      const number = String(row.ticket_number ?? "").padStart(4, "0");
+      const number = formatTicketNumber(row.ticket_number);
       const reasons = [
         ...(row.due_date && row.due_date < day ? [`määräaika oli ${finnishDate(row.due_date)}`] : []),
         ...(row.due_date && row.due_date >= day && row.due_date <= dueLimit ? [`määräaika ${finnishDate(row.due_date)}`] : []),

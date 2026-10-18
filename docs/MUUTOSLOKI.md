@@ -3,6 +3,61 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · Tunnistamattomat päätösjonoon, monivalintasuodattimet, autopaikkavaihtoehdot ja dokumenttinumerot
+
+**Mitä muutettiin**
+- Päätösjono: ensimmäinen laatikko on nyt Tunnistamattomat (aiemmin Jonossa), ja Muistutukset-laatikko on oikeanpuoleisin.
+- Ilman käsittelijää -näkymä poistettiin. Tehtävät, joilla ei ole käsittelijää, näkyvät nyt Tunnistamattomat-näkymässä
+  yhdessä niiden tehtävien kanssa, joiden taloyhtiötä ei ole tunnistettu. Vanhat linkit ohjautuvat Tunnistamattomiin.
+- AI tehtävät -kohta piilotettiin sivupalkista.
+- Raportit-otsikon alla on sivupalkissa alakohdat Mittarit, Omat raportit ja Taloyhtiön raportit.
+- Arkaluonteinen-merkinnästä poistettiin lukon kuva.
+- Tehtävälistassa otsikon alle ei enää tule ylimääräistä nollaa, kun tehtävällä ei ole merkintöjä.
+- Tehtävälistan kaikki suodattimet (Taloyhtiö, Prioriteetti, Tyyppi, Tila, Määräaika) ovat monivalintoja. Oletuksena kaikki
+  on valittu. Määräaika-suodattimessa on lisäksi valinta Muut: tehtävät, jotka eivät ole myöhässä, umpeutumassa eikä
+  muistutuslistalla.
+- Tehtävänumerot ovat muotoa #T000123. Haku löytää tehtävän muodoilla #T123, T123 ja #123.
+- Tehtävän sivulla Yhtiö on pudotusvalikko. Taloyhtiön vaihto siirtää tehtävän, kun muutokset tallennetaan. Siirretty tehtävä
+  saa uuden yhtiön tehtävänumeron.
+- Uutta asukasta lisättäessä kysytään aina taloyhtiö: Asukkaat-sivulla ja kun tehtävän lähettäjästä tehdään asukas.
+  Jos tehtävän lähettäjästä tehty asukas lisätään toiseen taloyhtiöön, tehtävä siirretään samalla siihen.
+- Taloyhtiön tiedoissa kenttä "Sähköposti, johon tehtävät saapuvat" on nyt nimeltään Sähköposti.
+- Taloyhtiön autopaikkavaihtoehdot: isännöitsijä voi lisätä uusia vaihtoehtoja omalla kuukausihinnallaan, muuttaa hintaa
+  ja poistaa vaihtoehtoja. Vaihtoehdot näkyvät paikkojen tyyppinä, laskutuksessa, asukkaan autopaikkajonossa
+  (hintoineen) ja autopaikkatilauksissa. Poistetun vaihtoehdon tyyppiset paikat säilyvät.
+- Autopaikat-sivulta poistettiin lämmityspaikan tilaukset. Kaikki autopaikkatilaukset (verkkosivun lomakkeelta,
+  asukasportaalista ja Uusi tilaus -painikkeesta) näkyvät nyt Jonot ja tilaukset -sivulla. Tilaukseen voi valita paikkatyypin.
+- Jonot-sivu on nyt nimeltään Jonot ja tilaukset.
+- Avattu dokumentti on oma selainsivunsa (oma osoite), joten selaimen takaisin-painike palaa listaan ja dokumenttiin voi linkittää.
+- Lisää vakiotieto -painike on nyt Luo dokumentti. Luontinäkymä on leveä, ja vastauskentässä on samat tekstinkäsittelytyökalut
+  kuin dokumentin tekstin muokkauksessa (kappaletyylit, lihavointi, kursiivi, alleviivaus, luettelot, sisennys, kumoa).
+- Dokumenteilla on dokumenttinumero muotoa #K000123. Numero näkyy dokumenttilistassa ja dokumentin sivulla, ja saman
+  dokumentin uudet versiot pitävät numeronsa. Hakupalkista #K123 avaa dokumentin suoraan.
+
+**Miten**
+- Päätösjono → Tunnistamattomat-laatikko. Sivupalkki → Kaikki tehtävät → Tunnistamattomat.
+- Sivupalkki → Raportit → Mittarit / Omat raportit / Taloyhtiön raportit.
+- Kaikki tehtävät → suodatinkuvake → avaa mikä tahansa suodatin ja valitse tai poista vaihtoehtoja.
+- Avaa tehtävä → Yhtiö → valitse taloyhtiö → Tallenna → vahvista siirto.
+- Asukkaat → Lisää asukas → Taloyhtiö. Tehtävän sivulla tuntemattoman lähettäjän kohdalla Tee käyttäjä → Taloyhtiö.
+- Yhtiön tiedot → Vuorovaraukset ja autopaikat → Autopaikat: hinnat, Poista ja Lisää vaihtoehto.
+- Jonot ja tilaukset → Autopaikkatilaukset → Uusi tilaus.
+- Dokumentaatio → avaa dokumentti (osoite muuttuu) → selaimen takaisin-painike. Dokumentaatio → Luo dokumentti.
+- Hakupalkki: kirjoita #K ja dokumentin numero tai #T ja tehtävän numero.
+
+**Testit** (lisättävä testaussivulle)
+- Tunnistamattomat: tehtävä ilman käsittelijää näkyy Tunnistamattomat-näkymässä ja sen laskurissa päätösjonossa.
+- Suodattimet: poista Prioriteetti-suodattimesta Normaali. Odotus: normaalin prioriteetin tehtävät katoavat listasta,
+  ja listan yläpuolella näkyy merkki, josta rajauksen saa pois.
+- Tehtävän siirto: vaihda tehtävän Yhtiö ja tallenna. Odotus: vahvistus kysytään, tehtävä siirtyy ja saa uuden #T-numeron.
+- Asukkaan lisäys: Lisää asukas -lomakkeessa on Taloyhtiö-valinta, ja asukas tallentuu valittuun yhtiöön.
+- Autopaikkavaihtoehdot: lisää vaihtoehto "Sähköautopaikka" hinnalla 35 €/kk. Odotus: se näkyy autopaikan tyyppinä,
+  asukasportaalin autopaikkajonossa hintoineen ja autopaikkatilauksen paikkatyyppinä. Poista vaihtoehto: se ei palaa.
+- Autopaikkatilaus: Jonot ja tilaukset → Uusi tilaus → tallenna. Odotus: tilaus näkyy Autopaikkatilaukset-listassa.
+- Dokumentin sivu: avaa dokumentti, kopioi osoite uuteen välilehteen. Odotus: sama dokumentti aukeaa.
+- Luo dokumentti: kirjoita vastaukseen lihavoitu teksti ja luettelo, tallenna. Odotus: muotoilu näkyy dokumentin sivulla.
+- Dokumenttinumero: kirjoita hakupalkkiin dokumentin #K-numero. Odotus: dokumentti aukeaa suoraan.
+
 ## 18.10.2026 · Dokumentin tekstin muokkaus Wordin tapaan ja muotoilu säilyy tuonnissa
 
 **Mitä muutettiin**

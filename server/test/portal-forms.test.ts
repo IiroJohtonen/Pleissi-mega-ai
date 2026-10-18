@@ -106,8 +106,41 @@ describe("asukasportaalin lomakkeet", () => {
   it("asukas voi jonottaa lämmityspaikkaa", async () => {
     const joined = await call(server, resident, "POST", "/portal/waitlist", { resource: "parking", parkingType: "Lämmityspaikka", note: "" });
     assert.equal(joined.status, 201);
-    const prices = await call(server, admin, "PUT", "/companies/demo-company/parking-prices", { Autotalli: 60, Ulkopaikka: 20, Hallipaikka: 45 });
+    const prices = await call(server, admin, "GET", "/companies/demo-company/parking-prices");
     assert.equal(prices.status, 200);
     assert.equal(prices.data["Lämmityspaikka"], 0);
+    // Toivotun paikkatyypin pitää olla taloyhtiön autopaikkavaihtoehto.
+    const unknown = await call(server, resident, "POST", "/portal/waitlist", { resource: "parking", parkingType: "Avaruuspaikka", note: "" });
+    assert.equal(unknown.status, 400);
+  });
+
+  it("isännöitsijä lisää ja poistaa taloyhtiön autopaikkavaihtoehtoja hintoineen", async () => {
+    const base = "/companies/demo-company/parking-options";
+    const defaults = (await call(server, manager, "GET", base)).data as { type: string; monthly_price: number }[];
+    assert.deepEqual(defaults.map(option => option.type), ["Autotalli", "Ulkopaikka", "Hallipaikka", "Lämmityspaikka"]);
+
+    const added = await call(server, manager, "POST", base, { type: "Sähköautopaikka", monthlyPrice: 35.5 });
+    assert.equal(added.status, 201);
+    assert.equal((await call(server, manager, "POST", base, { type: "sähköautopaikka", monthlyPrice: 1 })).status, 409);
+    assert.equal((await call(server, manager, "PUT", `${base}/Autotalli`, { monthlyPrice: 60 })).status, 200);
+    assert.equal((await call(server, manager, "DELETE", `${base}/Ulkopaikka`)).status, 200);
+
+    const options = (await call(server, manager, "GET", base)).data as { type: string; monthly_price: number }[];
+    assert.deepEqual(options.map(option => option.type), ["Autotalli", "Hallipaikka", "Lämmityspaikka", "Sähköautopaikka"]);
+    assert.equal(options.find(option => option.type === "Autotalli")?.monthly_price, 60);
+    // Poistettu vaihtoehto ei palaa, ja asukas näkee vaihtoehdot hintoineen.
+    const portal = (await call(server, resident, "GET", "/portal/parking-options")).data as { type: string }[];
+    assert.ok(portal.some(option => option.type === "Sähköautopaikka"));
+    assert.ok(!portal.some(option => option.type === "Ulkopaikka"));
+
+    // Paikan tyyppi valitaan vaihtoehdoista.
+    assert.equal((await call(server, manager, "POST", "/companies/demo-company/parking", { label: "S1", type: "Ulkopaikka" })).status, 400);
+    assert.equal((await call(server, manager, "POST", "/companies/demo-company/parking", { label: "S1", type: "Sähköautopaikka" })).status, 201);
+
+    // Autopaikkatilaukselle tallentuu paikkatyyppi.
+    const order = await call(server, manager, "POST", "/companies/demo-company/heating-orders", { parkingType: "Sähköautopaikka" });
+    assert.equal(order.status, 201);
+    const orders = (await call(server, manager, "GET", "/companies/demo-company/heating-orders")).data as { id: string; parking_type: string }[];
+    assert.equal(orders.find(item => item.id === order.data.orderId)?.parking_type, "Sähköautopaikka");
   });
 });

@@ -3,6 +3,7 @@ import type { User } from "./auth.js";
 import { db } from "./db.js";
 import { sendEmail } from "./mail.js";
 import { id, now, VALID_EMAIL } from "./util.js";
+import { formatTicketNumber } from "./numbers.js";
 
 // Hätätapauksesta lähtee heti sähköposti taloyhtiön vastuuisännöitsijälle. Lähetys tehdään taustalla,
 // ja tulos kirjataan tehtävän lokiin, jotta käsittelijä näkee, tavoittiko hälytys ketään.
@@ -58,7 +59,7 @@ export async function alertEmergency(ticketId: string, actorId?: string) {
   if (pending) ticket.company = "taloyhtiö tunnistamatta";
 
   const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string };
-  const number = String(ticket.ticket_number ?? "").padStart(4, "0");
+  const number = formatTicketNumber(ticket.ticket_number);
   // Arkaluonteisen tehtävän sisältöä ei lähetetä sähköpostilla; ilmoitus kertoo vain, mistä tehtävä löytyy.
   const sensitive = Boolean(ticket.sensitive);
   if (sensitive) ticket.subject = "Arkaluonteinen tehtävä";
@@ -215,7 +216,7 @@ export function notifyTicketStatus(ticketId: string, event: StatusEvent, actor: 
   });
   if (recipients.length === 0) return;
 
-  const number = String(ticket.ticket_number ?? "").padStart(4, "0");
+  const number = formatTicketNumber(ticket.ticket_number);
   const message = statusMessage(event, ticket.subject, number, detail);
   const portal = process.env.APP_URL ? [`Näet tehtävän tilan myös asukasportaalista: ${process.env.APP_URL}`] : [];
   for (const residentId of recipients) void notifyResident(residentId, message.title, [...message.lines, ...portal]);

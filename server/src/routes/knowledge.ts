@@ -5,7 +5,7 @@ import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
 import { chunkDocumentWithAi, formatKnowledgeEntry, type KnowledgeItem } from "../ai.js";
 import { requireManager } from "../auth.js";
-import { db, knowledgeFilesDir } from "../db.js";
+import { db, knowledgeFilesDir, nextDocNumber } from "../db.js";
 import { extractFormatted, extractPages, isPdf, UnsupportedDocumentError } from "../extract.js";
 import { applyVersion, compareVersions, likelyPreviousVersion, previousVersion } from "../knowledge-versions.js";
 import {
@@ -128,8 +128,8 @@ function saveKnowledge(input: {
     db.prepare(`
       INSERT INTO knowledge
       (id, company_id, title, content, kind, valid_from, valid_until, file_name, mime_type,
-       version, group_id, status, extraction_ok, created_at, audience)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       version, group_id, status, extraction_ok, created_at, audience, doc_number)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       knowledgeId,
       input.companyId,
@@ -145,7 +145,9 @@ function saveKnowledge(input: {
       pending ? "pending" : "active",
       input.extractionOk === false ? 0 : 1,
       now(),
-      input.audience ?? replaced?.audience ?? "ai"
+      input.audience ?? replaced?.audience ?? "ai",
+      // Uusi versio pitää dokumenttinumeronsa; uusi tietue saa seuraavan numeron.
+      (replaced as (KnowledgeRow & { doc_number?: number | null }) | undefined)?.doc_number ?? nextDocNumber()
     );
     // Uusi versio perii aiemman version avainsanat, ellei uusia anneta.
     const tags = input.tags ? input.tags.join(", ") : replaced ? (replaced as KnowledgeRow & { tags?: string }).tags ?? "" : "";
@@ -182,6 +184,8 @@ knowledgeRouter.post("/companies/:companyId/knowledge/facts", requireManager, (r
   const schema = z.object({
     question: z.string().trim().min(1),
     answer: z.string().trim().min(1),
+    // Muotoiltu vastaus (otsikot, lihavoinnit, luettelot); answer on sama ilman muotoilua.
+    formatted: z.string().trim().max(200_000).optional(),
     validFrom: validityDate,
     validUntil: validityDate,
     replaces: z.string().optional(),
@@ -197,7 +201,8 @@ knowledgeRouter.post("/companies/:companyId/knowledge/facts", requireManager, (r
     companyId,
     kind: "fact",
     title: parsed.data.question,
-    content: parsed.data.answer,
+    content: parsed.data.formatted ? markdownToPlain(parsed.data.formatted) : parsed.data.answer,
+    formatted: parsed.data.formatted || null,
     validFrom: parsed.data.validFrom,
     validUntil: parsed.data.validUntil,
     replaces: parsed.data.replaces,
@@ -444,7 +449,7 @@ knowledgeRouter.get("/knowledge/:id", (req, res) => {
   res.json({
     ...fields,
     // Ennen muotoilua tallennetuille dokumenteille muotoilu päätellään luetusta tekstistä.
-    formatted: row.kind === "document" ? fields.formatted || plainToMarkdown(row.content) : null,
+    formatted: row.kind === "document" ? fields.formatted || plainToMarkdown(row.content) : fields.formatted || null,
     content_length: row.content.length,
     state: knowledgeState(row),
     company_name: company?.name ?? "",

@@ -6,6 +6,7 @@ import { api, errorMessage } from "../session";
 import type { Company } from "../types";
 import type { QueueEntry } from "./Bookings";
 import type { ParkingSpace } from "./Parking";
+import { HeatingOrders } from "./HeatingOrders";
 import { locale, t } from "../i18n";
 
 export type WaitlistEntry = {
@@ -294,6 +295,9 @@ export function Waitlists({ companies, defaultCompanyId = "" }: { companies: Com
           </aside>
         </div>
       )}
+
+      {/* Autopaikkatilaukset: verkkosivun lomakkeelta, asukasportaalista tai Uusi tilaus -painikkeella kirjatut. */}
+      <HeatingOrders companies={companies} companyFilter={companyFilter} />
     </section>
   );
 }

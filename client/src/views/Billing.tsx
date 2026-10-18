@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useState } from "react";
 import { formatDate, formatEuros } from "../format";
 import { api, errorMessage, isAdmin, isManager } from "../session";
 import { type Booking, type BookingRules, DEFAULT_BOOKING_RULES } from "./Bookings";
-import { PARKING_TYPES } from "./Parking";
 import { locale, t } from "../i18n";
 
 // Raportti laskutusta varten: valitun kuukauden saunavuorot asukkaittain. Yksittäiset vuorot
@@ -247,6 +246,8 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
   }, [companyId, monthKey]);
 
   const priceOf = (type: string) => prices[type] ?? 0;
+  // Taloyhtiön autopaikkavaihtoehdot (hinnaston järjestyksessä) ja kuukauden paikoilla olevat muut tyypit.
+  const parkingTypes = [...new Set([...Object.keys(prices), ...spaces.map(space => space.type)])];
   const taken = spaces.filter(space => typeFilter === "all" || space.type === typeFilter);
 
   type Row = { name: string; apartment: string; spaces: ParkingBillingRow[]; total: number };
@@ -264,7 +265,7 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
   }
   const rows = [...byResident.values()].sort((a, b) => a.name.localeCompare(b.name, "fi"));
   const grandTotal = rows.reduce((sum, row) => sum + row.total, 0);
-  const pricesMissing = PARKING_TYPES.every(type => priceOf(type) === 0);
+  const pricesMissing = parkingTypes.every(type => priceOf(type) === 0);
   const billing = useBillingPeriod(companyId, "parking", monthKey);
   // Laskutetuksi merkitään aina koko kuukausi, ei rajattua näkymää.
   const markButton = (
@@ -274,7 +275,7 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
       title={typeFilter !== "all" ? t("Valitse Kaikki tyypit, niin koko kuukausi merkitään laskutetuksi.") : undefined}
       onClick={() => void billing.mark({
         total: grandTotal,
-        prices: Object.fromEntries(PARKING_TYPES.map(type => [type, priceOf(type)])),
+        prices: Object.fromEntries(parkingTypes.map(type => [type, priceOf(type)])),
         rows: rows.map(row => ({
           name: row.name,
           apartment: row.apartment,
@@ -341,11 +342,11 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
         </div>
       </div>
       <p className="muted">
-        {PARKING_TYPES.map(type => `${t(type)} ${formatEuros(priceOf(type))} / ${t("kk")}`).join(", ")}.
+        {parkingTypes.map(type => `${t(type)} ${formatEuros(priceOf(type))} / ${t("kk")}`).join(", ")}.
         {" "}{t("Mukana ovat asukkaat, joilla paikka oli kuukauden aikana; koko kuukausi laskutetaan, vaikka paikka olisi ollut vain osan kuusta.")}
       </p>
       <div className="card-tabs billing-filter" role="group" aria-label={t("Näytettävät paikkatyypit")}>
-        {["all", ...PARKING_TYPES].map(option => (
+        {["all", ...parkingTypes].map(option => (
           <button
             key={option}
             className={typeFilter === option ? "active" : ""}
@@ -357,7 +358,7 @@ function ParkingBilling({ companyId, tabs }: { companyId: string; tabs: ReactNod
         ))}
       </div>
       {pricesMissing && (
-        <p className="send-error">{t("Hintoja ei ole asetettu. Aseta autopaikkojen hinnat Asetuksista, niin summat lasketaan.")}</p>
+        <p className="send-error">{t("Hintoja ei ole asetettu. Aseta autopaikkojen hinnat taloyhtiön tiedoista, niin summat lasketaan.")}</p>
       )}
       {failed ? <p className="send-error">{t("Autopaikkojen lataus epäonnistui.")}</p>
         : rows.length === 0 ? <p className="muted">{t("Valitulla kuukaudella ei ole laskutettavia autopaikkoja.")}</p>

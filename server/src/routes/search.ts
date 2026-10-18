@@ -2,6 +2,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { canSeeTicket, visibleCompanyIds } from "../access.js";
 import { db } from "../db.js";
+import { parseNumberQuery } from "../numbers.js";
 import { ACTIVE_RESIDENT } from "../util.js";
 
 export const searchRouter: Router = express.Router();
@@ -11,12 +12,13 @@ const LIMIT = 30;
 // Vertailu ilman kirjainkokoa; toLocaleLowerCase käsittelee myös ä:n ja ö:n, toisin kuin SQLiten lower().
 const fold = (text: string) => text.toLocaleLowerCase("fi");
 
-// Hakusanat: välilyönnein erotetut sanat, jotka kaikkien pitää löytyä. #123 etsii tehtävänumeroa.
+// Hakusanat: välilyönnein erotetut sanat, jotka kaikkien pitää löytyä.
 function searchTerms(query: string) {
   return [...new Set(fold(query).split(/\s+/).map(word => word.trim()).filter(Boolean))];
 }
 
 function matches(haystack: string, terms: string[]) {
+  if (terms.length === 0) return false;
   const text = fold(haystack);
   return terms.every(term => text.includes(term));
 }
@@ -46,10 +48,13 @@ searchRouter.get("/search", (req, res) => {
   if (companyIds.length === 0) return res.json(empty);
   const inCompanies = `(${companyIds.map(() => "?").join(", ")})`;
 
-  // Pelkkä numero tai #numero etsii tehtävää numerolla; muuten numero on tavallinen hakusana.
-  const numberQuery = parsed.data.q.match(/^#\s*(\d+)$/) ?? parsed.data.q.match(/^(\d+)$/);
-  const ticketNumber = numberQuery ? Number(numberQuery[1]) : null;
-  const terms = searchTerms(parsed.data.q.replace(/^#\s*(?=\d+$)/, ""));
+  // Numero (123, #123, T000123, #T123) etsii tehtävää numerolla ja K-numero (#K12) dokumenttia;
+  // numerohaku ei etsi tekstistä.
+  const numberQuery = parseNumberQuery(parsed.data.q);
+  const ticketNumber = numberQuery?.kind === "ticket" ? numberQuery.number : null;
+  const documentNumber = numberQuery?.kind === "document" ? numberQuery.number : null;
+  // Pelkkä numero etsii myös tekstistä; T- tai K-alkuinen tai #-alkuinen numero vain numerolla.
+  const terms = numberQuery && !/^\d+$/.test(parsed.data.q) ? [] : searchTerms(parsed.data.q);
 
   const tickets = (db.prepare(`
     SELECT t.id, t.ticket_number, t.subject, t.status, t.priority, t.created_at, t.company_id, c.name AS company_name,
@@ -78,13 +83,13 @@ searchRouter.get("/search", (req, res) => {
     .sort((a, b) => Number(b.ticket_number === ticketNumber) - Number(a.ticket_number === ticketNumber));
 
   const knowledge = (db.prepare(`
-    SELECT k.id, k.title, k.content, k.tags, k.audience, k.company_id, c.name AS company_name
+    SELECT k.id, k.title, k.content, k.tags, k.audience, k.company_id, k.doc_number, c.name AS company_name
     FROM knowledge k
     JOIN companies c ON c.id = k.company_id
     WHERE k.company_id IN ${inCompanies} AND k.status = 'active'
     ORDER BY k.title
-  `).all(...companyIds) as { title: string; content: string; tags: string }[])
-    .filter(item => matches(`${item.title} ${item.tags} ${item.content}`, terms));
+  `).all(...companyIds) as { title: string; content: string; tags: string; doc_number: number | null }[])
+    .filter(item => (documentNumber !== null && item.doc_number === documentNumber) || matches(`${item.title} ${item.tags} ${item.content}`, terms));
 
   const residents = (db.prepare(`
     SELECT r.id, r.name, r.email, a.apartment_number, a.address, r.company_id, c.name AS company_name

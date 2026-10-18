@@ -5,7 +5,7 @@ import { t } from "./i18n";
 import { en } from "./locales/en";
 import { downloadFile } from "./session";
 import { compareQueue, isOverdue, splitQuotedReply } from "./tickets/ticket-utils";
-import { ticketNumberQuery } from "./views/Search";
+import { documentNumberQuery, ticketNumberQuery } from "./views/Search";
 import type { Ticket } from "./types";
 import { parseCsv, tableToResidents } from "./views/Residents";
 
@@ -30,8 +30,8 @@ describe("muotoilu", () => {
   it("näyttää päivän ja tehtävän numeron suomalaisittain", () => {
     expect(formatDay("2026-01-05")).toBe("5.1.2026");
     expect(formatDay(null)).toBe("");
-    expect(formatTicketNumber(7)).toBe("0007");
-    expect(formatTicketNumber(null)).toBe("----");
+    expect(formatTicketNumber(7)).toBe("T000007");
+    expect(formatTicketNumber(null)).toBe("T------");
   });
 });
 
@@ -131,6 +131,11 @@ describe("päätösjonon järjestys ja haku", () => {
     expect(ticketNumberQuery(" # 7 ")).toBe(7);
     expect(ticketNumberQuery("12")).toBeNull();
     expect(ticketNumberQuery("#12 sauna")).toBeNull();
+    expect(ticketNumberQuery("#T000012")).toBe(12);
+    expect(ticketNumberQuery("T12")).toBe(12);
+    expect(ticketNumberQuery("#K000012")).toBeNull();
+    expect(documentNumberQuery("#K000012")).toBe(12);
+    expect(documentNumberQuery("k5")).toBe(5);
   });
 });
 

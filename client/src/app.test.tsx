@@ -94,7 +94,7 @@ describe("sovellus", () => {
     expect(document.querySelector(".ticket-company")?.textContent).toContain("As Oy Koivikko");
   });
 
-  it("näyttää päätösjonossa vain omat tehtävät ja Jonossa-laatikosta käsittelijättömät", async () => {
+  it("näyttää päätösjonossa vain omat tehtävät ja Tunnistamattomat-laatikosta käsittelijättömät", async () => {
     const unassigned = { ...overdueTicket, id: "ticket-2", ticket_number: 2, subject: "Käsittelijätön tehtävä", assignee_id: null };
     const others = { ...overdueTicket, id: "ticket-3", ticket_number: 3, subject: "Toisen tehtävä", assignee_id: "user-2" };
     const original = responses["/tickets?companyId=all"];
@@ -105,9 +105,9 @@ describe("sovellus", () => {
       expect(screen.queryByText("Käsittelijätön tehtävä")).toBeNull();
       expect(screen.queryByText("Toisen tehtävä")).toBeNull();
 
-      fireEvent.click(screen.getByTitle("Näytä tehtävät, joilla ei ole käsittelijää"));
+      fireEvent.click(screen.getByTitle("Näytä tehtävät, joiden taloyhtiötä ei ole tunnistettu tai joilla ei ole käsittelijää"));
       expect(await screen.findByText("Käsittelijätön tehtävä")).toBeTruthy();
-      expect(window.location.hash).toBe("#/unassigned");
+      expect(window.location.hash).toBe("#/unidentified");
       expect(screen.queryByText("Saunavuoron varaus")).toBeNull();
       expect(screen.queryByText("Toisen tehtävä")).toBeNull();
     } finally {
@@ -271,7 +271,7 @@ describe("sovellus", () => {
     expect(screen.getByText("Mittarilukemat")).toBeTruthy();
   });
 
-  it("näyttää lämmityspaikan tilaukset Autopaikat-sivulla ja tilauksen lomakkeen tiedot", async () => {
+  it("näyttää autopaikkatilaukset Jonot ja tilaukset -sivulla ja tilauksen lomakkeen tiedot", async () => {
     responses["/companies/demo-company/heating-orders"] = [{
       id: "heating-1", company_id: "demo-company", apartment_id: null, resident_id: null, start_date: "2026-11-01", end_date: null,
       status: "pending", note: "", source: "email", created_at: "2026-10-17T08:00:00Z", apartment_number: null,
@@ -283,8 +283,8 @@ describe("sovellus", () => {
       ]
     }];
     try {
-      await renderApp(staff("Isännöitsijä"), "#/parking");
-      expect(await screen.findByText("Auton lämmityspaikan tilaukset")).toBeTruthy();
+      await renderApp(staff("Isännöitsijä"), "#/waitlist");
+      expect(await screen.findByText("Autopaikkatilaukset")).toBeTruthy();
       fireEvent.click(await screen.findByText("Ville Vieras"));
       expect(screen.getByText("Tilauslomakkeen tiedot")).toBeTruthy();
       expect(screen.getByText("040 111 2222")).toBeTruthy();
@@ -580,7 +580,9 @@ describe("sovellus", () => {
       const dialog = screen.getByRole("dialog", { name: "Uusi asukas" });
       expect((screen.getByLabelText("Nimi") as HTMLInputElement).value).toBe("Uusi Asukas");
       expect((dialog.querySelector("input[type=email]") as HTMLInputElement).value).toBe("uusi@example.com");
-      await vi.waitFor(() => expect((dialog.querySelector("select") as HTMLSelectElement).value).toBe("apt-1"));
+      // Taloyhtiö kysytään aina; oletuksena tehtävän taloyhtiö.
+      expect((dialog.querySelectorAll("select")[0] as HTMLSelectElement).value).toBe("demo-company");
+      await vi.waitFor(() => expect((dialog.querySelectorAll("select")[1] as HTMLSelectElement).value).toBe("apt-1"));
       fireEvent.click(screen.getByRole("button", { name: "Lisää asukas" }));
 
       await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets/ticket-1/reporters"))).toBe(true));
@@ -602,7 +604,7 @@ describe("sovellus", () => {
       const calls = mockApi();
       await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
       fireEvent.click(await screen.findByRole("button", { name: "Poista" }));
-      expect(await screen.findByText("Poistetaanko tehtävä #0001?")).toBeTruthy();
+      expect(await screen.findByText("Poistetaanko tehtävä #T000001?")).toBeTruthy();
       expect(screen.getByText(/Poistoa ei voi perua/)).toBeTruthy();
       expect(calls.some(request => request.method === "DELETE")).toBe(false);
 

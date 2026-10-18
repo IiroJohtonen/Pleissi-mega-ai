@@ -7,6 +7,7 @@ import { attachmentsDir, db } from "../db.js";
 import { type OutgoingAttachment, sendEmail } from "../mail.js";
 import { notifyTicketStatus } from "../notify.js";
 import { id, now, VALID_EMAIL } from "../util.js";
+import { formatTicketNumber } from "../numbers.js";
 
 export const workOrdersRouter: Router = express.Router();
 
@@ -58,7 +59,7 @@ workOrdersRouter.post("/tickets/:id/work-orders", async (req, res) => {
   `).get(req.params.id) as { name: string } | undefined;
 
   const actor = res.locals.user?.name ?? "Isännöitsijä";
-  const number = String(ticket.ticket_number ?? "").padStart(4, "0");
+  const number = formatTicketNumber(ticket.ticket_number);
   const subject = `Työtilaus: ${ticket.subject} (${company.name}, tehtävä #${number})`;
   const body = [
     "Hei,",
@@ -158,7 +159,7 @@ workOrdersRouter.post("/work-orders/:id/messages", async (req, res) => {
   }
 
   const actor = res.locals.user?.name ?? "Isännöitsijä";
-  const number = String(order.ticket_number ?? "").padStart(4, "0");
+  const number = formatTicketNumber(order.ticket_number);
   const subject = `Re: Työtilaus: ${order.ticket_subject} (${company.name}, tehtävä #${number})`;
   // Alkuperäinen tilausviesti tallennettiin samalla aikaleimalla kuin tilaus, joten ketju löytyy siitä.
   const thread = db.prepare("SELECT gmail_message_id FROM gmail_imports WHERE ticket_id = ? AND created_at = ?")

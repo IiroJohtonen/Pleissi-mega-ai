@@ -3188,8 +3188,8 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 .notice-table td span.late-note { color: #9c2b1f; font-weight: 600; }
 
 /* Dokumentaatiolista: samat rivit ja sarakeotsikot kuin tehtävälistassa, omat sarakeleveydet. */
-.knowledge-cols { grid-template-columns: minmax(220px, 1.5fr) 104px 150px minmax(130px, .7fr) 96px; }
-.knowledge-cols.with-audience { grid-template-columns: minmax(220px, 1.5fr) 104px 84px 150px minmax(130px, .7fr) 96px; }
+.knowledge-cols { grid-template-columns: 82px minmax(220px, 1.5fr) 104px 150px minmax(130px, .7fr) 96px; }
+.knowledge-cols.with-audience { grid-template-columns: 82px minmax(220px, 1.5fr) 104px 84px 150px minmax(130px, .7fr) 96px; }
 .ticket-row-header.knowledge-cols > button:nth-last-child(2) { justify-self: start; }
 .ticket-row.knowledge-cols > .knowledge-state,
 .ticket-row.knowledge-cols > .knowledge-audience { justify-self: start; font-size: 11px; white-space: nowrap; }
@@ -4838,11 +4838,6 @@ a.button-link { display: inline-flex; align-items: center; color: inherit; text-
 .unidentified-fields select { padding: 8px 10px; border: 1px solid #dfe3e7; border-radius: 9px; background: #fff; font: inherit; font-size: 13px; }
 .unidentified-fields .primary { padding: 9px 14px; font-size: 13px; border-radius: 9px; background: #171c22; border: 1px solid #171c22; color: #fff; font-weight: 600; }
 .unidentified-fields .primary:disabled { opacity: .5; }
-.move-company-link { display: block; font-size: 11px; margin-top: 2px; }
-.move-company { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
-.move-company select { padding: 6px 8px; border: 1px solid #dfe3e7; border-radius: 8px; font: inherit; font-size: 12px; background: #fff; }
-.move-company button { padding: 6px 10px; border-radius: 8px; font-size: 12px; }
-.move-company .primary { background: #171c22; border: 1px solid #171c22; color: #fff; }
 /* Dokumentin näkymän välilehdet: luettu teksti / AI:n poiminnat */
 .knowledge-view-tabs { margin-top: 16px; border-bottom: 1px solid #e2e4e6; }
 .knowledge-view-tabs + .knowledge-columns { margin-top: 12px; }
@@ -4931,3 +4926,34 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
   .rich-page, .knowledge-text .rich-page { padding: 16px 14px; }
   .rich-toolbar-group { padding-left: 6px; }
 }
+
+/* Dokumentaation tietue omana sivunaan (#/knowledge/<tietue>). */
+.knowledge-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.knowledge-page > .back-link { justify-self: start; cursor: pointer; }
+.knowledge-page > .drawer {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  border: 1px solid #dfe3e7;
+  border-radius: 14px;
+  box-shadow: none;
+}
+.knowledge-page .knowledge-text { max-height: none; }
+.knowledge-head .ticket-number { margin-right: 6px; }
+.search-hit-head .ticket-number { margin-right: 6px; }
+
+/* Vakiotiedon luonti: leveä näkymä ja muotoiltava vastaus. */
+/* Tietueet avautuvat koko leveydelle keskitettynä palstana; vakiotiedon luonnissa palsta on leveä. */
+.overlay > .form-drawer.knowledge-fact-form { --card-column: 1100px; }
+.knowledge-fact-answer .rich-editor { max-width: none; width: 100%; }
+.knowledge-fact-answer { display: grid; gap: 6px; }
+.knowledge-fact-answer > span { font-size: 12px; font-weight: 700; color: #4b535d; }
+.knowledge-fact-answer .rich-page { min-height: 320px; }
+
+/* Taloyhtiön autopaikkavaihtoehdot. */
+.parking-option > span:first-child { flex: 1; }
+.parking-option .secondary { padding: 6px 10px; font-size: 12px; }
+.parking-option-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.parking-option-add > input { flex: 1 1 220px; padding: 8px 10px; border: 1px solid #dfe2e5; border-radius: 8px; font: inherit; font-size: 13px; }
+.parking-option-add .price-input input { width: 90px; }
+.parking-option-add .secondary { padding: 8px 12px; font-size: 12px; }

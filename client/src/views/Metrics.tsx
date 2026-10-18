@@ -502,31 +502,26 @@ function CustomReports({ companies }: { companies: Company[] }) {
   );
 }
 
-type ReportsTab = "metrics" | "custom" | "company";
+export type ReportsTab = "metrics" | "custom" | "company";
 
 export function ReportsHub({
+  tab,
   tickets,
   loading,
   companyId,
   companies,
   onCompanyChange
 }: {
+  // Alasivu valitaan sivupalkista (#/reports/<alasivu>).
+  tab: ReportsTab;
   tickets: Ticket[];
   loading: boolean;
   companyId: string;
   companies: Company[];
   onCompanyChange: (companyId: string) => void;
 }) {
-  const [tab, setTab] = useState<ReportsTab>("metrics");
   return (
     <section className="content reports-hub">
-      <div className="billing-tabs reports-tabs no-print" role="tablist">
-        {([["metrics", t("Mittarit")], ["custom", t("Omat raportit")], ["company", t("Taloyhtiön raportit")]] as const).map(([key, label]) => (
-          <button key={key} type="button" role="tab" aria-selected={tab === key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
-            {label}
-          </button>
-        ))}
-      </div>
       {tab === "metrics" && <MetricsOverview />}
       {tab === "custom" && <CustomReports companies={companies} />}
       {tab === "company" && (

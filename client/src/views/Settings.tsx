@@ -7,7 +7,7 @@ import {
 } from "../session";
 import type { MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
-import { PARKING_TYPES } from "./Parking";
+import { ParkingOptionsEditor } from "./Parking";
 import { saveAiPrompt, storedAiPrompt } from "../preferences";
 import { t } from "../i18n";
 import { setTheme, storedTheme } from "../theme";
@@ -1173,7 +1173,6 @@ const QUEUE_SIZE_OPTIONS = [1, 2, 3, 4, 5, 10];
 
 export function BookingSettings({ companyId }: { companyId: string }) {
   const [rules, setRules] = useState<BookingRules | null>(null);
-  const [parkingPrices, setParkingPrices] = useState<Record<string, number> | null>(null);
   const [error, setError] = useState("");
   const readOnly = !isAdmin();
   // Tiivistetyt osiot ("card" = koko kortti). Osiot ovat kiinni aina, kun asetukset avataan.
@@ -1186,32 +1185,10 @@ export function BookingSettings({ companyId }: { companyId: string }) {
   useEffect(() => {
     if (!companyId) return;
     setRules(null);
-    setParkingPrices(null);
     api<BookingRules>(`/companies/${encodeURIComponent(companyId)}/booking-settings`)
       .then(setRules)
       .catch(() => setError(t("Asetusten lataus epäonnistui.")));
-    api<Record<string, number>>(`/companies/${encodeURIComponent(companyId)}/parking-prices`)
-      .then(setParkingPrices)
-      .catch(() => setError(t("Asetusten lataus epäonnistui.")));
   }, [companyId]);
-
-  function setParkingPrice(type: string, value: string) {
-    if (!parkingPrices) return;
-    setParkingPrices({ ...parkingPrices, [type]: Math.max(0, Number(value.replace(",", ".")) || 0) });
-  }
-
-  async function saveParkingPrices() {
-    if (!parkingPrices) return;
-    setError("");
-    try {
-      setParkingPrices(await api<Record<string, number>>(`/companies/${encodeURIComponent(companyId)}/parking-prices`, {
-        method: "PUT",
-        body: JSON.stringify(parkingPrices)
-      }));
-    } catch {
-      setError(t("Asetuksen tallennus epäonnistui."));
-    }
-  }
 
   // Muutos tallentuu heti; jos tallennus epäonnistuu, palataan edelliseen tilaan.
   async function toggle(resource: "sauna" | "laundry", kind: "single" | "weekly") {
@@ -1406,26 +1383,7 @@ export function BookingSettings({ companyId }: { companyId: string }) {
 
       <div className="booking-settings-section">
         {collapseHead("parking", t("Autopaikat"), "h3")}
-        {!collapsed.includes("parking") && PARKING_TYPES.map(type => (
-          <label className="booking-settings-duration" key={type}>
-            <span>
-              <strong>{t(type)}</strong>
-              <small>{t("Paikan hinta kuukaudessa.")}</small>
-            </span>
-            <span className="price-input">
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={parkingPrices?.[type] ?? 0}
-                disabled={!parkingPrices || readOnly}
-                onChange={event => setParkingPrice(type, event.target.value)}
-                onBlur={() => void saveParkingPrices()}
-              />
-              {t("€/kk")}
-            </span>
-          </label>
-        ))}
+        {!collapsed.includes("parking") && <ParkingOptionsEditor companyId={companyId} />}
       </div>
 
       {error && <p className="send-error">{error}</p>}

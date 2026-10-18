@@ -201,7 +201,7 @@ export function Companies({
               </label>
 
               <label>
-                <span>{t("Sähköposti, johon tehtävät saapuvat")}</span>
+                <span>{t("Sähköposti")}</span>
                 <input type="email" value={emailAddress} onChange={event => setEmailAddress(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
 
@@ -333,7 +333,7 @@ function CompanyCard({
           <input {...field("phone")} />
         </label>
         <label>
-          <span>{t("Sähköposti, johon tehtävät saapuvat")}</span>
+          <span>{t("Sähköposti")}</span>
           <input type="email" {...field("emailAddress")} />
         </label>
         <label>
