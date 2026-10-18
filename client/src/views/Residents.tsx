@@ -22,8 +22,11 @@ export function Residents({
   onChanged,
   openResidentId,
   onResidentClosed,
+  onOpenResident,
   formCompanies = companies
 }: {
+  // Annettuna asukkaan avaaminen vaihtaa osoitetta, ja asukas näytetään omana sivunaan.
+  onOpenResident?: (residentId: string) => void;
   // Taloyhtiöt, joihin uuden asukkaan voi lisätä; taloyhtiö kysytään aina lisättäessä.
   formCompanies?: Company[];
   // Avattava asukas (osoite #/residents/<id>), esim. ilmoittajakentän painikkeesta.
@@ -56,6 +59,7 @@ export function Residents({
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [apartmentNumber, setApartmentNumber] = useState("");
+  const [staircase, setStaircase] = useState("");
   const [residentPassword, setResidentPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -67,6 +71,7 @@ export function Residents({
     setEmail(resident?.email ?? "");
     setAddress(resident?.address ?? "");
     setApartmentNumber(resident?.apartment_number ?? "");
+    setStaircase(resident?.staircase ?? "");
     setFormError("");
     setFormCompanyId(companyFilter !== "all" ? companyFilter : companyId);
     setAdding(true);
@@ -108,6 +113,15 @@ export function Residents({
     }
     openForm(resident);
   }, [openResidentId, residents, loading]);
+
+  // Osoitteesta poistunut asukas (esim. selaimen takaisin-painike) sulkee asukkaan sivun.
+  useEffect(() => {
+    if (onOpenResident && !openResidentId && editing) {
+      setAdding(false);
+      setEditing(null);
+      setOpenedFromRoute("");
+    }
+  }, [openResidentId]);
 
   const searchText = search.trim().toLowerCase();
   const visibleResidents = allCompanies
@@ -177,13 +191,15 @@ export function Residents({
         ? `/residents/${encodeURIComponent(editing.id)}`
         : `/companies/${encodeURIComponent(formCompanyId)}/residents`, {
         method: editing ? "PUT" : "POST",
-        body: JSON.stringify({ name, email, address, apartmentNumber, password: residentPassword || undefined })
+        body: JSON.stringify({ name, email, address, apartmentNumber, staircase, password: residentPassword || undefined })
       });
       setName("");
       setEmail("");
       setAddress("");
       setApartmentNumber("");
       setAdding(false);
+      // Asukkaan sivulta palataan tallennuksen jälkeen listaan.
+      if (onOpenResident && editing) onResidentClosed?.();
       await loadResidents();
       await onChanged();
     } catch (error) {
@@ -253,6 +269,7 @@ export function Residents({
       });
       setErasure(null);
       setAdding(false);
+      if (onOpenResident) onResidentClosed?.();
       await loadResidents();
       await onChanged();
     } catch (error) {
@@ -261,6 +278,181 @@ export function Residents({
       setSubmitting(false);
     }
   }
+
+  // Avattu asukas on oma sivunsa (#/residents/<asukas>), kun näkymä on osoitteen ohjaama; uusi asukas
+  // lisätään sivulta avautuvalla lomakkeella.
+  const asPage = Boolean(onOpenResident && editing);
+  const Frame = asPage ? "section" : "div";
+  const residentForm = adding ? (
+        <Frame className={asPage ? "record-page" : "overlay"}>
+          <aside className="drawer form-drawer resident-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
+            <button className="close" onClick={closeForm}>×</button>
+            <h2>{editing ? editing.name : t("Lisää asukas")}</h2>
+            <p className="muted">
+              {editing
+                ? t("Asukkaan tiedot · {0}", editing.company_name ?? companyName)
+                : t("Valitse taloyhtiö, johon asukas lisätään.")}
+            </p>
+
+            <form className="ticket-form" onSubmit={handleSubmit}>
+              {!editing && (
+                <label>
+                  <span>{t("Taloyhtiö")}</span>
+                  <select value={formCompanyId} onChange={event => setFormCompanyId(event.target.value)}>
+                    {formCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+                  </select>
+                </label>
+              )}
+
+              <label>
+                <span>{t("Nimi")}</span>
+                <input value={name} onChange={event => setName(event.target.value)} placeholder={t("Esim. Matti Meikäläinen")} />
+              </label>
+
+              <label>
+                <span>{t("Sähköposti")}</span>
+                <input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder={t("Valinnainen")} />
+              </label>
+
+              <label>
+                <span>{t("Osoite")}</span>
+                <input value={address} onChange={event => setAddress(event.target.value)} placeholder={t("Esim. Koivikkotie 10")} />
+              </label>
+
+              <div className="form-columns">
+                <label>
+                  <span>{t("Asunto")}</span>
+                  <input value={apartmentNumber} onChange={event => setApartmentNumber(event.target.value)} placeholder={t("Esim. A 12")} />
+                </label>
+                <label>
+                  <span>{t("Rappu")}</span>
+                  <input value={staircase} onChange={event => setStaircase(event.target.value)} placeholder={t("Esim. A")} maxLength={20} />
+                </label>
+              </div>
+
+              {/* Asukkaan autopaikat: paikat, joiden haltija asukas on tänään (Autopaikat-sivulta). */}
+              {editing && (
+                <div className="resident-parking">
+                  <span>{t("Autopaikat")}</span>
+                  {(editing.parking ?? []).length > 0 ? (
+                    <ul>
+                      {(editing.parking ?? []).map(space => (
+                        <li key={space.id}><strong>{space.label}</strong> · {t(space.type)}</li>
+                      ))}
+                    </ul>
+                  ) : <p className="muted">{t("Ei autopaikkaa.")}</p>}
+                </div>
+              )}
+
+              {isAdmin() && (
+                <label>
+                  <span>{editing?.has_password ? t("Uusi salasana") : t("Salasana")}</span>
+                  <input
+                    type="password"
+                    value={residentPassword}
+                    onChange={event => setResidentPassword(event.target.value)}
+                    placeholder={editing?.has_password ? t("Jätä tyhjäksi, jos salasanaa ei vaihdeta") : t("Valinnainen, vähintään 8 merkkiä")}
+                    autoComplete="new-password"
+                  />
+                </label>
+              )}
+              <p className="reply-hint">
+                {editing?.has_password
+                  ? t("Asukkaalla on salasana, ja hän voi kirjautua sähköpostillaan asukasportaaliin.")
+                  : t("Salasanan asettamisen jälkeen asukas voi kirjautua sähköpostillaan ja nähdä omat yhteydenottonsa ja vuoronsa.")}
+                {!isAdmin() && t(" Salasanan voi asettaa tai vaihtaa vain pääkäyttäjä.")}
+              </p>
+
+              {formError && <p className="send-error">{formError}</p>}
+
+              <div className="drawer-actions compact-actions">
+                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
+                <button
+                  className="primary"
+                  type="submit"
+                  disabled={submitting || !name.trim() || !address.trim() || !apartmentNumber.trim()}
+                >
+                  {editing
+                    ? submitting ? t("Tallennetaan…") : t("Tallenna muutokset")
+                    : submitting ? t("Lisätään…") : t("Lisää asukas")}
+                </button>
+              </div>
+
+              {editing && isManager() && (
+                <div className="privacy-actions">
+                  <h3>{t("Tietosuoja")}</h3>
+                  <p className="reply-hint">
+                    {t("Vie asukkaasta tallennetut tiedot tiedostona tai poista henkilötiedot pysyvästi asukkaan pyynnöstä.")}
+                  </p>
+                  <div className="drawer-actions compact-actions">
+                    <button type="button" disabled={submitting} onClick={() => exportResident(editing)}>{t("Vie tiedot")}</button>
+                    <button type="button" className="danger" disabled={submitting || Boolean(erasure)} onClick={() => void startErasure(editing)}>
+                      {t("Poista henkilötiedot")}
+                    </button>
+                  </div>
+                  {erasure && (
+                    <div className="erasure-panel">
+                      <h4>{t("Asukkaalla on avoimia tehtäviä")}</h4>
+                      <p className="reply-hint">
+                        {t("Jos asia on kesken ja tietoja tarvitaan sen hoitamiseen (esim. vesivahinko tai korvausasia), tehtävän voi säilyttää. Säilytetty tehtävä anonymisoidaan automaattisesti, kun se suljetaan. Muut tiedot poistetaan heti.")}
+                      </p>
+                      {erasure.openTickets.map(ticket => (
+                        <label key={ticket.id} className="erasure-ticket">
+                          <input
+                            type="checkbox"
+                            checked={erasure.keep.has(ticket.id)}
+                            onChange={event => {
+                              const keep = new Set(erasure.keep);
+                              if (event.target.checked) keep.add(ticket.id); else keep.delete(ticket.id);
+                              setErasure({ ...erasure, keep });
+                            }}
+                          />
+                          <span>
+                            {ticket.ticket_number ? `#${ticket.ticket_number} ` : ""}{ticket.subject}
+                            <small>{" · "}{t(ticket.type)}{" · "}{formatDateOnly(ticket.created_at)}</small>
+                          </span>
+                        </label>
+                      ))}
+                      {erasure.keep.size > 0 && (
+                        <label>
+                          <span>{t("Säilytyksen peruste")}</span>
+                          <select value={erasure.reason} onChange={event => setErasure({ ...erasure, reason: event.target.value })}>
+                            {ERASURE_REASONS.map(reason => <option key={reason} value={reason}>{t(reason)}</option>)}
+                          </select>
+                        </label>
+                      )}
+                      {erasure.keep.size > 0 && erasure.reason === ERASURE_OTHER && (
+                        <label>
+                          <span>{t("Kirjoita peruste")}</span>
+                          <input value={erasure.other} onChange={event => setErasure({ ...erasure, other: event.target.value })} />
+                        </label>
+                      )}
+                      <div className="drawer-actions compact-actions">
+                        <button
+                          type="button"
+                          className="danger"
+                          disabled={submitting || (erasure.keep.size > 0 && erasure.reason === ERASURE_OTHER && !erasure.other.trim())}
+                          onClick={() => void eraseResident(
+                            editing,
+                            [...erasure.keep],
+                            erasure.keep.size ? (erasure.reason === ERASURE_OTHER ? erasure.other.trim() : erasure.reason) : ""
+                          )}
+                        >
+                          {t("Poista henkilötiedot pysyvästi")}
+                        </button>
+                        <button type="button" className="secondary" onClick={() => setErasure(null)}>{t("Peru")}</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </form>
+          </aside>
+        </Frame>
+  ) : null;
+
+  if (asPage && adding) return <section className="content">{residentForm}</section>;
 
   return (
     <section className="content">
@@ -390,11 +582,11 @@ export function Residents({
             title={t("Avaa asukkaan tiedot")}
             role="button"
             tabIndex={0}
-            onClick={() => openForm(resident)}
+            onClick={() => (onOpenResident ? onOpenResident(resident.id) : openForm(resident))}
             onKeyDown={event => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                openForm(resident);
+                if (onOpenResident) onOpenResident(resident.id); else openForm(resident);
               }
             }}
           >
@@ -421,154 +613,7 @@ export function Residents({
         />
       )}
 
-      {adding && (
-        <div className="overlay">
-          <aside className="drawer form-drawer resident-drawer">
-            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
-            <button className="close" onClick={closeForm}>×</button>
-            <h2>{editing ? editing.name : t("Lisää asukas")}</h2>
-            <p className="muted">
-              {editing
-                ? t("Asukkaan tiedot · {0}", editing.company_name ?? companyName)
-                : t("Valitse taloyhtiö, johon asukas lisätään.")}
-            </p>
-
-            <form className="ticket-form" onSubmit={handleSubmit}>
-              {!editing && (
-                <label>
-                  <span>{t("Taloyhtiö")}</span>
-                  <select value={formCompanyId} onChange={event => setFormCompanyId(event.target.value)}>
-                    {formCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-                  </select>
-                </label>
-              )}
-
-              <label>
-                <span>{t("Nimi")}</span>
-                <input value={name} onChange={event => setName(event.target.value)} placeholder={t("Esim. Matti Meikäläinen")} />
-              </label>
-
-              <label>
-                <span>{t("Sähköposti")}</span>
-                <input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder={t("Valinnainen")} />
-              </label>
-
-              <label>
-                <span>{t("Osoite")}</span>
-                <input value={address} onChange={event => setAddress(event.target.value)} placeholder={t("Esim. Koivikkotie 10")} />
-              </label>
-
-              <label>
-                <span>{t("Asunto")}</span>
-                <input value={apartmentNumber} onChange={event => setApartmentNumber(event.target.value)} placeholder={t("Esim. A 12")} />
-              </label>
-
-              {isAdmin() && (
-                <label>
-                  <span>{editing?.has_password ? t("Uusi salasana") : t("Salasana")}</span>
-                  <input
-                    type="password"
-                    value={residentPassword}
-                    onChange={event => setResidentPassword(event.target.value)}
-                    placeholder={editing?.has_password ? t("Jätä tyhjäksi, jos salasanaa ei vaihdeta") : t("Valinnainen, vähintään 8 merkkiä")}
-                    autoComplete="new-password"
-                  />
-                </label>
-              )}
-              <p className="reply-hint">
-                {editing?.has_password
-                  ? t("Asukkaalla on salasana, ja hän voi kirjautua sähköpostillaan asukasportaaliin.")
-                  : t("Salasanan asettamisen jälkeen asukas voi kirjautua sähköpostillaan ja nähdä omat yhteydenottonsa ja vuoronsa.")}
-                {!isAdmin() && t(" Salasanan voi asettaa tai vaihtaa vain pääkäyttäjä.")}
-              </p>
-
-              {formError && <p className="send-error">{formError}</p>}
-
-              <div className="drawer-actions compact-actions">
-                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
-                <button
-                  className="primary"
-                  type="submit"
-                  disabled={submitting || !name.trim() || !address.trim() || !apartmentNumber.trim()}
-                >
-                  {editing
-                    ? submitting ? t("Tallennetaan…") : t("Tallenna muutokset")
-                    : submitting ? t("Lisätään…") : t("Lisää asukas")}
-                </button>
-              </div>
-
-              {editing && isManager() && (
-                <div className="privacy-actions">
-                  <h3>{t("Tietosuoja")}</h3>
-                  <p className="reply-hint">
-                    {t("Vie asukkaasta tallennetut tiedot tiedostona tai poista henkilötiedot pysyvästi asukkaan pyynnöstä.")}
-                  </p>
-                  <div className="drawer-actions compact-actions">
-                    <button type="button" disabled={submitting} onClick={() => exportResident(editing)}>{t("Vie tiedot")}</button>
-                    <button type="button" className="danger" disabled={submitting || Boolean(erasure)} onClick={() => void startErasure(editing)}>
-                      {t("Poista henkilötiedot")}
-                    </button>
-                  </div>
-                  {erasure && (
-                    <div className="erasure-panel">
-                      <h4>{t("Asukkaalla on avoimia tehtäviä")}</h4>
-                      <p className="reply-hint">
-                        {t("Jos asia on kesken ja tietoja tarvitaan sen hoitamiseen (esim. vesivahinko tai korvausasia), tehtävän voi säilyttää. Säilytetty tehtävä anonymisoidaan automaattisesti, kun se suljetaan. Muut tiedot poistetaan heti.")}
-                      </p>
-                      {erasure.openTickets.map(ticket => (
-                        <label key={ticket.id} className="erasure-ticket">
-                          <input
-                            type="checkbox"
-                            checked={erasure.keep.has(ticket.id)}
-                            onChange={event => {
-                              const keep = new Set(erasure.keep);
-                              if (event.target.checked) keep.add(ticket.id); else keep.delete(ticket.id);
-                              setErasure({ ...erasure, keep });
-                            }}
-                          />
-                          <span>
-                            {ticket.ticket_number ? `#${ticket.ticket_number} ` : ""}{ticket.subject}
-                            <small>{" · "}{t(ticket.type)}{" · "}{formatDateOnly(ticket.created_at)}</small>
-                          </span>
-                        </label>
-                      ))}
-                      {erasure.keep.size > 0 && (
-                        <label>
-                          <span>{t("Säilytyksen peruste")}</span>
-                          <select value={erasure.reason} onChange={event => setErasure({ ...erasure, reason: event.target.value })}>
-                            {ERASURE_REASONS.map(reason => <option key={reason} value={reason}>{t(reason)}</option>)}
-                          </select>
-                        </label>
-                      )}
-                      {erasure.keep.size > 0 && erasure.reason === ERASURE_OTHER && (
-                        <label>
-                          <span>{t("Kirjoita peruste")}</span>
-                          <input value={erasure.other} onChange={event => setErasure({ ...erasure, other: event.target.value })} />
-                        </label>
-                      )}
-                      <div className="drawer-actions compact-actions">
-                        <button
-                          type="button"
-                          className="danger"
-                          disabled={submitting || (erasure.keep.size > 0 && erasure.reason === ERASURE_OTHER && !erasure.other.trim())}
-                          onClick={() => void eraseResident(
-                            editing,
-                            [...erasure.keep],
-                            erasure.keep.size ? (erasure.reason === ERASURE_OTHER ? erasure.other.trim() : erasure.reason) : ""
-                          )}
-                        >
-                          {t("Poista henkilötiedot pysyvästi")}
-                        </button>
-                        <button type="button" className="secondary" onClick={() => setErasure(null)}>{t("Peru")}</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </form>
-          </aside>
-        </div>
-      )}
+      {residentForm}
     </section>
   );
 }

@@ -799,7 +799,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
             <ParkingSpaces key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />
           )
           : tab === "announcements" ? (
-            <Announcements key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} />
+            <Announcements
+              key={navCompanyKey}
+              companies={companyScope}
+              defaultCompanyId={navCompanyKey}
+              routeParam={routeParam}
+              onNavigate={param => navigate("announcements", param ?? undefined)}
+            />
           )
           : tab === "moves" ? (
             <MoveNotices key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} onChanged={() => void refreshNavCounts()} />
@@ -824,6 +830,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
               companyId={selectedCompany}
               companies={companies}
               onCompanyChange={changeCompany}
+              routeSlot={routeParam}
+              onOpenSlot={slot => navigate(tab, slot ?? undefined)}
             />
           )
           : tab === "reports" ? (
@@ -852,6 +860,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
               formCompanies={companies}
               openResidentId={routeParam}
               onResidentClosed={() => navigate("residents")}
+              onOpenResident={residentId => navigate("residents", residentId)}
               onChanged={async () => setCompanies(await api<Company[]>("/companies"))}
             />
           )

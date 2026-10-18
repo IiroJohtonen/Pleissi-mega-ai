@@ -1282,6 +1282,36 @@ export function BookingSettings({ companyId }: { companyId: string }) {
           {collapseHead(section.resource, section.title, "h3")}
           {!collapsed.includes(section.resource) && (
           <>
+          {/* Varattava aikaikkuna (esim. 8–22): kalenterissa näytetään ja varataan vain nämä tunnit. */}
+          <div className="booking-settings-duration">
+            <span>
+              <strong>{t("Varattavissa")}</strong>
+              <small>{t("Kellonajat, joille vuoroja voi varata.")}</small>
+            </span>
+            <span className="booking-hours">
+              <select
+                value={rules?.[section.resource].firstHour ?? 0}
+                disabled={!rules || readOnly}
+                aria-label={t("Varattavissa alkaen")}
+                onChange={event => rules && void save({ ...rules, [section.resource]: { ...rules[section.resource], firstHour: Number(event.target.value) } })}
+              >
+                {Array.from({ length: 24 }, (_, hour) => hour)
+                  .filter(hour => !rules || hour < rules[section.resource].lastHour)
+                  .map(hour => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}.00</option>)}
+              </select>
+              –
+              <select
+                value={rules?.[section.resource].lastHour ?? 24}
+                disabled={!rules || readOnly}
+                aria-label={t("Varattavissa asti")}
+                onChange={event => rules && void save({ ...rules, [section.resource]: { ...rules[section.resource], lastHour: Number(event.target.value) } })}
+              >
+                {Array.from({ length: 24 }, (_, index) => index + 1)
+                  .filter(hour => !rules || hour > rules[section.resource].firstHour)
+                  .map(hour => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}.00</option>)}
+              </select>
+            </span>
+          </div>
           {(["single", "weekly"] as const).map(kind => (
             <label className="switch-row" key={kind}>
               <span>

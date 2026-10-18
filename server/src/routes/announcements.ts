@@ -13,19 +13,21 @@ export const announcementsRouter: Router = express.Router();
 // Tiedotteet: isännöitsijän viesti koko taloyhtiön tai yhden rapun asukkaille. Tiedote näkyy
 // asukasportaalissa ja lähetetään haluttaessa sähköpostilla piilokopiona.
 // ---------------------------------------------------------------------------------------------
-// Rappu päätellään asunnon numeron alkukirjaimista ("B 34" -> "B"). Ilman kirjainta rappua ei ole.
-function stairwellOf(apartmentNumber?: string | null) {
+// Asunnon rappu: asukkaan tietoihin kirjattu Rappu tai, jos sitä ei ole, asunnon numeron alkukirjaimet
+// ("B 34" -> "B"). Ilman kumpaakaan rappua ei ole.
+function stairwellOf(apartmentNumber?: string | null, staircase?: string | null) {
+  if (staircase?.trim()) return staircase.trim().toUpperCase();
   return (apartmentNumber ?? "").trim().match(/^[A-Za-zÅÄÖåäö]+/)?.[0].toUpperCase() ?? "";
 }
 
 function announcementAudience(companyId: string) {
   const rows = db.prepare(`
-    SELECT r.email, a.apartment_number
+    SELECT r.email, a.apartment_number, a.staircase
     FROM residents r LEFT JOIN apartments a ON a.id = r.apartment_id
     WHERE r.company_id = ? AND ${ACTIVE_RESIDENT}
-  `).all(companyId) as { email: string | null; apartment_number: string | null }[];
+  `).all(companyId) as { email: string | null; apartment_number: string | null; staircase: string | null }[];
   return rows.map(row => ({
-    stairwell: stairwellOf(row.apartment_number),
+    stairwell: stairwellOf(row.apartment_number, row.staircase),
     email: VALID_EMAIL.test((row.email ?? "").trim()) ? (row.email as string).trim() : ""
   }));
 }
@@ -54,7 +56,7 @@ announcementsRouter.post("/companies/:companyId/announcements", requireManager, 
   const parsed = z.object({
     title: z.string().trim().min(3).max(150),
     body: z.string().trim().min(5).max(8000),
-    stairwell: z.string().trim().max(10).default(""),
+    stairwell: z.string().trim().max(20).default(""),
     sendEmail: z.boolean().default(false)
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Kirjoita tiedotteelle otsikko ja teksti." });
@@ -104,11 +106,12 @@ announcementsRouter.delete("/announcements/:id", requireManager, (req, res) => {
 // Asukas näkee oman taloyhtiönsä tiedotteet: koko yhtiön ja oman rappunsa.
 announcementsRouter.get("/portal/announcements", (_req, res) => {
   const resident = portalResident(res);
+  const apartment = db.prepare("SELECT staircase FROM apartments WHERE id = ?").get(resident.apartmentId) as { staircase: string } | undefined;
   res.json(db.prepare(`
     SELECT id, title, body, stairwell, created_at
     FROM announcements
     WHERE company_id = ? AND (stairwell = '' OR stairwell = ?)
     ORDER BY created_at DESC
     LIMIT 100
-  `).all(resident.companyId, stairwellOf(resident.apartmentNumber)));
+  `).all(resident.companyId, stairwellOf(resident.apartmentNumber, apartment?.staircase)));
 });

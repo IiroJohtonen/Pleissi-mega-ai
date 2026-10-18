@@ -562,6 +562,10 @@ for (const column of ["knowledge_source_id", "knowledge_source_title", "knowledg
 if (!(db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).some(column => column.name === "assignee_id")) {
   db.exec("ALTER TABLE tickets ADD COLUMN assignee_id TEXT");
 }
+// Asunnon rappu (esim. A); tiedotteet voidaan kohdistaa rapun asukkaille.
+if (!(db.prepare("PRAGMA table_info(apartments)").all() as { name: string }[]).some(column => column.name === "staircase")) {
+  db.exec("ALTER TABLE apartments ADD COLUMN staircase TEXT NOT NULL DEFAULT ''");
+}
 if (!(db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).some(column => column.name === "moved_out_at")) {
   db.exec("ALTER TABLE residents ADD COLUMN moved_out_at TEXT");
 }
@@ -594,6 +598,12 @@ if (!bookingSettingColumns.some(column => column.name === "queue_enabled")) {
 }
 if (!bookingSettingColumns.some(column => column.name === "queue_size")) {
   db.exec("ALTER TABLE booking_settings ADD COLUMN queue_size INTEGER NOT NULL DEFAULT 3");
+}
+// Varattava aikaikkuna (tunnit, esim. 8–22) taloyhtiöittäin ja tiloittain; NULL = tilan oletus.
+for (const column of ["first_hour", "last_hour"]) {
+  if (!(db.prepare("PRAGMA table_info(booking_settings)").all() as { name: string }[]).some(existing => existing.name === column)) {
+    db.exec(`ALTER TABLE booking_settings ADD COLUMN ${column} INTEGER`);
+  }
 }
 
 // Jonopaikat varatuille sauna- ja pyykkitupavuoroille. Kun varaus perutaan, vuoro siirtyy jonon
@@ -1052,10 +1062,10 @@ export function seed() {
     "koivikko@kotilo.example"
   );
 
-  db.prepare("INSERT INTO apartments VALUES (?, ?, ?, ?)").run(
+  db.prepare("INSERT INTO apartments (id, company_id, apartment_number, address) VALUES (?, ?, ?, ?)").run(
     "apt-12", "demo-company", "A 12", "Koivikkotie 10"
   );
-  db.prepare("INSERT INTO apartments VALUES (?, ?, ?, ?)").run(
+  db.prepare("INSERT INTO apartments (id, company_id, apartment_number, address) VALUES (?, ?, ?, ?)").run(
     "apt-34", "demo-company", "B 34", "Koivikkotie 10"
   );
 

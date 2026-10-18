@@ -3,6 +3,40 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · Asukkaan rappu ja autopaikat, vuorojen jono ja aikaikkuna, omat sivut ja isommat näkymät
+
+**Mitä muutettiin**
+- Asukkaan tiedoissa on uusi kenttä Rappu. Rappu on asunnon tieto, joten se on sama kaikilla saman asunnon asukkailla.
+- Asukkaan autopaikat näkyvät asukkaan tiedoissa heti, kun asukas merkitään autopaikan haltijaksi.
+- Avattu asukas on oma selainsivunsa (oma osoite). Selaimen takaisin-painike palaa asukaslistaan.
+- Isännöitsijä voi lisätä asukkaan jo varatun sauna- tai pyykkitupavuoron jonoon ja poistaa jonottajan. Toimisto voi
+  lisätä jonoon myös silloin, kun asukkaiden oma jonoon liittyminen ei ole käytössä. Jonon enimmäiskoko on voimassa.
+- Sauna- ja pyykkitupavuoron tiedot avautuvat omana selainsivunaan. Sivu on leveä, kentät ja tekstit ovat isompia,
+  ja asettelu mukautuu selaimen leveyteen.
+- Varattava aikaikkuna (esim. 8–22) asetetaan taloyhtiökohtaisesti saunalle ja pyykkituvalle. Kalenteri näyttää vain nämä tunnit.
+  Oletuksena sauna 15–22 ja pyykkitupa 7–21 kuten ennenkin.
+- Tiedotteet voi suodattaa rapun mukaan. Rapulle kohdistettu tiedote menee asukkaille, joiden tiedoissa on se rappu
+  (jos rappua ei ole kirjattu, se päätellään edelleen asunnon numeron kirjaimesta).
+- Uusi tiedote ja avattu tiedote ovat omia selainsivujaan.
+- Näkymät ovat leveämpiä: sivujen reunoilla on vähemmän tyhjää tilaa, ja avautuvat tietueet käyttävät enemmän ruudun leveydestä.
+  Taulujen, tehtävälistan ja tietueiden tekstit ja kentät ovat isompia.
+
+**Miten**
+- Asukkaat → avaa asukas: Rappu-kenttä ja Autopaikat-kohta. Osoite on muotoa #/residents/<asukas>.
+- Sauna tai Pyykkitupa → valitse varattu vuoro → Jono → valitse asukas → Lisää jonoon.
+- Yhtiön tiedot → Vuorovaraukset ja autopaikat → Saunavuorot / Pyykkitupavuorot → Varattavissa (alku ja loppu).
+- Tiedotteet → Rappu-suodatin. Uusi tiedote ja tiedotteen avaaminen vaihtavat osoitetta.
+
+**Testit** (lisättävä testaussivulle)
+- Rappu: kirjoita asukkaalle rappu ja tallenna. Odotus: rappu näkyy, kun asukas avataan uudelleen.
+- Autopaikka: anna Autopaikat-sivulla paikka asukkaalle. Odotus: paikka näkyy asukkaan tiedoissa.
+- Asukkaan sivu: avaa asukas, kopioi osoite uuteen välilehteen. Odotus: sama asukas aukeaa.
+- Jonoon lisäys: avaa varattu vuoro, valitse asukas ja Lisää jonoon. Odotus: asukas näkyy jonossa sijalla 1, ja hän näkee
+  jonopaikan asukasportaalissa.
+- Aikaikkuna: aseta saunalle 8–22. Odotus: saunakalenterissa näkyvät tunnit 8–22.
+- Tiedotteet: julkaise rapulle C tiedote ja suodata Rappu C. Odotus: tiedote näkyy suodatettuna ja rapun C asukkaan portaalissa.
+- Leveys: avaa tehtävälista, asukas ja vuoro tavallisella näytöllä. Odotus: näkymä täyttää sivun, teksti on aiempaa isompaa.
+
 ## 18.10.2026 · Tunnistamattomat päätösjonoon, monivalintasuodattimet, autopaikkavaihtoehdot ja dokumenttinumerot
 
 **Mitä muutettiin**

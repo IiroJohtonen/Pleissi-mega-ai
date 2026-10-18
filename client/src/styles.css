@@ -630,7 +630,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 
 .ticket-row {
   display: grid;
-  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) minmax(104px, .55fr) 150px 118px 118px;
+  grid-template-columns: 92px minmax(200px, 1fr) 104px 112px minmax(120px, .6fr) minmax(112px, .55fr) 150px 132px 132px;
   align-items: center;
   gap: 12px;
   min-height: 58px;
@@ -649,7 +649,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Sarakeotsikot käyttävät samaa ruudukkoa kuin rivit, jotta ne osuvat kenttien kohdalle. */
 .ticket-row-header {
   display: grid;
-  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) minmax(104px, .55fr) 150px 118px 118px;
+  grid-template-columns: 92px minmax(200px, 1fr) 104px 112px minmax(120px, .6fr) minmax(112px, .55fr) 150px 132px 132px;
   gap: 12px;
   padding: 4px 14px 0;
 }
@@ -733,7 +733,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Sarakekohtaiset hakukentät samassa ruudukossa kuin otsikot ja rivit. */
 .ticket-row-search {
   display: grid;
-  grid-template-columns: 64px minmax(180px, 1fr) 96px 104px minmax(100px, .6fr) minmax(104px, .55fr) 150px 118px 118px;
+  grid-template-columns: 92px minmax(200px, 1fr) 104px 112px minmax(120px, .6fr) minmax(112px, .55fr) 150px 132px 132px;
   gap: 12px;
   padding: 0 14px;
 }
@@ -4957,3 +4957,85 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
 .parking-option-add > input { flex: 1 1 220px; padding: 8px 10px; border: 1px solid #dfe2e5; border-radius: 8px; font: inherit; font-size: 13px; }
 .parking-option-add .price-input input { width: 90px; }
 .parking-option-add .secondary { padding: 8px 12px; font-size: 12px; }
+
+/* Tietue omana sivunaan (oma osoite): kortti täyttää sisältöalueen, eikä sivun takana ole listaa. */
+.record-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.record-page > .drawer {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  border: 1px solid #dfe3e7;
+  border-radius: 14px;
+  box-shadow: none;
+}
+.record-page > .drawer > .close { display: none; }
+
+.resident-parking { display: grid; gap: 6px; }
+.resident-parking > span { font-size: 12px; font-weight: 700; color: #4b535d; }
+.resident-parking ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+.booking-hours { display: inline-flex; align-items: center; gap: 8px; }
+.booking-hours select { padding: 7px 10px; border: 1px solid #dfe3e7; border-radius: 9px; background: #f9faf8; font: inherit; font-size: 13px; }
+
+/* Varatun vuoron jono toimiston näkymässä. */
+.booking-slot-queue { display: grid; gap: 8px; margin: 18px 0; }
+.booking-slot-queue h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.booking-slot-queue h3 b { font-size: 12px; color: #5d646b; }
+.booking-slot-queue ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.booking-slot-queue li span { margin-right: 10px; }
+.booking-slot-queue .secondary { padding: 5px 10px; font-size: 12px; }
+.booking-queue-add { display: flex; flex-wrap: wrap; gap: 8px; }
+.booking-queue-add select { flex: 1 1 260px; padding: 9px 11px; border: 1px solid #dfe3e7; border-radius: 9px; background: #fff; font: inherit; }
+
+/* Leveämmät näkymät ja isommat tekstit: sisältö täyttää enemmän ruudusta, ja taulujen ja tietueiden
+   tekstit ovat selkeämpiä. Puhelimen asettelu säilyy ennallaan. */
+@media (min-width: 761px) {
+  .main { max-width: 1720px; padding: 36px 32px; }
+  .overlay > .drawer:not(.skip-drawer) { --card-column: 1200px; }
+  .overlay > .form-drawer:not(.skip-drawer) { --card-column: 960px; }
+  .overlay > .form-drawer.knowledge-fact-form { --card-column: 1200px; }
+}
+
+.data-table { font-size: 14.5px; }
+.data-table th { font-size: 11.5px; padding: 13px 18px; }
+.data-table td { padding: 15px 18px; color: #4f565d; }
+.data-table td span { font-size: 13px; }
+
+.ticket-row { min-height: 64px; }
+.ticket-row-main strong { font-size: 14px; }
+.ticket-row-main span, .ticket-row-contact { font-size: 12px; }
+.ticket-row-contact strong { font-size: 13px; }
+.ticket-row-contact small { font-size: 12px; }
+.ticket-row-assignee { font-size: 13px; }
+.ticket-row .date { font-size: 12px; }
+.ticket-row-header button { font-size: 11.5px; }
+.ticket-number { font-size: 12.5px; }
+
+.ticket-form label { font-size: 13.5px; }
+.ticket-form input, .ticket-form select, .ticket-form textarea { font-size: 15px; padding: 11px 13px; }
+.ticket-facts dt { font-size: 14px; }
+.ticket-facts dd { font-size: 15px; }
+.drawer .muted, .drawer p { font-size: 15px; }
+.drawer h3 { font-size: 16px; }
+
+/* Vuoron tietue omana sivunaan: isot kentät ja painikkeet, asettelu mukautuu selaimen leveyteen. */
+.booking-record > .drawer { padding: clamp(20px, 3vw, 44px); }
+.booking-record h2 { font-size: clamp(24px, 2.4vw, 34px); }
+.booking-record .ticket-facts { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.booking-record .ticket-facts > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 16px 18px; }
+.booking-record .ticket-facts dd { overflow-wrap: normal; }
+.booking-record .ticket-facts dt { font-size: 15px; }
+.booking-record .ticket-facts dd { font-size: 18px; }
+.booking-record .ticket-form label { font-size: 15px; }
+.booking-record .ticket-form input, .booking-record .ticket-form select { font-size: 17px; padding: 14px 16px; }
+.booking-record .repeat-choice strong { font-size: 16px; }
+.booking-record .repeat-choice small { font-size: 14px; }
+.booking-record .drawer-actions button { font-size: 15px; padding: 12px 20px; }
+.booking-record .booking-slot-queue h3 { font-size: 18px; }
+.booking-record .booking-slot-queue li { font-size: 16px; }
+.booking-record .booking-queue-add select { font-size: 16px; padding: 12px 14px; }
+
+.announcement-toolbar-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.record-page .announcement-body { font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
+.ticket-row .date { white-space: nowrap; }
+.resident-parking > span { font-size: 13.5px; }

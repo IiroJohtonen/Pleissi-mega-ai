@@ -3,7 +3,7 @@ import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
 import { QUEUE_JOIN_CUTOFF_MS, QUEUE_POSITION_SQL, waitingCount } from "../booking-queue.js";
 import { db } from "../db.js";
-import { id, now } from "../util.js";
+import { ACTIVE_RESIDENT, id, now } from "../util.js";
 import { BOOKING_RESOURCES, bookingRules } from "./bookings.js";
 import { portalResident } from "./portal.js";
 
@@ -94,6 +94,43 @@ bookingQueueRouter.get("/companies/:companyId/booking-queue", (req, res) => {
     WHERE q.company_id = ? AND q.status = 'waiting' AND q.ends_at > ? AND (? IS NULL OR q.resource = ?)
     ORDER BY q.starts_at, position
   `).all(companyId, now(), resource.success ? resource.data : null, resource.success ? resource.data : null));
+});
+
+// Toimisto lisää asukkaan varatun vuoron jonoon (esim. puhelimitse pyydettäessä). Jono täyttyy kuten asukkaan
+// itse liittyessä, mutta toimisto voi lisätä jonoon myös silloin, kun asukkaiden jonoon liittyminen ei ole käytössä
+// tai vuoron alkuun on alle kolme tuntia.
+bookingQueueRouter.post("/companies/:companyId/booking-queue", (req, res) => {
+  const companyId = companyIdFromContext(req.params.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const parsed = z.object({
+    resource: z.enum(BOOKING_RESOURCES), startsAt: z.iso.datetime(), endsAt: z.iso.datetime(), residentId: z.string().min(1)
+  }).safeParse(req.body);
+  if (!parsed.success || parsed.data.endsAt <= parsed.data.startsAt) return res.status(400).json({ error: "Valitse asukas." });
+  const { resource, startsAt, endsAt, residentId } = parsed.data;
+  if (Date.parse(endsAt) <= Date.now()) return res.status(409).json({ error: "Vuoro on jo mennyt." });
+  if (!db.prepare(`SELECT 1 FROM residents r WHERE r.id = ? AND r.company_id = ? AND ${ACTIVE_RESIDENT}`).get(residentId, companyId)) {
+    return res.status(404).json({ error: "Asukasta ei löytynyt tästä taloyhtiöstä." });
+  }
+
+  const holders = db.prepare(`
+    SELECT resident_id FROM bookings WHERE company_id = ? AND resource = ? AND starts_at < ? AND ends_at > ?
+  `).all(companyId, resource, endsAt, startsAt) as { resident_id: string | null }[];
+  if (holders.length === 0) return res.status(409).json({ error: "Vuoro on vapaa. Varaa se asukkaalle suoraan." });
+  if (holders.some(holder => holder.resident_id === residentId)) return res.status(409).json({ error: "Vuoro on jo varattu tälle asukkaalle." });
+  const already = db.prepare(`
+    SELECT 1 FROM booking_queue WHERE resident_id = ? AND company_id = ? AND resource = ? AND starts_at = ? AND ends_at = ? AND status = 'waiting'
+  `).get(residentId, companyId, resource, startsAt, endsAt);
+  if (already) return res.status(409).json({ error: "Asukas on jo tämän vuoron jonossa." });
+  if (waitingCount(companyId, resource, startsAt, endsAt) >= bookingRules(companyId)[resource].queueSize) {
+    return res.status(409).json({ error: "Jono on täynnä." });
+  }
+
+  const entryId = id("queue");
+  db.prepare(`
+    INSERT INTO booking_queue (id, company_id, resource, starts_at, ends_at, resident_id, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?)
+  `).run(entryId, companyId, resource, startsAt, endsAt, residentId, now());
+  res.status(201).json({ ok: true, entryId, position: waitingCount(companyId, resource, startsAt, endsAt) });
 });
 
 // Toimisto voi poistaa jonottajan jonosta.
