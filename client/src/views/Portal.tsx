@@ -7,7 +7,7 @@ import type { Announcement } from "./Announcements";
 import { BookingCalendar, type QueueEntry, SlotQueueList } from "./Bookings";
 import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
 import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
-import { PARKING_TYPES } from "./Parking";
+import { formatParkingOption, type ParkingOption } from "./Parking";
 import { PortalForm, type PortalFormKey, PortalHeating } from "./PortalForms";
 import { type RenovationNotice, RenovationFields, renovationFieldsError, renovationPayload, renovationPeriod, renovationStatusLabels, renovationValues } from "./Renovations";
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
@@ -655,6 +655,11 @@ function PortalWaitlist() {
   const [slotEntries, setSlotEntries] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [parkingType, setParkingType] = useState("");
+  // Taloyhtiön autopaikkavaihtoehdot hintoineen.
+  const [parkingOptions, setParkingOptions] = useState<ParkingOption[]>([]);
+  useEffect(() => {
+    api<ParkingOption[]>("/portal/parking-options").then(setParkingOptions).catch(() => setParkingOptions([]));
+  }, []);
   const [notes, setNotes] = useState<Record<string, string>>({ parking: "", sauna: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -766,7 +771,7 @@ function PortalWaitlist() {
                     <span>{t("Toivottu paikkatyyppi")}</span>
                     <select value={parkingType} onChange={event => setParkingType(event.target.value)}>
                       <option value="">{t("Mikä tahansa")}</option>
-                      {PARKING_TYPES.map(type => <option key={type} value={type}>{t(type)}</option>)}
+                      {parkingOptions.map(option => <option key={option.type} value={option.type}>{formatParkingOption(option)}</option>)}
                     </select>
                   </label>
                 )}

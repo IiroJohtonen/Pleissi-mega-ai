@@ -1,10 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Dropdown, usePaged } from "../components/common";
-import { api, errorMessage } from "../session";
+import { api, errorMessage, isManager } from "../session";
 import type { Company, Resident } from "../types";
 import { t } from "../i18n";
 import { OpenResidentButton } from "../components/Reporter";
-import { HeatingOrders } from "./HeatingOrders";
 
 export type ParkingSpace = {
   id: string;
@@ -17,7 +16,125 @@ export type ParkingSpace = {
   apartment_number: string | null;
 };
 
-export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka", "Lämmityspaikka"];
+// Taloyhtiön autopaikkavaihtoehto ja sen kuukausihinta (taloyhtiön tiedoissa).
+export type ParkingOption = { type: string; monthly_price: number };
+
+export function formatParkingOption(option: ParkingOption) {
+  return option.monthly_price > 0
+    ? `${t(option.type)} · ${option.monthly_price.toLocaleString("fi-FI", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t("€/kk")}`
+    : t(option.type);
+}
+
+// Taloyhtiön autopaikkavaihtoehdot: isännöitsijä lisää vaihtoehtoja omalla hinnallaan, muuttaa hintaa ja poistaa niitä.
+// Vaihtoehdot näkyvät paikkojen tyyppinä, asukkaan autopaikkajonossa ja autopaikkatilauksissa.
+export function ParkingOptionsEditor({ companyId }: { companyId: string }) {
+  const [options, setOptions] = useState<ParkingOption[] | null>(null);
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [newType, setNewType] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const editable = isManager();
+  const base = `/companies/${encodeURIComponent(companyId)}/parking-options`;
+
+  function show(next: ParkingOption[]) {
+    setOptions(next);
+    setPrices(Object.fromEntries(next.map(option => [option.type, String(option.monthly_price)])));
+  }
+
+  useEffect(() => {
+    api<ParkingOption[]>(base).then(show).catch(() => setError(t("Autopaikkavaihtoehtojen lataus epäonnistui.")));
+  }, [companyId]);
+
+  const amount = (value: string) => Math.max(0, Number(value.replace(",", ".")) || 0);
+
+  async function run(action: () => Promise<ParkingOption[]>, failure: string) {
+    setSaving(true);
+    setError("");
+    try {
+      show(await action());
+      return true;
+    } catch (problem) {
+      setError(errorMessage(problem, failure));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function savePrice(option: ParkingOption) {
+    const price = amount(prices[option.type] ?? "");
+    if (price === option.monthly_price) return;
+    await run(() => api<ParkingOption[]>(`${base}/${encodeURIComponent(option.type)}`, {
+      method: "PUT", body: JSON.stringify({ monthlyPrice: price })
+    }), t("Hinnan tallennus epäonnistui."));
+  }
+
+  async function remove(option: ParkingOption) {
+    if (!window.confirm(t("Poistetaanko autopaikkavaihtoehto {0}? Sen tyyppiset paikat säilyvät.", t(option.type)))) return;
+    await run(() => api<ParkingOption[]>(`${base}/${encodeURIComponent(option.type)}`, { method: "DELETE" }),
+      t("Vaihtoehdon poistaminen epäonnistui."));
+  }
+
+  async function add(event: FormEvent) {
+    event.preventDefault();
+    if (!newType.trim()) return;
+    const added = await run(() => api<ParkingOption[]>(base, {
+      method: "POST", body: JSON.stringify({ type: newType.trim(), monthlyPrice: amount(newPrice) })
+    }), t("Vaihtoehdon lisääminen epäonnistui."));
+    if (added) {
+      setNewType("");
+      setNewPrice("");
+    }
+  }
+
+  return (
+    <div className="parking-options">
+      {options === null ? <p className="muted">{error || t("Ladataan…")}</p> : (
+        <>
+          {options.length === 0 && <p className="muted">{t("Ei autopaikkavaihtoehtoja.")}</p>}
+          {options.map(option => (
+            <div className="booking-settings-duration parking-option" key={option.type}>
+              <span>
+                <strong>{t(option.type)}</strong>
+                <small>{t("Paikan hinta kuukaudessa.")}</small>
+              </span>
+              <span className="price-input">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={prices[option.type] ?? ""}
+                  disabled={!editable || saving}
+                  aria-label={t("Hinta: {0}", t(option.type))}
+                  onChange={event => setPrices({ ...prices, [option.type]: event.target.value })}
+                  onBlur={() => void savePrice(option)}
+                />
+                {t("€/kk")}
+              </span>
+              {editable && (
+                <button type="button" className="secondary" onClick={() => void remove(option)} disabled={saving}>
+                  {t("Poista")}
+                </button>
+              )}
+            </div>
+          ))}
+          {editable && (
+            <form className="parking-option-add" onSubmit={add}>
+              <input value={newType} onChange={event => setNewType(event.target.value)} placeholder={t("Uusi vaihtoehto, esim. Sähköautopaikka")} maxLength={60} aria-label={t("Uuden vaihtoehdon nimi")} />
+              <span className="price-input">
+                <input type="number" min="0" step="0.5" value={newPrice} onChange={event => setNewPrice(event.target.value)} placeholder="0" aria-label={t("Uuden vaihtoehdon hinta")} />
+                {t("€/kk")}
+              </span>
+              <button type="submit" className="secondary" disabled={saving || !newType.trim()}>{t("Lisää vaihtoehto")}</button>
+            </form>
+          )}
+          {error && <p className="send-error">{error}</p>}
+        </>
+      )}
+    </div>
+  );
+}
 
 // Autopaikat: kaikkien taloyhtiöiden paikat yhdessä taulukossa. Riviä klikkaamalla paikkaa voi muokata.
 export function ParkingSpaces({
@@ -42,7 +159,9 @@ export function ParkingSpaces({
   const [creating, setCreating] = useState(false);
   const [formCompany, setFormCompany] = useState(defaultCompanyId);
   const [label, setLabel] = useState("");
-  const [type, setType] = useState(PARKING_TYPES[0]);
+  const [type, setType] = useState("");
+  // Taloyhtiöiden autopaikkavaihtoehdot yhtiöittäin (paikan tyyppi valitaan näistä).
+  const [companyOptions, setCompanyOptions] = useState<Record<string, ParkingOption[]>>({});
   const [residentId, setResidentId] = useState("");
   const [note, setNote] = useState("");
   const [residents, setResidents] = useState<Resident[]>([]);
@@ -53,9 +172,13 @@ export function ParkingSpaces({
 
   async function loadSpaces() {
     try {
-      const lists = await Promise.all(companies.map(company =>
-        api<ParkingSpace[]>(`/companies/${encodeURIComponent(company.id)}/parking`)));
+      const [lists, optionLists] = await Promise.all([
+        Promise.all(companies.map(company => api<ParkingSpace[]>(`/companies/${encodeURIComponent(company.id)}/parking`))),
+        Promise.all(companies.map(company =>
+          api<ParkingOption[]>(`/companies/${encodeURIComponent(company.id)}/parking-options`).catch(() => [] as ParkingOption[])))
+      ]);
       setSpaces(lists.flat());
+      setCompanyOptions(Object.fromEntries(companies.map((company, index) => [company.id, optionLists[index]])));
       setLoadError(false);
     } catch {
       setLoadError(true);
@@ -80,9 +203,10 @@ export function ParkingSpaces({
   function openForm(space: ParkingSpace | null) {
     setEditing(space);
     setCreating(!space);
-    setFormCompany(space?.company_id ?? (companyFilter !== "all" ? companyFilter : defaultCompanyId));
+    const company = space?.company_id ?? (companyFilter !== "all" ? companyFilter : defaultCompanyId);
+    setFormCompany(company);
     setLabel(space?.label ?? "");
-    setType(space?.type ?? PARKING_TYPES[0]);
+    setType(space?.type ?? companyOptions[company]?.[0]?.type ?? "");
     setResidentId(space?.resident_id ?? "");
     setNote(space?.note ?? "");
     setFormError("");
@@ -132,6 +256,13 @@ export function ParkingSpaces({
     .sort((a, b) => companyName(a.company_id).localeCompare(companyName(b.company_id), "fi")
       || a.label.localeCompare(b.label, "fi", { numeric: true }));
   const paged = usePaged(visible, `${typeFilter}|${companyFilter}|${statusFilter}`);
+  // Tyyppisuodattimen vaihtoehdot: näkyvien yhtiöiden autopaikkavaihtoehdot ja paikoilla jo olevat tyypit.
+  const typeOptions = [...new Set([
+    ...companies.filter(company => companyFilter === "all" || company.id === companyFilter)
+      .flatMap(company => (companyOptions[company.id] ?? []).map(option => option.type)),
+    ...spaces.map(space => space.type)
+  ])];
+  const formTypes = (companyOptions[formCompany] ?? []).map(option => option.type);
   const free = visible.filter(space => !space.resident_id).length;
   const parkingFilters: { key: string; label: string; value: string; clear: () => void }[] = [
     ...(companyFilter !== "all"
@@ -160,7 +291,7 @@ export function ParkingSpaces({
           <Dropdown
             label={t("Tyyppi")}
             value={typeFilter}
-            options={[{ value: "all", label: t("Kaikki") }, ...PARKING_TYPES.map(option => ({ value: option, label: t(option) }))]}
+            options={[{ value: "all", label: t("Kaikki") }, ...typeOptions.map(option => ({ value: option, label: t(option) }))]}
             onChange={setTypeFilter}
           />
           <Dropdown
@@ -277,7 +408,7 @@ export function ParkingSpaces({
                   label={t("Taloyhtiö")}
                   value={formCompany}
                   options={companies.map(company => ({ value: company.id, label: company.name }))}
-                  onChange={value => { setFormCompany(value); setResidentId(""); }}
+                  onChange={value => { setFormCompany(value); setResidentId(""); setType(companyOptions[value]?.[0]?.type ?? ""); }}
                 />
               )}
 
@@ -289,7 +420,7 @@ export function ParkingSpaces({
               <Dropdown
                 label={t("Tyyppi")}
                 value={type}
-                options={(PARKING_TYPES.includes(type) ? PARKING_TYPES : [type, ...PARKING_TYPES])
+                options={(formTypes.includes(type) || !type ? formTypes : [type, ...formTypes])
                   .map(option => ({ value: option, label: t(option) }))}
                 onChange={setType}
               />
@@ -328,7 +459,7 @@ export function ParkingSpaces({
                   <button className="danger" type="button" onClick={handleDelete} disabled={saving}>{t("Poista")}</button>
                 )}
                 <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
-                <button className="primary" type="submit" disabled={saving || !label.trim()}>
+                <button className="primary" type="submit" disabled={saving || !label.trim() || !type}>
                   {saving ? t("Tallennetaan…") : editing ? t("Tallenna muutokset") : t("Lisää autopaikka")}
                 </button>
               </div>
@@ -337,7 +468,6 @@ export function ParkingSpaces({
         </div>
       )}
 
-      <HeatingOrders companies={companies} companyFilter={embedded ? defaultCompanyId : companyFilter} />
     </section>
   );
 }

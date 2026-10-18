@@ -10,7 +10,7 @@ import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
-import { MoveCompanyControl, UnidentifiedCompanyPanel } from "./TicketCompany";
+import { UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
 import { storedAiPrompt } from "../preferences";
 import { Toast } from "../components/Toast";
@@ -417,7 +417,7 @@ export function TicketDrawer({
     : residents;
   // Tietokenttien muutokset kerätään tähän ja tallennetaan vasta Tallenna-painikkeesta. Tehtävän
   // taustapäivitys ei koske niihin, joten keskeneräinen muokkaus säilyy.
-  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string };
+  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string; companyId?: string };
   const [edits, setEdits] = useState<FieldEdits>({});
   const [saveError, setSaveError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -437,7 +437,9 @@ export function TicketDrawer({
     assigneeId: ticket.assignee_id ?? null,
     dueDate: ticket.due_date ?? null,
     reporterId: reporter?.id ?? "",
-    status: ticket.status
+    status: ticket.status,
+    // Tunnistamattoman tehtävän yhtiö on tyhjä, kunnes se valitaan.
+    companyId: ticket.company_pending ? "" : ticket.company_id
   };
   // Näytettävät arvot: tallennettu arvo, ellei kenttää ole muutettu.
   const shown = { ...savedFields, ...edits };
@@ -521,10 +523,14 @@ export function TicketDrawer({
     };
   });
 
-  async function createResidentFromSender(residentId: string) {
+  async function createResidentFromSender(residentId: string, companyId: string) {
+    // Asukas lisättiin toiseen taloyhtiöön: tehtävä siirretään sinne ennen kuin asukas liitetään ilmoittajaksi.
+    if (ticket.company_pending || companyId !== ticket.company_id) {
+      await api(`/tickets/${ticket.id}/company`, { method: "PUT", body: JSON.stringify({ companyId }) });
+    }
     await setReporter(residentId);
     setNewResidentFrom(null);
-    api<Resident[]>(`/companies/${encodeURIComponent(ticket.company_id)}/residents`).then(setResidents).catch(() => undefined);
+    api<Resident[]>(`/companies/${encodeURIComponent(companyId)}/residents`).then(setResidents).catch(() => undefined);
   }
 
   // Sähköposti haetaan asukastiedoista valitun ilmoittajan perusteella.
@@ -539,7 +545,18 @@ export function TicketDrawer({
     setUpdatingFields(true);
     setSaveError("");
     try {
-      const { reporterId, ...fields } = edits;
+      const { reporterId, companyId, ...fields } = edits;
+      // Taloyhtiön vaihto siirtää tehtävän: se menee uuden yhtiön vastuuisännöitsijälle (tai valitulle
+      // käsittelijälle) ja saa yhtiön tehtävänumeron.
+      if (companyId) {
+        const target = companies.find(item => item.id === companyId);
+        if (!window.confirm(t("Siirretäänkö tehtävä taloyhtiöön {0}? Se saa uuden tehtävänumeron.", target?.name ?? ""))) return;
+        await api(`/tickets/${ticket.id}/company`, {
+          method: "PUT",
+          body: JSON.stringify(fields.assigneeId !== undefined ? { companyId, assigneeId: fields.assigneeId } : { companyId })
+        });
+        delete fields.assigneeId;
+      }
       if (Object.keys(fields).length > 0) {
         await api(`/tickets/${ticket.id}/fields`, {
           method: "PUT",
@@ -575,6 +592,8 @@ export function TicketDrawer({
   }, []);
 
   const myId = session?.user.id ?? "";
+  const canMoveCompany = Boolean(ticket.company_pending) || ticket.assignee_id === myId || isAdmin()
+    || Boolean(company?.manager_id && company.manager_id === myId);
 
   async function updateFields(fields: { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null }) {
     setUpdatingFields(true);
@@ -742,14 +761,20 @@ export function TicketDrawer({
             <dt>{t("Tehtävänumero")}</dt>
             <dd>#{formatTicketNumber(ticket.ticket_number)}</dd>
           </div>
-          <div>
+          <div className={edits.companyId !== undefined ? "changed" : ""}>
             <dt>{t("Yhtiö")}</dt>
             <dd>
-              {ticket.company_pending ? t("Taloyhtiö tunnistamatta") : ticket.company_name || "-"}
-              {/* Väärään yhtiöön mennyt tehtävä: käsittelijä, vastuuisännöitsijä tai pääkäyttäjä siirtää sen. */}
-              {!ticket.company_pending && (ticket.assignee_id === session?.user.id || isAdmin() || (company?.manager_id && company.manager_id === session?.user.id)) && (
-                <MoveCompanyControl ticket={ticket} companies={companies} onChanged={onChanged} />
-              )}
+              {/* Taloyhtiön vaihto siirtää tehtävän, kun muutokset tallennetaan. Siirron voi tehdä käsittelijä,
+                  vastuuisännöitsijä tai pääkäyttäjä; tunnistamattoman tehtävän yhtiön valitsee jonon käsittelijä. */}
+              <FactDropdown
+                value={shown.companyId}
+                options={[
+                  ...(ticket.company_pending ? [{ value: "", label: t("Taloyhtiö tunnistamatta") }] : []),
+                  ...companies.map(item => ({ value: item.id, label: item.name }))
+                ]}
+                disabled={updatingFields || !canMoveCompany}
+                onChange={companyId => edit("companyId", companyId)}
+              />
             </dd>
           </div>
           <div className={reporterEdited ? "changed" : ""}>
@@ -951,8 +976,8 @@ export function TicketDrawer({
 
         {newResidentFrom && (
           <CreateResidentModal
-            companyId={ticket.company_id}
-            companyName={ticket.company_name}
+            companyId={ticket.company_pending ? "" : ticket.company_id}
+            companies={companies}
             initialName={newResidentFrom.name}
             initialEmail={newResidentFrom.email}
             onClose={() => setNewResidentFrom(null)}
@@ -1021,7 +1046,7 @@ export function TicketDrawer({
           {/* Arkaluonteinen tehtävä (esim. terveystietoja) ei mene AI:lle; merkinnän voi asettaa ja poistaa. */}
           <p className={ticket.sensitive ? "sensitive-note active" : "sensitive-note"}>
             {ticket.sensitive ? (
-              <span>{t("🔒 Arkaluonteinen tehtävä: sitä ei lähetetä AI:lle, ja sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät. Avaukset kirjataan lokiin.")}</span>
+              <span>{t("Arkaluonteinen tehtävä: sitä ei lähetetä AI:lle, ja sen näkevät vain käsittelijä, taloyhtiön vastuuisännöitsijä ja pääkäyttäjät. Avaukset kirjataan lokiin.")}</span>
             ) : null}
             <button type="button" className="back-link" disabled={sensitiveSaving} onClick={() => void toggleSensitive()}>
               {ticket.sensitive ? t("Poista arkaluonteisuusmerkintä") : t("Merkitse arkaluonteiseksi")}

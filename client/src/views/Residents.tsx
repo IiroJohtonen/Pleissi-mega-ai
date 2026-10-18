@@ -21,8 +21,11 @@ export function Residents({
   onCompanyChange,
   onChanged,
   openResidentId,
-  onResidentClosed
+  onResidentClosed,
+  formCompanies = companies
 }: {
+  // Taloyhtiöt, joihin uuden asukkaan voi lisätä; taloyhtiö kysytään aina lisättäessä.
+  formCompanies?: Company[];
   // Avattava asukas (osoite #/residents/<id>), esim. ilmoittajakentän painikkeesta.
   openResidentId?: string | null;
   onResidentClosed?: () => void;
@@ -41,7 +44,7 @@ export function Residents({
   const [companyFilter, setCompanyFilter] = useState(allCompanies && companies.some(company => company.id === companyId) ? companyId : "all");
   const [emailFilter, setEmailFilter] = useState("all");
   const [search, setSearch] = useState("");
-  // Uuden asukkaan taloyhtiö, kun näkymässä on kaikki yhtiöt.
+  // Uuden asukkaan taloyhtiö; oletuksena näkymän taloyhtiö.
   const [formCompanyId, setFormCompanyId] = useState(companyId);
   const [importing, setImporting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -172,7 +175,7 @@ export function Residents({
     try {
       await api(editing
         ? `/residents/${encodeURIComponent(editing.id)}`
-        : `/companies/${encodeURIComponent(allCompanies ? formCompanyId : companyId)}/residents`, {
+        : `/companies/${encodeURIComponent(formCompanyId)}/residents`, {
         method: editing ? "PUT" : "POST",
         body: JSON.stringify({ name, email, address, apartmentNumber, password: residentPassword || undefined })
       });
@@ -427,15 +430,15 @@ export function Residents({
             <p className="muted">
               {editing
                 ? t("Asukkaan tiedot · {0}", editing.company_name ?? companyName)
-                : allCompanies ? t("Valitse taloyhtiö, johon asukas lisätään.") : t("Asukas lisätään taloyhtiöön {0}.", companyName)}
+                : t("Valitse taloyhtiö, johon asukas lisätään.")}
             </p>
 
             <form className="ticket-form" onSubmit={handleSubmit}>
-              {allCompanies && !editing && (
+              {!editing && (
                 <label>
                   <span>{t("Taloyhtiö")}</span>
                   <select value={formCompanyId} onChange={event => setFormCompanyId(event.target.value)}>
-                    {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+                    {formCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
                   </select>
                 </label>
               )}

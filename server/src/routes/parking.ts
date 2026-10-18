@@ -1,18 +1,37 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext } from "../access.js";
-import { requireAdmin } from "../auth.js";
+import { requireManager } from "../auth.js";
 import { db } from "../db.js";
 import { id, now, today } from "../util.js";
 
 export const parkingRouter: Router = express.Router();
 
-// Autopaikat: taloyhtiön paikat, niiden tyyppi ja haltija.
-export const PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka", "Lämmityspaikka"] as const;
+// Autopaikat: taloyhtiön paikat, niiden tyyppi ja haltija. Paikkatyypit ovat taloyhtiön autopaikkavaihtoehtoja
+// hintoineen; uusi taloyhtiö saa nämä oletusvaihtoehdot, joita isännöitsijä voi lisätä ja poistaa.
+export const DEFAULT_PARKING_TYPES = ["Autotalli", "Ulkopaikka", "Hallipaikka", "Lämmityspaikka"] as const;
+
+export type ParkingOption = { type: string; monthly_price: number };
+
+// Taloyhtiön autopaikkavaihtoehdot lisäysjärjestyksessä. Oletusvaihtoehdot lisätään kerran (parking_options_set),
+// jotta poistettu vaihtoehto ei palaa.
+export function parkingOptions(companyId: string): ParkingOption[] {
+  const company = db.prepare("SELECT parking_options_set FROM companies WHERE id = ?").get(companyId) as
+    { parking_options_set: number } | undefined;
+  if (company && !company.parking_options_set) {
+    db.transaction(() => {
+      const insert = db.prepare("INSERT OR IGNORE INTO parking_prices (company_id, type, monthly_price) VALUES (?, ?, 0)");
+      for (const type of DEFAULT_PARKING_TYPES) insert.run(companyId, type);
+      db.prepare("UPDATE companies SET parking_options_set = 1 WHERE id = ?").run(companyId);
+    })();
+  }
+  return db.prepare("SELECT type, monthly_price FROM parking_prices WHERE company_id = ? ORDER BY rowid")
+    .all(companyId) as ParkingOption[];
+}
 
 const parkingSchema = z.object({
   label: z.string().trim().min(1).max(40),
-  type: z.enum(PARKING_TYPES),
+  type: z.string().trim().min(1).max(60),
   residentId: z.string().nullable().default(null),
   note: z.string().trim().max(300).default("")
 });
@@ -25,8 +44,13 @@ const PARKING_SELECT = `
   LEFT JOIN apartments a ON a.id = r.apartment_id
 `;
 
-// Tarkistaa paikan tiedot: haltijan pitää olla saman yhtiön asukas ja tunnuksen yksilöllinen yhtiössä.
+// Tarkistaa paikan tiedot: tyyppi on taloyhtiön autopaikkavaihtoehto (tai paikan nykyinen tyyppi), haltijan pitää
+// olla saman yhtiön asukas ja tunnuksen yksilöllinen yhtiössä.
 function parkingError(companyId: string, data: z.infer<typeof parkingSchema>, exceptId = "") {
+  const currentType = (db.prepare("SELECT type FROM parking_spaces WHERE id = ?").get(exceptId) as { type: string } | undefined)?.type;
+  if (data.type !== currentType && !parkingOptions(companyId).some(option => option.type === data.type)) {
+    return { status: 400, error: "Valitse paikkatyyppi taloyhtiön autopaikkavaihtoehdoista." };
+  }
   if (data.residentId) {
     const resident = db.prepare("SELECT 1 FROM residents WHERE id = ? AND company_id = ?").get(data.residentId, companyId);
     if (!resident) return { status: 404, error: "Asukasta ei löytynyt tästä yhtiöstä." };
@@ -141,35 +165,56 @@ parkingRouter.get("/companies/:companyId/parking-billing", (req, res) => {
   `).all(companyId, nextMonth, firstDay));
 });
 
-// Autopaikkojen kuukausihinnat (euroa) paikkatyypeittäin.
-function parkingPrices(companyId: string) {
-  const prices = Object.fromEntries(PARKING_TYPES.map(type => [type, 0])) as Record<(typeof PARKING_TYPES)[number], number>;
-  const rows = db.prepare("SELECT type, monthly_price FROM parking_prices WHERE company_id = ?").all(companyId) as
-    { type: string; monthly_price: number }[];
-  for (const row of rows) {
-    if ((PARKING_TYPES as readonly string[]).includes(row.type)) prices[row.type as (typeof PARKING_TYPES)[number]] = row.monthly_price;
-  }
-  return prices;
-}
-
+// Autopaikkojen kuukausihinnat (euroa) paikkatyypeittäin laskutusta varten.
 parkingRouter.get("/companies/:companyId/parking-prices", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
-  res.json(parkingPrices(companyId));
+  res.json(Object.fromEntries(parkingOptions(companyId).map(option => [option.type, option.monthly_price])));
 });
 
-parkingRouter.put("/companies/:companyId/parking-prices", requireAdmin, (req, res) => {
+// Taloyhtiön autopaikkavaihtoehdot: isännöitsijä lisää vaihtoehtoja omalla hinnallaan, muuttaa hintaa ja poistaa niitä.
+parkingRouter.get("/companies/:companyId/parking-options", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  res.json(parkingOptions(companyId));
+});
 
-  const price = z.number().min(0).max(10000);
-  const parsed = z.object({ Autotalli: price, Ulkopaikka: price, Hallipaikka: price, Lämmityspaikka: price.default(0) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Tarkista hinnat." });
+const optionSchema = z.object({
+  type: z.string().trim().min(1).max(60),
+  monthlyPrice: z.number().min(0).max(10000).default(0)
+});
 
-  const save = db.prepare(`
-    INSERT INTO parking_prices (company_id, type, monthly_price) VALUES (?, ?, ?)
-    ON CONFLICT(company_id, type) DO UPDATE SET monthly_price = excluded.monthly_price
-  `);
-  for (const type of PARKING_TYPES) save.run(companyId, type, parsed.data[type]);
-  res.json(parkingPrices(companyId));
+parkingRouter.post("/companies/:companyId/parking-options", requireManager, (req, res) => {
+  const companyId = companyIdFromContext(req.params.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const parsed = optionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Anna vaihtoehdon nimi ja hinta." });
+  if (parkingOptions(companyId).some(option => option.type.toLocaleLowerCase("fi") === parsed.data.type.toLocaleLowerCase("fi"))) {
+    return res.status(409).json({ error: "Taloyhtiöllä on jo tämän niminen autopaikkavaihtoehto." });
+  }
+  db.prepare("INSERT INTO parking_prices (company_id, type, monthly_price) VALUES (?, ?, ?)")
+    .run(companyId, parsed.data.type, parsed.data.monthlyPrice);
+  res.status(201).json(parkingOptions(companyId));
+});
+
+parkingRouter.put("/companies/:companyId/parking-options/:type", requireManager, (req, res) => {
+  const companyId = companyIdFromContext(req.params.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  const parsed = z.object({ monthlyPrice: z.number().min(0).max(10000) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista hinta." });
+  parkingOptions(companyId);
+  const changed = db.prepare("UPDATE parking_prices SET monthly_price = ? WHERE company_id = ? AND type = ?")
+    .run(parsed.data.monthlyPrice, companyId, req.params.type).changes;
+  if (!changed) return res.status(404).json({ error: "Autopaikkavaihtoehtoa ei löytynyt." });
+  res.json(parkingOptions(companyId));
+});
+
+// Poistettu vaihtoehto ei enää ole valittavissa; sen tyyppisten paikkojen tyyppi säilyy.
+parkingRouter.delete("/companies/:companyId/parking-options/:type", requireManager, (req, res) => {
+  const companyId = companyIdFromContext(req.params.companyId);
+  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
+  parkingOptions(companyId);
+  const changed = db.prepare("DELETE FROM parking_prices WHERE company_id = ? AND type = ?").run(companyId, req.params.type).changes;
+  if (!changed) return res.status(404).json({ error: "Autopaikkavaihtoehtoa ei löytynyt." });
+  res.json(parkingOptions(companyId));
 });

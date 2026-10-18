@@ -47,6 +47,35 @@ describe("haku", () => {
     assert.equal(result.data.tickets[0].id, ticketId);
   });
 
+  it("#T-numero löytää tehtävän ja #K-numero dokumentin", async () => {
+    const padded = `#T${String(ticketNumber).padStart(6, "0")}`;
+    const byTicket = (await call(server, admin, "GET", `/search?q=${encodeURIComponent(padded)}`)).data;
+    assert.equal(byTicket.tickets[0].id, ticketId);
+    assert.equal(byTicket.knowledge.length, 0);
+
+    const knowledge = (await call(server, admin, "GET", "/companies/demo-company/knowledge")).data as { id: string; doc_number: number }[];
+    const entry = knowledge[0];
+    assert.ok(entry.doc_number > 0);
+    const byDocument = (await call(server, admin, "GET", `/search?q=${encodeURIComponent(`#K${String(entry.doc_number).padStart(6, "0")}`)}`)).data;
+    assert.deepEqual(byDocument.knowledge.map((item: any) => item.id), [entry.id]);
+    assert.equal(byDocument.tickets.length, 0);
+  });
+
+  it("vakiotiedon uusi versio pitää dokumenttinumeronsa", async () => {
+    const created = await call(server, admin, "POST", "/companies/demo-company/knowledge/facts", {
+      question: "Pihagrilli", answer: "Grillaus on sallittu", formatted: "Grillaus on **sallittu**"
+    });
+    assert.equal(created.status, 201);
+    const first = (await call(server, admin, "GET", `/knowledge/${created.data.knowledgeId}`)).data;
+    assert.equal(first.content, "Grillaus on sallittu");
+    assert.equal(first.formatted, "Grillaus on **sallittu**");
+    const next = await call(server, admin, "POST", "/companies/demo-company/knowledge/facts", {
+      question: "Pihagrilli", answer: "Grillaus kielletty", replaces: created.data.knowledgeId
+    });
+    const second = (await call(server, admin, "GET", `/knowledge/${next.data.knowledgeId}`)).data;
+    assert.equal(second.doc_number, first.doc_number);
+  });
+
   it("tyhjä haku hylätään", async () => {
     assert.equal((await call(server, admin, "GET", "/search?q=")).status, 400);
   });

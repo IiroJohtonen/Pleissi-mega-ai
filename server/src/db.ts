@@ -455,6 +455,11 @@ if (!companyColumns.some(existing => existing.name === "managed")) {
   db.exec("ALTER TABLE companies ADD COLUMN managed INTEGER NOT NULL DEFAULT 0");
 }
 
+// Onko taloyhtiölle jo lisätty oletusautopaikkavaihtoehdot (parking_prices); poistettu vaihtoehto ei palaa.
+if (!companyColumns.some(existing => existing.name === "parking_options_set")) {
+  db.exec("ALTER TABLE companies ADD COLUMN parking_options_set INTEGER NOT NULL DEFAULT 0");
+}
+
 // Tietopankin tietue on joko dokumentti tai vakiotieto. Uusi versio saa saman group_id:n,
 // ja vanha jää historiaan tilaan 'replaced'. Poistettu tietue jää tilaan 'deleted'. Dokumentin uusi versio
 // odottaa tilassa 'pending', kunnes isännöitsijä hyväksyy muutokset; vasta silloin vanha korvataan.
@@ -480,8 +485,11 @@ for (const [column, definition] of [
   ["pages", "TEXT"],
   // Odottavan uuden version vertailu edelliseen (JSON), lasketaan kerran pilkonnan valmistuttua.
   ["comparison", "TEXT"],
-  // Dokumentin muotoiltu teksti (otsikot, lihavoinnit, luettelot), ks. rich-text.ts. content on sama ilman muotoilua.
-  ["formatted", "TEXT"]
+  // Dokumentin tai vakiotiedon muotoiltu teksti (otsikot, lihavoinnit, luettelot), ks. rich-text.ts. content on sama
+  // ilman muotoilua.
+  ["formatted", "TEXT"],
+  // Dokumenttinumero (näytetään muodossa #K000123). Kaikilla saman tietueen versioilla on sama numero.
+  ["doc_number", "INTEGER"]
 ]) {
   if (!knowledgeColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE knowledge ADD COLUMN ${column} ${definition}`);
@@ -855,6 +863,19 @@ if (!ticketColumns.some(column => column.name === "kind")) {
 function backfillKnowledge() {
   db.prepare("UPDATE knowledge SET group_id = id WHERE group_id IS NULL").run();
   db.prepare("UPDATE knowledge SET created_at = ? WHERE created_at IS NULL").run(new Date().toISOString());
+  // Dokumenttinumerot vanhoille tietueille vanhimmasta alkaen; saman tietueen versiot saavat saman numeron.
+  const missing = db.prepare(`
+    SELECT group_id, MIN(created_at) AS first FROM knowledge WHERE doc_number IS NULL GROUP BY group_id ORDER BY first, group_id
+  `).all() as { group_id: string }[];
+  for (const { group_id: groupId } of missing) {
+    const existing = db.prepare("SELECT MAX(doc_number) AS number FROM knowledge WHERE group_id = ?").get(groupId) as { number: number | null };
+    const number = existing.number ?? nextDocNumber();
+    db.prepare("UPDATE knowledge SET doc_number = ? WHERE group_id = ? AND doc_number IS NULL").run(number, groupId);
+  }
+}
+
+export function nextDocNumber(): number {
+  return ((db.prepare("SELECT MAX(doc_number) AS number FROM knowledge").get() as { number: number | null }).number ?? 0) + 1;
 }
 
 // Verkkosivun lomakkeilta tulevat lukemat, muuttoilmoitukset ja lämmityspaikkatilaukset: asunto voi
@@ -951,6 +972,10 @@ function backfillKnowledge() {
       updated_at TEXT NOT NULL
     )
   `);
+  // Autopaikkatilauksen paikkatyyppi (taloyhtiön autopaikkavaihtoehto); vanhoissa tilauksissa tyhjä.
+  if (!(db.prepare("PRAGMA table_info(heating_orders)").all() as { name: string }[]).some(column => column.name === "parking_type")) {
+    db.exec("ALTER TABLE heating_orders ADD COLUMN parking_type TEXT NOT NULL DEFAULT ''");
+  }
 }
 
 // Muutot, mittarilukemat ja lämmityspaikat ovat omissa tauluissaan, eivät tehtävätyyppejä:

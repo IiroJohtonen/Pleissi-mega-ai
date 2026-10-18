@@ -9,8 +9,9 @@ import { portalResident } from "./portal.js";
 export const heatingRouter: Router = express.Router();
 
 // ---------------------------------------------------------------------------------------------
-// Auton lämmityspaikan tilaukset Autopaikat-sivulla. Tilaus tulee verkkosivun lomakkeelta
-// sähköpostina, asukasportaalista tai toimiston kirjaamana; kentät ovat samat kuin sivun lomakkeella.
+// Autopaikkatilaukset Jonot ja tilaukset -sivulla. Tilaus tulee verkkosivun lomakkeelta sähköpostina,
+// asukasportaalista tai toimiston kirjaamana; kentät ovat samat kuin sivun lomakkeella. Paikkatyyppi on
+// jokin taloyhtiön autopaikkavaihtoehdoista.
 // ---------------------------------------------------------------------------------------------
 export const HEATING_STATUSES = ["pending", "approved", "rejected", "ended"] as const;
 
@@ -21,6 +22,7 @@ const orderSchema = z.object({
   endDate: z.union([date, z.null()]).default(null),
   status: z.enum(HEATING_STATUSES).default("pending"),
   note: z.string().trim().max(1000).default(""),
+  parkingType: z.string().trim().max(60).default(""),
   details: detailsSchema("heating").default({})
 });
 
@@ -57,10 +59,10 @@ heatingRouter.post("/companies/:companyId/heating-orders", (req, res) => {
   const orderId = id("heating");
   const timestamp = now();
   db.prepare(`
-    INSERT INTO heating_orders (id, company_id, apartment_id, start_date, end_date, status, note, details, source, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'office', ?, ?)
+    INSERT INTO heating_orders (id, company_id, apartment_id, start_date, end_date, status, note, parking_type, details, source, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'office', ?, ?)
   `).run(orderId, companyId, parsed.data.apartmentId, parsed.data.startDate, parsed.data.endDate, parsed.data.status,
-    parsed.data.note, JSON.stringify(parsed.data.details), timestamp, timestamp);
+    parsed.data.note, parsed.data.parkingType, JSON.stringify(parsed.data.details), timestamp, timestamp);
   res.status(201).json({ ok: true, orderId });
 });
 
@@ -73,9 +75,10 @@ heatingRouter.put("/heating-orders/:id", (req, res) => {
   const error = apartmentError(parsed.data.apartmentId, order.company_id);
   if (error) return res.status(404).json({ error });
   db.prepare(`
-    UPDATE heating_orders SET apartment_id = ?, start_date = ?, end_date = ?, status = ?, note = ?, details = ?, updated_at = ? WHERE id = ?
+    UPDATE heating_orders SET apartment_id = ?, start_date = ?, end_date = ?, status = ?, note = ?, parking_type = ?, details = ?, updated_at = ?
+    WHERE id = ?
   `).run(parsed.data.apartmentId, parsed.data.startDate, parsed.data.endDate, parsed.data.status, parsed.data.note,
-    JSON.stringify(parsed.data.details ?? parseDetails(order.details)), now(), order.id);
+    parsed.data.parkingType, JSON.stringify(parsed.data.details ?? parseDetails(order.details)), now(), order.id);
   res.json({ ok: true });
 });
 

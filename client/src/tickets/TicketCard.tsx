@@ -227,16 +227,17 @@ export function TicketCard({
         <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
         <div className="ticket-row-main">
           <strong>
-            {ticket.restricted ? `🔒 ${t("Arkaluonteinen tehtävä")}` : ticket.subject}
+            {ticket.restricted ? t("Arkaluonteinen tehtävä") : ticket.subject}
             {ticket.has_new_reply ? <em className="new-reply">{t("Uusi viesti")}</em> : null}
             {ticket.ai_action === "filtered" && ticket.status === "closed"
               ? <em className="new-reply filtered" title={ticket.ai_reason}>{t("AI suodatti")}</em>
               : null}
             {isOverdue(ticket) ? <em className="new-reply overdue" title={t("Määräaika oli {0}", formatDay(ticket.due_date))}>{t("Myöhässä")}</em> : null}
           </strong>
-          {(reminders.length > 0 || (ticket.sensitive && !ticket.restricted)) && (
+          {/* Tägirivi vain, jos tägejä on (sensitive on tietokannasta luku 0/1, joten se muutetaan totuusarvoksi). */}
+          {(reminders.length > 0 || Boolean(ticket.sensitive && !ticket.restricted)) && (
             <span className="ticket-row-reminders">
-              {ticket.sensitive && !ticket.restricted ? <em className="sensitive-tag">🔒 {t("Arkaluonteinen")}</em> : null}
+              {ticket.sensitive && !ticket.restricted ? <em className="sensitive-tag">{t("Arkaluonteinen")}</em> : null}
               {reminders.map(reminder => <em key={reminder.kind} className={`reminder-chip reminder-${reminder.kind}`}>{reminder.text}</em>)}
             </span>
           )}
@@ -273,7 +274,7 @@ export function TicketCard({
         {/* Arkaluonteinen tehtävä (esim. terveystiedot): sisältö ei mene AI:lle, ja sen näkevät vain osa käyttäjistä. */}
         {ticket.sensitive || ticket.restricted ? (
           <span className="sensitive-tag" title={t("Tehtävä on arkaluonteinen: sitä ei lähetetä AI:lle, ja sen sisällön näkevät vain käsittelijä, vastuuisännöitsijä ja pääkäyttäjät.")}>
-            🔒 {t("Arkaluonteinen")}
+            {t("Arkaluonteinen")}
           </span>
         ) : null}
         <span className="date" title={t("Päivitetty {0}", formatDate(ticket.updated_at || ticket.created_at))}>{t("Saapunut {0}", formatDate(ticket.created_at))}</span>

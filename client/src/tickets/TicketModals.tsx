@@ -207,22 +207,24 @@ export function TicketCreateModal({
 type Apartment = { id: string; apartment_number: string; address: string };
 
 // Uusi asukas tehtävän sähköpostin lähettäjästä. Nimi ja sähköposti täytetään viestistä valmiiksi;
-// asunto valitaan taloyhtiön asunnoista tai kirjoitetaan uusi.
+// taloyhtiö kysytään aina, ja asunto valitaan sen asunnoista tai kirjoitetaan uusi.
 export function CreateResidentModal({
-  companyId,
-  companyName,
+  companyId: initialCompanyId,
+  companies,
   initialName,
   initialEmail,
   onClose,
   onCreated
 }: {
+  // Tehtävän taloyhtiö; tyhjä, jos taloyhtiötä ei ole tunnistettu.
   companyId: string;
-  companyName?: string;
+  companies: Company[];
   initialName: string;
   initialEmail: string;
   onClose: () => void;
-  onCreated: (residentId: string) => Promise<void>;
+  onCreated: (residentId: string, companyId: string) => Promise<void>;
 }) {
+  const [companyId, setCompanyId] = useState(initialCompanyId);
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [apartments, setApartments] = useState<Apartment[]>([]);
@@ -234,6 +236,9 @@ export function CreateResidentModal({
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setApartments([]);
+    setApartmentId("new");
+    if (!companyId) return;
     api<Apartment[]>(`/companies/${encodeURIComponent(companyId)}/apartments`)
       .then(loaded => {
         setApartments(loaded);
@@ -251,7 +256,7 @@ export function CreateResidentModal({
   const apartment = apartments.find(item => item.id === apartmentId);
   const finalAddress = apartment ? apartment.address : address.trim();
   const finalNumber = apartment ? apartment.apartment_number : apartmentNumber.trim();
-  const ready = name.trim() && finalAddress && finalNumber;
+  const ready = companyId && name.trim() && finalAddress && finalNumber;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -263,7 +268,7 @@ export function CreateResidentModal({
         method: "POST",
         body: JSON.stringify({ name: name.trim(), email: email.trim(), address: finalAddress, apartmentNumber: finalNumber })
       });
-      await onCreated(created.residentId);
+      await onCreated(created.residentId, companyId);
     } catch (submitError) {
       setError(errorMessage(submitError, t("Asukkaan lisääminen epäonnistui.")));
       setSubmitting(false);
@@ -282,10 +287,16 @@ export function CreateResidentModal({
         <button className="close" onClick={onClose} disabled={submitting} aria-label={t("Sulje")}>×</button>
         <h2 id="create-resident-title">{t("Uusi asukas")}</h2>
         <p className="muted">
-          {companyName ? t("Asukas lisätään taloyhtiöön {0} ja liitetään tämän tehtävän ilmoittajaksi.", companyName)
-            : t("Asukas liitetään tämän tehtävän ilmoittajaksi.")}
+          {t("Asukas liitetään tämän tehtävän ilmoittajaksi. Jos valitset toisen taloyhtiön, tehtävä siirretään siihen.")}
         </p>
         <form className="ticket-form" onSubmit={handleSubmit}>
+          <label>
+            <span>{t("Taloyhtiö")}</span>
+            <select value={companyId} onChange={event => setCompanyId(event.target.value)}>
+              {!companyId && <option value="">{t("Valitse taloyhtiö")}</option>}
+              {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+          </label>
           <label>
             <span>{t("Nimi")}</span>
             <input value={name} onChange={event => setName(event.target.value)} autoFocus maxLength={200} />

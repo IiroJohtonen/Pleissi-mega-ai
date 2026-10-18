@@ -6,6 +6,7 @@ import { formatDateOnly, formatDay, noticeStatusClass } from "../format";
 import { api, errorMessage } from "../session";
 import type { Company } from "../types";
 import type { Apartment } from "./Keys";
+import { formatParkingOption, type ParkingOption } from "./Parking";
 import { t } from "../i18n";
 
 export type HeatingOrder = {
@@ -17,6 +18,8 @@ export type HeatingOrder = {
   end_date: string | null;
   status: "pending" | "approved" | "rejected" | "ended";
   note: string;
+  // Tilattu paikkatyyppi (taloyhtiön autopaikkavaihtoehto); vanhoissa tilauksissa tyhjä.
+  parking_type?: string;
   source: "office" | "portal" | "email";
   created_at: string;
   apartment_number?: string | null;
@@ -30,10 +33,14 @@ export const heatingStatusLabels: Record<HeatingOrder["status"], string> = {
   pending: t("Odottaa käsittelyä"), approved: t("Myönnetty"), rejected: t("Hylätty"), ended: t("Päättynyt")
 };
 
-type Draft = { apartmentId: string; startDate: string; endDate: string; status: HeatingOrder["status"]; note: string; details: Record<string, string> };
+type Draft = {
+  apartmentId: string; startDate: string; endDate: string; status: HeatingOrder["status"]; note: string; parkingType: string;
+  details: Record<string, string>;
+};
 
-// Auton lämmityspaikan tilaukset Autopaikat-sivulla: verkkosivun lomakkeelta, asukasportaalista tai
-// toimiston kirjaamina. Tilauksen kentät ovat samat kuin verkkosivun lomakkeella.
+// Autopaikkatilaukset Jonot ja tilaukset -sivulla: verkkosivun lomakkeelta, asukasportaalista tai toimiston
+// kirjaamina (Uusi tilaus). Tilauksen kentät ovat samat kuin verkkosivun lomakkeella; paikkatyyppi valitaan
+// taloyhtiön autopaikkavaihtoehdoista.
 export function HeatingOrders({ companies, companyFilter }: { companies: Company[]; companyFilter: string }) {
   const [orders, setOrders] = useState<HeatingOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +49,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
   const [newCompany, setNewCompany] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [parkingTypes, setParkingTypes] = useState<ParkingOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showClosed, setShowClosed] = useState(false);
@@ -70,6 +78,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
   useEffect(() => {
     if (!draft || !formCompany) return;
     api<Apartment[]>(`/companies/${encodeURIComponent(formCompany)}/apartments`).then(setApartments).catch(() => setApartments([]));
+    api<ParkingOption[]>(`/companies/${encodeURIComponent(formCompany)}/parking-options`).then(setParkingTypes).catch(() => setParkingTypes([]));
   }, [Boolean(draft), formCompany]);
 
   function close() {
@@ -83,14 +92,14 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
     setError("");
     setDraft({
       apartmentId: order.apartment_id ?? "", startDate: order.start_date ?? "", endDate: order.end_date ?? "",
-      status: order.status, note: order.note, details: detailValues(order.details)
+      status: order.status, note: order.note, parkingType: order.parking_type ?? "", details: detailValues(order.details)
     });
   }
 
   function create() {
     close();
     setNewCompany(companyFilter !== "all" ? companyFilter : companies[0]?.id ?? "");
-    setDraft({ apartmentId: "", startDate: "", endDate: "", status: "pending", note: "", details: {} });
+    setDraft({ apartmentId: "", startDate: "", endDate: "", status: "pending", note: "", parkingType: "", details: {} });
   }
 
   async function save(event: FormEvent) {
@@ -100,7 +109,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
     setError("");
     const body = JSON.stringify({
       apartmentId: draft.apartmentId || null, startDate: draft.startDate || null, endDate: draft.endDate || null,
-      status: draft.status, note: draft.note.trim(), details: draft.details
+      status: draft.status, note: draft.note.trim(), parkingType: draft.parkingType, details: draft.details
     });
     try {
       if (open) await api(`/heating-orders/${encodeURIComponent(open.id)}`, { method: "PUT", body });
@@ -116,7 +125,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
   }
 
   async function remove(order: HeatingOrder) {
-    if (!window.confirm(t("Poistetaanko lämmityspaikan tilaus?"))) return;
+    if (!window.confirm(t("Poistetaanko autopaikkatilaus?"))) return;
     setSaving(true);
     try {
       await api(`/heating-orders/${encodeURIComponent(order.id)}`, { method: "DELETE" });
@@ -138,7 +147,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
   return (
     <div className="heating-orders">
       <div className="residents-toolbar">
-        <h2>{t("Auton lämmityspaikan tilaukset")}</h2>
+        <h2>{t("Autopaikkatilaukset")}</h2>
         <div className="draft-actions">
           <label className="inline-check">
             <input type="checkbox" checked={showClosed} onChange={() => setShowClosed(!showClosed)} />
@@ -150,7 +159,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
 
       {loading ? <div className="empty">{t("Ladataan…")}</div>
         : visible.length === 0 ? (
-          <div className="empty">{t("Ei lämmityspaikan tilauksia. Tilaus tulee isännöitsijäyrityksen verkkosivun lomakkeelta, asukasportaalista tai voit kirjata sen itse.")}</div>
+          <div className="empty">{t("Ei autopaikkatilauksia. Tilaus tulee isännöitsijäyrityksen verkkosivun lomakkeelta, asukasportaalista tai voit kirjata sen itse.")}</div>
         )
         : (
           <div className="table-card">
@@ -197,7 +206,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
                       {!order.apartment_id && <span>{t("Asunto ei tiedossa")}</span>}
                     </td>
                     <td>
-                      {detailValue(order.details, "spot") ? t(detailValue(order.details, "spot")) : "–"}
+                      {order.parking_type ? t(order.parking_type) : detailValue(order.details, "spot") ? t(detailValue(order.details, "spot")) : "–"}
                       {detailValue(order.details, "orderType") && <span>{t(detailValue(order.details, "orderType"))}</span>}
                     </td>
                     <td>{period(order)}</td>
@@ -215,7 +224,7 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
           <aside className="drawer form-drawer">
             <button type="button" className="drawer-back" onClick={close} disabled={saving}>{t("← Takaisin")}</button>
             <button className="close" onClick={close} disabled={saving}>×</button>
-            <h2>{open ? t("Lämmityspaikan tilaus") : t("Uusi lämmityspaikan tilaus")}</h2>
+            <h2>{open ? t("Autopaikkatilaus") : t("Uusi autopaikkatilaus")}</h2>
             {open && (
               <>
                 <p className="muted">{companyName(open.company_id)} · {formatDateOnly(open.created_at)} · {sourceLabel(open.source)}</p>
@@ -223,6 +232,10 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
                   <div>
                     <dt>{t("Tila")}</dt>
                     <dd>{heatingStatusLabels[open.status]}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("Paikkatyyppi")}</dt>
+                    <dd>{open.parking_type ? t(open.parking_type) : "–"}</dd>
                   </div>
                   <div>
                     <dt>{t("Ajanjakso")}</dt>
@@ -256,6 +269,17 @@ export function HeatingOrders({ companies, companyFilter }: { companies: Company
                   value={draft.status}
                   options={(Object.keys(heatingStatusLabels) as HeatingOrder["status"][]).map(value => ({ value, label: heatingStatusLabels[value] }))}
                   onChange={status => setDraft({ ...draft, status: status as HeatingOrder["status"] })}
+                />
+                <Dropdown
+                  label={t("Paikkatyyppi")}
+                  value={draft.parkingType}
+                  options={[
+                    { value: "", label: t("Ei valittu") },
+                    ...(draft.parkingType && !parkingTypes.some(option => option.type === draft.parkingType)
+                      ? [{ value: draft.parkingType, label: t(draft.parkingType) }] : []),
+                    ...parkingTypes.map(option => ({ value: option.type, label: formatParkingOption(option) }))
+                  ]}
+                  onChange={parkingType => setDraft({ ...draft, parkingType })}
                 />
                 <Dropdown
                   label={t("Asunto")}

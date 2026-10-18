@@ -9,7 +9,9 @@ type Route = { tab: TicketTab; param: string | null };
 // Näkymä luetaan osoitteen hash-osasta (esim. #/companies/abc), jotta selaimen
 // takaisin- ja eteenpäin-painikkeet liikkuvat näkymien välillä.
 export function parseRoute(): Route {
-  const [tab, param] = window.location.hash.replace(/^#\/?/, "").split("/");
+  const [rawTab, param] = window.location.hash.replace(/^#\/?/, "").split("/");
+  // Ilman käsittelijää -näkymä yhdistettiin Tunnistamattomiin; vanhat linkit ohjataan sinne.
+  const tab = rawTab === "unassigned" ? "unidentified" : rawTab;
   return ticketTabs.includes(tab as TicketTab)
     ? { tab: tab as TicketTab, param: param ? decodeURIComponent(param) : null }
     : { tab: "queue", param: null };
@@ -38,7 +40,7 @@ export function useRoute() {
 export const tabTitles: Record<TicketTab, string> = {
   queue: t("Päätösjono"),
   unassigned: t("Ilman käsittelijää"),
-  unidentified: t("Taloyhtiö tunnistamatta"),
+  unidentified: t("Tunnistamattomat"),
   "my-tickets": t("Omat tehtävät"),
   "ai-handled": t("AI tehtävät"),
   tickets: t("Kaikki tehtävät"),
@@ -55,7 +57,7 @@ export const tabTitles: Record<TicketTab, string> = {
   renovations: t("Remontit"),
   keys: t("Avaimet"),
   meters: t("Lukemat"),
-  waitlist: t("Jonot"),
+  waitlist: t("Jonot ja tilaukset"),
   companies: t("Kaikki taloyhtiöt"),
   residents: t("Asukkaat"),
   settings: t("Asetukset"),
@@ -65,7 +67,7 @@ export const tabTitles: Record<TicketTab, string> = {
 export const emptyTicketMessages: Partial<Record<TicketTab, string>> = {
   queue: t("Ei sinulle osoitettuja avoimia tehtäviä."),
   unassigned: t("Kaikilla tehtävillä on käsittelijä."),
-  unidentified: t("Kaikkien tehtävien taloyhtiö on tunnistettu."),
+  unidentified: t("Kaikkien tehtävien taloyhtiö on tunnistettu, ja kaikilla on käsittelijä."),
   "my-tickets": t("Ei omia tehtäviä."),
   "ai-handled": t("Ei AI:n hoidossa olevia tehtäviä.")
 };

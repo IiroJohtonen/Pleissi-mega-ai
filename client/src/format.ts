@@ -151,8 +151,9 @@ export function noticeStatusClass(status: string) {
   return status === "pending" ? "" : status === "approved" ? "approved" : status === "rejected" ? "rejected" : "done";
 }
 
+// Tehtävänumero muodossa T000123 (risuaita lisätään eteen näytettäessä).
 export function formatTicketNumber(value?: number | null) {
-  return typeof value === "number" ? String(value).padStart(4, "0") : "----";
+  return typeof value === "number" ? `T${String(value).padStart(6, "0")}` : "T------";
 }
 
 export function ticketAge(createdAt: string, currentTime: number) {
@@ -184,4 +185,9 @@ export function formatDay(value?: string | null) {
   const [year, month, day] = value.split("-");
   // Englanniksi sama esitystapa kuin muissa päivämäärissä (pp/kk/vvvv).
   return language === "en" ? `${Number(day)}/${Number(month)}/${year}` : `${Number(day)}.${Number(month)}.${year}`;
+}
+
+// Dokumenttinumero muodossa K000123.
+export function formatDocumentNumber(value?: number | null) {
+  return typeof value === "number" ? `K${String(value).padStart(6, "0")}` : "";
 }

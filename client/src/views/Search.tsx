@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { formatDate, formatTicketNumber, priorityLabel, statusLabel } from "../format";
+import { formatDate, formatDocumentNumber, formatTicketNumber, priorityLabel, statusLabel } from "../format";
 import { api, errorMessage } from "../session";
 import { t } from "../i18n";
 
@@ -7,7 +7,9 @@ type SearchTicket = {
   id: string; ticket_number: number | null; subject: string; status: string; priority: string; created_at: string;
   company_id: string; company_name: string; resident_name: string | null; apartment_number: string | null; snippet: string;
 };
-type SearchKnowledge = { id: string; title: string; audience: string; company_id: string; company_name: string; snippet: string };
+type SearchKnowledge = {
+  id: string; title: string; audience: string; company_id: string; company_name: string; snippet: string; doc_number?: number | null;
+};
 type SearchResident = {
   id: string; name: string; email: string | null; apartment_number: string; address: string; company_id: string; company_name: string;
 };
@@ -21,15 +23,21 @@ export type SearchResponse = {
   announcements: SearchAnnouncement[]; announcementCount: number;
 };
 
-// Tehtävänumerohaku (#123): palauttaa numeron tai null.
+// Tehtävänumerohaku (#T000123, #T123, T123 tai #123): palauttaa numeron tai null.
 export function ticketNumberQuery(query: string): number | null {
-  const match = query.trim().match(/^#\s*(\d+)$/);
+  const match = query.trim().match(/^(?:#\s*[Tt]?|[Tt])\s*(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
+// Dokumenttinumerohaku (#K000123, K123): palauttaa numeron tai null.
+export function documentNumberQuery(query: string): number | null {
+  const match = query.trim().match(/^#?\s*[Kk]\s*(\d+)$/);
   return match ? Number(match[1]) : null;
 }
 
 // Korostaa hakusanat otteessa.
 function Highlight({ text, query }: { text: string; query: string }) {
-  const terms = query.toLocaleLowerCase("fi").replace(/^#/, "").split(/\s+/).filter(Boolean);
+  const terms = query.toLocaleLowerCase("fi").replace(/^#[TtKk]?/, "").split(/\s+/).filter(Boolean);
   if (terms.length === 0) return <>{text}</>;
   const pattern = new RegExp(`(${terms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
   return <>{text.split(pattern).map((part, index) => index % 2 === 1 ? <mark key={index}>{part}</mark> : <Fragment key={index}>{part}</Fragment>)}</>;
@@ -105,6 +113,7 @@ export function SearchResults({
           {result.knowledge.map(item => (
             <button key={item.id} type="button" className="search-hit" onClick={() => onOpenKnowledge(item.company_id, item.id)}>
               <span className="search-hit-head">
+                {item.doc_number ? <span className="ticket-number">#{formatDocumentNumber(item.doc_number)}</span> : null}
                 <strong><Highlight text={item.title} query={query} /></strong>
                 <span className="type">{item.audience === "internal" ? t("Sisäinen dokumentaatio") : t("AI dokumentaatio")}</span>
               </span>
