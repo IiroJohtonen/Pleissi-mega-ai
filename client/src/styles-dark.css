@@ -2412,3 +2412,21 @@
 :root[data-theme="dark"] .data-table td {
     color: #c7cdd5
 }
+:root[data-theme="dark"] .settings-search input {
+    border: 1px solid #35404f;
+    background: #283341
+}
+:root[data-theme="dark"] .settings-search-results {
+    border: 1px solid #374352;
+    background: #283341
+}
+:root[data-theme="dark"] .settings-search-results button {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .settings-search-results button:hover,
+:root[data-theme="dark"] .settings-search-results button:focus-visible {
+    background: #2e3b48
+}
+:root[data-theme="dark"] .settings-search-results small {
+    color: #bac2cb
+}

@@ -760,6 +760,10 @@ if (!officeColumns.some(existing => existing.name === "due_reminder_days")) {
 if (!officeColumns.some(existing => existing.name === "resident_status_updates")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN resident_status_updates INTEGER NOT NULL DEFAULT 1");
 }
+// AI-ehdotusta pyydettäessä avataan ikkuna lisätiedoille (1 = päällä). Koskee kaikkia käyttäjiä.
+if (!officeColumns.some(existing => existing.name === "ai_prompt")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN ai_prompt INTEGER NOT NULL DEFAULT 1");
+}
 
 // Toistuvien aiheiden raportti: aiheet, jotka jätettiin pois, koska niistä on jo dokumentaatio.
 if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]).some(column => column.name === "covered")) {

@@ -3,6 +3,22 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · Asetusten haku ja selkeämpi jako välilehdille
+
+**Mitä muutettiin**
+- Asetussivun yläreunassa on haku. Haku löytää asetuksen myös sanalla, joka ei ole otsikossa (esim. "henkilötunnus" →
+  Maskaus ennen AI:ta), ja tuloksen valinta avaa oikean välilehden ja vierittää osioon.
+- Isännöitsijätoimiston tiedot → Tietoturva: mukana nyt myös Arkaluonteiset tiedot ja Maskaus ennen AI:ta.
+- Isännöitsijätoimiston tiedot → AI: mukana nyt myös AI-mallit ja AI-ehdotukset.
+- AI-ehdotusten lisätietoikkuna on nyt toimiston asetus, joka koskee kaikkia käyttäjiä. Se poistui käyttäjän omista asetuksista.
+- Järjestelmän tila ja Yhteydenottopyynnöt ovat nyt Perustiedot-välilehdellä. Erillinen Järjestelmä-välilehti poistui.
+- Perustiedot-välilehdellä ovat Hätäsanat ja määräajat, Järjestelmän tila ja Yhteydenottopyynnöt.
+
+**Miten**
+- Asetukset → hakukenttä. Asetukset → Isännöitsijätoimiston tiedot → Tietoturva / AI / Perustiedot.
+
+**Testit:** T-113–T-116 · PR #32
+
 ## 18.10.2026 · Asukkaan rappu ja autopaikat, vuorojen jono ja aikaikkuna, omat sivut ja isommat näkymät
 
 **Mitä muutettiin**

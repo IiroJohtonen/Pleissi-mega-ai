@@ -2134,4 +2134,11 @@ export const en: Record<string, string> = {
   "Kellonajat, joille vuoroja voi varata.": "The hours that can be booked.",
   "Varattavissa alkaen": "Bookable from",
   "Varattavissa asti": "Bookable until",
+  // Asetusten haku ja jäsennys
+  "Hätäsanat ja määräajat": "Emergency words and deadlines",
+  "Hae asetuksista, esim. maskaus tai allekirjoitus": "Search settings, e.g. masking or signature",
+  "Hae asetuksista": "Search settings",
+  "Hakutulokset": "Search results",
+  "Ei osumia.": "No matches.",
+  "Valinta koskee kaikkia toimiston käyttäjiä.": "The choice applies to all users in the office."
 };

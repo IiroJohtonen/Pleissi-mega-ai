@@ -18,7 +18,7 @@ const OFFICE_SELECT = `
          reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority,
          ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays,
          ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent, two_factor AS twoFactor,
-         resident_status_updates AS residentStatusUpdates
+         resident_status_updates AS residentStatusUpdates, ai_prompt AS aiPrompt
   FROM office_settings WHERE id = 1
 `;
 
@@ -74,7 +74,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     // Kirjautumiskoodi sähköpostiin henkilökunnalle.
     twoFactor: z.boolean().optional(),
     // Asukas saa sähköpostin, kun hänen tehtävänsä tila muuttuu.
-    residentStatusUpdates: z.boolean().optional()
+    residentStatusUpdates: z.boolean().optional(),
+    // AI-ehdotusta pyydettäessä kysytään lisätietoa ikkunassa.
+    aiPrompt: z.boolean().optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
   if (parsed.data.twoFactor && !loginCodeSetting() && !loginCodeMailReady()) {
@@ -119,6 +121,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   }
   if (parsed.data.residentStatusUpdates !== undefined) {
     db.prepare("UPDATE office_settings SET resident_status_updates = ? WHERE id = 1").run(parsed.data.residentStatusUpdates ? 1 : 0);
+  }
+  if (parsed.data.aiPrompt !== undefined) {
+    db.prepare("UPDATE office_settings SET ai_prompt = ? WHERE id = 1").run(parsed.data.aiPrompt ? 1 : 0);
   }
   refreshBudgetAlerts();
   res.json(officeSettings());

@@ -107,6 +107,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     api<OfficeInfo>("/office")
       .then(office => {
         MANAGEMENT_OFFICE.name = office.name;
+        MANAGEMENT_OFFICE.aiPrompt = office.aiPrompt !== 0;
         setOfficeVersion(version => version + 1);
         setReminderSettings({ replyDays: office.replyReminderDays ?? 2, dueDays: office.dueReminderDays ?? 1 });
       })
