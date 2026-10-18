@@ -110,6 +110,8 @@ export type KnowledgeDetail = KnowledgeEntry & {
   company_id: string;
   company_name: string;
   versions: KnowledgeEntry[];
+  // Dokumentin muotoiltu teksti (otsikot, lihavoinnit, luettelot).
+  formatted?: string | null;
 };
 
 export type MailProvider = "gmail" | "microsoft" | "imap";

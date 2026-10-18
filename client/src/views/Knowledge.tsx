@@ -1,5 +1,6 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, FactDropdown, usePaged } from "../components/common";
+import { RichText, RichTextEditor, type RichTextEditorHandle } from "../components/RichText";
 import { formatDate, formatDateOnly, formatDay } from "../format";
 import { api, API, errorMessage, isAdmin, isManager, session } from "../session";
 import type { Company, KnowledgeDetail, KnowledgeEntry } from "../types";
@@ -595,6 +596,12 @@ function KnowledgeDetailDrawer({
   const [failed, setFailed] = useState(false);
   const [moving, setMoving] = useState(false);
   const [moveError, setMoveError] = useState("");
+  // Dokumentin tekstin muokkaus: tallennus luo uuden version, joka odottaa hyväksyntää.
+  const [editingText, setEditingText] = useState(false);
+  const [textDirty, setTextDirty] = useState(false);
+  const [savingText, setSavingText] = useState(false);
+  const [textError, setTextError] = useState("");
+  const editor = useRef<RichTextEditorHandle>(null);
 
   const reload = () => api<KnowledgeDetail>(`/knowledge/${entryId}`).then(setDetail).catch(() => setFailed(true));
 
@@ -602,8 +609,40 @@ function KnowledgeDetailDrawer({
     setDetail(null);
     setFailed(false);
     setMoveError("");
+    setEditingText(false);
     void reload();
   }, [entryId]);
+
+  function startTextEdit() {
+    setDocView("text");
+    setTextDirty(false);
+    setTextError("");
+    setEditingText(true);
+  }
+
+  function cancelTextEdit() {
+    if (textDirty && !window.confirm(t("Hylätäänkö tekstiin tehdyt muutokset?"))) return;
+    setEditingText(false);
+  }
+
+  async function saveTextVersion() {
+    if (!detail || !editor.current) return;
+    setSavingText(true);
+    setTextError("");
+    try {
+      const result = await api<{ knowledgeId: string }>(`/knowledge/${detail.id}/text-version`, {
+        method: "POST",
+        body: JSON.stringify({ formatted: editor.current.value() })
+      });
+      setEditingText(false);
+      await onChanged();
+      onOpenVersion(result.knowledgeId);
+    } catch (error) {
+      setTextError(errorMessage(error, t("Tallennus epäonnistui.")));
+    } finally {
+      setSavingText(false);
+    }
+  }
 
   async function markExpired() {
     if (!detail || !window.confirm(t("Merkitäänkö \"{0}\" vanhentuneeksi? Voimassaolo päättyy tänään.", detail.title))) return;
@@ -761,7 +800,12 @@ function KnowledgeDetailDrawer({
             {isCurrent && isManager() && (
               <div className="knowledge-entry-actions">
                 <button onClick={() => onEdit("validity", detail)}>{t("Voimassaoloaika")}</button>
-                <button onClick={() => onEdit("replace", detail)}>{t("Muokkaa")}</button>
+                {detail.kind === "document" ? (
+                  <>
+                    {detail.content && !editingText && <button onClick={startTextEdit}>{t("Muokkaa tekstiä")}</button>}
+                    <button onClick={() => onEdit("replace", detail)}>{t("Lataa uusi versio")}</button>
+                  </>
+                ) : <button onClick={() => onEdit("replace", detail)}>{t("Muokkaa")}</button>}
                 {detail.state !== "expired" && <button onClick={() => void markExpired()}>{t("Merkitse vanhentuneeksi")}</button>}
                 <button className="danger" onClick={() => onRemove(detail)}>{t("Poista")}</button>
               </div>
@@ -790,7 +834,7 @@ function KnowledgeDetailDrawer({
             )}
 
             {/* Pääkäyttäjä valitsee välilehdeltä, katsooko dokumentista luettua tekstiä vai AI:n poimimia tietoja. */}
-            {showChunks && (
+            {showChunks && !editingText && (
               <div className="billing-tabs knowledge-view-tabs" role="tablist" aria-label={t("Dokumentin näkymä")}>
                 <button role="tab" aria-selected={docView === "text"} className={docView === "text" ? "active" : ""} onClick={() => setDocView("text")}>
                   {t("Dokumentista luettu teksti")}
@@ -811,12 +855,32 @@ function KnowledgeDetailDrawer({
                   }}
                 />
               )}
-              {(!showChunks || docView === "text") && (
+              {editingText && (
+                <section className="drawer-section knowledge-text knowledge-text-editing">
+                  <h3>{t("Muokkaa dokumentin tekstiä")}</h3>
+                  <p className="reply-hint">
+                    {t("Muotoile teksti kuten Wordissa. Tallennus luo uuden version: näet muutokset ennen kuin se korvaa nykyisen, ja vanha versio säilyy historiassa.")}
+                  </p>
+                  <RichTextEditor ref={editor} initial={detail.formatted ?? detail.content} onDirty={() => setTextDirty(true)} />
+                  {textError && <p className="send-error">{textError}</p>}
+                  <div className="drawer-actions compact-actions">
+                    <button type="button" onClick={cancelTextEdit}>{t("Peruuta")}</button>
+                    <button type="button" className="primary" disabled={savingText} onClick={() => void saveTextVersion()}>
+                      {savingText ? t("Tallennetaan…") : t("Tallenna uutena versiona")}
+                    </button>
+                  </div>
+                </section>
+              )}
+              {!editingText && (!showChunks || docView === "text") && (
               <section className="drawer-section knowledge-text">
                 {!showChunks && <h3>{detail.kind === "document" ? t("Dokumentista luettu teksti") : t("Vastaus")}</h3>}
-                <p className="knowledge-content">
-                  {detail.content || t("Tekstiä ei saatu luettua, joten AI ei voi käyttää tätä dokumenttia.")}
-                </p>
+                {detail.kind === "document" && detail.content
+                  ? <RichText className="rich-page" text={detail.formatted ?? detail.content} />
+                  : (
+                    <p className="knowledge-content">
+                      {detail.content || t("Tekstiä ei saatu luettua, joten AI ei voi käyttää tätä dokumenttia.")}
+                    </p>
+                  )}
               </section>
               )}
             </div>

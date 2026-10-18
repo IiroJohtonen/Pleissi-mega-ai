@@ -3,6 +3,26 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 18.10.2026 · Dokumentin tekstin muokkaus Wordin tapaan ja muotoilu säilyy tuonnissa
+
+**Mitä muutettiin**
+- Dokumentin tekstiä voi muokata suoraan alustalla. Muokkaimessa on Wordin tapaan kappaletyyli (leipäteksti,
+  otsikot 1–3), lihavointi, kursiivi, alleviivaus, numeroitu luettelo, luettelomerkit, sisennys sekä kumoa ja tee uudelleen.
+  Sarkain sisentää luettelon kohdan (1. → 1.1.), Shift+Sarkain palauttaa.
+- Muokatun tekstin tallennus luo uuden version. Muutokset näytetään ennen kuin uusi versio korvaa nykyisen,
+  ja vanha versio säilyy historiassa. Alkuperäinen tiedosto on ladattavissa myös uudesta versiosta.
+- Word-dokumentin otsikot, lihavoinnit, kursiivit, alleviivaukset ja numeroidut luettelot säilyvät, kun dokumentti ladataan.
+  PDF:stä ja kuvista tunnistetaan otsikkorivit ja luettelot, ja katkenneet rivit yhdistetään kappaleiksi.
+  Aiemmin ladatut dokumentit näytetään samalla tavalla jäsenneltyinä.
+- Dokumentin teksti näytetään siistinä sivuna: otsikot, kappaleet ja numeroidut kohdat (1., 1.1.) kuten alkuperäisessä.
+- Wordista liitetty teksti säilyttää otsikot, lihavoinnit ja luettelot.
+- Dokumentin "Muokkaa"-painike on nyt "Muokkaa tekstiä". Uuden tiedoston lataus on painikkeessa "Lataa uusi versio".
+
+**Miten**
+- Dokumentaatio → avaa dokumentti → Muokkaa tekstiä → muokkaa → Tallenna uutena versiona → Hyväksy muutokset.
+
+**Testit:** T-109–T-112
+
 ## 18.10.2026 · AI-tieto pois aikajanalta, yhteinen osoite Tunnistamattomiin ja turhat tehtävätyypit pois
 
 **Mitä muutettiin**
