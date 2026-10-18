@@ -951,6 +951,13 @@ function backfillKnowledge() {
   `);
 }
 
+// Muutot, mittarilukemat ja lämmityspaikat ovat omissa tauluissaan, eivät tehtävätyyppejä:
+// vanhat tehtävät näillä tyypeillä muutetaan ilmoituksiksi.
+db.prepare(`
+  UPDATE tickets SET type = 'Ilmoitus'
+  WHERE type IN ('Muutto', 'Muuttoilmoitus', 'Mittarilukemailmoitus', 'Auton lämmityspaikka')
+`).run();
+
 // Kiireellisiä esimerkkitehtäviä samankaltaisista aiheista (vesi- ja lämmitysviat). Lisätään myös
 // olemassa olevaan demokantaan, jos niitä ei vielä ole.
 const urgentExamples = [

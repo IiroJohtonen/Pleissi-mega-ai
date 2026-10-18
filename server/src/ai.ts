@@ -758,7 +758,7 @@ function localTriage(
 
   if (text.includes("muutto") || text.includes("muutan")) {
     return {
-      type: "Muutto",
+      type: "Ilmoitus",
       priority: "normal",
       summary: "Asukas ilmoittaa muuttoon liittyvästä asiasta.",
       suggestedAction: "Tarkista muuttoon liittyvät tiedot ja käsittele isännöitsijän päätösjonossa.",
