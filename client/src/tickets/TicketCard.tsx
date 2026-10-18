@@ -234,8 +234,9 @@ export function TicketCard({
               : null}
             {isOverdue(ticket) ? <em className="new-reply overdue" title={t("Määräaika oli {0}", formatDay(ticket.due_date))}>{t("Myöhässä")}</em> : null}
           </strong>
-          {reminders.length > 0 && (
+          {(reminders.length > 0 || (ticket.sensitive && !ticket.restricted)) && (
             <span className="ticket-row-reminders">
+              {ticket.sensitive && !ticket.restricted ? <em className="sensitive-tag">🔒 {t("Arkaluonteinen")}</em> : null}
               {reminders.map(reminder => <em key={reminder.kind} className={`reminder-chip reminder-${reminder.kind}`}>{reminder.text}</em>)}
             </span>
           )}
@@ -269,6 +270,12 @@ export function TicketCard({
         <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
         <span className="type">{t(ticket.type)}</span>
         <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
+        {/* Arkaluonteinen tehtävä (esim. terveystiedot): sisältö ei mene AI:lle, ja sen näkevät vain osa käyttäjistä. */}
+        {ticket.sensitive || ticket.restricted ? (
+          <span className="sensitive-tag" title={t("Tehtävä on arkaluonteinen: sitä ei lähetetä AI:lle, ja sen sisällön näkevät vain käsittelijä, vastuuisännöitsijä ja pääkäyttäjät.")}>
+            🔒 {t("Arkaluonteinen")}
+          </span>
+        ) : null}
         <span className="date" title={t("Päivitetty {0}", formatDate(ticket.updated_at || ticket.created_at))}>{t("Saapunut {0}", formatDate(ticket.created_at))}</span>
       </div>
 

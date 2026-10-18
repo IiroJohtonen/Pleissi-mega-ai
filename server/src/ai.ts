@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { aiBudgetExhausted, recordAiUsage } from "./ai-budget.js";
+import { logAiRequest } from "./ai-log.js";
 import { z } from "zod";
 import type { KnowledgeChunk } from "./knowledge-chunks.js";
 import { getMasterData } from "./master-data.js";
@@ -244,6 +245,12 @@ export function fastModel() {
 
 // Ehdottaa käsittelijälle vastausluonnoksen niiden palojen pohjalta, jotka valittiin tehtävälle
 // (selectKnowledgeChunks). sourceId viittaa palaan.
+// Kirjaa AI:lle lähtevän pyynnön lokiin ja palauttaa sen sellaisenaan.
+function logAiRequestParams<T extends { model: string; system?: unknown; messages: unknown; max_tokens?: number }>(feature: string, params: T): T {
+  logAiRequest(feature, params);
+  return params;
+}
+
 export async function suggestReply(
   subject: string,
   conversation: string,
@@ -272,7 +279,7 @@ ${managerContext.trim() || "(none)"}
 `;
 
   try {
-    const response = await ai.client.beta.messages.parse({
+    const response = await ai.client.beta.messages.parse(logAiRequestParams("suggest", {
       model,
       // Lyhyt luonnos; ajattelu on pois päältä (Sonnet 5.5) tai kevyt, jotta raja riittää.
       max_tokens: 1024,
@@ -283,7 +290,7 @@ ${managerContext.trim() || "(none)"}
         ...(model.startsWith("claude-sonnet-5-5") ? {} : { effort: "low" as const }),
         format: betaZodOutputFormat(SuggestionSchema)
       }
-    });
+    }));
     recordAiUsage("suggest", response.model || model, response.usage);
     if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
     const parsed = response.parsed_output;
@@ -373,7 +380,7 @@ export async function chunkDocumentWithAi(
 
   for (const batch of chunkingBatches(pages)) {
     const text = batch.map(part => `[Sivu ${part.page}]\n${part.text}`).join("\n\n");
-    const response = await ai.client.beta.messages.parse({
+    const response = await ai.client.beta.messages.parse(logAiRequestParams("chunking", {
       model,
       max_tokens: 16000,
       system: [{ type: "text", text: CHUNKING_SYSTEM, cache_control: { type: "ephemeral" } }],
@@ -384,7 +391,7 @@ export async function chunkDocumentWithAi(
         `Document text:\n${text}`
       ].filter(Boolean).join("\n\n") }],
       output_config: { effort: "low", format: betaZodOutputFormat(ChunkingSchema) }
-    }, { timeout: 120_000, maxRetries: 1 });
+    }), { timeout: 120_000, maxRetries: 1 });
     recordAiUsage("chunking", response.model || model, response.usage);
     if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
     if (response.stop_reason === "max_tokens") throw new Error("Pilkonta katkesi tokenrajaan");
@@ -414,7 +421,7 @@ export async function formatKnowledgeEntry(text: string, documentTitle: string) 
   const ai = claudeClient();
   if (!ai) throw new Error("AI ei ole käytössä");
   const model = fastModel();
-  const response = await ai.client.beta.messages.parse({
+  const response = await ai.client.beta.messages.parse(logAiRequestParams("format", {
     model,
     max_tokens: 4000,
     system: `
@@ -427,7 +434,7 @@ tags: 2–6 Finnish keywords residents might use.
 `,
     messages: [{ role: "user", content: `Document: ${documentTitle}\n\nNote:\n${text}` }],
     output_config: { effort: "low", format: betaZodOutputFormat(EntrySchema) }
-  }, { timeout: 30_000, maxRetries: 1 });
+  }), { timeout: 30_000, maxRetries: 1 });
   recordAiUsage("chunking", response.model || model, response.usage);
   if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
   const parsed = response.parsed_output;
@@ -451,7 +458,7 @@ export async function compareChunksWithAi(
   const model = fastModel();
   const list = (chunks: { id: string; title: string; content: string }[]) =>
     chunks.map(chunk => `[${chunk.id}] ${chunk.title}\n${chunk.content.slice(0, 1500)}`).join("\n---\n");
-  const response = await ai.client.beta.messages.parse({
+  const response = await ai.client.beta.messages.parse(logAiRequestParams("compare", {
     model,
     max_tokens: 16000,
     system: `
@@ -464,7 +471,7 @@ Leave out chunks that have no counterpart.
 `,
     messages: [{ role: "user", content: `Old version:\n${list(oldChunks) || "(none)"}\n\nNew version:\n${list(newChunks) || "(none)"}` }],
     output_config: { effort: "low", format: betaZodOutputFormat(ComparisonSchema) }
-  }, { timeout: 120_000, maxRetries: 1 });
+  }), { timeout: 120_000, maxRetries: 1 });
   recordAiUsage("chunking", response.model || model, response.usage);
   if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
   if (!response.parsed_output) throw new Error("AI:n vastausta ei voitu lukea");
@@ -565,7 +572,7 @@ repeating it. If there is no existing documentation, covered is an empty list.
       + (ticket.reply ? `\n   Office reply: ${ticket.reply.replace(/\s+/g, " ").slice(0, 400)}` : ""))
     .join("\n");
 
-  const response = await ai.client.beta.messages.parse({
+  const response = await ai.client.beta.messages.parse(logAiRequestParams("topics", {
     model: ai.model,
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
@@ -573,7 +580,7 @@ repeating it. If there is no existing documentation, covered is an empty list.
     system,
     messages: [{ role: "user", content: `Existing documentation:\n${knowledgePrompt(knowledge) || "(none)"}\n\nTickets:\n${user}` }],
     output_config: { format: betaZodOutputFormat(TopicsSchema) }
-  });
+  }));
   recordAiUsage("topics", response.model || ai.model, response.usage);
   if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
   if (!response.parsed_output) throw new Error("AI:n vastausta ei voitu lukea");
@@ -684,7 +691,7 @@ ${maskPersonalData(body.slice(0, 8000))}
 `;
 
   try {
-    const response = await ai.client.beta.messages.parse({
+    const response = await ai.client.beta.messages.parse(logAiRequestParams("assess", {
       model,
       max_tokens: 4000,
       betas: ["server-side-fallback-2026-07-01"],
@@ -692,7 +699,7 @@ ${maskPersonalData(body.slice(0, 8000))}
       system,
       messages: [{ role: "user", content: user }],
       output_config: { effort: "low", format: betaZodOutputFormat(AssessmentSchema) }
-    }, { timeout: 20_000, maxRetries: 1 });
+    }), { timeout: 20_000, maxRetries: 1 });
     recordAiUsage("assess", response.model || model, response.usage);
     if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
     const parsed = response.parsed_output;

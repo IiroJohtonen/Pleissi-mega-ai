@@ -2,6 +2,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { AUTHORIZED_COMPANY_IDS, companyIdForRecipients, companyIdFromContext, getAuthorizedTicket, visibleCompanyIds } from "../access.js";
 import { triage } from "../ai.js";
+import { attachAiLog, withAiLog } from "../ai-log.js";
 import { db } from "../db.js";
 import { apartmentForForm, detectEmailForm, formContact, formSubject, parseFormFields } from "../email-forms.js";
 import { FORM_TYPES } from "../portal-form-data.js";
@@ -184,7 +185,8 @@ if (input.sourceMessageId) {
 
   // Saapuva viesti vain luokitellaan. Dokumentaatiota ei haeta eikä ehdoteta ennen kuin
   // käsittelijä pyytää tehtävällä AI-ehdotuksen.
-  const result = await triage(
+  // AI:lle lähtevä tieto kirjataan lokiin ja liitetään tehtävään, kun se on luotu.
+  const { result, auditIds: aiAuditIds } = await withAiLog(undefined, () => triage(
     input.subject,
     input.body,
     [],
@@ -196,7 +198,7 @@ if (input.sourceMessageId) {
       aiRelevance: input.channel === "email" && aiRelevanceEnabled() && sensitiveWords.length === 0 && !form,
       sender: input.senderEmail ? `${input.senderName} <${input.senderEmail}>` : input.senderName
     }
-  );
+  ));
   // AI:n suodattama viesti tallennetaan suljettuna tehtävänä: se ei mene päätösjonoon eikä hälytä,
   // mutta löytyy kaikista tehtävistä ja sen voi avata uudelleen.
   const filtered = Boolean(result.filtered) && !form;
@@ -231,6 +233,7 @@ if (input.sourceMessageId) {
     timestamp,
     timestamp
   );
+  attachAiLog(aiAuditIds, ticketId);
 
   const mailboxOwner = input.assigneeId
     ? db.prepare("SELECT id FROM users WHERE id = ?").get(input.assigneeId) as { id: string } | undefined

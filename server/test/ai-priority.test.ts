@@ -133,6 +133,26 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal(feedback.ticket.priority, "low");
   });
 
+  it("kirjaa AI:lle lähtevän tiedon lokiin täsmälleen lähetetyssä muodossa", async () => {
+    const created = await inbound("Hana", "Keittiön hana on jäykkä. Soita 040 123 4567.");
+    const sent = requests.at(-1).body;
+    const entry = created.audit.find(row => row.action === "ai_request");
+    assert.ok(entry, "AI-pyyntö näkyy tehtävän lokissa");
+    assert.equal(JSON.parse(entry.details).feature, "assess");
+    const logged = await call(server, admin, "GET", `/audit/${entry.id}/ai-request`);
+    assert.equal(logged.status, 200);
+    const payload = JSON.parse(logged.data.payload);
+    assert.equal(payload.model, sent.model);
+    assert.deepEqual(payload.messages, sent.messages);
+    assert.deepEqual(payload.system, sent.system);
+    // Puhelinnumero on maskattu jo ennen lähetystä, ja loki näyttää saman maskatun tekstin.
+    assert.doesNotMatch(JSON.stringify(payload.messages), /040 123 4567/);
+    // Tuntematonta merkintää ei löydy, ja merkintä on liitetty luotuun tehtävään.
+    assert.equal((await call(server, admin, "GET", "/audit/olematon/ai-request")).status, 404);
+    const all = (await call(server, admin, "GET", "/audit")).data as any[];
+    assert.ok(all.some(row => row.id === entry.id && row.ticket_id === created.id));
+  });
+
   it("AI:n tunnistama hätätapaus hälyttää, vaikka viestissä ei ole avainsanaa", async () => {
     const leak = await inbound("Keittiö", "Keittiön katosta tippuu koko ajan lattialle.");
     assert.equal(leak.emergency, true);

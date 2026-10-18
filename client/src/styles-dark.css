@@ -2353,3 +2353,13 @@
 :root[data-theme="dark"] .multi-select-menu .multi-select-all {
     border-bottom: 1px solid #3a4758
 }
+:root[data-theme="dark"] .sensitive-tag {
+    border: 1px solid #583d71;
+    background: #3c2e48;
+    color: #c3a0e1
+}
+:root[data-theme="dark"] .ai-request pre {
+    border: 1px solid #384454;
+    background: #232d39;
+    color: #e0e3e7
+}

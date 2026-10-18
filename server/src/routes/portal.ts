@@ -3,6 +3,7 @@ import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { triage } from "../ai.js";
+import { attachAiLog, withAiLog } from "../ai-log.js";
 import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { alertEmergency } from "../notify.js";
@@ -59,11 +60,12 @@ export async function createPortalTicket(
     | undefined;
   // Arkaluonteista ilmoitusta ei lähetetä AI:lle, joten se luokitellaan avainsanoilla.
   const sensitive = sensitiveMatches(`${input.subject}\n${input.description}`).length > 0;
-  const result = await triage(
+  // AI:lle lähtevä tieto kirjataan lokiin ja liitetään tehtävään, kun se on luotu.
+  const { result, auditIds: aiAuditIds } = await withAiLog(undefined, () => triage(
     input.subject, input.description, [], company?.maintenance_emergency_phone || undefined,
     // Kirjautuneen asukkaan ilmoitus koskee aina taloyhtiötä, joten asiaankuuluvuutta ei tarkisteta.
     { aiPriority: aiPriorityEnabled() && !sensitive, sender: resident.name }
-  );
+  ));
 
   const ticketId = id("ticket");
   const timestamp = now();
@@ -90,6 +92,7 @@ export async function createPortalTicket(
     timestamp,
     timestamp
   );
+  attachAiLog(aiAuditIds, ticketId);
 
   assignToCompanyManager(ticketId, resident.companyId);
 

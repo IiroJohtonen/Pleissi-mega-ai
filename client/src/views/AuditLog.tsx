@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { usePaged } from "../components/common";
 import { actionLabel, actorLabel, formatDate, formatTicketNumber } from "../format";
 import { api } from "../session";
+import { AiRequestDetails, aiRequestLabel } from "../components/AiRequest";
 import { t } from "../i18n";
 
 type AuditEntry = {
@@ -42,7 +43,10 @@ export function AuditLog() {
     const email = entry.action === "reply_sent"
       ? { to: details.to || t("vastaanottaja ei tiedossa"), subject: details.subject || "", body: entry.email_body || "" }
       : null;
-    return { entry, email, label: email ? t("Sähköposti lähetetty: {0}", email.to) : actionLabel(entry.action) };
+    const label = email ? t("Sähköposti lähetetty: {0}", email.to)
+      : entry.action === "ai_request" ? aiRequestLabel(entry.details)
+      : actionLabel(entry.action);
+    return { entry, email, label };
   });
 
   const searchText = search.trim().toLowerCase();
@@ -105,6 +109,7 @@ export function AuditLog() {
                           <p>{email.body || t("Viestin sisältöä ei ole tallennettu.")}</p>
                         </details>
                       )}
+                      {entry.action === "ai_request" && entry.ticket_subject !== "Arkaluonteinen tehtävä" && <AiRequestDetails auditId={entry.id} />}
                     </td>
                     <td>{actorLabel(entry.actor)}</td>
                     <td>

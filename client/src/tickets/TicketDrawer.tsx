@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { AiRequestDetails, aiRequestLabel } from "../components/AiRequest";
 import { DownloadLink, FactDropdown } from "../components/common";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
@@ -1215,8 +1216,9 @@ export function TicketDrawer({
             </div>
           ) : (
             <div className="timeline-event" key={item.id}>
-              <span>{actionLabel(item.event.action)}</span>
+              <span>{item.event.action === "ai_request" ? aiRequestLabel(item.event.details) : actionLabel(item.event.action)}</span>
               {eventNote(item.event.details) && <span className="event-note">{eventNote(item.event.details)}</span>}
+              {item.event.action === "ai_request" && <AiRequestDetails auditId={item.event.id} />}
               <small>{actorLabel(item.event.actor)} · {formatDate(item.created_at)}</small>
             </div>
           ))}
