@@ -28,7 +28,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Asetukset › Oma tili (nykyinen salasana vahvistukseksi). Asetukset › Isännöitsijätoimiston tiedot › AI
   (sähköpostipalvelin, suodatus). Muutokset näkyvät myös tehtävien viennissä ja asukasportaalissa.
 
-**Testit:** server/test/security.test.ts
+**Testit:** server/test/security.test.ts · PR #38
 
 ## 19.10.2026 · Roolit: omat roolit ja niiden näkemät taulut
 
