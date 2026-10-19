@@ -5055,3 +5055,18 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
 /* Laskureiden luvut samalla korkeudella, vaikka otsikko rivittyisi kahdelle riville. */
 .queue-summary-large > div, .queue-summary-large > button { align-content: start; }
 .queue-summary.queue-summary-large span { min-height: 2.6em; display: flex; align-items: flex-end; }
+
+/* Kirjautumissivu: suorakulmainen kortti, kentät ja painike. */
+.login-card,
+.login-card input,
+.login-card button:not(.login-link),
+.login-notice { border-radius: 0; }
+
+/* Avattu tietue (tehtävä, dokumentaatio, asukas ym.): kortti on suorakulmainen. */
+.ticket-page > .drawer.drawer-split,
+.ticket-page .drawer-main,
+.ticket-page .drawer-timeline,
+.ticket-page .drawer-topbar,
+.knowledge-page > .drawer,
+.record-page > .drawer,
+.company-record > .settings-card { border-radius: 0; }

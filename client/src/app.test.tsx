@@ -434,6 +434,17 @@ describe("sovellus", () => {
     }
   });
 
+  it("valikon tehtävälista avautuu ilman Muistutukset-laatikon suodatinta", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/queue");
+    fireEvent.click(await screen.findByRole("button", { name: /Muistutukset/ }, { timeout: 5000 }));
+    expect(await screen.findByRole("button", { name: "Poista suodatin Määräaika" })).toBeTruthy();
+
+    // Sama valikkokohta uudelleen nollaa suodattimet.
+    fireEvent.click(screen.getByRole("button", { name: /^Omat tehtävät/ }));
+    await vi.waitFor(() => expect(screen.queryByRole("button", { name: "Poista suodatin Määräaika" })).toBeNull());
+    expect(window.location.hash).toBe("#/my-tickets");
+  });
+
   it("asetusten haku avaa osion oikealta välilehdeltä", async () => {
     responses["/master-data"] = {
       values: { emergencyKeywords: [], sensitiveKeywords: ["sairau"], masking: { phone: true, email: true, personalId: true, iban: true },

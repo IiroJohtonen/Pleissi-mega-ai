@@ -70,7 +70,7 @@ export function Companies({
 
   if (openCompany) {
     return (
-      <section className="content">
+      <section className="content company-record">
         <button className="back-link" onClick={() => setOpenCompanyId(null)}>{t("← Kaikki taloyhtiöt")}</button>
 
         <CompanyCard company={openCompany} onSaved={onChanged} />
