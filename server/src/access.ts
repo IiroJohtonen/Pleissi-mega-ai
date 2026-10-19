@@ -128,6 +128,8 @@ export function redactRestrictedTicket<T extends TicketAccessRow>(row: T) {
   return {
     ...row,
     subject: RESTRICTED_SUBJECT, summary: "", draft: "", ai_reason: "", resident_name: null,
+    // Myös asunto ja ilmoittaja piilotetaan, jottei lista paljasta, mitä asuntoa arkaluonteinen asia koskee.
+    apartment_number: null, apartment_id: null, resident_id: null,
     knowledge_source_title: null, restricted: true
   };
 }

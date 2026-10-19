@@ -174,7 +174,7 @@ renovationsRouter.post("/portal/renovations", async (req, res) => {
   db.prepare("INSERT INTO messages VALUES (?, ?, 'inbound', ?, ?, ?, ?, 'portal')").run(
     id("message"), ticketId, resident.name, ticketSubject(notice), noticeText(notice), notice.created_at
   );
-  const attachmentError = await savePortalAttachments(ticketId, attachments, notice.created_at);
+  const attachmentError = await savePortalAttachments(ticketId, attachments, notice.created_at, resident.id);
   res.status(201).json({ ok: true, renovationId: notice.id, ticketId, attachmentError });
 });
 

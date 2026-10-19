@@ -802,8 +802,13 @@ export async function triage(
   const local = (): TriageResult => ({ ...localTriage(subject, body, knowledge, emergencyPhone), priorityBy: "keywords" });
   if (!assessment) return local();
 
-  // Asiaan kuulumaton viesti ei mene jonoon eikä hälytä, vaikka siinä olisi hätäsanoja.
+  // Asiaan kuulumattomaksi arvioitua viestiä ei viedä jonoon. Turvasyistä hätäsanat voittavat kuitenkin AI:n
+  // arvion: jos viestissä on hätäsana, sitä ei suodateta pois, vaan se nostetaan hätätilanteeksi, jottei aito
+  // hätätilanne (tai AI:n harhautus mainokseksi) jää huomaamatta.
   if (options.aiRelevance && !assessment.relevant) {
+    if (emergencyKeywordHit(`${subject}\n${body}`.toLowerCase())) {
+      return { ...emergencyTriage(subject, "Viestissä havaittiin mahdollinen hätätilanne.", emergencyPhone), priorityBy: "keywords" };
+    }
     return {
       ...localTriage(subject, body, knowledge, emergencyPhone, false),
       priority: "low",

@@ -120,7 +120,7 @@ export async function createPortalTicket(
 
   if (result.emergency) void alertEmergency(ticketId);
 
-  const attachmentError = await savePortalAttachments(ticketId, input.attachments, timestamp);
+  const attachmentError = await savePortalAttachments(ticketId, input.attachments, timestamp, resident.id);
   return { ticketId, attachmentError };
 }
 
@@ -131,7 +131,7 @@ export const portalAttachmentsSchema = z.array(z.object({
   data: z.string()
 })).max(5).default([]);
 
-export async function savePortalAttachments(ticketId: string, attachments: z.infer<typeof portalAttachmentsSchema>, timestamp: string) {
+export async function savePortalAttachments(ticketId: string, attachments: z.infer<typeof portalAttachmentsSchema>, timestamp: string, uploadedBy: string | null = null) {
   const files = attachments.map(attachment => ({ ...attachment, content: Buffer.from(attachment.data, "base64") }));
   if (files.some(file => !/^(image\/(png|jpeg|gif|webp|heic)|application\/pdf)$/.test(file.mimeType))) {
     return "Liitteeksi kelpaa kuva tai PDF.";
@@ -148,9 +148,9 @@ export async function savePortalAttachments(ticketId: string, attachments: z.inf
     const attachmentId = id("attachment");
     await fs.writeFile(path.join(attachmentsDir, attachmentId), file.content);
     db.prepare(`
-      INSERT INTO attachments (id, ticket_id, filename, mime_type, size, created_at, direction)
-      VALUES (?, ?, ?, ?, ?, ?, 'portal')
-    `).run(attachmentId, ticketId, file.filename, file.mimeType, file.content.length, timestamp);
+      INSERT INTO attachments (id, ticket_id, filename, mime_type, size, created_at, direction, uploaded_by)
+      VALUES (?, ?, ?, ?, ?, ?, 'portal', ?)
+    `).run(attachmentId, ticketId, file.filename, file.mimeType, file.content.length, timestamp, uploadedBy);
   }
   return null;
 }
@@ -174,18 +174,25 @@ portalRouter.get("/portal/tickets/:id", (req, res) => {
   const ticket = portalTicket(res, req.params.id);
   if (!ticket) return res.status(404).json({ error: "Tehtävää ei löytynyt." });
   const resident = portalResident(res);
+  // Asukas näkee tehtävän vastaukset (outbound) ja omat viestinsä. Omat viestit tunnistetaan sähköpostista
+  // tai nimestä (ilmoitukset kirjataan asukkaan nimellä). Näin jaetulla tehtävällä ei näe toisen asukkaan
+  // portaaliviestejä.
+  const email = (resident.email ?? "").toLowerCase();
+  const name = resident.name.toLowerCase();
   const messages = db.prepare(`
     SELECT id, direction, body, created_at
     FROM messages
     WHERE ticket_id = ?
       AND ((direction = 'outbound' AND channel != 'contractor')
-        OR (direction = 'inbound' AND (channel = 'portal' OR (? != '' AND lower(sender) LIKE '%' || lower(?) || '%'))))
+        OR (direction = 'inbound' AND (
+          (? != '' AND lower(sender) LIKE '%' || ? || '%')
+          OR lower(sender) LIKE '%' || ? || '%')))
     ORDER BY created_at
-  `).all(ticket.id, resident.email ?? "", resident.email ?? "");
+  `).all(ticket.id, email, email, name);
   const attachments = db.prepare(`
     SELECT id, filename, mime_type, size, created_at, direction FROM attachments
-    WHERE ticket_id = ? AND direction IN ('portal', 'outbound') ORDER BY created_at
-  `).all(ticket.id);
+    WHERE ticket_id = ? AND (direction = 'outbound' OR (direction = 'portal' AND uploaded_by = ?)) ORDER BY created_at
+  `).all(ticket.id, resident.id);
   res.json({ ticket, messages, attachments });
 });
 
@@ -200,7 +207,7 @@ portalRouter.post("/portal/tickets/:id/messages", async (req, res) => {
 
   const resident = portalResident(res);
   const timestamp = now();
-  const attachmentError = await savePortalAttachments(ticket.id, parsed.data.attachments, timestamp);
+  const attachmentError = await savePortalAttachments(ticket.id, parsed.data.attachments, timestamp, resident.id);
   if (attachmentError) return res.status(400).json({ error: attachmentError });
 
   db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
@@ -221,10 +228,14 @@ portalRouter.post("/portal/tickets/:id/messages", async (req, res) => {
 });
 
 portalRouter.get("/portal/attachments/:id", (req, res) => {
-  const attachment = db.prepare("SELECT id, ticket_id, filename, direction FROM attachments WHERE id = ?").get(req.params.id) as
-    | { id: string; ticket_id: string; filename: string; direction: string }
+  const attachment = db.prepare("SELECT id, ticket_id, filename, direction, uploaded_by FROM attachments WHERE id = ?").get(req.params.id) as
+    | { id: string; ticket_id: string; filename: string; direction: string; uploaded_by: string | null }
     | undefined;
-  if (!attachment || !["portal", "outbound"].includes(attachment.direction) || !portalTicket(res, attachment.ticket_id)) {
+  // Vastauksen liitteet (outbound) näkyvät tehtävän asukkaille; portaaliin lisätyn liitteen näkee vain lataaja.
+  const resident = portalResident(res);
+  const allowed = attachment && (attachment.direction === "outbound"
+    || (attachment.direction === "portal" && attachment.uploaded_by === resident.id));
+  if (!attachment || !allowed || !portalTicket(res, attachment.ticket_id)) {
     return res.status(404).json({ error: "Liitettä ei löytynyt." });
   }
   res.download(path.join(attachmentsDir, attachment.id), attachment.filename, {

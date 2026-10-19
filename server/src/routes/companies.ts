@@ -1,7 +1,7 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { AUTHORIZED_COMPANY_IDS, companyIdFromContext, visibleCompanyIds } from "../access.js";
-import { isManagerRole, requireManager } from "../auth.js";
+import { isAdmin, isManagerRole, requireManager } from "../auth.js";
 import { db } from "../db.js";
 import { id } from "../util.js";
 
@@ -90,6 +90,13 @@ companiesRouter.put("/companies/:companyId", requireManager, (req, res) => {
 
   if (companyEmailInUse(parsed.data.emailAddress, companyId)) {
     return res.status(409).json({ error: "Sähköpostiosoite on jo toisen yhtiön käytössä." });
+  }
+
+  // Vastuuisännöitsijän ja lisäisännöitsijöiden vaihto on pääkäyttäjän oikeus: muuten isännöitsijä voisi
+  // nimetä itsensä vastuuisännöitsijäksi ja saada näin arkaluonteiset tehtävät näkyviin.
+  const changesManagers = parsed.data.managerId !== undefined || parsed.data.managerIds !== undefined;
+  if (changesManagers && !isAdmin(res)) {
+    return res.status(403).json({ error: "Vain pääkäyttäjä voi vaihtaa taloyhtiön isännöitsijöitä." });
   }
 
   // Vastuuisännöitsijäksi kelpaa isännöitsijä tai pääkäyttäjä.

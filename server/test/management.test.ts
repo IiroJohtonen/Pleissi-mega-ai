@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import {
   ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, tempDir, type TestServer
-} from "./helpers.js";
+, inbound as postInbound } from "./helpers.js";
 
 describe("AI-kulujen raja", () => {
   // Moduuli lukee tietokannan DATA_DIR-kansiosta, joten se ladataan vasta, kun kansio on asetettu.
@@ -96,7 +96,7 @@ describe("raportit, hallituksen näkymä ja järjestelmän tila", () => {
   });
 
   async function inbound(subject: string, id: string) {
-    return (await call(server, admin, "POST", "/inbound/messages", {
+    return (await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Matti", senderEmail: "matti@example.com",
       subject, body: `${subject}, korjatkaa pian.`, sourceMessageId: `<${id}@example.com>`
     })).data.ticketId as string;

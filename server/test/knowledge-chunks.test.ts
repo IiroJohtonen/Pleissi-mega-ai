@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import Database from "better-sqlite3";
-import { ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
 
 const RULES = [
   "Järjestyssäännöt",
@@ -91,7 +91,7 @@ describe("tietopalat ja niiden valinta vastausehdotukseen", () => {
   });
 
   it("ilman AI-avainta ehdotus tehdään parhaasta palasta, ja pala tallentuu tehtävälle", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Asukas", subject: "Grillaus", body: "Saako parvekkeella grillata hiiligrillillä?", channel: "email"
     });
     const ticketId = created.data.ticketId as string;

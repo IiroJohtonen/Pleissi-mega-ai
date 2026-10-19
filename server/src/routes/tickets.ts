@@ -431,7 +431,7 @@ ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
     req.params.id,
-    parsed.data.actor,
+    res.locals.user?.name ?? parsed.data.actor,
     "ticket_updated",
     JSON.stringify({
       type: type === ticket.type ? undefined : { from: ticket.type, to: type },
@@ -486,7 +486,7 @@ ticketsRouter.post("/tickets/:id/reporters", (req, res) => {
     db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
       id("audit"),
       req.params.id,
-      parsed.data.actor,
+      res.locals.user?.name ?? parsed.data.actor,
       "reporter_linked",
       JSON.stringify({ resident_id: resident.id, name: resident.name }),
       timestamp
@@ -530,7 +530,7 @@ ticketsRouter.delete("/tickets/:id/reporters/:residentId", (req, res) => {
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
     req.params.id,
-    typeof req.query.actor === "string" && req.query.actor ? req.query.actor : "isannoitsija",
+    res.locals.user?.name ?? (typeof req.query.actor === "string" && req.query.actor ? req.query.actor : "isannoitsija"),
     "reporter_unlinked",
     JSON.stringify({ resident_id: req.params.residentId }),
     timestamp

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import {
   ADMIN_EMAIL, call, login, MANAGER_EMAIL, OTHER_MANAGER_EMAIL, SERVICE_EMAIL, startServer, userByEmail, type TestServer
-} from "./helpers.js";
+, inbound as postInbound } from "./helpers.js";
 
 describe("roolit ja yhtiönäkyvyys", () => {
   let server: TestServer;
@@ -28,7 +28,7 @@ describe("roolit ja yhtiönäkyvyys", () => {
   after(() => server.stop());
 
   it("kaikkien yhtiöiden tehtävät haetaan yhdellä haulla vain näkyvistä yhtiöistä", async () => {
-    await call(server, admin, "POST", "/inbound/messages", {
+    await postInbound(server, admin, {
       companyId: otherCompany, senderName: "Asukas", subject: "Testiyhtiön vika", body: "Ovi ei sulkeudu.", channel: "email"
     });
     const adminRows = (await call(server, admin, "GET", "/tickets?companyId=all")).data as any[];

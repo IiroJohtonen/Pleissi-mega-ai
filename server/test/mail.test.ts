@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import { simpleParser } from "mailparser";
-import { ADMIN_EMAIL, call, login, MANAGER_EMAIL, startServer, tempDir, type TestServer, userByEmail } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, MANAGER_EMAIL, startServer, tempDir, type TestServer, userByEmail , inbound as postInbound } from "./helpers.js";
 
 // Moduulit avaavat tietokannan tuonnin yhteydessä, joten ne ladataan vasta väliaikaisen data-kansion jälkeen.
 async function mailModules() {
@@ -313,7 +313,7 @@ describe("sähköpostitilien yhdistäminen", () => {
 
   it("omaan laatikkoon tullut tehtävä annetaan laatikon omistajalle", async () => {
     const owner = await userByEmail(server, admin, MANAGER_EMAIL);
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Liisa Mallikas", senderEmail: "liisa@example.com",
       subject: "Kysymys pyörävarastosta", body: "Mistä saan avaimen pyörävarastoon?",
       sourceMessageId: "<oma-1@example.com>", assigneeId: owner.id, mailAccountId: `user:${owner.id}`
