@@ -151,9 +151,9 @@ export function ticketColumnText(ticket: Ticket, key: TicketSortKey) {
   }
 }
 
-// Tehtävän voi osoittaa isännöitsijälle tai pääkäyttäjälle.
+// Tehtävän voi osoittaa isännöitsijän tasoiselle roolille tai pääkäyttäjälle.
 export function isManagerRole(user: OfficeUser) {
-  return user.role === "Isännöitsijä" || user.role === "Pääkäyttäjä";
+  return user.role === "Pääkäyttäjä" || (user.manager ?? user.role === "Isännöitsijä");
 }
 
 // Kenelle taloyhtiön tehtävän voi antaa: vastuuisännöitsijälle ja taloyhtiön muille isännöitsijöille.

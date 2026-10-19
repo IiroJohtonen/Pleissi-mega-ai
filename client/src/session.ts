@@ -11,8 +11,12 @@ export const MANAGEMENT_OFFICE = {
   aiPrompt: true
 };
 
-// mail_email = käyttäjän oman, Kotiloon yhdistetyn postilaatikon osoite.
-export type OfficeUser = { id: string; name: string; email: string; role: string; mail_email?: string | null };
+// mail_email = käyttäjän oman, Kotiloon yhdistetyn postilaatikon osoite. manager = roolilla on isännöitsijän
+// oikeudet; tables = roolin näkemät taulut (null = kaikki).
+export type OfficeUser = {
+  id: string; name: string; email: string; role: string; mail_email?: string | null;
+  manager?: boolean; tables?: string[] | null;
+};
 export type ResidentAccount = {
   id: string;
   name: string;
@@ -26,7 +30,7 @@ export type ResidentAccount = {
 // joka näkee vain oman yhtiönsä hallituksen näkymän.
 export type Session = { token: string; user: OfficeUser; kind?: "resident" | "board"; resident?: ResidentAccount };
 
-export const USER_ROLES = ["Pääkäyttäjä", "Isännöitsijä", "Asiakaspalvelu"];
+export const ADMIN_ROLE = "Pääkäyttäjä";
 const SESSION_KEY = "kotilo.session";
 // Avaimen vanha nimi: luetaan kerran, jotta nimenvaihto ei kirjaa ketään ulos.
 const LEGACY_SESSION_KEY = "kiito.session";
@@ -57,13 +61,20 @@ export function setSession(next: Session | null) {
 
 // Käyttäjien hallinta ja asetukset kuuluvat vain pääkäyttäjälle; palvelin tarkistaa saman.
 export function isAdmin() {
-  return session?.user.role === "Pääkäyttäjä";
+  return session?.user.role === ADMIN_ROLE;
 }
 
 // Taloyhtiöiden tiedot, tietopankki, tiedotteet, muuttojen hyväksyntä, laskutusmerkinnät, loki ja
 // asukkaan tietojen vienti ja poisto kuuluvat isännöitsijälle ja pääkäyttäjälle; palvelin tarkistaa saman.
 export function isManager() {
-  return session?.user.role === "Isännöitsijä" || isAdmin();
+  return isAdmin() || (session?.user.manager ?? session?.user.role === "Isännöitsijä");
+}
+
+// Näkeekö käyttäjän rooli taulun (sivupalkin näkymän). Pääkäyttäjä näkee aina kaikki taulut.
+export function canSeeTable(table: string) {
+  if (isAdmin()) return true;
+  const tables = session?.user.tables;
+  return tables === null || tables === undefined || tables.includes(table);
 }
 
 // Lokiin ja muistiinpanoihin kirjattava tekijä.

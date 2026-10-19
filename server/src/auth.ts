@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response, Router } from "express";
 import express from "express";
 import { z } from "zod";
 import { db } from "./db.js";
+import { ADMIN_ROLE, isManagerRole, roleExists, roleTables } from "./roles.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -100,8 +101,7 @@ export type User = { id: string; name: string; email: string; role: string };
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const MIN_PASSWORD_LENGTH = 8;
-export const USER_ROLES = ["Pääkäyttäjä", "Isännöitsijä", "Asiakaspalvelu"] as const;
-export const ADMIN_ROLE = "Pääkäyttäjä";
+export { ADMIN_ROLE, isManagerRole } from "./roles.js";
 
 // Käyttäjien hallinta ja asetukset kuuluvat vain pääkäyttäjälle.
 export function isAdmin(res: Response): boolean {
@@ -114,12 +114,12 @@ export function requireAdmin(_req: Request, res: Response, next: NextFunction) {
 }
 
 // Taloyhtiöiden tiedot, tietopankki, tiedotteet, muuttojen hyväksyntä, laskutusmerkinnät, loki ja
-// asukkaan tietojen vienti ja poisto kuuluvat isännöitsijälle ja pääkäyttäjälle, eivät asiakaspalvelulle.
-export const MANAGER_ROLES: readonly string[] = ["Isännöitsijä", ADMIN_ROLE];
-
+// asukkaan tietojen vienti ja poisto kuuluvat isännöitsijän tasoisille rooleille ja pääkäyttäjälle,
+// eivät asiakaspalvelun tasoisille.
 // _req on tyypitön, jotta reitin omat parametrityypit säilyvät käsittelijässä.
 export function requireManager(_req: unknown, res: Response, next: NextFunction) {
-  if (!MANAGER_ROLES.includes((res.locals.user as User | undefined)?.role ?? "")) {
+  const role = (res.locals.user as User | undefined)?.role;
+  if (!role || !isManagerRole(role)) {
     return res.status(403).json({ error: "Tämä toiminto vaatii isännöitsijän oikeudet." });
   }
   next();
@@ -384,7 +384,15 @@ export const authRouter: Router = express.Router();
 export function issueStaffSession(user: User) {
   const token = crypto.randomBytes(32).toString("hex");
   db.prepare("INSERT INTO sessions VALUES (?, ?, ?)").run(hashToken(token), user.id, new Date().toISOString());
-  return { token, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+  return { token, user: userWithAccess(user) };
+}
+
+// Käyttäjä selaimelle: manager = isännöitsijän toiminnot sallittu, tables = näkyvät taulut (null = kaikki).
+export function userWithAccess(user: User) {
+  return {
+    id: user.id, name: user.name, email: user.email, role: user.role,
+    manager: isManagerRole(user.role), tables: roleTables(user.role)
+  };
 }
 
 authRouter.post("/auth/login", async (req, res) => {
@@ -480,23 +488,24 @@ authRouter.post("/auth/logout", (_req, res) => {
 });
 
 authRouter.get("/auth/me", (_req, res) => {
-  res.json(res.locals.user);
+  res.json(userWithAccess(res.locals.user as User));
 });
 
 authRouter.get("/users", (_req, res) => {
   // mail_email = käyttäjän oman postilaatikon osoite, jos hän on yhdistänyt sellaisen.
-  res.json(db.prepare(`
+  const users = db.prepare(`
     SELECT u.id, u.name, u.email, u.role, m.email AS mail_email
     FROM users u LEFT JOIN gmail_accounts m ON m.id = 'user:' || u.id
     ORDER BY u.name
-  `).all());
+  `).all() as (User & { mail_email: string | null })[];
+  res.json(users.map(user => ({ ...user, manager: isManagerRole(user.role) })));
 });
 
 authRouter.post("/users", requireAdmin, (req, res) => {
   const parsed = z.object({
     name: z.string().trim().min(1),
     email: z.email(),
-    role: z.enum(USER_ROLES),
+    role: z.string().trim().min(1).refine(roleExists),
     password: z.string()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista nimi, sähköposti ja rooli." });
@@ -522,11 +531,11 @@ authRouter.put("/users/:id", (req, res) => {
   const parsed = z.object({
     name: z.string().trim().min(1),
     email: z.email(),
-    role: z.enum(USER_ROLES).optional(),
+    role: z.string().trim().min(1).refine(roleExists).optional(),
     // Tyhjä = salasanaa ei vaihdeta.
     password: z.string().optional()
   }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Tarkista nimi ja sähköposti." });
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista nimi, sähköposti ja rooli." });
 
   const user = db.prepare("SELECT id, role FROM users WHERE id = ?").get(req.params.id) as
     | { id: string; role: string }
@@ -566,7 +575,7 @@ authRouter.put("/users/:id", (req, res) => {
     );
   }
 
-  res.json(db.prepare("SELECT id, name, email, role FROM users WHERE id = ?").get(user.id));
+  res.json(userWithAccess(db.prepare("SELECT id, name, email, role FROM users WHERE id = ?").get(user.id) as User));
 });
 
 // Poistaa käyttäjän. Keskeneräiset tehtävät siirtyvät taloyhtiön vastuuisännöitsijälle tai, jos

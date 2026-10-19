@@ -3894,6 +3894,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
    kiinnittämättä se kutistuu kuvakeriviksi, jolloin sisältö saa enemmän tilaa, ja aukeaa sisällön
    päälle, kun hiiri tai näppäimistö on siinä. */
 .nav-queue-row { align-items: center; }
+.nav-queue-row.pin-only { justify-content: flex-end; }
 .nav-pin {
   flex: none;
   display: grid;
@@ -5165,3 +5166,11 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
 .move-form .form-columns { gap: 12px 20px; }
 .ticket-form.move-form label.move-water-meter { display: flex; align-items: center; gap: 10px; align-self: end; min-height: 44px; font-size: 13px; }
 .ticket-form.move-form label.move-water-meter input { width: 18px; height: 18px; margin: 0; }
+
+/* Asetukset › Roolit: roolin taulut ryhmittäin. */
+.role-tables { display: grid; gap: 4px; }
+.role-tables-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.role-tables-head strong { font-size: 13px; }
+.role-tables-head button { padding: 5px 10px; font-size: 12px; }
+.role-tables .queue-access { padding-left: 22px; }
+.role-tables .queue-access legend { margin-left: -22px; }

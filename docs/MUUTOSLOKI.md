@@ -3,6 +3,24 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 19.10.2026 · Roolit: omat roolit ja niiden näkemät taulut
+
+**Mitä muutettiin**
+- Asetukset › Isännöitsijätoimiston tiedot -sivulla on uusi **Roolit**-välilehti. Pääkäyttäjä voi luoda uusia rooleja
+  omalla nimellä, muuttaa niiden nimeä ja poistaa roolin, jolla ei ole käyttäjiä.
+- Jokaiselle roolille valitaan rastilla taulut, jotka sen käyttäjät näkevät (esim. Päätösjono, Kaikki tehtävät,
+  Raportit, Asukkaat, Sauna). Ryhmän otsikon rasti valitsee koko ryhmän. Roolille valitaan myös oikeustaso:
+  isännöitsijän oikeudet (saa muokata taloyhtiöiden tietoja) tai asiakaspalvelun oikeudet.
+- Käyttäjälle valitaan rooli Käyttäjät-välilehdellä. Sivupalkissa näkyvät vain roolin taulut, ja piilotetun taulun
+  linkki ohjaa ensimmäiseen sallittuun tauluun. Roolin muutos tulee voimaan, kun käyttäjä päivittää sivun.
+- Uudet taulut tulevat roolien valintoihin automaattisesti. Rooli, jolle on valittu kaikki taulut, näkee myös
+  myöhemmin lisättävät taulut. Pääkäyttäjä näkee aina kaikki taulut; asetukset ja haku näkyvät kaikille.
+
+**Miten**
+- Asetukset › Isännöitsijätoimiston tiedot › Roolit ja Käyttäjät. Sivupalkki roolin käyttäjällä.
+
+**Testit:** T-136–T-142 · PR #37
+
 ## 19.10.2026 · Asukasportaalin yläpalkki ja muuttoilmoitus, turhat lomakkeet pois, tehtävänumerot puhelimella
 
 **Mitä muutettiin**

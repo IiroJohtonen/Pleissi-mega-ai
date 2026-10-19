@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { User } from "./auth.js";
 import { db } from "./db.js";
+import { roleBase } from "./roles.js";
 
 // Kirjautunut henkilökunnan käyttäjä pyynnön ajan, jotta yhtiörajaus toimii kaikissa tarkistuksissa.
 // Asukkaan ja palvelimen omissa kutsuissa käyttäjää ei ole.
@@ -17,13 +18,13 @@ for (const company of db.prepare("SELECT id FROM companies WHERE managed = 1").a
   AUTHORIZED_COMPANY_IDS.add(company.id);
 }
 
-// Yhtiöt, jotka pyynnön tekijä näkee. Isännöitsijä näkee yhtiöt, joissa hän on vastuuisännöitsijä tai
+// Yhtiöt, jotka pyynnön tekijä näkee. Isännöitsijän tasoinen rooli näkee yhtiöt, joissa hän on vastuuisännöitsijä tai
 // muu isännöitsijä, sekä yhtiöt, joilla ei ole vastuuisännöitsijää. Pääkäyttäjä ja asiakaspalvelu
 // näkevät kaikki.
 export function visibleCompanyIds(): string[] {
   const companyIds = [...AUTHORIZED_COMPANY_IDS];
   const user = requestUser.getStore();
-  if (!user || user.role !== "Isännöitsijä") return companyIds;
+  if (!user || roleBase(user.role) !== "Isännöitsijä") return companyIds;
   const own = new Set((db.prepare(`
     SELECT id FROM companies
     WHERE manager_id IS NULL OR manager_id = ?

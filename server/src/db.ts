@@ -540,6 +540,22 @@ if (!(db.prepare("PRAGMA table_info(knowledge_chunks)").all() as { name: string 
   }
 }
 
+// Toimiston käyttäjäroolit (pääkäyttäjää lukuun ottamatta, joka on kiinteä ja näkee kaiken).
+// base = oikeustaso, jonka mukaan rooli saa muokata tietoja: Isännöitsijä tai Asiakaspalvelu.
+// tables = näkymät (sivupalkin taulut), jotka rooli näkee, JSON-taulukkona; NULL = kaikki, myös myöhemmin lisättävät.
+db.exec(`
+CREATE TABLE IF NOT EXISTS roles (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  base TEXT NOT NULL,
+  tables TEXT,
+  created_at TEXT NOT NULL
+);
+INSERT OR IGNORE INTO roles (id, name, base, tables, created_at) VALUES
+  ('role-manager', 'Isännöitsijä', 'Isännöitsijä', NULL, '2026-01-01T00:00:00.000Z'),
+  ('role-service', 'Asiakaspalvelu', 'Asiakaspalvelu', NULL, '2026-01-01T00:00:01.000Z');
+`);
+
 const ticketSourceColumns = db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[];
 for (const column of ["knowledge_source_id", "knowledge_source_title", "knowledge_source_chunk_id", "knowledge_source_page"]) {
   if (!ticketSourceColumns.some(existing => existing.name === column)) {

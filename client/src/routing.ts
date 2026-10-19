@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { TicketTab } from "./types";
 import { t } from "./i18n";
 
-const ticketTabs: TicketTab[] = ["queue", "unassigned", "unidentified", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "apartments", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log", "search"];
+export const ticketTabs: TicketTab[] = ["queue", "unassigned", "unidentified", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "apartments", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log", "search"];
 
 type Route = { tab: TicketTab; param: string | null };
 
