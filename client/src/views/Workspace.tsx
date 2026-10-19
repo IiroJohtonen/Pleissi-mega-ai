@@ -3,7 +3,8 @@ import { Dropdown, FactDropdown, MultiSelect, NavToggle, TabIcon, usePaged } fro
 import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
-import { actorName, api, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
+import { canSeeTab, firstVisibleTab, navGroups } from "../role-tables";
+import { actorName, api, canSeeTable, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
   assignableUsers, canAssignTickets, compareQueue, compareTickets, fetchTicketDetail, isDueSoon, isOverdue, type ReminderSettings, ticketColumns,
   ticketColumnText, ticketReminders, type TicketSort, type TicketSortKey
@@ -33,14 +34,6 @@ import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
 import { t } from "../i18n";
 
-// Taloyhtiöt-valikon alasivut ryhmiteltyinä.
-// Taloyhtiöosion ryhmät: kaikki näkymät koskevat sivupalkissa valittua taloyhtiötä.
-const navGroups: { key: string; label: string; tabs: TicketTab[] }[] = [
-  { key: "docs", label: t("Dokumentaatio"), tabs: ["knowledge", "knowledge-ai", "knowledge-internal"] },
-  { key: "residents", label: t("Perustiedot"), tabs: ["residents", "apartments", "waitlist", "keys"] },
-  { key: "facilities", label: t("Tilat"), tabs: ["sauna", "laundry", "parking"] },
-  { key: "notices", label: t("Ilmoitukset"), tabs: ["announcements", "moves", "renovations", "meters"] }
-];
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 // Raporttien alasivut sivupalkissa (#/reports/<alasivu>).
 const reportTabs: [ReportsTab, string][] = [["metrics", t("Mittarit")], ["custom", t("Omat raportit")], ["company", t("Taloyhtiön raportit")]];
@@ -119,6 +112,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
   // Ilmoitus, kun avattava tehtävä on arkaluonteisena rajattu käyttäjältä.
   const [restrictedNotice, setRestrictedNotice] = useState("");
   const { tab, param: routeParam } = useRoute();
+  // Roolin ulkopuolinen näkymä (esim. vanha linkki) vaihtuu ensimmäiseen näkymään, jonka rooli näkee.
+  const tabAllowed = canSeeTab(tab, routeParam);
+  useEffect(() => {
+    if (!tabAllowed) navigate(firstVisibleTab());
+  }, [tabAllowed]);
   // Avatun tehtävän tallentamattomat muutokset: navigointi varmistaa poistumisen.
   const ticketDirty = useRef(false);
   const setTab = (next: TicketTab) => {
@@ -160,6 +158,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
   }
   const [clock, setClock] = useState(Date.now());
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
+  // Sivupalkin kohdat, jotka käyttäjän rooli näkee.
+  const taskSubTabs = canSeeTable("unidentified") || canSeeTable("my-tickets");
+  const visibleNavGroups = navGroups
+    .map(group => ({ ...group, tabs: group.tabs.filter(item => canSeeTable(item)) }))
+    .filter(group => group.tabs.length > 0);
   const [reportsOpen, setReportsOpen] = useState(true);
   // Puhelimella navigaatio on sivusta avautuva valikko; se sulkeutuu, kun näkymä vaihtuu.
   const [navOpen, setNavOpen] = useState(false);
@@ -620,12 +623,14 @@ export function Workspace({ user }: { user: OfficeUser }) {
         <button className="mobile-nav-close" onClick={() => setNavOpen(false)} aria-label={t("Sulje valikko")}>×</button>
         <nav>
           {/* Päätösjonon vieressä on sivupalkin kiinnitys: kiinnittämätön palkki kutistuu kuvakeriviksi. */}
-          <div className="nav-group nav-queue-row">
-            <button className={tab === "queue" ? "active" : ""} onClick={() => openTaskList("queue")}>
-              <TabIcon tab="queue" />
-              {t("Päätösjono")}
-              <b>{queueTickets.length}</b>
-            </button>
+          <div className={`nav-group nav-queue-row ${canSeeTable("queue") ? "" : "pin-only"}`}>
+            {canSeeTable("queue") && (
+              <button className={tab === "queue" ? "active" : ""} onClick={() => openTaskList("queue")}>
+                <TabIcon tab="queue" />
+                {t("Päätösjono")}
+                <b>{queueTickets.length}</b>
+              </button>
+            )}
             <button
               type="button"
               className={`nav-pin ${navPinned ? "pinned" : ""}`}
@@ -644,28 +649,39 @@ export function Workspace({ user }: { user: OfficeUser }) {
               </svg>
             </button>
           </div>
-          <div className="nav-group">
-            <button className={tab === "tickets" ? "active" : ""} onClick={() => openTaskList("tickets")}>
-              <TabIcon tab="tickets" />
-              {t("Kaikki tehtävät")}
-            </button>
-            <NavToggle open={myTicketsOpen} label={t("tunnistamattomat ja omat tehtävät")} onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
-          </div>
-          {myTicketsOpen && (
+          {canSeeTable("tickets") && (
+            <div className="nav-group">
+              <button className={tab === "tickets" ? "active" : ""} onClick={() => openTaskList("tickets")}>
+                <TabIcon tab="tickets" />
+                {t("Kaikki tehtävät")}
+              </button>
+              {taskSubTabs && (
+                <NavToggle open={myTicketsOpen} label={t("tunnistamattomat ja omat tehtävät")} onToggle={() => setMyTicketsOpen(!myTicketsOpen)} />
+              )}
+            </div>
+          )}
+          {/* Ilman Kaikki tehtävät -näkymää alasivut näkyvät aina. */}
+          {(myTicketsOpen || !canSeeTable("tickets")) && (
             <>
-              <button className={`nav-sub ${tab === "unidentified" ? "active" : ""}`} onClick={() => openTaskList("unidentified")}>
-                <TabIcon tab="unidentified" />
-                {t("Tunnistamattomat")}
-                <b>{unidentifiedTickets.length}</b>
-              </button>
-              <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => openTaskList("my-tickets")}>
-                <TabIcon tab="my-tickets" />
-                {t("Omat tehtävät")}
-                <b>{myTickets.length}</b>
-              </button>
+              {canSeeTable("unidentified") && (
+                <button className={`nav-sub ${tab === "unidentified" ? "active" : ""}`} onClick={() => openTaskList("unidentified")}>
+                  <TabIcon tab="unidentified" />
+                  {t("Tunnistamattomat")}
+                  <b>{unidentifiedTickets.length}</b>
+                </button>
+              )}
+              {canSeeTable("my-tickets") && (
+                <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => openTaskList("my-tickets")}>
+                  <TabIcon tab="my-tickets" />
+                  {t("Omat tehtävät")}
+                  <b>{myTickets.length}</b>
+                </button>
+              )}
             </>
           )}
           {/* Raportit: alasivuina mittarit, omat raportit ja taloyhtiön raportit. */}
+          {canSeeTable("reports") && (
+          <>
           <div className="nav-group">
             <button className={tab === "reports" ? "active" : ""} onClick={() => navigate("reports", reportsTab)}>
               <TabIcon tab="reports" />
@@ -679,7 +695,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
               {label}
             </button>
           ))}
+          </>
+          )}
           {/* Taloyhtiöosio: otsikkona taloyhtiön valinta, jonka viimeinen kohta avaa kaikkien yhtiöiden listan. */}
+          {(canSeeTable("companies") || visibleNavGroups.length > 0) && (
           <div className="nav-company-section">
             <Dropdown
               className="nav-company-select"
@@ -689,12 +708,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
               ariaLabel={t("Taloyhtiö")}
               options={[
                 ...companies.map(company => ({ value: company.id, label: company.name })),
-                { value: ALL_COMPANIES, label: t("Kaikki taloyhtiöt…") }
+                ...(canSeeTable("companies") ? [{ value: ALL_COMPANIES, label: t("Kaikki taloyhtiöt…") }] : [])
               ]}
               onChange={value => value === ALL_COMPANIES ? setTab("companies") : changeCompany(value)}
             />
             <div className="nav-subs">
-              {navCompany && (
+              {navCompany && canSeeTable("companies") && (
                 <button
                   className={`nav-sub ${tab === "companies" && routeParam === navCompany.id ? "active" : ""}`}
                   onClick={() => navigate("companies", navCompany.id)}
@@ -703,7 +722,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   {t("Yhtiön tiedot")}
                 </button>
               )}
-              {navCompany && navGroups.map(group => {
+              {navCompany && visibleNavGroups.map(group => {
                 const open = !closedGroups.includes(group.key);
                 // Suljetun ryhmän otsikossa näkyy sen laskurien summa, jotta odottavat asiat eivät jää piiloon.
                 const hiddenCount = open ? 0 : group.tabs.reduce((sum, item) => sum + (navCounts[item] ?? 0), 0);
@@ -742,6 +761,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
               })}
             </div>
           </div>
+          )}
         </nav>
 
       </aside>
@@ -755,7 +775,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
           </p>
         )}
         {/* Avattu tehtävä näytetään omana sivunaan listan tilalla; navigaatio pysyy vieressä käytössä. */}
-        {openTicketId && (selected ? (
+        {openTicketId && tabAllowed && (selected ? (
           <TicketDrawer
             detail={selected}
             backLabel={`← ${tabTitles[tab]}`}
@@ -774,7 +794,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
           />
         ) : <div className="empty">{t("Ladataan…")}</div>)}
 
-        {!openTicketId && (
+        {!openTicketId && tabAllowed && (
         <header>
           <div>
             {/* Toimiston nimi tulee isännöitsijätoimiston asetuksista ja päivittyy tallennettaessa. */}
@@ -784,7 +804,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
         </header>
         )}
 
-        {openTicketId ? null : tab === "knowledge" || tab === "knowledge-ai" || tab === "knowledge-internal" ? (
+        {openTicketId || !tabAllowed ? null : tab === "knowledge" || tab === "knowledge-ai" || tab === "knowledge-internal" ? (
           <Knowledge
             // Avain vaihtaa suodattimien ja haun tilan, kun siirrytään alasivulta toiselle.
             key={tab}

@@ -3,8 +3,9 @@ import { Dropdown, usePaged } from "../components/common";
 import { formatDate } from "../format";
 import { type Language, language, LANGUAGES, locale, setLanguage } from "../i18n";
 import {
-  api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession, USER_ROLES
+  ADMIN_ROLE, api, errorMessage, isAdmin, MANAGEMENT_OFFICE, type OfficeUser, session, setSession
 } from "../session";
+import { roleTableGroups, roleTableTitles } from "../role-tables";
 import type { MailProvider, MailStatus } from "../types";
 import { type BookingRules, WEEKLY_DURATION_OPTIONS, weeklyWeeksOf } from "./Bookings";
 import { ParkingOptionsEditor } from "./Parking";
@@ -78,6 +79,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   "ai-models": "malli opus sonnet haiku claude",
   "master-data": "hätäsanat hätä määräajat prioriteetti päivät",
   users: "käyttäjät roolit lisää käyttäjä",
+  roles: "roolit oikeudet pääsy taulut näkymät käyttöoikeudet",
   "system-alerts": "järjestelmän tila hälytykset virheet varmuuskopio"
 };
 
@@ -159,7 +161,7 @@ const userSections = [
 ];
 
 // Isännöitsijätoimiston asetukset välilehdittäin; kunkin välilehden osiot ovat aliotsikoina.
-type OfficeTab = "office" | "security" | "ai" | "master" | "users";
+type OfficeTab = "office" | "security" | "ai" | "master" | "users" | "roles";
 const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label: string }[] }[] = [
   {
     tab: "office", label: t("Toimisto"), sections: [
@@ -192,7 +194,8 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
       { id: "system-alerts", label: t("Järjestelmän tila") }
     ]
   },
-  { tab: "users", label: t("Käyttäjät"), sections: [{ id: "users", label: t("Käyttäjät") }] }
+  { tab: "users", label: t("Käyttäjät"), sections: [{ id: "users", label: t("Käyttäjät") }] },
+  { tab: "roles", label: t("Roolit"), sections: [{ id: "roles", label: t("Roolit") }] }
 ];
 
 // Kirjautuneen käyttäjän omat tiedot, salasana ja kieli.
@@ -735,6 +738,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
   useEffect(() => {
     api<OfficeUser[]>("/users").then(setQueueUserOptions).catch(() => setQueueUserOptions([]));
   }, []);
+  const roleNames = useRoleNames();
   // Viimeksi tallennettu säilytysaika; lyhentäminen varmistetaan, koska se poistaa tietoja pysyvästi.
   const [storedRetention, setStoredRetention] = useState(0);
 
@@ -927,7 +931,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         </p>
         <fieldset className="queue-access">
           <legend>{t("Roolit")}</legend>
-          {USER_ROLES.map(role => (
+          {roleNames.map(role => (
             <label key={role} className="checkbox-row">
               <input
                 type="checkbox"
@@ -1140,6 +1144,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         </>
       )}
       {officeTab === "users" && <OfficeUsers />}
+      {officeTab === "roles" && <OfficeRoles />}
       </div>
       </div>
     </div>
@@ -1541,6 +1546,7 @@ function OfficeUsers() {
 
   const pagedUsers = usePaged(users, "");
   const admin = isAdmin();
+  const roleNames = useRoleNames();
   // Muut kuin pääkäyttäjä voivat muokata vain omia tietojaan.
   const canEdit = (user: OfficeUser) => admin || session?.user.id === user.id;
 
@@ -1562,7 +1568,7 @@ function OfficeUsers() {
     setCreating(true);
     setName("");
     setEmail("");
-    setRole("Isännöitsijä");
+    setRole(roleNames.includes("Isännöitsijä") ? "Isännöitsijä" : roleNames[1] ?? ADMIN_ROLE);
     setPassword("");
     setFormError("");
   }
@@ -1697,9 +1703,11 @@ function OfficeUsers() {
               <label>
                 <span>{t("Rooli")}</span>
                 <select value={role} onChange={event => setRole(event.target.value)} disabled={!admin}>
-                  {USER_ROLES.map(option => <option key={option} value={option}>{t(option)}</option>)}
+                  {[...new Set([...roleNames, role])].map(option => <option key={option} value={option}>{t(option)}</option>)}
                 </select>
               </label>
+
+              <p className="reply-hint">{t("Rooli määrää, mitkä taulut käyttäjä näkee. Roolit muokataan Roolit-välilehdellä.")}</p>
 
               <label>
                 <span>{editing ? t("Uusi salasana") : t("Salasana")}</span>
@@ -1734,6 +1742,243 @@ function OfficeUsers() {
                   {editing
                     ? saving ? t("Tallennetaan…") : t("Tallenna muutokset")
                     : saving ? t("Lisätään…") : t("Lisää käyttäjä")}
+                </button>
+              </div>
+            </form>
+          </aside>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+type OfficeRole = { id: string; name: string; base: "Isännöitsijä" | "Asiakaspalvelu"; tables: string[] | null; userCount: number };
+
+const ROLE_BASE_LABELS: Record<OfficeRole["base"], string> = {
+  "Isännöitsijä": t("Isännöitsijän oikeudet"),
+  "Asiakaspalvelu": t("Asiakaspalvelun oikeudet")
+};
+
+// Valittavat roolit: pääkäyttäjä ja toimiston omat roolit.
+function useRoleNames() {
+  const [names, setNames] = useState<string[]>([ADMIN_ROLE, "Isännöitsijä", "Asiakaspalvelu"]);
+  useEffect(() => {
+    api<OfficeRole[]>("/roles").then(roles => setNames([ADMIN_ROLE, ...roles.map(role => role.name)])).catch(() => undefined);
+  }, []);
+  return names;
+}
+
+// Roolit: nimi, oikeustaso ja taulut, jotka roolin käyttäjät näkevät. Pääkäyttäjä näkee aina kaiken.
+function OfficeRoles() {
+  const allTables = roleTableGroups.flatMap(group => group.tabs);
+  const [roles, setRoles] = useState<OfficeRole[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [editing, setEditing] = useState<OfficeRole | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [base, setBase] = useState<OfficeRole["base"]>("Asiakaspalvelu");
+  const [tables, setTables] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  async function loadRoles() {
+    try {
+      setRoles(await api<OfficeRole[]>("/roles"));
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    }
+  }
+
+  useEffect(() => {
+    void loadRoles();
+  }, []);
+
+  function openRole(role: OfficeRole | null) {
+    setEditing(role);
+    setCreating(!role);
+    setName(role?.name ?? "");
+    setBase(role?.base ?? "Asiakaspalvelu");
+    setTables(role ? role.tables ?? allTables : []);
+    setFormError("");
+  }
+
+  function closeForm() {
+    setEditing(null);
+    setCreating(false);
+  }
+
+  function toggleTables(changed: string[], checked: boolean) {
+    setTables(current => checked ? [...new Set([...current, ...changed])] : current.filter(item => !changed.includes(item)));
+  }
+
+  // Taulujen määrä roolin listarivillä.
+  function tablesLabel(role: OfficeRole) {
+    if (role.tables === null) return t("Kaikki taulut");
+    const count = allTables.filter(table => role.tables?.includes(table)).length;
+    return t("{0}/{1} taulua", count, allTables.length);
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setFormError("");
+    // Kun kaikki taulut on valittu, rooli näkee myös myöhemmin lisättävät taulut.
+    const selected = allTables.every(table => tables.includes(table)) ? null : allTables.filter(table => tables.includes(table));
+    try {
+      await api(editing ? `/roles/${encodeURIComponent(editing.id)}` : "/roles", {
+        method: editing ? "PUT" : "POST",
+        body: JSON.stringify({ name, base, tables: selected })
+      });
+      closeForm();
+      await loadRoles();
+    } catch (error) {
+      setFormError(errorMessage(error, t("Roolin tallennus epäonnistui.")));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteRole(role: OfficeRole) {
+    if (!window.confirm(t("Poistetaanko rooli {0}?", role.name))) return;
+    setSaving(true);
+    setFormError("");
+    try {
+      await api(`/roles/${encodeURIComponent(role.id)}`, { method: "DELETE" });
+      closeForm();
+      await loadRoles();
+    } catch (error) {
+      setFormError(errorMessage(error, t("Roolin poisto epäonnistui.")));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <aside className="settings-card settings-users settings-roles">
+      <CollapseSection
+        id="roles"
+        title={t("Roolit")}
+        action={<button className="secondary" onClick={() => openRole(null)}>{t("Lisää rooli")}</button>}
+      >
+      <p className="muted">
+        {t("Rooli määrää, mitkä taulut sen käyttäjät näkevät. Roolin voi valita käyttäjälle Käyttäjät-välilehdellä. Uudet taulut tulevat tähän valittaviksi automaattisesti.")}
+      </p>
+      {loadError && <p className="send-error">{t("Roolien lataus epäonnistui.")}</p>}
+      <ul>
+        <li title={t("Pääkäyttäjä näkee aina kaikki taulut")}>
+          <span className="user-avatar" aria-hidden="true">{ADMIN_ROLE.slice(0, 2)}</span>
+          <div>
+            <strong>{t(ADMIN_ROLE)}</strong>
+            <span>{t("Hallitsee asetuksia ja käyttäjiä")}</span>
+          </div>
+          <em>{t("Kaikki taulut aina")}</em>
+        </li>
+        {roles.map(role => (
+          <li
+            key={role.id}
+            className="clickable"
+            title={t("Muokkaa roolia")}
+            role="button"
+            tabIndex={0}
+            onClick={() => openRole(role)}
+            onKeyDown={event => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openRole(role);
+              }
+            }}
+          >
+            <span className="user-avatar" aria-hidden="true">{role.name.slice(0, 2)}</span>
+            <div>
+              <strong>{t(role.name)}</strong>
+              <span>{ROLE_BASE_LABELS[role.base]} · {t("{0} käyttäjää", role.userCount)}</span>
+            </div>
+            <em>{tablesLabel(role)}</em>
+          </li>
+        ))}
+      </ul>
+      </CollapseSection>
+
+      {(editing || creating) && (
+        <div className="overlay">
+          <aside className="drawer form-drawer resident-drawer">
+            <button type="button" className="drawer-back" onClick={closeForm}>{t("← Takaisin")}</button>
+            <button className="close" onClick={closeForm}>×</button>
+            <h2>{editing ? t(editing.name) : t("Lisää rooli")}</h2>
+            <p className="muted">{t("Rooli")} · {MANAGEMENT_OFFICE.name}</p>
+
+            <form className="ticket-form" onSubmit={handleSubmit}>
+              <label>
+                <span>{t("Roolin nimi")}</span>
+                <input value={name} onChange={event => setName(event.target.value)} maxLength={60} />
+              </label>
+
+              <label>
+                <span>{t("Oikeustaso")}</span>
+                <select value={base} onChange={event => setBase(event.target.value as OfficeRole["base"])}>
+                  {(Object.keys(ROLE_BASE_LABELS) as OfficeRole["base"][]).map(option => (
+                    <option key={option} value={option}>{ROLE_BASE_LABELS[option]}</option>
+                  ))}
+                </select>
+              </label>
+              <p className="reply-hint">
+                {t("Isännöitsijän oikeuksilla käyttäjä muokkaa taloyhtiöiden tietoja ja näkee vain yhtiöt, joiden isännöitsijä hän on. Asiakaspalvelun oikeuksilla hän näkee kaikki yhtiöt mutta muokkaa vähemmän.")}
+              </p>
+
+              <div className="role-tables">
+                <div className="role-tables-head">
+                  <strong>{t("Taulut, jotka rooli näkee")}</strong>
+                  <button type="button" className="secondary" onClick={() => toggleTables(allTables, tables.length < allTables.length)}>
+                    {tables.length < allTables.length ? t("Valitse kaikki") : t("Poista valinnat")}
+                  </button>
+                </div>
+                {roleTableGroups.map(group => (
+                  <fieldset key={group.key} className="queue-access">
+                    <legend>
+                      <label className="checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={group.tabs.every(table => tables.includes(table))}
+                          onChange={event => toggleTables(group.tabs, event.target.checked)}
+                        />
+                        {group.label}
+                      </label>
+                    </legend>
+                    {group.tabs.map(table => (
+                      <label key={table} className="checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={tables.includes(table)}
+                          onChange={event => toggleTables([table], event.target.checked)}
+                        />
+                        {roleTableTitles[table] ?? table}
+                      </label>
+                    ))}
+                  </fieldset>
+                ))}
+                <p className="reply-hint">
+                  {t("Kun kaikki taulut on valittu, rooli näkee myös myöhemmin lisättävät taulut. Asetukset ja haku näkyvät aina.")}
+                </p>
+              </div>
+
+              {formError && <p className="send-error">{formError}</p>}
+
+              <div className="drawer-actions compact-actions">
+                {editing && (
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={saving || editing.userCount > 0}
+                    title={editing.userCount > 0 ? t("Roolilla on käyttäjiä. Vaihda heille ensin toinen rooli.") : undefined}
+                    onClick={() => deleteRole(editing)}
+                  >
+                    {t("Poista rooli")}
+                  </button>
+                )}
+                <button type="button" onClick={closeForm}>{t("Peruuta")}</button>
+                <button className="primary" type="submit" disabled={saving || !name.trim()}>
+                  {saving ? t("Tallennetaan…") : editing ? t("Tallenna muutokset") : t("Lisää rooli")}
                 </button>
               </div>
             </form>

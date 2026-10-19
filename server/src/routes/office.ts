@@ -1,7 +1,7 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { canSeeTicket, isQueueHandler, RESTRICTED_SUBJECT, unidentifiedQueueSettings, visibleCompanyIds } from "../access.js";
-import { isAdmin, requireAdmin, requireManager, USER_ROLES } from "../auth.js";
+import { isAdmin, requireAdmin, requireManager } from "../auth.js";
 import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
 import { aiRequestPayload } from "../ai-log.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
@@ -69,7 +69,7 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina.
     aiMonthlyLimit: z.number().min(0).max(100000).optional(),
     aiWarningPercent: z.number().int().min(0).max(100).optional(),
-    unidentifiedQueueRoles: z.array(z.enum(USER_ROLES)).max(10).optional(),
+    unidentifiedQueueRoles: z.array(z.string().trim().min(1).max(60)).max(100).optional(),
     unidentifiedQueueUsers: z.array(z.string().min(1)).max(500).optional(),
     // Kirjautumiskoodi sähköpostiin henkilökunnalle.
     twoFactor: z.boolean().optional(),

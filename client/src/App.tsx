@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { session, sessionListeners } from "./session";
+import { api, type OfficeUser, session, sessionListeners, setSession } from "./session";
 import { BoardView } from "./views/Board";
 import { Login } from "./views/Login";
 import { ResidentPortal } from "./views/Portal";
@@ -15,6 +15,18 @@ export default function App() {
       sessionListeners.delete(listener);
     };
   }, []);
+
+  // Henkilökunnan rooli ja sen näkemät taulut haetaan palvelimelta joka latauksella, jotta pääkäyttäjän
+  // tekemät roolimuutokset tulevat voimaan ilman uutta kirjautumista.
+  const staffToken = current && !current.kind ? current.token : null;
+  useEffect(() => {
+    if (!staffToken) return;
+    api<OfficeUser>("/auth/me")
+      .then(user => {
+        if (session?.token === staffToken) setSession({ ...session, user: { ...session.user, ...user } });
+      })
+      .catch(() => undefined);
+  }, [staffToken]);
 
   if (!current) return <Login />;
   if (current.kind === "resident" && current.resident) {

@@ -9,6 +9,7 @@ import { ParkingSpaces } from "./Parking";
 import { Residents } from "./Residents";
 import { Apartments } from "./Apartments";
 import { navigate } from "../routing";
+import { isManagerRole } from "../tickets/ticket-utils";
 import { BookingSettings, MailAccountCard } from "./Settings";
 import { t } from "../i18n";
 
@@ -261,7 +262,7 @@ function CompanyCard({
   const [managers, setManagers] = useState<OfficeUser[]>([]);
   useEffect(() => {
     api<OfficeUser[]>("/users")
-      .then(users => setManagers(users.filter(user => user.role === "Isännöitsijä" || user.role === "Pääkäyttäjä")))
+      .then(users => setManagers(users.filter(isManagerRole)))
       .catch(() => setManagers([]));
   }, []);
 

@@ -32,6 +32,7 @@ import { metersRouter } from "./routes/meters.js";
 import { apartmentsRouter } from "./routes/apartments.js";
 import { movesRouter } from "./routes/moves.js";
 import { officeRouter } from "./routes/office.js";
+import { rolesRouter } from "./routes/roles.js";
 import { parkingRouter } from "./routes/parking.js";
 import { passwordResetRouter } from "./routes/password-reset.js";
 import { portalRouter } from "./routes/portal.js";
@@ -116,7 +117,7 @@ app.get("/api/health", (_req, res) => {
 
 // Rajapinnan reitit aihealueittain; jokainen on omassa tiedostossaan kansiossa routes.
 for (const router of [
-  authRouter, loginCodesRouter, passwordResetRouter, officeRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
+  authRouter, loginCodesRouter, passwordResetRouter, officeRouter, rolesRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingQueueRouter, billingRouter, portalRouter, portalFormsRouter, heatingRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
   metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter

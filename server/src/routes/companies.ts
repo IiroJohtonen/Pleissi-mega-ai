@@ -1,7 +1,7 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { AUTHORIZED_COMPANY_IDS, companyIdFromContext, visibleCompanyIds } from "../access.js";
-import { MANAGER_ROLES, requireManager } from "../auth.js";
+import { isManagerRole, requireManager } from "../auth.js";
 import { db } from "../db.js";
 import { id } from "../util.js";
 
@@ -96,7 +96,7 @@ companiesRouter.put("/companies/:companyId", requireManager, (req, res) => {
   const managerId = parsed.data.managerId === undefined ? undefined : parsed.data.managerId || null;
   if (managerId) {
     const manager = db.prepare("SELECT role FROM users WHERE id = ?").get(managerId) as { role: string } | undefined;
-    if (!manager || !MANAGER_ROLES.includes(manager.role)) {
+    if (!manager || !isManagerRole(manager.role)) {
       return res.status(400).json({ error: "Vastuuisännöitsijän pitää olla isännöitsijä-käyttäjä." });
     }
   }
@@ -122,7 +122,7 @@ companiesRouter.put("/companies/:companyId", requireManager, (req, res) => {
     const others = [...new Set(parsed.data.managerIds)].filter(userId => userId !== responsible);
     for (const userId of others) {
       const user = db.prepare("SELECT role FROM users WHERE id = ?").get(userId) as { role: string } | undefined;
-      if (!user || !MANAGER_ROLES.includes(user.role)) {
+      if (!user || !isManagerRole(user.role)) {
         return res.status(400).json({ error: "Taloyhtiön isännöitsijäksi voi valita vain isännöitsijä-käyttäjän." });
       }
     }

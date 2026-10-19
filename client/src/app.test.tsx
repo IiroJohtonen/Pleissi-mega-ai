@@ -94,6 +94,46 @@ describe("sovellus", () => {
     expect(document.querySelector(".ticket-company")?.textContent).toContain("As Oy Koivikko");
   });
 
+  it("näyttää sivupalkissa vain roolin taulut ja ohjaa muualle roolin ulkopuolisesta näkymästä", async () => {
+    await renderApp({ ...staff("Kiinteistösihteeri"), user: { ...staff("Kiinteistösihteeri").user, tables: ["tickets", "residents"] } }, "#/queue");
+    await vi.waitFor(() => expect(window.location.hash).toBe("#/tickets"));
+    const nav = document.querySelector(".sidebar nav") as HTMLElement;
+    expect(within(nav).getByRole("button", { name: "Kaikki tehtävät" })).toBeTruthy();
+    expect(within(nav).queryByRole("button", { name: /Päätösjono/ })).toBeNull();
+    expect(within(nav).queryByRole("button", { name: "Raportit" })).toBeNull();
+    expect(within(nav).queryByRole("button", { name: "Yhtiön tiedot" })).toBeNull();
+    expect(await within(nav).findByRole("button", { name: "Asukkaat" })).toBeTruthy();
+    expect(within(nav).queryByRole("button", { name: "Asunnot" })).toBeNull();
+    expect(within(nav).queryByRole("button", { name: /Tilat/ })).toBeNull();
+  });
+
+  it("pääkäyttäjä luo roolin ja valitsee sille taulut asetusten Roolit-välilehdellä", async () => {
+    responses["/roles"] = [{ id: "role-service", name: "Asiakaspalvelu", base: "Asiakaspalvelu", tables: null, userCount: 1 }];
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Pääkäyttäjä"), "#/settings");
+      fireEvent.click(await screen.findByRole("tab", { name: "Isännöitsijätoimiston tiedot" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Roolit" }));
+      expect(await screen.findByText("Kaikki taulut aina")).toBeTruthy();
+      expect(await screen.findByText("Kaikki taulut")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Lisää rooli" }));
+      fireEvent.change(screen.getByLabelText("Roolin nimi"), { target: { value: "Kiinteistösihteeri" } });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Kaikki tehtävät" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Perustiedot" }));
+      expect((screen.getByRole("checkbox", { name: "Asunnot" }) as HTMLInputElement).checked).toBe(true);
+      fireEvent.click(screen.getByRole("checkbox", { name: "Avaimet" }));
+      fireEvent.click(within(document.querySelector(".form-drawer form") as HTMLElement).getByRole("button", { name: "Lisää rooli" }));
+
+      await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/roles"))).toBe(true));
+      expect(JSON.parse(calls.find(request => request.method === "POST" && request.url.endsWith("/roles"))!.body)).toEqual({
+        name: "Kiinteistösihteeri", base: "Asiakaspalvelu", tables: ["tickets", "residents", "apartments", "waitlist"]
+      });
+    } finally {
+      delete responses["/roles"];
+    }
+  });
+
   it("näyttää päätösjonossa vain omat tehtävät ja Tunnistamattomat-laatikosta käsittelijättömät", async () => {
     const unassigned = { ...overdueTicket, id: "ticket-2", ticket_number: 2, subject: "Käsittelijätön tehtävä", assignee_id: null };
     const others = { ...overdueTicket, id: "ticket-3", ticket_number: 3, subject: "Toisen tehtävä", assignee_id: "user-2" };
