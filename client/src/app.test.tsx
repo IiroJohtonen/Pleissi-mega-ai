@@ -311,9 +311,12 @@ describe("sovellus", () => {
     const calls = mockApi();
     const resident = { id: "resident-1", name: "Liisa Mallikas", email: "liisa@example.com", companyId: "demo-company", companyName: "As Oy Koivikko", apartmentNumber: "B 34" };
     await renderApp({ token: "asukastunniste", kind: "resident", user: { id: resident.id, name: resident.name, email: resident.email, role: "Asukas" }, resident });
-    for (const label of ["Häiriöilmoitus", "Irtisanomisilmoitus", "Yleinen asuntohakemus", "Auton lämmityspaikka"]) {
+    for (const label of ["Häiriöilmoitus", "Yleinen asuntohakemus", "Muuttoilmoitus"]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
+    // Auton lämmityspaikka ja irtisanomisilmoitus eivät ole asukasportaalissa.
+    expect(screen.queryByText("Auton lämmityspaikka")).toBeNull();
+    expect(screen.queryByText("Irtisanomisilmoitus")).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: /Huoltotyötilaus/ })[0]);
     fireEvent.change(await screen.findByLabelText("Tarkempi paikka (valinnainen)"), { target: { value: "Keittiö" } });
     fireEvent.change(screen.getByLabelText("Vian kuvaus"), { target: { value: "Hana vuotaa tiskipöydän alle." } });

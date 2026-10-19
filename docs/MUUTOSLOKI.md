@@ -3,6 +3,24 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 19.10.2026 · Asukasportaalin yläpalkki ja muuttoilmoitus, turhat lomakkeet pois, tehtävänumerot puhelimella
+
+**Mitä muutettiin**
+- Asukasportaalissa on tietokoneella yläpalkki kuten henkilökunnan puolella: logo, taloyhtiö ja asunto sekä oikealla
+  asukkaan nimi, kielen vaihto ja Kirjaudu ulos.
+- Asukasportaalin muuttoilmoitus on sama lomake kuin isännöitsijätoimiston verkkosivulla: muuton laji, muuttopäivä,
+  muuttaja (nimi, puhelin, sähköposti, syntymäaika), nykyinen asunto, mukana muuttavat (3), uusi asunto, "Olen"
+  (vuokralainen/osakas) ja vesimaksu. Kaikki tiedot näkyvät isännöitsijälle Muutot-sivun muuttoilmoituksen tietueella.
+  Mukana muuttavat lisätään asunnon asukkaiksi, kun ilmoitus hyväksytään. Ilmoittajaa itseään ei lisätä uudestaan.
+- Asukasportaalista poistettiin Auton lämmityspaikka ja Irtisanomisilmoitus sekä Jonot-sivulta saunan vakiovuorojono.
+- Henkilökunnan tehtävälistassa puhelimella tehtävänumero on omalla rivillään kortin yläreunassa, eikä se enää mene
+  otsikon ja tägien päälle.
+
+**Miten**
+- Asukasportaali tietokoneella ja puhelimella: Muuttoilmoitus, Jonot ja valikko. Henkilökunta: Muutot ja tehtävälista puhelimella.
+
+**Testit:** T-131–T-135
+
 ## 19.10.2026 · Asunnot, osakas- ja asukasroolit sekä sivupalkin Perustiedot-ryhmä
 
 **Mitä muutettiin**

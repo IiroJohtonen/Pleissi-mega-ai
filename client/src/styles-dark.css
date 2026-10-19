@@ -2485,3 +2485,14 @@
     border: 1px solid #374353;
     background: #283341
 }
+@media (max-width: 650px) {
+    :root[data-theme="dark"] .ticket-row:not(.knowledge-cols) > .ticket-number {
+        color: #bac2cb
+    }
+}
+:root[data-theme="dark"] .move-form fieldset {
+    border-bottom: 1px solid #3b4758
+}
+:root[data-theme="dark"] .move-form fieldset legend {
+    color: #e0e3e7
+}

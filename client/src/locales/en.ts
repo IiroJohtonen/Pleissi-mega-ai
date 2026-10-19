@@ -2173,5 +2173,15 @@ export const en: Record<string, string> = {
   "Ei tulevia vuoroja.": "No upcoming slots.",
   "Hae asuntoa numerolla, rapulla tai osoitteella": "Search by apartment number, staircase or address",
   "← Valitse olemassa oleva asunto": "← Choose an existing apartment",
-  "+ Uusi asunto": "+ New apartment"
+  "+ Uusi asunto": "+ New apartment",
+  // Asukasportaalin muuttoilmoitus
+  "Valitse…": "Choose…",
+  "Muuttaja": "Person moving",
+  "pp.kk.vvvv": "dd.mm.yyyy",
+  "Katuosoite": "Street address",
+  "Mukana muuttavat": "People moving with you",
+  "Mukana muuttava {0}: etu- ja sukunimi": "Person moving with you {0}: full name",
+  "Uusi asunto": "New apartment",
+  "Asuminen ja vesimaksu": "Housing and water fee",
+  "Tai vesimaksu mittarin mukaan": "Or water fee by meter"
 };

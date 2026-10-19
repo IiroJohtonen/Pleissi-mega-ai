@@ -8,15 +8,17 @@ import { BookingCalendar, type QueueEntry, SlotQueueList } from "./Bookings";
 import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
 import { type MoveNotice, moveStatusLabels, moveSummary } from "./Moves";
 import { formatParkingOption, type ParkingOption } from "./Parking";
-import { PortalForm, type PortalFormKey, PortalHeating } from "./PortalForms";
+import { PortalForm, type PortalFormKey } from "./PortalForms";
 import { type RenovationNotice, RenovationFields, renovationFieldsError, renovationPayload, renovationPeriod, renovationStatusLabels, renovationValues } from "./Renovations";
 import { type WaitlistEntry, waitlistLabel } from "./Waitlists";
 import { t } from "../i18n";
 
-type PortalView = "announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves" | "renovations" | "meters" | "heating" | PortalFormKey;
+// Auton lämmityspaikka ja irtisanomisilmoitus eivät ole asukasportaalissa: ne hoidetaan isännöitsijätoimiston kautta.
+type PortalView = "announcements" | "sauna" | "laundry" | "tickets" | "waitlist" | "moves" | "renovations" | "meters" | PortalFormView;
 
-const PORTAL_FORMS: PortalFormKey[] = ["service", "disturbance", "termination", "application"];
-const isPortalForm = (view: PortalView): view is PortalFormKey => (PORTAL_FORMS as PortalView[]).includes(view);
+type PortalFormView = Exclude<PortalFormKey, "termination">;
+const PORTAL_FORMS: PortalFormView[] = ["service", "disturbance", "application"];
+const isPortalForm = (view: PortalView): view is PortalFormView => (PORTAL_FORMS as PortalView[]).includes(view);
 
 const portalViews: { view: PortalView; label: string }[] = [
   { view: "announcements", label: t("Tiedotteet") },
@@ -29,8 +31,6 @@ const portalViews: { view: PortalView; label: string }[] = [
   { view: "meters", label: t("Mittarilukemat") },
   { view: "moves", label: t("Muuttoilmoitus") },
   { view: "renovations", label: t("Remontti-ilmoitus") },
-  { view: "heating", label: t("Auton lämmityspaikka") },
-  { view: "termination", label: t("Irtisanomisilmoitus") },
   { view: "application", label: t("Yleinen asuntohakemus") }
 ];
 
@@ -39,7 +39,7 @@ const portalNavGroups: { label: string; views: PortalView[] }[] = [
   { label: "", views: ["announcements"] },
   { label: t("Varaukset"), views: ["sauna", "laundry"] },
   { label: t("Asiointi"), views: ["tickets", "waitlist"] },
-  { label: t("Lomakkeet"), views: ["service", "disturbance", "meters", "moves", "renovations", "heating", "termination", "application"] }
+  { label: t("Lomakkeet"), views: ["service", "disturbance", "meters", "moves", "renovations", "application"] }
 ];
 
 const portalIcons: Record<PortalView, string> = {
@@ -53,8 +53,6 @@ const portalIcons: Record<PortalView, string> = {
   meters: "M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z",
   service: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z",
   disturbance: "M11 5L6 9H3v6h3l5 4zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12",
-  heating: "M5 17h14v-4l-2-5H7l-2 5zM7 17v2M17 17v2M8 13h.01M16 13h.01M12 3v3",
-  termination: "M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4",
   application: "M3 11l9-7 9 7v9H3zM10 20v-5h4v5"
 };
 
@@ -91,15 +89,23 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
 
   return (
     <div className="portal">
+      {/* Yläpalkki: tietokoneella logo, taloyhtiö ja asunto sekä käyttäjä, kieli ja uloskirjautuminen;
+          puhelimella logo ja asunto, ja muut toiminnot ovat Lisää-valikossa. */}
       <header className="portal-header">
-        <img src="/pleissi-logo.svg" alt="Pleissi" />
-        <span className="portal-header-home">{resident.companyName} · {resident.apartmentNumber}</span>
-      </header>
-
-      <aside className="sidebar portal-sidebar">
-        <div className="brand">
+        <div className="portal-header-brand">
           <img src="/pleissi-logo.svg" alt="Pleissi" />
         </div>
+        <span className="portal-header-home">{resident.companyName} · {resident.apartmentNumber}</span>
+        <div className="portal-header-user">
+          <span className="user-avatar" aria-hidden="true">{resident.name.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase()}</span>
+          <strong>{resident.name}</strong>
+          <LanguageToggle className="portal-header-button" />
+          <button className="portal-header-button" onClick={logout}>{t("Kirjaudu ulos")}</button>
+        </div>
+      </header>
+
+      <div className="portal-body">
+      <aside className="sidebar portal-sidebar">
         <nav aria-label={t("Asukasportaalin valikko")}>
           {portalNavGroups.map(group => (
             <div key={group.label || "main"} className="portal-nav-group">
@@ -118,16 +124,6 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
             </div>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <div className="company">
-            <small>{resident.companyName} · {resident.apartmentNumber}</small>
-            <strong>{resident.name}</strong>
-            <div className="portal-footer-links">
-              <LanguageToggle className="secondary portal-footer-button" />
-              <button className="secondary portal-footer-button" onClick={logout}>{t("Kirjaudu ulos")}</button>
-            </div>
-          </div>
-        </div>
       </aside>
 
       <main className="portal-main">
@@ -141,7 +137,6 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           : view === "moves" ? <PortalMoves resident={resident} />
           : view === "renovations" ? <PortalRenovations resident={resident} />
           : view === "meters" ? <PortalMeters resident={resident} />
-          : view === "heating" ? <PortalHeating resident={resident} />
           : isPortalForm(view) ? <PortalForm key={view} form={view} resident={resident} onOpenTickets={() => open("tickets")} />
           : (
           <BookingCalendar
@@ -154,6 +149,7 @@ export function ResidentPortal({ resident }: { resident: ResidentAccount }) {
           />
         )}
       </main>
+      </div>
 
       <nav className="portal-tabbar" aria-label={t("Asukasportaalin valikko")}>
         {portalTabs.map(tab => (
@@ -739,9 +735,9 @@ function PortalWaitlist() {
     )
   );
 
-  const queues: { resource: "parking" | "sauna"; title: string; hint: string }[] = [
-    { resource: "parking", title: t("Autopaikkajono"), hint: t("Vapautuva autopaikka tarjotaan jonossa ensimmäisenä olevalle.") },
-    { resource: "sauna", title: t("Saunan vakiovuorojono"), hint: t("Vapautuva vakiovuoro tarjotaan jonossa ensimmäisenä olevalle.") }
+  // Saunan vakiovuoroihin ei jonoteta portaalissa; varattujen vuorojen jonoon liitytään kalenterista.
+  const queues: { resource: "parking"; title: string; hint: string }[] = [
+    { resource: "parking", title: t("Autopaikkajono"), hint: t("Vapautuva autopaikka tarjotaan jonossa ensimmäisenä olevalle.") }
   ];
 
   return (
@@ -797,14 +793,22 @@ function PortalWaitlist() {
   );
 }
 
-// Asukkaan muuttoilmoitus: muuttopäivä, poismuutto, uudet asukkaat ja oveen tuleva nimi.
+// Asukkaan muuttoilmoitus: sama lomake kuin isännöitsijätoimiston verkkosivulla. Kentät tallentuvat muuttoilmoituksen
+// tietueelle, ja isännöitsijä näkee ne Muutot-sivulla.
+const MOVE_KINDS = ["Sisäänmuuttoilmoitus", "Poismuuttoilmoitus", "Uusi asukas (lisätään huoneiston asukkaisiin)"];
+const MOVE_ROLES = ["Vuokralainen", "Osakas", "Vuokralainen, Osakas"];
+const WATER_PAYMENTS = ["Taloyhtiölle erillisellä laskulla", "Omistajalle vuokran yhteydessä"];
+
+type MoveDetails = Record<string, string>;
+
 function PortalMoves({ resident }: { resident: ResidentAccount }) {
   const [notices, setNotices] = useState<MoveNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [moveDate, setMoveDate] = useState("");
-  const [movesOut, setMovesOut] = useState(false);
-  const [people, setPeople] = useState<{ name: string; email: string }[]>([]);
-  const [doorName, setDoorName] = useState("");
+  const emptyDetails = (): MoveDetails => ({
+    kind: "", name: resident.name, email: resident.email ?? "", currentApartment: resident.apartmentNumber ?? ""
+  });
+  const [details, setDetails] = useState<MoveDetails>(emptyDetails);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -825,14 +829,32 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
   }, []);
 
   const pending = notices.some(notice => notice.status === "pending");
-  const filledPeople = people.filter(person => person.name.trim());
+  const set = (key: string) => (value: string) => setDetails(current => ({ ...current, [key]: value }));
+  const text = (key: string, label: string, options: { type?: string; placeholder?: string; required?: boolean } = {}) => (
+    <label>
+      <span>{label}</span>
+      <input
+        type={options.type ?? "text"}
+        value={details[key] ?? ""}
+        onChange={event => set(key)(event.target.value)}
+        placeholder={options.placeholder}
+        required={options.required}
+        maxLength={200}
+      />
+    </label>
+  );
+  const select = (key: string, label: string, choices: string[], required = false) => (
+    <label>
+      <span>{label}</span>
+      <select value={details[key] ?? ""} onChange={event => set(key)(event.target.value)} required={required}>
+        <option value="">{t("Valitse…")}</option>
+        {choices.map(choice => <option key={choice} value={choice}>{t(choice)}</option>)}
+      </select>
+    </label>
+  );
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!movesOut && filledPeople.length === 0 && !doorName.trim()) {
-      setError(t("Ilmoita poismuutto, uudet asukkaat tai oveen tuleva nimi."));
-      return;
-    }
     setSaving(true);
     setError("");
     try {
@@ -840,16 +862,12 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
         method: "POST",
         body: JSON.stringify({
           moveDate,
-          movesOut,
-          newResidents: filledPeople.map(person => ({ name: person.name.trim(), email: person.email.trim() })),
-          doorName: doorName.trim(),
+          details: Object.fromEntries(Object.entries(details).map(([key, value]) => [key, value.trim()]).filter(([, value]) => value)),
           note: note.trim()
         })
       });
       setMoveDate("");
-      setMovesOut(false);
-      setPeople([]);
-      setDoorName("");
+      setDetails(emptyDetails());
       setNote("");
       setSent(true);
       await loadNotices();
@@ -869,64 +887,73 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
       {pending ? (
         <p className="muted">{t("Sinulla on käsittelyä odottava muuttoilmoitus. Uuden voi tehdä, kun se on käsitelty.")}</p>
       ) : (
-        <form className="ticket-form portal-ticket-form" onSubmit={handleSubmit}>
-          <dl className="ticket-facts">
-            <div>
-              <dt>{t("Ilmoittaja")}</dt>
-              <dd>{resident.name}</dd>
-            </div>
-            <div>
-              <dt>{t("Asunto")}</dt>
-              <dd>{resident.apartmentNumber || "–"}</dd>
-            </div>
-          </dl>
-
-          <label>
-            <span>{t("Muuttopäivä")}</span>
-            <input type="date" value={moveDate} onChange={event => setMoveDate(event.target.value)} required />
-          </label>
-
-          <label className="switch-row">
-            <span>
-              <strong>{t("Asunnon nykyiset asukkaat muuttavat pois")}</strong>
-              <small>{t("Autopaikka ja varatut vuorot päättyvät muuttopäivänä.")}</small>
-            </span>
-            <input type="checkbox" role="switch" checked={movesOut} onChange={() => setMovesOut(!movesOut)} />
-            <i aria-hidden="true" />
-          </label>
-
-          <fieldset className="move-new-residents">
-            <legend>{t("Asuntoon muuttavat uudet asukkaat")}</legend>
-            {people.map((person, index) => (
-              <div className="move-person" key={index}>
-                <input
-                  value={person.name}
-                  onChange={event => setPeople(current => current.map((item, position) => position === index ? { ...item, name: event.target.value } : item))}
-                  placeholder={t("Nimi")}
-                  maxLength={100}
-                  aria-label={t("Uuden asukkaan {0} nimi", index + 1)}
-                />
-                <input
-                  type="email"
-                  value={person.email}
-                  onChange={event => setPeople(current => current.map((item, position) => position === index ? { ...item, email: event.target.value } : item))}
-                  placeholder={t("Sähköposti (valinnainen)")}
-                  aria-label={t("Uuden asukkaan {0} sähköposti", index + 1)}
-                />
-                <button type="button" onClick={() => setPeople(current => current.filter((_, position) => position !== index))} aria-label={t("Poista asukas")}>×</button>
-              </div>
-            ))}
-            {people.length < 8 && (
-              <button type="button" className="secondary" onClick={() => setPeople(current => [...current, { name: "", email: "" }])}>
-                {t("Lisää asukas")}
-              </button>
-            )}
+        <form className="ticket-form portal-ticket-form move-form" onSubmit={handleSubmit}>
+          <fieldset>
+            <legend>{t("Muutto")}</legend>
+            {select("kind", t("Muutto"), MOVE_KINDS, true)}
+            <label>
+              <span>{t("Muuttopäivä")}</span>
+              <input type="date" value={moveDate} onChange={event => setMoveDate(event.target.value)} required />
+            </label>
           </fieldset>
 
-          <label>
-            <span>{t("Nimi oveen (valinnainen)")}</span>
-            <input value={doorName} onChange={event => setDoorName(event.target.value)} maxLength={60} placeholder={t("Esim. Virtanen")} />
-          </label>
+          <fieldset>
+            <legend>{t("Muuttaja")}</legend>
+            {text("name", t("Etu- ja sukunimi"), { required: true })}
+            <div className="form-columns">
+              {text("phone", t("Puhelinnumero"), { type: "tel" })}
+              {text("email", t("Sähköposti"), { type: "email" })}
+            </div>
+            {text("birthDate", t("Syntymäaika"), { placeholder: t("pp.kk.vvvv") })}
+          </fieldset>
+
+          <fieldset>
+            <legend>{t("Nykyinen asunto")}</legend>
+            <div className="form-columns">
+              {text("currentAddress", t("Katuosoite"))}
+              {text("currentApartment", t("Asunnon numero"))}
+            </div>
+            <div className="form-columns">
+              {text("currentPostalCode", t("Postinumero"))}
+              {text("currentCity", t("Kaupunki"))}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>{t("Mukana muuttavat")}</legend>
+            {[1, 2, 3].map(index => (
+              <div className="form-columns" key={index}>
+                {text(`with${index}Name`, t("Mukana muuttava {0}: etu- ja sukunimi", index))}
+                {text(`with${index}Birth`, t("Syntymäaika"), { placeholder: t("pp.kk.vvvv") })}
+              </div>
+            ))}
+          </fieldset>
+
+          <fieldset>
+            <legend>{t("Uusi asunto")}</legend>
+            <div className="form-columns">
+              {text("newAddress", t("Katuosoite"))}
+              {text("newApartment", t("Asunnon numero"))}
+            </div>
+            {text("town", t("Paikkakunta"))}
+          </fieldset>
+
+          <fieldset>
+            <legend>{t("Asuminen ja vesimaksu")}</legend>
+            {select("role", t("Olen"), MOVE_ROLES)}
+            <div className="form-columns">
+              {text("waterPersons", t("Vesimaksu henkilöistä"), { type: "number" })}
+              <label className="checkbox-row move-water-meter">
+                <input
+                  type="checkbox"
+                  checked={details.waterByMeter === "Mittarin mukaan"}
+                  onChange={event => set("waterByMeter")(event.target.checked ? "Mittarin mukaan" : "")}
+                />
+                {t("Tai vesimaksu mittarin mukaan")}
+              </label>
+            </div>
+            {select("waterPayment", t("Maksu suoritetaan"), WATER_PAYMENTS)}
+          </fieldset>
 
           <label>
             <span>{t("Lisätiedot (valinnainen)")}</span>
@@ -936,7 +963,9 @@ function PortalMoves({ resident }: { resident: ResidentAccount }) {
           {error && <p className="send-error">{error}</p>}
 
           <div className="portal-ticket-actions">
-            <button type="submit" className="portal-new" disabled={saving || !moveDate}>{saving ? t("Lähetetään…") : t("Lähetä muuttoilmoitus")}</button>
+            <button type="submit" className="portal-new" disabled={saving || !moveDate || !details.kind || !details.name?.trim()}>
+              {saving ? t("Lähetetään…") : t("Lähetä muuttoilmoitus")}
+            </button>
           </div>
         </form>
       )}

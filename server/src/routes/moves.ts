@@ -34,13 +34,26 @@ const MOVE_SELECT = `
   LEFT JOIN apartments a ON a.id = m.apartment_id
 `;
 
+// Asukasportaalin muuttoilmoitus on sama lomake kuin isännöitsijätoimiston verkkosivulla (details): muuton laji,
+// muuttaja, nykyinen ja uusi asunto, mukana muuttavat ja vesimaksu. Poismuutto ja asuntoon lisättävät
+// henkilöt päätellään lomakkeesta; ilmoittaja itse ei ole uusi asukas.
 movesRouter.post("/portal/moves", (req, res) => {
   const resident = portalResident(res);
-  const parsed = moveSchema.safeParse(req.body);
+  const parsed = moveSchema.extend({ details: detailsSchema("move").optional() }).safeParse(req.body);
   if (!parsed.success || Number.isNaN(Date.parse(parsed.success ? parsed.data.moveDate : ""))) {
     return res.status(400).json({ error: "Tarkista muuttopäivä ja uusien asukkaiden tiedot." });
   }
-  if (!parsed.data.movesOut && parsed.data.newResidents.length === 0 && !parsed.data.doorName) {
+  const details = parsed.data.details;
+  let { movesOut, newResidents } = parsed.data;
+  if (details) {
+    if (!details.kind || !details.name) return res.status(400).json({ error: "Valitse muuton laji ja kirjoita muuttajan nimi." });
+    movesOut = /poismuutto/i.test(details.kind);
+    const own = resident.name.trim().toLowerCase();
+    newResidents = movesOut ? [] : [
+      { name: details.name, email: details.email ?? "" },
+      ...[1, 2, 3].map(index => details[`with${index}Name`]).filter(Boolean).map(name => ({ name, email: "" }))
+    ].filter(person => person.name.trim().length >= 2 && person.name.trim().toLowerCase() !== own);
+  } else if (!movesOut && newResidents.length === 0 && !parsed.data.doorName) {
     return res.status(400).json({ error: "Ilmoita poismuutto, uudet asukkaat tai oveen tuleva nimi." });
   }
   const pending = db.prepare("SELECT 1 FROM move_notices WHERE resident_id = ? AND status = 'pending'").get(resident.id);
@@ -48,10 +61,10 @@ movesRouter.post("/portal/moves", (req, res) => {
 
   const moveId = id("move");
   db.prepare(`
-    INSERT INTO move_notices (id, company_id, apartment_id, resident_id, move_date, moves_out, new_residents, door_name, note, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(moveId, resident.companyId, resident.apartmentId, resident.id, parsed.data.moveDate, parsed.data.movesOut ? 1 : 0,
-    JSON.stringify(parsed.data.newResidents), parsed.data.doorName, parsed.data.note, now());
+    INSERT INTO move_notices (id, company_id, apartment_id, resident_id, move_date, moves_out, new_residents, door_name, note, details, source, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'portal', ?)
+  `).run(moveId, resident.companyId, resident.apartmentId, resident.id, parsed.data.moveDate, movesOut ? 1 : 0,
+    JSON.stringify(newResidents), parsed.data.doorName, parsed.data.note, JSON.stringify(details ?? {}), now());
   res.status(201).json({ ok: true, moveId });
 });
 
