@@ -4,6 +4,7 @@ import { formatDateOnly } from "../format";
 import { api, errorMessage, isAdmin, isManager } from "../session";
 import type { Company, Resident } from "../types";
 import { t } from "../i18n";
+import { ApartmentPicker, type ApartmentRow, RoleTags } from "./Apartments";
 
 type OpenTicket = { id: string; ticket_number: number | null; subject: string; type: string; status: string; created_at: string };
 
@@ -60,6 +61,11 @@ export function Residents({
   const [address, setAddress] = useState("");
   const [apartmentNumber, setApartmentNumber] = useState("");
   const [staircase, setStaircase] = useState("");
+  // Valittu asunto; "new" = uusi asunto kirjoitetaan numerona ja osoitteena.
+  const [apartmentId, setApartmentId] = useState("");
+  const [apartmentOptions, setApartmentOptions] = useState<ApartmentRow[]>([]);
+  // Henkilön roolit asunnossa: osakas, asukas tai molemmat.
+  const [roles, setRoles] = useState<string[]>(["asukas"]);
   const [residentPassword, setResidentPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -72,6 +78,8 @@ export function Residents({
     setAddress(resident?.address ?? "");
     setApartmentNumber(resident?.apartment_number ?? "");
     setStaircase(resident?.staircase ?? "");
+    setApartmentId(resident?.apartment_id ?? "");
+    setRoles(resident ? (resident.roles ?? "asukas").split(",").filter(Boolean) : ["asukas"]);
     setFormError("");
     setFormCompanyId(companyFilter !== "all" ? companyFilter : companyId);
     setAdding(true);
@@ -176,6 +184,13 @@ export function Residents({
     ...(searchText ? [{ key: "search", label: t("Haku"), value: search.trim(), clear: () => setSearch("") }] : [])
   ];
 
+  // Lomakkeen taloyhtiön asunnot asuntovalintaan.
+  const formCompany = editing ? (editing.company_id ?? companyId) : formCompanyId;
+  useEffect(() => {
+    if (!adding) return;
+    api<ApartmentRow[]>(`/companies/${encodeURIComponent(formCompany)}/apartments`).then(setApartmentOptions).catch(() => setApartmentOptions([]));
+  }, [adding, formCompany]);
+
   function closeForm() {
     if (openedFromRoute && editing?.id === openedFromRoute) onResidentClosed?.();
     setAdding(false);
@@ -191,7 +206,10 @@ export function Residents({
         ? `/residents/${encodeURIComponent(editing.id)}`
         : `/companies/${encodeURIComponent(formCompanyId)}/residents`, {
         method: editing ? "PUT" : "POST",
-        body: JSON.stringify({ name, email, address, apartmentNumber, staircase, password: residentPassword || undefined })
+        body: JSON.stringify({
+          name, email, roles, password: residentPassword || undefined,
+          ...(apartmentId && apartmentId !== "new" ? { apartmentId } : { address, apartmentNumber, staircase })
+        })
       });
       setName("");
       setEmail("");
@@ -315,20 +333,55 @@ export function Residents({
                 <input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
 
-              <label>
-                <span>{t("Osoite")}</span>
-                <input value={address} onChange={event => setAddress(event.target.value)} placeholder={t("Esim. Koivikkotie 10")} />
-              </label>
+              <fieldset className="role-choices">
+                <legend>{t("Rooli")}</legend>
+                {[["osakas", t("Osakas")], ["asukas", t("Asukas")]].map(([role, label]) => (
+                  <label key={role} className={`role-choice role-${role}`}>
+                    <input
+                      type="checkbox"
+                      checked={roles.includes(role)}
+                      onChange={event => setRoles(current => event.target.checked ? [...current, role] : current.filter(item => item !== role))}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </fieldset>
 
-              <div className="form-columns">
-                <label>
-                  <span>{t("Asunto")}</span>
-                  <input value={apartmentNumber} onChange={event => setApartmentNumber(event.target.value)} placeholder={t("Esim. A 12")} />
-                </label>
-                <label>
-                  <span>{t("Rappu")}</span>
-                  <input value={staircase} onChange={event => setStaircase(event.target.value)} placeholder={t("Esim. A")} maxLength={20} />
-                </label>
+              <div className="resident-apartment">
+                <span>{t("Asunto")}</span>
+                {apartmentId === "new" ? (
+                  <>
+                    <label>
+                      <span>{t("Osoite")}</span>
+                      <input value={address} onChange={event => setAddress(event.target.value)} placeholder={t("Esim. Koivikkotie 10")} />
+                    </label>
+                    <div className="form-columns">
+                      <label>
+                        <span>{t("Asunnon numero")}</span>
+                        <input value={apartmentNumber} onChange={event => setApartmentNumber(event.target.value)} placeholder={t("Esim. A 12")} />
+                      </label>
+                      <label>
+                        <span>{t("Rappu")}</span>
+                        <input value={staircase} onChange={event => setStaircase(event.target.value)} placeholder={t("Esim. A")} maxLength={20} />
+                      </label>
+                    </div>
+                    <button type="button" className="back-link" onClick={() => setApartmentId(editing?.apartment_id ?? "")}>
+                      {t("← Valitse olemassa oleva asunto")}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <ApartmentPicker apartments={apartmentOptions} value={apartmentId} onChange={setApartmentId} />
+                    <button type="button" className="back-link" onClick={() => {
+                      setApartmentId("new");
+                      setAddress("");
+                      setApartmentNumber("");
+                      setStaircase("");
+                    }}>
+                      {t("+ Uusi asunto")}
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Asukkaan autopaikat: paikat, joiden haltija asukas on tänään (Autopaikat-sivulta). */}
@@ -371,7 +424,8 @@ export function Residents({
                 <button
                   className="primary"
                   type="submit"
-                  disabled={submitting || !name.trim() || !address.trim() || !apartmentNumber.trim()}
+                  disabled={submitting || !name.trim()
+                    || (apartmentId === "new" ? !address.trim() || !apartmentNumber.trim() : !apartmentId)}
                 >
                   {editing
                     ? submitting ? t("Tallennetaan…") : t("Tallenna muutokset")
@@ -590,7 +644,7 @@ export function Residents({
               }
             }}
           >
-            <strong>{resident.name}</strong>
+            <strong>{resident.name}<RoleTags roles={resident.roles} /></strong>
             <span>{resident.email || t("Ei sähköpostia")}</span>
             {allCompanies && <span>{resident.company_name}</span>}
             <span>{resident.address}</span>

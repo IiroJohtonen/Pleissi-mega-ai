@@ -44,7 +44,7 @@ residentsRouter.get("/companies/:companyId/residents", (req, res) => {
   syncParkingHolders();
   res.json(
     db.prepare(`
-      SELECT r.id, r.name, r.email, a.apartment_number, a.address, a.staircase,
+      SELECT r.id, r.name, r.email, r.roles, r.apartment_id, a.apartment_number, a.address, a.staircase,
              EXISTS(SELECT 1 FROM resident_credentials rc WHERE rc.resident_id = r.id) AS has_password,
              (SELECT json_group_array(json_object('id', p.id, 'label', p.label, 'type', p.type))
               FROM parking_spaces p WHERE p.resident_id = r.id) AS parking
@@ -60,26 +60,53 @@ residentsRouter.get("/companies/:companyId/residents", (req, res) => {
   );
 });
 
+export const RESIDENT_ROLES = ["osakas", "asukas"] as const;
+
+// Asunto annetaan joko valittuna asuntona (apartmentId) tai numerona ja osoitteena, jolloin asunto luodaan
+// tarvittaessa (esim. tuonti tiedostosta).
 const residentSchema = z.object({
   name: z.string().trim().min(1),
   email: z.string().trim().pipe(z.union([z.literal(""), z.email()])).default(""),
-  address: z.string().trim().min(1),
-  apartmentNumber: z.string().trim().min(1),
+  apartmentId: z.string().min(1).optional(),
+  address: z.string().trim().default(""),
+  apartmentNumber: z.string().trim().default(""),
   // Asunnon rappu; puuttuessa ennallaan.
-  staircase: z.string().trim().max(20).optional()
-});
+  staircase: z.string().trim().max(20).optional(),
+  // Henkilön roolit asunnossa; puuttuessa ennallaan (uudella asukkaalla 'asukas').
+  roles: z.array(z.enum(RESIDENT_ROLES)).max(2).optional()
+}).refine(value => value.apartmentId || (value.address && value.apartmentNumber));
 
 // Asunnon rappu on asunnon tieto, joten se on sama kaikilla saman asunnon asukkailla.
 function setStaircase(apartmentId: string, staircase: string | undefined) {
   if (staircase !== undefined) db.prepare("UPDATE apartments SET staircase = ? WHERE id = ?").run(staircase, apartmentId);
 }
 
+// Asukkaan asunto: valittu saman taloyhtiön asunto, tai numeron ja osoitteen mukainen asunto, joka luodaan tarvittaessa.
+function resolveApartment(companyId: string, input: { apartmentId?: string; address: string; apartmentNumber: string }) {
+  if (input.apartmentId) {
+    return db.prepare("SELECT id FROM apartments WHERE id = ? AND company_id = ?").get(input.apartmentId, companyId) as { id: string } | undefined;
+  }
+  let apartment = db.prepare(`
+    SELECT id FROM apartments
+    WHERE company_id = ? AND lower(apartment_number) = lower(?) AND lower(address) = lower(?)
+  `).get(companyId, input.apartmentNumber, input.address) as { id: string } | undefined;
+  if (!apartment) {
+    apartment = { id: id("apt") };
+    db.prepare("INSERT INTO apartments (id, company_id, apartment_number, address) VALUES (?, ?, ?, ?)").run(
+      apartment.id, companyId, input.apartmentNumber, input.address
+    );
+  }
+  return apartment;
+}
+
+const rolesText = (roles: readonly string[]) => RESIDENT_ROLES.filter(role => roles.includes(role)).join(",");
+
 // Lisää asukkaan yhtiöön ja luo asunnon, jos sitä ei vielä ole. Palauttaa virheen tekstinä.
 function addResident(companyId: string, input: unknown): { residentId: string } | { error: string; status: number } {
   const parsed = residentSchema.safeParse(input);
   if (!parsed.success) return { error: "Tarkista nimi, sähköposti, osoite ja asunto.", status: 400 };
 
-  const { name, email, address, apartmentNumber, staircase } = parsed.data;
+  const { name, email, staircase, roles } = parsed.data;
 
   if (email) {
     const existing = db.prepare(
@@ -88,22 +115,13 @@ function addResident(companyId: string, input: unknown): { residentId: string } 
     if (existing) return { error: "Tällä sähköpostiosoitteella on jo asukas.", status: 409 };
   }
 
-  let apartment = db.prepare(`
-    SELECT id FROM apartments
-    WHERE company_id = ? AND lower(apartment_number) = lower(?) AND lower(address) = lower(?)
-  `).get(companyId, apartmentNumber, address) as { id: string } | undefined;
-
-  if (!apartment) {
-    apartment = { id: id("apt") };
-    db.prepare("INSERT INTO apartments (id, company_id, apartment_number, address) VALUES (?, ?, ?, ?)").run(
-      apartment.id, companyId, apartmentNumber, address
-    );
-  }
+  const apartment = resolveApartment(companyId, parsed.data);
+  if (!apartment) return { error: "Asuntoa ei löytynyt.", status: 404 };
 
   setStaircase(apartment.id, staircase);
   const residentId = id("resident");
-  db.prepare("INSERT INTO residents (id, company_id, apartment_id, name, email) VALUES (?, ?, ?, ?, ?)").run(
-    residentId, companyId, apartment.id, name, email || null
+  db.prepare("INSERT INTO residents (id, company_id, apartment_id, name, email, roles) VALUES (?, ?, ?, ?, ?, ?)").run(
+    residentId, companyId, apartment.id, name, email || null, rolesText(roles ?? ["asukas"])
   );
 
   return { residentId };
@@ -177,7 +195,7 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
     return res.status(400).json({ error: "Tarkista nimi, sähköposti, osoite ja asunto." });
   }
 
-  const { name, email, address, apartmentNumber, staircase } = parsed.data;
+  const { name, email, staircase, roles } = parsed.data;
 
   if (email) {
     const existing = db.prepare(
@@ -188,17 +206,8 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
     }
   }
 
-  let apartment = db.prepare(`
-    SELECT id FROM apartments
-    WHERE company_id = ? AND lower(apartment_number) = lower(?) AND lower(address) = lower(?)
-  `).get(companyId, apartmentNumber, address) as { id: string } | undefined;
-
-  if (!apartment) {
-    apartment = { id: id("apt") };
-    db.prepare("INSERT INTO apartments (id, company_id, apartment_number, address) VALUES (?, ?, ?, ?)").run(
-      apartment.id, companyId, apartmentNumber, address
-    );
-  }
+  const apartment = resolveApartment(companyId, parsed.data);
+  if (!apartment) return res.status(404).json({ error: "Asuntoa ei löytynyt." });
 
   // Salasana on valinnainen: tyhjä jättää nykyisen ennalleen.
   const password = typeof req.body?.password === "string" ? req.body.password : "";
@@ -213,6 +222,7 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
     name, email || null, apartment.id, resident.id
   );
   setStaircase(apartment.id, staircase);
+  if (roles) db.prepare("UPDATE residents SET roles = ? WHERE id = ?").run(rolesText(roles), resident.id);
 
   // Asukkaan tehtävät seuraavat asukasta uuteen asuntoon.
   db.prepare("UPDATE tickets SET apartment_id = ? WHERE resident_id = ? AND apartment_id = ?").run(

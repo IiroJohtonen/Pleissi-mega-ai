@@ -171,12 +171,16 @@ export type TicketDetail = {
   erasurePending?: { reason: string; requested_by: string; created_at: string } | null;
 };
 
-export type TicketTab = "queue" | "unassigned" | "unidentified" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
+export type TicketTab = "queue" | "unassigned" | "unidentified" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "apartments" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
 
 export type Resident = {
   id: string;
   name: string;
   email?: string;
+  // Asunto, johon asukas kuuluu.
+  apartment_id?: string;
+  // Roolit asunnossa pilkuilla eroteltuina: osakas, asukas tai molemmat.
+  roles?: string;
   apartment_number: string;
   address: string;
   // Asunnon rappu (esim. A).

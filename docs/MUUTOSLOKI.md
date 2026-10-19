@@ -3,6 +3,27 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 19.10.2026 · Asunnot, osakas- ja asukasroolit sekä sivupalkin Perustiedot-ryhmä
+
+**Mitä muutettiin**
+- Sivupalkin taloyhtiöosion Asukkaat-otsikko on nyt **Perustiedot**. Sen alla ovat Asukkaat, Asunnot, Jonot ja alimpana Avaimet.
+  "Jonot ja tilaukset" on nyt **Jonot**. Muutot siirtyivät Ilmoitukset-otsikon alle, ja Tilat-otsikon alla ovat Sauna,
+  Pyykkitupa ja Autopaikat.
+- Uusi **Asunnot**-taulu: taloyhtiön asunnot listana (asunto, rappu, osoite ja henkilöiden määrä). Asunnon voi lisätä ja hakea.
+- Asunnon tietueella ovat asunnon numero, rappu, osoite ja taloyhtiö. Asuntoon voi liittää useita henkilöitä (Henkilöt)
+  ja avaimia. Väliotsikoista näkee asunnon henkilöiden autopaikat, tulevat sauna- ja pyykkivuorot sekä remontit.
+- Asukkaan tietueen Asunto-kenttä on haettava valintalista: kirjoita numero, rappu tai osoite ja valitse asunto.
+  Uuden asunnon voi edelleen kirjoittaa kohdasta "+ Uusi asunto".
+- Asukkaan tietueella on monivalinta **Osakas** ja **Asukas**. Molemmat voi valita yhtä aikaa. Roolit näkyvät tägeinä
+  asukaslistassa ja asunnon henkilöissä. Aiemmat asukkaat ovat rooliltaan Asukas.
+- Taloyhtiön tiedoissa on alhaalla uusi ensimmäinen välilehti **Asunnot** Asukkaat-välilehden vieressä. Siinä näkyvät
+  asunnon numero, rappu ja asukkaiden määrä.
+
+**Miten**
+- Sivupalkki → Perustiedot → Asunnot. Asukkaat → avaa asukas. Yhtiön tiedot → Asunnot-välilehti.
+
+**Testit:** T-125–T-130
+
 ## 19.10.2026 · Suorakulmainen kirjautumissivu ja tietuekortti, valikon tehtävälista ilman suodattimia
 
 **Mitä muutettiin**

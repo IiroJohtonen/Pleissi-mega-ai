@@ -5070,3 +5070,42 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
 .knowledge-page > .drawer,
 .record-page > .drawer,
 .company-record > .settings-card { border-radius: 0; }
+
+/* Henkilön roolit (Osakas, Asukas) tägeinä ja valintoina. */
+.role-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.role-tag { padding: 1px 8px; border: 1px solid #c9d6e6; border-radius: 99px; background: #eef4fb; color: #24527f; font-size: 11px; font-weight: 700; }
+.role-tag.role-osakas { border-color: #d9c7ee; background: #f5effc; color: #5b2a86; }
+.role-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.role-choices legend { margin-bottom: 6px; padding: 0; font-size: 12px; font-weight: 700; color: #4b535d; }
+.ticket-form .role-choices label.role-choice { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid #c9d6e6; border-radius: 99px; background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.ticket-form .role-choices label.role-choice input { width: 16px; height: 16px; margin: 0; }
+.ticket-form .role-choices label.role-choice:has(input:checked) { border-color: #2f6fb8; background: #eef4fb; color: #17406d; }
+.ticket-form .role-choices label.role-osakas:has(input:checked) { border-color: #7a46b0; background: #f5effc; color: #5b2a86; }
+
+/* Asunnon valinta asukkaan tiedoissa. */
+.resident-apartment { display: grid; gap: 8px; }
+.resident-apartment > span { font-size: 12px; font-weight: 700; color: #4b535d; }
+.resident-apartment .back-link { justify-self: start; }
+.apartment-picker { position: relative; }
+.apartment-picker input { width: 100%; box-sizing: border-box; }
+.apartment-picker-list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; display: grid; max-height: 280px; overflow-y: auto; padding: 4px; border: 1px solid #dde1e5; border-radius: 10px; background: #fff; box-shadow: 0 10px 28px rgba(20, 25, 30, .12); }
+.apartment-picker-list button { display: flex; align-items: baseline; gap: 10px; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; color: #1d2329; text-align: left; cursor: pointer; }
+.apartment-picker-list button:hover, .apartment-picker-list button[aria-selected="true"] { background: #f1f4f7; }
+.apartment-picker-list small { color: #6a7178; }
+.apartment-picker-list .muted { margin: 6px 10px; }
+
+/* Asunnon tietue. */
+.apartment-section { display: grid; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e3e7ec; }
+.apartment-section h3 { margin: 0; }
+.apartment-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.apartment-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 12px; border: 1px solid #e3e7ec; background: #fff; }
+.apartment-list li small { color: #6a7178; }
+.apartment-list li .back-link { font-weight: 700; }
+.apartment-list li .role-tags { margin-left: 0; }
+.apartment-list .link-remove { margin-left: auto; padding: 4px 10px; border: 1px solid #e3c2c2; border-radius: 6px; background: #fff; color: #a33; font-size: 12px; cursor: pointer; }
+.apartment-link { display: flex; flex-wrap: wrap; gap: 8px; }
+.apartment-link select { flex: 1 1 240px; padding: 8px 10px; border: 1px solid #dfe3e7; border-radius: 8px; background: #fff; font: inherit; font-size: 13px; }
+.apartment-tabs { margin-top: 24px; }
+.apartment-tabs b { margin-left: 4px; font-size: 11px; opacity: .7; }
+.toolbar-search { padding: 7px 10px; border: 1px solid #dfe3e7; border-radius: 8px; background: #fff; font: inherit; font-size: 13px; }
+.apartments-embedded { display: grid; gap: 12px; }

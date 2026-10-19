@@ -25,6 +25,7 @@ import { RenovationNotices } from "./Renovations";
 import { SystemAlertBanner } from "../components/SystemAlertBanner";
 import { ReportsHub, type ReportsTab } from "./Metrics";
 import { Residents } from "./Residents";
+import { Apartments } from "./Apartments";
 import { Topbar } from "../components/Topbar";
 import { type HistoryEntry, readHistory, rememberTicket } from "../history";
 import { documentNumberQuery, type SearchResponse, SearchResults, ticketNumberQuery } from "./Search";
@@ -36,9 +37,9 @@ import { t } from "../i18n";
 // Taloyhtiöosion ryhmät: kaikki näkymät koskevat sivupalkissa valittua taloyhtiötä.
 const navGroups: { key: string; label: string; tabs: TicketTab[] }[] = [
   { key: "docs", label: t("Dokumentaatio"), tabs: ["knowledge", "knowledge-ai", "knowledge-internal"] },
-  { key: "residents", label: t("Asukkaat"), tabs: ["residents", "moves", "waitlist"] },
-  { key: "facilities", label: t("Tilat"), tabs: ["sauna", "laundry", "parking", "keys"] },
-  { key: "notices", label: t("Ilmoitukset"), tabs: ["announcements", "renovations", "meters"] }
+  { key: "residents", label: t("Perustiedot"), tabs: ["residents", "apartments", "waitlist", "keys"] },
+  { key: "facilities", label: t("Tilat"), tabs: ["sauna", "laundry", "parking"] },
+  { key: "notices", label: t("Ilmoitukset"), tabs: ["announcements", "moves", "renovations", "meters"] }
 ];
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 // Raporttien alasivut sivupalkissa (#/reports/<alasivu>).
@@ -830,6 +831,15 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "meters" ? (
             <MeterReadings key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} />
+          )
+          : tab === "apartments" ? (
+            <Apartments
+              key={navCompanyKey}
+              companyId={navCompanyKey}
+              openApartmentId={routeParam}
+              onOpenApartment={apartmentId => navigate("apartments", apartmentId ?? undefined)}
+              onOpenResident={residentId => navigate("residents", residentId)}
+            />
           )
           : tab === "waitlist" ? (
             <Waitlists key={navCompanyKey} companies={companyScope} defaultCompanyId={navCompanyKey} />
