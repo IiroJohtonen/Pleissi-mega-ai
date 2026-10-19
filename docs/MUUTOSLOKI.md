@@ -11,7 +11,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Päätösjono: tehtäväkortti, jolle tekoäly on laatinut vastausehdotuksen.
 
-**Testit:** T-143
+**Testit:** T-143 · PR #39
 
 ## 19.10.2026 · Roolit: omat roolit ja niiden näkemät taulut
 
