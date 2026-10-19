@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, login, startServer, tempDir, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, startServer, tempDir, type TestServer , inbound as postInbound } from "./helpers.js";
 
 describe("allekirjoitus ja muistutukset", () => {
   let server: TestServer;
@@ -44,7 +44,7 @@ describe("allekirjoitus ja muistutukset", () => {
   });
 
   it("hylkää virheellisen kopio-osoitteen ennen lähettämistä", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Matti", senderEmail: "matti@example.com",
       subject: "Kysymys", body: "Milloin on saunavuoro?", sourceMessageId: "<cc-1@example.com>"
     });
@@ -56,7 +56,7 @@ describe("allekirjoitus ja muistutukset", () => {
   });
 
   it("tehtävälistassa näkyy, milloin asukas alkoi odottaa vastausta", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Liisa", senderEmail: "liisa@example.com",
       subject: "Odottava", body: "Onko pyykkitupa auki?", sourceMessageId: "<odottaa-1@example.com>"
     });

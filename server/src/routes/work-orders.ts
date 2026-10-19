@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
-import { companyIdFromContext, getAuthorizedTicket } from "../access.js";
+import { canSeeTicket, companyIdFromContext, getAuthorizedTicket, RESTRICTED_SUBJECT } from "../access.js";
 import { attachmentsDir, db } from "../db.js";
 import { type OutgoingAttachment, sendEmail } from "../mail.js";
 import { notifyTicketStatus } from "../notify.js";
@@ -15,7 +15,8 @@ export const workOrdersRouter: Router = express.Router();
 // Työtilaukset: tehtävältä huoltoyhtiölle lähetettävä tilaus ja sen kuittaus tehdyksi.
 // ---------------------------------------------------------------------------------------------
 const WORK_ORDER_SELECT = `
-  SELECT w.*, t.subject AS ticket_subject, t.ticket_number
+  SELECT w.*, t.subject AS ticket_subject, t.ticket_number,
+         t.sensitive, t.assignee_id, t.company_pending
   FROM work_orders w
   JOIN tickets t ON t.id = w.ticket_id
 `;
@@ -23,7 +24,12 @@ const WORK_ORDER_SELECT = `
 workOrdersRouter.get("/companies/:companyId/work-orders", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
-  res.json(db.prepare(`${WORK_ORDER_SELECT} WHERE w.company_id = ? ORDER BY w.ordered_at DESC`).all(companyId));
+  // Arkaluonteisen tehtävän työtilauksesta ei näytetä otsikkoa eikä kuvausta käyttäjälle, jolta tehtävä on rajattu.
+  const rows = db.prepare(`${WORK_ORDER_SELECT} WHERE w.company_id = ? ORDER BY w.ordered_at DESC`).all(companyId) as
+    (Record<string, unknown> & { ticket_id: string; sensitive?: number | null; assignee_id?: string | null; ticket_subject?: string })[];
+  res.json(rows.map(row => canSeeTicket({ ...row, company_id: companyId })
+    ? row
+    : { ...row, ticket_subject: RESTRICTED_SUBJECT, description: "", contractor_name: "", contractor_email: "" }));
 });
 
 workOrdersRouter.post("/tickets/:id/work-orders", async (req, res) => {

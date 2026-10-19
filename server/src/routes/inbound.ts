@@ -1,5 +1,6 @@
 import express, { type Router } from "express";
 import { z } from "zod";
+import { INTERNAL_TOKEN } from "../auth.js";
 import { AUTHORIZED_COMPANY_IDS, companyIdForRecipients, companyIdFromContext, getAuthorizedTicket, visibleCompanyIds } from "../access.js";
 import { triage } from "../ai.js";
 import { attachAiLog, withAiLog } from "../ai-log.js";
@@ -47,6 +48,12 @@ function companyByResidentEmail(senderEmail: string | undefined, companyIds: str
 }
 
 inboundRouter.post("/inbound/messages", async (req, res) => {
+  // Tämä reitti on vain palvelimen oman postintuonnin käyttöön (sisäinen tunniste). Kirjautunut henkilökunta
+  // ei saa luoda viestejä tätä kautta: muuten käyttäjä voisi tehdä tehtäviä toisiin taloyhtiöihin ja väärentää
+  // lähettäjän. Tehtävät luodaan reitillä POST /tickets.
+  if (req.headers["x-internal-token"] !== INTERNAL_TOKEN) {
+    return res.status(403).json({ error: "Ei käyttöoikeutta." });
+  }
   const parsed = inboundSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 

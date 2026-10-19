@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
 
 describe("tehtävät ja määräajat", () => {
   let server: TestServer;
@@ -51,7 +51,7 @@ describe("tehtävät ja määräajat", () => {
   });
 
   it("saapuva viesti luo tehtävän ja hätätapaus tunnistetaan", async () => {
-    const normal = await call(server, admin, "POST", "/inbound/messages", {
+    const normal = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Liisa Mallikas", senderEmail: "liisa@example.com",
       subject: "Kysymys pyöräkellarista", body: "Mistä saan avaimen pyöräkellariin?"
     });
@@ -61,7 +61,7 @@ describe("tehtävät ja määräajat", () => {
     assert.equal(detail.ticket.resident_name, "Liisa Mallikas");
     assert.equal(detail.ticket.status, "open");
 
-    const emergency = await call(server, admin, "POST", "/inbound/messages", {
+    const emergency = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Tuntematon", subject: "Vesivuoto", body: "Keittiössä on vesivuoto."
     });
     assert.equal(emergency.data.emergency, true);
@@ -69,7 +69,7 @@ describe("tehtävät ja määräajat", () => {
   });
 
   it("päätös siirtää tehtävän käsittelijälle ja sulkeminen sulkee sen", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Tuntematon", subject: "Roskakatos", body: "Roskakatos on täynnä."
     });
     const id = created.data.ticketId as string;
@@ -98,7 +98,7 @@ describe("tehtävät ja määräajat", () => {
   });
 
   it("tehtävän poistaa vain isännöitsijä, ja poisto vie viestit ja muistiinpanot mukanaan", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Tuntematon", subject: "Poistettava", body: "Tämä tehtävä poistetaan."
     });
     const id = created.data.ticketId as string;
@@ -123,25 +123,25 @@ describe("tehtävät ja määräajat", () => {
       companyId: "demo-company", senderName: "Roskaposti", senderEmail: "mainos@example.com",
       subject: "Tarjous", body: "Osta nyt!", sourceMessageId: "<poistettava-1@example.com>"
     };
-    const created = await call(server, admin, "POST", "/inbound/messages", email);
+    const created = await postInbound(server, admin, email);
     assert.equal(created.status, 201);
     const manager = await login(server, MANAGER_EMAIL);
     assert.equal((await call(server, manager, "DELETE", `/tickets/${created.data.ticketId}`)).status, 200);
 
     // Postin tarkistus yrittää tuoda saman viestin uudelleen: tehtävää ei synny.
-    const again = await call(server, admin, "POST", "/inbound/messages", email);
+    const again = await postInbound(server, admin, email);
     assert.equal(again.data.duplicate, true);
     assert.equal(again.data.deleted, true);
     const tickets = (await call(server, admin, "GET", "/tickets?companyId=demo-company")).data as { subject: string }[];
     assert.ok(!tickets.some(row => row.subject === "Tarjous"));
 
     // Uusi viesti samalta lähettäjältä tuodaan normaalisti.
-    const fresh = await call(server, admin, "POST", "/inbound/messages", { ...email, sourceMessageId: "<uusi-1@example.com>" });
+    const fresh = await postInbound(server, admin, { ...email, sourceMessageId: "<uusi-1@example.com>" });
     assert.equal(fresh.status, 201);
   });
 
   it("toiselle annettu avoin tehtävä poistuu päätösjonosta tämän omiin tehtäviin ja näkyy kaikissa tehtävissä", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Tuntematon", subject: "Annettava", body: "Tämä annetaan toiselle."
     });
     const id = created.data.ticketId as string;

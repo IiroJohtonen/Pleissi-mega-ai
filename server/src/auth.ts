@@ -130,7 +130,7 @@ function localToday(): string {
 }
 
 // Palvelimen omat sisäiset kutsut (Gmail-tuonti) tunnistetaan tällä käynnistyskohtaisella avaimella.
-export const INTERNAL_TOKEN = crypto.randomBytes(32).toString("hex");
+export const INTERNAL_TOKEN = process.env.INTERNAL_TOKEN || crypto.randomBytes(32).toString("hex");
 
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16);

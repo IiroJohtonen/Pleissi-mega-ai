@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, login, SERVICE_EMAIL, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, SERVICE_EMAIL, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
 
 // Claude korvataan paikallisella palvelimella, joka vastaa Messages-rajapinnan muodossa. Näin AI-polku
 // testataan päästä päähän kutsumatta oikeaa palvelua.
@@ -82,7 +82,7 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
   });
 
   async function inbound(subject: string, body: string, channel = "email") {
-    const created = await call(server, admin, "POST", "/inbound/messages", { companyId: "demo-company", senderName: "Tuntematon", subject, body, channel });
+    const created = await postInbound(server, admin, { companyId: "demo-company", senderName: "Tuntematon", subject, body, channel });
     assert.equal(created.status, 201);
     const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
     return {
@@ -240,7 +240,7 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
   });
 
   it("AI-ehdotus ottaa huomioon käsittelijän lisätiedon", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Asukas", senderEmail: "asukas@example.com", subject: "Ilmanvaihto",
       body: "Ilmanvaihto pitää kovaa ääntä. Soittakaa 040 123 4567 tai asukas@example.com, tilini FI21 1234 5600 0007 85, hetu 010190-123A.",
       channel: "email"
@@ -273,7 +273,7 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
   });
 
   it("AI saa vain tehtävään osuvat palat muodossa [pala] otsikko (lähde)", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", { companyId: "demo-company", senderName: "Asukas", subject: "Päivystys", body: "Mikä on huoltoyhtiön päivystysnumero?", channel: "email" });
+    const created = await postInbound(server, admin, { companyId: "demo-company", senderName: "Asukas", subject: "Päivystys", body: "Mikä on huoltoyhtiön päivystysnumero?", channel: "email" });
     const suggested = await call(server, admin, "POST", `/tickets/${created.data.ticketId}/suggest`, {});
     assert.equal(suggested.status, 200);
     const content = requests.at(-1).body.messages[0].content as string;

@@ -1,7 +1,7 @@
 import express, { type Router } from "express";
 import { z } from "zod";
-import { companyIdFromContext } from "../access.js";
-import { isAdmin, requireManager, setResidentPassword } from "../auth.js";
+import { canSeeTicket, companyIdFromContext, RESTRICTED_SUBJECT } from "../access.js";
+import { isAdmin, isManagerRole, requireManager, setResidentPassword } from "../auth.js";
 import { deleteBookingsAndRelease } from "../booking-queue.js";
 import { db } from "../db.js";
 import { syncParkingHolders } from "./parking.js";
@@ -185,8 +185,8 @@ residentsRouter.post("/companies/:companyId/residents/import", (req, res) => {
 
 residentsRouter.put("/residents/:residentId", (req, res) => {
   const resident = db.prepare(
-    "SELECT id, company_id, apartment_id FROM residents WHERE id = ?"
-  ).get(req.params.residentId) as { id: string; company_id: string; apartment_id: string } | undefined;
+    "SELECT id, company_id, apartment_id, email FROM residents WHERE id = ?"
+  ).get(req.params.residentId) as { id: string; company_id: string; apartment_id: string; email: string | null } | undefined;
   const companyId = resident && companyIdFromContext(resident.company_id);
   if (!resident || !companyId) return res.status(404).json({ error: "Asukasta ei löytynyt." });
 
@@ -196,6 +196,12 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
   }
 
   const { name, email, staircase, roles } = parsed.data;
+
+  // Sähköpostin vaihto on arkaluonteinen: sillä voi ohjata salasanan palautuksen itselleen ja kaapata
+  // asukkaan tilin. Siksi osoitteen muutos vaatii isännöitsijän oikeudet (asiakaspalvelu ei riitä).
+  if (email.toLowerCase() !== (resident.email ?? "").toLowerCase() && !isManagerRole((res.locals.user as { role?: string } | undefined)?.role ?? "")) {
+    return res.status(403).json({ error: "Vain isännöitsijä voi vaihtaa asukkaan sähköpostiosoitteen." });
+  }
 
   if (email) {
     const existing = db.prepare(
@@ -253,20 +259,30 @@ residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) 
   if (!resident) return res.status(404).json({ error: "Asukasta ei löytynyt." });
 
   const ticketIds = residentTicketIds(resident.id);
-  const tickets = ticketIds.map(ticketId => ({
-    ...(db.prepare(`
-      SELECT ticket_number AS number, subject, type, status, source_channel AS channel, created_at, updated_at
+  const tickets = ticketIds.map(ticketId => {
+    const ticket = db.prepare(`
+      SELECT ticket_number AS number, subject, type, status, source_channel AS channel, created_at, updated_at,
+             sensitive, assignee_id, company_id, company_pending
       FROM tickets WHERE id = ?
-    `).get(ticketId) as Record<string, unknown>),
-    messages: (db.prepare(`
-      SELECT direction, sender, subject, body, channel, created_at FROM messages
-      WHERE ticket_id = ? AND channel != 'contractor' ORDER BY created_at
-    `).all(ticketId) as { direction: string; sender: string }[])
-      .filter(message => message.direction === "outbound" || sentByResident(message.sender, resident)),
-    attachments: db.prepare(`
-      SELECT filename, size, direction, created_at FROM attachments WHERE ticket_id = ? ORDER BY created_at
-    `).all(ticketId)
-  }));
+    `).get(ticketId) as Record<string, unknown>;
+    // Arkaluonteisen tehtävän sisältöä ei viedä käyttäjälle, jolta tehtävä on rajattu (vain käsittelijä,
+    // vastuuisännöitsijä ja pääkäyttäjä näkevät sen). Tehtävän olemassaolo näkyy silti tietopyynnössä.
+    const { sensitive, assignee_id, company_id, company_pending, ...safe } = ticket;
+    if (!canSeeTicket({ sensitive, assignee_id, company_id, company_pending } as never)) {
+      return { ...safe, subject: RESTRICTED_SUBJECT, messages: [], attachments: [] };
+    }
+    return {
+      ...safe,
+      messages: (db.prepare(`
+        SELECT direction, sender, subject, body, channel, created_at FROM messages
+        WHERE ticket_id = ? AND channel != 'contractor' ORDER BY created_at
+      `).all(ticketId) as { direction: string; sender: string }[])
+        .filter(message => message.direction === "outbound" || sentByResident(message.sender, resident)),
+      attachments: db.prepare(`
+        SELECT filename, size, direction, created_at FROM attachments WHERE ticket_id = ? ORDER BY created_at
+      `).all(ticketId)
+    };
+  });
 
   res.json({
     exported_at: now(),

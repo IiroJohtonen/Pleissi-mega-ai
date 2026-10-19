@@ -666,6 +666,11 @@ if (!attachmentColumns.some(column => column.name === "direction")) {
 if (!attachmentColumns.some(column => column.name === "message_id")) {
   db.exec("ALTER TABLE attachments ADD COLUMN message_id TEXT");
 }
+// Portaaliin lisätyn liitteen lataaja (asukkaan tunniste). Käytetään siihen, että jaetulla tehtävällä
+// asukas näkee vain omat liitteensä eikä toisen asukkaan portaaliin lisäämiä liitteitä.
+if (!attachmentColumns.some(column => column.name === "uploaded_by")) {
+  db.exec("ALTER TABLE attachments ADD COLUMN uploaded_by TEXT");
+}
 
 const messageColumns = db.prepare("PRAGMA table_info(messages)").all() as { name: string }[];
 if (!messageColumns.some(column => column.name === "channel")) {

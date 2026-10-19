@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, login, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
 
 describe("tilapäivitykset asukkaalle", () => {
   let server: TestServer;
@@ -18,7 +18,7 @@ describe("tilapäivitykset asukkaalle", () => {
   after(() => server.stop());
 
   async function newTicket(id: string) {
-    const ticketId = (await call(server, admin, "POST", "/inbound/messages", {
+    const ticketId = (await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Liisa Mallikas", senderEmail: "liisa@example.com",
       subject: `Ilmoitus ${id}`, body: "Rappukäytävän ovi ei sulkeudu.", sourceMessageId: `<${id}@example.com>`
     })).data.ticketId as string;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import net from "node:net";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, login, PASSWORD, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, PASSWORD, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
 
 const PDF = Buffer.from("%PDF-1.4 testi").toString("base64");
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]).toString("base64");
@@ -67,7 +67,7 @@ describe("liitteet", () => {
   });
 
   it("saapuneen sähköpostin liite liitetään viestiin aikajanalla", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Matti", senderEmail: "matti@example.com",
       subject: "Kuva vuodosta", body: "Liitteenä kuva.", sourceMessageId: "<liite-1@example.com>"
     });
@@ -76,7 +76,7 @@ describe("liitteet", () => {
     const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
     assert.equal(detail.messages[0].id, created.data.messageId);
 
-    const reply = await call(server, admin, "POST", "/inbound/messages", {
+    const reply = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Matti", senderEmail: "matti@example.com",
       subject: "Re: Kuva vuodosta", body: "Vielä toinen.", sourceMessageId: "<liite-2@example.com>",
       threadMessageIds: ["<liite-1@example.com>"]

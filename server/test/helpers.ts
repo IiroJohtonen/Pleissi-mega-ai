@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const PASSWORD = "Testi-salasana1";
+export const TEST_INTERNAL_TOKEN = "test-internal-token";
 export const ADMIN_EMAIL = "demo@pohjantahti-isannointi.fi";
 export const MANAGER_EMAIL = "hanna.lehtonen@pohjantahti-isannointi.fi";
 export const OTHER_MANAGER_EMAIL = "mikko.rantanen@pohjantahti-isannointi.fi";
@@ -52,6 +53,7 @@ export async function startServer(options: { dataDir?: string; env?: Record<stri
       GMAIL_DISABLED: "1",
       ANTHROPIC_API_KEY: "",
       INITIAL_PASSWORD: PASSWORD,
+      INTERNAL_TOKEN: TEST_INTERNAL_TOKEN,
       DEFAULT_COMPANY_ID: "demo-company",
       AUTHORIZED_COMPANY_IDS: "demo-company",
       BACKUP_DIR: "",
@@ -119,6 +121,11 @@ export async function call(
     // Vastaus ei ole JSON-muotoa (esim. ladattava tiedosto).
   }
   return { status: response.status, data, headers: response.headers };
+}
+
+// Simuloi palvelimen oman postintuonnin kutsua: /inbound/messages hyväksyy vain sisäisen tunnisteen.
+export function inbound(server: TestServer, _token: string | null, body: unknown) {
+  return call(server, null, "POST", "/inbound/messages", body, { "x-internal-token": TEST_INTERNAL_TOKEN });
 }
 
 export async function login(server: TestServer, email: string, password = PASSWORD): Promise<string> {

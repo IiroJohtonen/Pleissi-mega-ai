@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, userByEmail, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, userByEmail, type TestServer , inbound as postInbound } from "./helpers.js";
 
 // Gmail on testeissä pois päältä, joten hälytys kirjautuu lokiin epäonnistuneena. Merkintä kertoo
 // silti, kenelle hälytys oli lähdössä.
@@ -29,7 +29,7 @@ describe("hätätapauksen hälytys", () => {
   }
 
   async function inbound(subject: string, body: string) {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Liisa Mallikas", senderEmail: "liisa@example.com", subject, body
     });
     assert.equal(created.status, 201);
