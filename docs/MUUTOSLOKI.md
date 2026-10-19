@@ -19,7 +19,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Asetukset › Isännöitsijätoimiston tiedot › Roolit ja Käyttäjät. Sivupalkki roolin käyttäjällä.
 
-**Testit:** T-136–T-142
+**Testit:** T-136–T-142 · PR #37
 
 ## 19.10.2026 · Asukasportaalin yläpalkki ja muuttoilmoitus, turhat lomakkeet pois, tehtävänumerot puhelimella
 
