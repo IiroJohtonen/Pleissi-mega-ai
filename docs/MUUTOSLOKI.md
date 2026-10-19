@@ -3,6 +3,16 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 19.10.2026 · Päätösjonon ehdotus on nyt "AI:n ehdotus"
+
+**Mitä muutettiin**
+- Päätösjonon tehtäväkortin vastausehdotuksen otsikko on nyt **AI:N EHDOTUS** (aiemmin KOTILON EHDOTUS).
+
+**Miten**
+- Päätösjono: tehtäväkortti, jolle tekoäly on laatinut vastausehdotuksen.
+
+**Testit:** T-143 · PR #39
+
 ## 19.10.2026 · Tietoturvakorjaukset: tilin suojaus, arkaluonteisten näkyvyys ja häiriönkesto
 
 **Mitä muutettiin**

@@ -117,7 +117,7 @@ export const en: Record<string, string> = {
   "Käsittelijä: {0}": "Assignee: {0}",
   "Ei käsittelijää": "No assignee",
   "Määräaika": "Due date",
-  "KOTILON EHDOTUS": "KOTILO'S SUGGESTION",
+  "AI:N EHDOTUS": "AI SUGGESTION",
   "LUONNOS": "DRAFT",
   "Ei tallennettua luonnosta.": "No saved draft.",
   "Lähde:": "Source:",
