@@ -2212,5 +2212,7 @@ export const en: Record<string, string> = {
   "Poista valinnat": "Clear selection",
   "Kun kaikki taulut on valittu, rooli näkee myös myöhemmin lisättävät taulut. Asetukset ja haku näkyvät aina.": "When all tables are selected, the role also sees tables added later. Settings and search are always visible.",
   "Roolilla on käyttäjiä. Vaihda heille ensin toinen rooli.": "The role has users. Change their role first.",
-  "Poista rooli": "Delete role"
+  "Poista rooli": "Delete role",
+  "Nykyinen salasana": "Current password",
+  "Vahvista sähköpostin tai salasanan vaihto": "Confirm the email or password change"
 };

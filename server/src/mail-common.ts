@@ -199,13 +199,40 @@ export function extractEmails(value: string): string[] {
   return value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
 }
 
+// HTML-sähköpostin muuntaminen tekstiksi tehdään yhdellä läpikäynnillä. Aiempi versio käytti
+// regexejä kuten /<style[\s\S]*?<\/style>/, jotka ovat sulkemattomilla tageilla neliöllisiä (ReDoS):
+// yksi muutaman sadan kilotavun viesti saattoi jumittaa palvelimen minuuteiksi. Tässä tagit poistetaan
+// merkki kerrallaan ilman takaisinperääntymistä, ja syöte katkaistaan varmuuden vuoksi.
+const MAX_HTML_LENGTH = 2 * 1024 * 1024;
 export function htmlToText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li|tr)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
+  const input = html.length > MAX_HTML_LENGTH ? html.slice(0, MAX_HTML_LENGTH) : html;
+  let out = "";
+  let i = 0;
+  const length = input.length;
+  while (i < length) {
+    const char = input[i];
+    if (char === "<") {
+      // Tunnista avaava style/script ja hyppää niiden loppuun (indexOf on lineaarinen).
+      const rest = input.slice(i, i + 8).toLowerCase();
+      const block = rest.startsWith("<style") ? "style" : rest.startsWith("<script") ? "script" : "";
+      if (block) {
+        const close = input.toLowerCase().indexOf(`</${block}>`, i);
+        i = close === -1 ? length : close + block.length + 3;
+        out += " ";
+        continue;
+      }
+      // Tavallinen tagi: etsi sulkeva '>'. Jos sitä ei ole, loppu on roskaa ja jätetään pois.
+      const end = input.indexOf(">", i);
+      if (end === -1) break;
+      const tag = input.slice(i + 1, end).replace(/^\//, "").trim().toLowerCase();
+      out += /^br\b/.test(tag) || /^(p|div|li|tr)\b/.test(tag) ? "\n" : " ";
+      i = end + 1;
+      continue;
+    }
+    out += char;
+    i += 1;
+  }
+  return out
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, localDate, login, MANAGER_EMAIL, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
 
 describe("perustiedot", () => {
   let server: TestServer;
@@ -16,7 +16,7 @@ describe("perustiedot", () => {
   after(() => server.stop());
 
   const inbound = async (subject: string, body: string) => {
-    const created = await call(server, admin, "POST", "/inbound/messages", { companyId: "demo-company", senderName: "Asukas", subject, body, channel: "email" });
+    const created = await postInbound(server, admin, { companyId: "demo-company", senderName: "Asukas", subject, body, channel: "email" });
     assert.equal(created.status, 201);
     return (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data.ticket;
   };

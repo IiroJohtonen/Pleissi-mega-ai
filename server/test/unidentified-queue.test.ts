@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import {
   ADMIN_EMAIL, call, login, MANAGER_EMAIL, OTHER_MANAGER_EMAIL, SERVICE_EMAIL, startServer, userByEmail, type TestServer
-} from "./helpers.js";
+, inbound as postInbound } from "./helpers.js";
 
 describe("Taloyhtiö tunnistamatta -jono ja tehtävän siirto", () => {
   let server: TestServer;
@@ -31,7 +31,7 @@ describe("Taloyhtiö tunnistamatta -jono ja tehtävän siirto", () => {
 
   // Toimiston yhteiseen laatikkoon tullut viesti, jonka yhtiötä postin tuonti ei tunnistanut.
   const unknownMail = async (senderEmail: string, subject: string, body: string) => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", companyUnknown: true, senderName: "Lähettäjä", senderEmail, subject, body, channel: "email"
     });
     assert.equal(created.status, 201);
@@ -90,7 +90,7 @@ describe("Taloyhtiö tunnistamatta -jono ja tehtävän siirto", () => {
   });
 
   it("väärään yhtiöön mennyt tehtävä siirretään oikeaan", async () => {
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Asukas", subject: "Rappuvalo", body: "Rapun valo vilkkuu.", channel: "email"
     });
     const ticketId = created.data.ticketId as string;

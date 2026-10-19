@@ -353,9 +353,12 @@ function UserSettings() {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  // Nykyistä salasanaa kysytään vain, kun käyttäjä vaihtaa sähköpostiaan tai salasanaansa.
+  const needsCurrent = Boolean(password) || email.trim().toLowerCase() !== (user?.email ?? "").toLowerCase();
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!user || !session) return;
@@ -365,11 +368,12 @@ function UserSettings() {
     try {
       const updated = await api<OfficeUser>(`/users/${encodeURIComponent(user.id)}`, {
         method: "PUT",
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password: password || undefined })
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password: password || undefined, currentPassword: currentPassword || undefined })
       });
       // Muutos näkyy heti myös sivupalkissa.
       setSession({ ...session, user: updated });
       setPassword("");
+      setCurrentPassword("");
       setSaved(true);
     } catch (submitError) {
       setError(errorMessage(submitError, t("Tietojen tallennus epäonnistui.")));
@@ -408,13 +412,26 @@ function UserSettings() {
         </label>
         <p className="reply-hint">{t("Vähintään 8 merkkiä. Vaihto kirjaa sinut ulos muilta laitteilta.")}</p>
 
+        {needsCurrent && (
+          <label>
+            <span>{t("Nykyinen salasana")}</span>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={event => { setCurrentPassword(event.target.value); setSaved(false); }}
+              placeholder={t("Vahvista sähköpostin tai salasanan vaihto")}
+              autoComplete="current-password"
+            />
+          </label>
+        )}
+
         {error && <p className="send-error">{error}</p>}
 
         <div className="draft-actions">
           <button
             className="primary"
             type="submit"
-            disabled={saving || !name.trim() || !email.trim() || (password.length > 0 && password.length < 8)}
+            disabled={saving || !name.trim() || !email.trim() || (password.length > 0 && password.length < 8) || (needsCurrent && !currentPassword)}
           >
             {saving ? t("Tallennetaan…") : t("Tallenna tiedot")}
           </button>

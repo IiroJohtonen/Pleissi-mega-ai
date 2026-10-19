@@ -5,7 +5,7 @@ import { after, before, describe, it } from "node:test";
 import Database from "better-sqlite3";
 import {
   ADMIN_EMAIL, call, login, MANAGER_EMAIL, OTHER_MANAGER_EMAIL, PASSWORD, startServer, tempDir, userByEmail, type TestServer
-} from "./helpers.js";
+, inbound as postInbound } from "./helpers.js";
 
 describe("asukkaan tietojen vienti ja poisto", () => {
   let server: TestServer;
@@ -69,7 +69,7 @@ describe("poistopyyntö, kun asukkaalla on avoimia tehtäviä", () => {
   after(() => server.stop());
 
   const inbound = async (subject: string, body: string) => {
-    const created = await call(server, manager, "POST", "/inbound/messages", {
+    const created = await postInbound(server, manager, {
       companyId: "demo-company", senderName: "Liisa Mallikas", senderEmail: "liisa@example.com", subject, body, channel: "email"
     });
     assert.equal(created.status, 201);

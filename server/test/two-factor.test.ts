@@ -82,7 +82,7 @@ describe("kirjautumiskoodi sähköpostiin", () => {
     assert.equal((await call(server, null, "POST", "/auth/login", { email: MANAGER_EMAIL, password: "väärä-salasana", deviceToken })).status, 401);
 
     const me = (await call(server, again.data.token, "GET", "/auth/me")).data;
-    assert.equal((await call(server, again.data.token, "PUT", `/users/${me.id}`, { name: me.name, email: me.email, password: PASSWORD })).status, 200);
+    assert.equal((await call(server, again.data.token, "PUT", `/users/${me.id}`, { name: me.name, email: me.email, password: PASSWORD, currentPassword: PASSWORD })).status, 200);
     assert.equal((await passwordStep(MANAGER_EMAIL, deviceToken)).data.twoFactor, true);
   });
 

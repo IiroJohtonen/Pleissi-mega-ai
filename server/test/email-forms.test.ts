@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, login, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
 
 // Verkkosivun lomakkeet tulevat toimiston postiin; otsikosta tunnistetaan lomake ja viestistä kentät.
 describe("verkkosivun lomakkeet sähköpostina", () => {
@@ -25,7 +25,7 @@ describe("verkkosivun lomakkeet sähköpostina", () => {
 
   async function receive(subject: string, body: string) {
     sequence += 1;
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", channel: "email", senderName: "Hemman verkkosivu", senderEmail: "wordpress@hemman.example",
       subject, body, sourceMessageId: `<lomake-${sequence}@example.com>`
     });
@@ -95,7 +95,7 @@ describe("verkkosivun lomakkeet sähköpostina", () => {
   async function receiveRecord(subject: string, body: string) {
     sequence += 1;
     const messageId = `<tietue-${sequence}@example.com>`;
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", channel: "email", senderName: "Hemman verkkosivu", senderEmail: "wordpress@hemman.example",
       subject, body, sourceMessageId: messageId
     });
@@ -122,7 +122,7 @@ describe("verkkosivun lomakkeet sähköpostina", () => {
     assert.equal(detail(cold, "phone"), "040 123 4567");
 
     // Sama viesti ei tule kahdesti.
-    const again = await call(server, admin, "POST", "/inbound/messages", {
+    const again = await postInbound(server, admin, {
       companyId: "demo-company", channel: "email", senderName: "x", subject: "Mittarilukemailmoitus", body: "Kylmä vesi: 1", sourceMessageId: created.messageId
     });
     assert.equal(again.data.duplicate, true);

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import {
   ADMIN_EMAIL, call, login, MANAGER_EMAIL, OTHER_MANAGER_EMAIL, SERVICE_EMAIL, startServer, userByEmail, type TestServer
-} from "./helpers.js";
+, inbound as postInbound } from "./helpers.js";
 
 describe("arkaluonteisen tehtävän pääsynrajaus", () => {
   let server: TestServer;
@@ -24,7 +24,7 @@ describe("arkaluonteisen tehtävän pääsynrajaus", () => {
     const saved = await call(server, admin, "PUT", "/companies/demo-company", { name: "As Oy Koivikko", managerId: hanna.id, managerIds: [mikko.id] });
     assert.equal(saved.status, 200);
 
-    const created = await call(server, admin, "POST", "/inbound/messages", {
+    const created = await postInbound(server, admin, {
       companyId: "demo-company", senderName: "Matti Meikäläinen", senderEmail: "matti@example.com",
       subject: "Home kylpyhuoneessa", body: "Lapsellani on astma ja epäilen hometta.", channel: "email"
     });

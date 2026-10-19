@@ -4,6 +4,15 @@ import { consumePasswordReset, createPasswordResets } from "../auth.js";
 import { db } from "../db.js";
 import { sendEmail } from "../mail.js";
 
+// Sallitut selainosoitteet (sama lista kuin CORS). Palautuslinkki rakennetaan vain näistä.
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || process.env.APP_URL || "http://localhost:5173,http://127.0.0.1:5173")
+  .split(",").map(value => value.trim().replace(/\/$/, "")).filter(Boolean);
+const APP_ORIGIN = (process.env.APP_URL || ALLOWED_ORIGINS[0] || "http://localhost:5173").replace(/\/$/, "");
+function allowedOrigin(origin: unknown): string {
+  const value = typeof origin === "string" ? origin.trim().replace(/\/$/, "") : "";
+  return value && ALLOWED_ORIGINS.includes(value) ? value : APP_ORIGIN;
+}
+
 export const passwordResetRouter: Router = express.Router();
 
 // Salasanan palautus kirjautumissivulta. Vastaus on aina sama, jotta siitä ei voi päätellä,
@@ -23,10 +32,10 @@ passwordResetRouter.post("/auth/forgot", async (req, res) => {
 
   const resets = createPasswordResets(parsed.data.email);
   if (resets.length > 0) {
-    // Linkki osoittaa siihen osoitteeseen, josta pyyntö tuli (selain lähettää Origin-otsakkeen).
-    const origin = typeof req.headers.origin === "string" && /^https?:\/\/[^\s/]+$/.test(req.headers.origin)
-      ? req.headers.origin
-      : process.env.APP_URL || "http://localhost:5173";
+    // Linkki osoittaa aina sovelluksen omaan osoitteeseen. Pyynnön Origin-otsaketta ei saa käyttää, koska
+    // kirjautumaton hyökkääjä voisi ohjata aidon palautuslinkin omalle sivulleen ja napata tunnisteen.
+    // Sallitut osoitteet tulevat CORS_ORIGINS/APP_URL-asetuksesta; Origin kelpaa vain, jos se on listalla.
+    const origin = allowedOrigin(req.headers.origin);
     const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string };
     const body = [
       "Hei,",
