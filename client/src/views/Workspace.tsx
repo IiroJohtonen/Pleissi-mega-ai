@@ -146,6 +146,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
   // Sarakekohtainen tekstihaku; hakurivi avataan suurennuslasista. Haut säilyvät, vaikka rivi suljetaan.
   const [searchOpen, setSearchOpen] = useState(false);
   const [columnSearch, setColumnSearch] = useState<Partial<Record<TicketSortKey, string>>>({});
+  // Vasemman valikon tehtävälista avautuu aina ilman suodattimia, vaikka sinne olisi tultu esim.
+  // Muistutukset-laatikosta tai lista olisi jo auki.
+  function openTaskList(next: TicketTab) {
+    setPriorityFilter(null);
+    setTypeFilter(null);
+    setStatusFilter(null);
+    setCompanyFilter(null);
+    setDueFilter(null);
+    setColumnSearch({});
+    setTab(next);
+  }
   const [clock, setClock] = useState(Date.now());
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
   const [reportsOpen, setReportsOpen] = useState(true);
@@ -609,7 +620,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
         <nav>
           {/* Päätösjonon vieressä on sivupalkin kiinnitys: kiinnittämätön palkki kutistuu kuvakeriviksi. */}
           <div className="nav-group nav-queue-row">
-            <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}>
+            <button className={tab === "queue" ? "active" : ""} onClick={() => openTaskList("queue")}>
               <TabIcon tab="queue" />
               {t("Päätösjono")}
               <b>{queueTickets.length}</b>
@@ -633,7 +644,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
             </button>
           </div>
           <div className="nav-group">
-            <button className={tab === "tickets" ? "active" : ""} onClick={() => setTab("tickets")}>
+            <button className={tab === "tickets" ? "active" : ""} onClick={() => openTaskList("tickets")}>
               <TabIcon tab="tickets" />
               {t("Kaikki tehtävät")}
             </button>
@@ -641,12 +652,12 @@ export function Workspace({ user }: { user: OfficeUser }) {
           </div>
           {myTicketsOpen && (
             <>
-              <button className={`nav-sub ${tab === "unidentified" ? "active" : ""}`} onClick={() => setTab("unidentified")}>
+              <button className={`nav-sub ${tab === "unidentified" ? "active" : ""}`} onClick={() => openTaskList("unidentified")}>
                 <TabIcon tab="unidentified" />
                 {t("Tunnistamattomat")}
                 <b>{unidentifiedTickets.length}</b>
               </button>
-              <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => setTab("my-tickets")}>
+              <button className={`nav-sub ${tab === "my-tickets" ? "active" : ""}`} onClick={() => openTaskList("my-tickets")}>
                 <TabIcon tab="my-tickets" />
                 {t("Omat tehtävät")}
                 <b>{myTickets.length}</b>

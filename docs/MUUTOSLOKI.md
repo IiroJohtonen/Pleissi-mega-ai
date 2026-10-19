@@ -3,6 +3,21 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 19.10.2026 · Suorakulmainen kirjautumissivu ja tietuekortti, valikon tehtävälista ilman suodattimia
+
+**Mitä muutettiin**
+- Kirjautumissivun kortti, kentät ja Kirjaudu-painike ovat suorakulmaisia (myös kirjautumiskoodin ja salasanan vaihdon sivut).
+- Avatun tietueen kortti on suorakulmainen: tehtävä (myös aikajana ja yläpalkki), taloyhtiö, asukas, dokumentti,
+  tiedote sekä sauna- ja pyykkitupavuoro.
+- Kun vasemmasta valikosta painetaan Päätösjono, Kaikki tehtävät, Tunnistamattomat tai Omat tehtävät, lista avautuu
+  ilman suodattimia, myös kun samaa kohtaa painetaan uudelleen. Aiemmin esim. Muistutukset-laatikon suodatin jäi päälle.
+  Sarakeotsikosta valittu järjestys säilyy.
+
+**Miten**
+- Kirjautumissivu, avattu tietue ja vasen valikko.
+
+**Testit:** T-122–T-124 · PR #34
+
 ## 18.10.2026 · Sisennyksen numerointi, päätösjonon laatikot, AI:n lisätieto muistiinpanoksi ja yhteydenottopyynnöt pois
 
 **Mitä muutettiin**
