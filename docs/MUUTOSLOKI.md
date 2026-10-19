@@ -16,7 +16,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Kirjautumissivu, avattu tietue ja vasen valikko.
 
-**Testit:** T-122–T-124
+**Testit:** T-122–T-124 · PR #34
 
 ## 18.10.2026 · Sisennyksen numerointi, päätösjonon laatikot, AI:n lisätieto muistiinpanoksi ja yhteydenottopyynnöt pois
 
