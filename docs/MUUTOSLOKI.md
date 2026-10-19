@@ -22,7 +22,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Sivupalkki → Perustiedot → Asunnot. Asukkaat → avaa asukas. Yhtiön tiedot → Asunnot-välilehti.
 
-**Testit:** T-125–T-130
+**Testit:** T-125–T-130 · PR #35
 
 ## 19.10.2026 · Suorakulmainen kirjautumissivu ja tietuekortti, valikon tehtävälista ilman suodattimia
 
