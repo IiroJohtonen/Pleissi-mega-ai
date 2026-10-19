@@ -87,13 +87,13 @@ rolesRouter.delete("/roles/:id", requireAdmin, (req, res) => {
 
 function renameQueueRole(from: string, to: string | null) {
   const row = db.prepare("SELECT unidentified_queue_roles AS roles FROM office_settings WHERE id = 1").get() as { roles: string } | undefined;
-  let roles: string[] = [];
+  let roles: unknown;
   try {
     roles = JSON.parse(row?.roles ?? "[]");
   } catch {
     return;
   }
   if (!Array.isArray(roles) || !roles.includes(from)) return;
-  const next = roles.flatMap(item => item === from ? (to ? [to] : []) : [item]);
+  const next = roles.flatMap((item: unknown) => item === from ? (to ? [to] : []) : [item]);
   db.prepare("UPDATE office_settings SET unidentified_queue_roles = ? WHERE id = 1").run(JSON.stringify(next));
 }
