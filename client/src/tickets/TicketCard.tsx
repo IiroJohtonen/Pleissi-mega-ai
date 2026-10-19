@@ -295,7 +295,7 @@ export function TicketCard({
         </div>
 
         <div className="recommendation">
-          <small>{ticket.ai_suggested ? t("KOTILON EHDOTUS") : t("LUONNOS")}</small>
+          <small>{ticket.ai_suggested ? t("AI:N EHDOTUS") : t("LUONNOS")}</small>
           {/* Peruste näytetään vain, kun AI-ehdotus on pyydetty ja sille löytyi lähde dokumentaatiosta. */}
           {ticket.ai_suggested && ticket.knowledge_source_title ? <strong>{ticket.ai_reason}</strong> : null}
           <p>{ticket.draft || t("Ei tallennettua luonnosta.")}</p>
