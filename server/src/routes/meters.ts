@@ -82,13 +82,6 @@ metersRouter.get("/portal/meter-readings", (_req, res) => {
   `).all(portalResident(res).id));
 });
 
-// Asunnot lukeman ja avaimen kohdistamista varten.
-metersRouter.get("/companies/:companyId/apartments", (req, res) => {
-  const companyId = companyIdFromContext(req.params.companyId);
-  if (!companyId) return res.status(403).json({ error: "Company not authorized" });
-  res.json(db.prepare("SELECT id, apartment_number, address FROM apartments WHERE company_id = ? ORDER BY apartment_number").all(companyId));
-});
-
 // previous_value on saman asunnon ja mittarin edellinen lukema; kulutus lasketaan niiden erotuksena.
 metersRouter.get("/companies/:companyId/meter-readings", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);

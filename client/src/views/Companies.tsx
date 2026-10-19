@@ -7,6 +7,8 @@ import { BookingCalendar } from "./Bookings";
 import { KnowledgeBase } from "./Knowledge";
 import { ParkingSpaces } from "./Parking";
 import { Residents } from "./Residents";
+import { Apartments } from "./Apartments";
+import { navigate } from "../routing";
 import { BookingSettings, MailAccountCard } from "./Settings";
 import { t } from "../i18n";
 
@@ -21,7 +23,7 @@ export function Companies({
   onOpenCompany: (companyId: string | null) => void;
   onChanged: () => Promise<void>;
 }) {
-  const [detailTab, setDetailTab] = useState<"residents" | "material" | "sauna" | "laundry" | "parking">("residents");
+  const [detailTab, setDetailTab] = useState<"apartments" | "residents" | "material" | "sauna" | "laundry" | "parking">("residents");
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [businessId, setBusinessId] = useState("");
@@ -79,6 +81,9 @@ export function Companies({
         <BookingSettings key={openCompany.id} companyId={openCompany.id} />
 
         <div className="card-tabs">
+          <button className={detailTab === "apartments" ? "active" : ""} onClick={() => setDetailTab("apartments")}>
+            {t("Asunnot")}
+          </button>
           <button className={detailTab === "residents" ? "active" : ""} onClick={() => setDetailTab("residents")}>
             {t("Asukkaat")}
           </button>
@@ -95,7 +100,13 @@ export function Companies({
             {t("Autopaikat")}
           </button>
         </div>
-        {detailTab === "residents" ? (
+        {detailTab === "apartments" ? (
+          <Apartments
+            embedded
+            companyId={openCompany.id}
+            onOpenApartment={apartmentId => { if (apartmentId) navigate("apartments", apartmentId); }}
+          />
+        ) : detailTab === "residents" ? (
           <Residents
             companyId={openCompany.id}
             companies={companies}

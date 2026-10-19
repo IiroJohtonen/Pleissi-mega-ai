@@ -380,6 +380,71 @@ describe("sovellus", () => {
     await vi.waitFor(() => expect(window.location.hash).toBe("#/companies"));
   });
 
+  it("Perustiedot-ryhmässä ovat asukkaat, asunnot, jonot ja avaimet; muutot ovat ilmoituksissa", async () => {
+    await renderApp(staff("Isännöitsijä"), "#/residents");
+    const group = await screen.findByRole("button", { name: /Perustiedot/ });
+    const items = (heading: Element) => {
+      const labels: string[] = [];
+      for (let next = heading.nextElementSibling; next && !next.classList.contains("nav-label"); next = next.nextElementSibling) {
+        labels.push(next.textContent?.replace(/\d+$/, "").trim() ?? "");
+      }
+      return labels;
+    };
+    expect(items(group)).toEqual(["Asukkaat", "Asunnot", "Jonot", "Avaimet"]);
+    expect(items(screen.getByRole("button", { name: /Ilmoitukset/ }))).toEqual(["Tiedotteet", "Muutot", "Remontit", "Lukemat"]);
+    expect(items(screen.getByRole("button", { name: /^Tilat/ }))).toEqual(["Sauna", "Pyykkitupa", "Autopaikat"]);
+  });
+
+  it("asunnon tietueella ovat henkilöt rooleineen, avaimet ja väliotsikot", async () => {
+    responses["/apartments/apt-1"] = {
+      id: "apt-1", company_id: "demo-company", company_name: "As Oy Koivikko", apartment_number: "A 12", staircase: "A", address: "Koivikkotie 10",
+      residents: [{ id: "r1", name: "Matti Meikäläinen", email: "matti@example.com", roles: "osakas,asukas" }],
+      keys: [{ id: "k1", code: "A-12-1", type: "Asunto", status: "active", holder_name: null }],
+      parking: [{ id: "p1", label: "P 4", type: "Lämmitetty", resident_name: "Matti Meikäläinen" }],
+      bookings: [], renovations: [{ id: "n1", work_type: "Keittiö", start_date: "2026-11-01", end_date: "2026-11-20", status: "approved", resident_name: "Matti Meikäläinen" }]
+    };
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/apartments/apt-1");
+      expect(await screen.findByRole("heading", { name: "Asunto A 12" })).toBeTruthy();
+      expect((screen.getByDisplayValue("As Oy Koivikko") as HTMLInputElement).readOnly).toBe(true);
+      expect(screen.getByText("Osakas")).toBeTruthy();
+      expect(screen.getByText("A-12-1")).toBeTruthy();
+      expect(screen.getByText("P 4")).toBeTruthy();
+      fireEvent.click(screen.getByRole("tab", { name: /Remontit/ }));
+      expect(screen.getByText("Keittiö")).toBeTruthy();
+    } finally {
+      delete responses["/apartments/apt-1"];
+    }
+  });
+
+  it("asukkaan asunnon voi hakea listasta ja rooleiksi voi valita osakkaan ja asukkaan", async () => {
+    responses["/companies/demo-company/apartments"] = [
+      { id: "apt-1", apartment_number: "A 12", staircase: "A", address: "Koivikkotie 10", resident_count: 1 },
+      { id: "apt-2", apartment_number: "B 34", staircase: "B", address: "Koivikkotie 10", resident_count: 0 }
+    ];
+    const calls = mockApi();
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/residents");
+      fireEvent.click(await screen.findByRole("button", { name: "Lisää asukas" }));
+      fireEvent.change(screen.getByPlaceholderText("Esim. Matti Meikäläinen"), { target: { value: "Olli Osakas" } });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Osakas" }));
+      const picker = screen.getByRole("combobox", { name: "Asunto" });
+      fireEvent.focus(picker);
+      fireEvent.change(picker, { target: { value: "rappu b" } });
+      const list = await screen.findByRole("listbox", { name: "Asunnot" });
+      await vi.waitFor(() => expect(within(list).getAllByRole("option").map(option => option.textContent)).toEqual(["B 34rappu B · Koivikkotie 10"]));
+      fireEvent.click(within(list).getByRole("option"));
+      const submit = screen.getAllByRole("button", { name: "Lisää asukas" }).find(button => button.getAttribute("type") === "submit")!;
+      expect((submit as HTMLButtonElement).disabled).toBe(false);
+      fireEvent.click(submit);
+      await vi.waitFor(() => expect(calls.some(call => call.method === "POST" && call.url.endsWith("/companies/demo-company/residents"))).toBe(true));
+      const body = JSON.parse(calls.find(call => call.method === "POST" && call.url.endsWith("/residents"))!.body);
+      expect(body).toMatchObject({ name: "Olli Osakas", apartmentId: "apt-2", roles: ["asukas", "osakas"] });
+    } finally {
+      delete responses["/companies/demo-company/apartments"];
+    }
+  });
+
   it("profiilivalikosta pääsee asetuksiin ja historia näyttää avatut tehtävät", async () => {
     responses["/tickets/ticket-1"] = { ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, attachments: [] };
     try {

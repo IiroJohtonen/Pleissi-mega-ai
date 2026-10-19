@@ -113,6 +113,12 @@ const tabIcons: Record<TicketTab, string[]> = {
     "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
     "M9 22V12h6v10"
   ],
+  // Talo, jossa on ovi.
+  apartments: [
+    "M3 10.5 12 3l9 7.5",
+    "M5 9v12h14V9",
+    "M10 21v-6h4v6"
+  ],
   residents: [
     "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2",
     "M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0",

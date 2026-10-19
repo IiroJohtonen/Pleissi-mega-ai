@@ -558,6 +558,10 @@ if (!(db.prepare("PRAGMA table_info(apartments)").all() as { name: string }[]).s
 if (!(db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).some(column => column.name === "moved_out_at")) {
   db.exec("ALTER TABLE residents ADD COLUMN moved_out_at TEXT");
 }
+// Henkilön roolit asunnossa pilkuilla eroteltuina: 'asukas', 'osakas' tai molemmat.
+if (!(db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).some(column => column.name === "roles")) {
+  db.exec("ALTER TABLE residents ADD COLUMN roles TEXT NOT NULL DEFAULT 'asukas'");
+}
 
 // Nykyisille autopaikan haltijoille luodaan historian ensimmäinen rivi paikan luontipäivästä.
 db.exec(`

@@ -2420,3 +2420,68 @@
 :root[data-theme="dark"] .settings-search-results small {
     color: #bac2cb
 }
+:root[data-theme="dark"] .role-tag {
+    border: 1px solid #3d5471;
+    background: #2e3a47;
+    color: #9fc2e4
+}
+:root[data-theme="dark"] .role-tag.role-osakas {
+    border-color: #553d71;
+    background: #392d47;
+    color: #c3a0e1
+}
+:root[data-theme="dark"] .role-choices legend {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .ticket-form .role-choices label.role-choice {
+    border: 1px solid #3d5471;
+    background: #283341
+}
+:root[data-theme="dark"] .ticket-form .role-choices label.role-choice:has(input:checked) {
+    background: #2e3a47;
+    color: #9ec2ea
+}
+:root[data-theme="dark"] .ticket-form .role-choices label.role-osakas:has(input:checked) {
+    background: #392d47;
+    color: #c3a0e1
+}
+:root[data-theme="dark"] .resident-apartment > span {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .apartment-picker-list {
+    border: 1px solid #374352;
+    background: #283341
+}
+:root[data-theme="dark"] .apartment-picker-list button {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .apartment-picker-list button:hover,
+:root[data-theme="dark"] .apartment-picker-list button[aria-selected="true"] {
+    background: #2e3b48
+}
+:root[data-theme="dark"] .apartment-picker-list small {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .apartment-section {
+    border-top: 1px solid #394555
+}
+:root[data-theme="dark"] .apartment-list li {
+    border: 1px solid #394555;
+    background: #283341
+}
+:root[data-theme="dark"] .apartment-list li small {
+    color: #bac2cb
+}
+:root[data-theme="dark"] .apartment-list .link-remove {
+    border: 1px solid #713d3d;
+    background: #283341;
+    color: #e19a9a
+}
+:root[data-theme="dark"] .apartment-link select {
+    border: 1px solid #374353;
+    background: #283341
+}
+:root[data-theme="dark"] .toolbar-search {
+    border: 1px solid #374353;
+    background: #283341
+}
