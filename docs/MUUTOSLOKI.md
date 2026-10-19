@@ -13,6 +13,33 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 **Testit:** T-143 · PR #39
 
+## 19.10.2026 · Tietoturvakorjaukset: tilin suojaus, arkaluonteisten näkyvyys ja häiriönkesto
+
+**Mitä muutettiin**
+- Oman sähköpostin tai salasanan vaihto Asetukset › Oma tili -sivulla vaatii nyt nykyisen salasanan vahvistukseksi.
+  Näin kukaan ei voi muuttaa kirjautumistietoja pelkällä auki jääneellä istunnolla.
+- Asukkaan sähköpostiosoitteen vaihtaminen onnistuu vain isännöitsijän tai pääkäyttäjän oikeuksilla. Taloyhtiön
+  isännöitsijöiden vaihtaminen onnistuu vain pääkäyttäjältä.
+- Arkaluonteiseksi merkityt tehtävät pysyvät piilossa niiltä, joilla ei ole niihin oikeutta, myös tehtävien
+  viennissä (export) ja työmääräysten listassa. Piilotetusta tehtävästä ei paljastu aihe, viestit, liitteet eikä
+  asunnon tiedot.
+- Asukasportaalissa jaetun tehtävän viestit ja liitteet näkyvät asukkaalle vain omien viestiensä osalta: toisen
+  asukkaan liitteitä tai viestejä ei pääse näkemään.
+- Hätäsanan (esim. "vesivuoto") sisältävää viestiä ei koskaan suodateta pois päätösjonosta, vaikka AI arvioisi sen
+  mainokseksi, vaan se nostetaan hätätilanteeksi. Näin aito hätä (tai AI:n harhautusyritys) ei jää huomaamatta.
+- Sähköpostin palvelinosoitteeksi (IMAP/SMTP) hyväksytään vain julkinen verkkonimi, ei sisäverkon osoitteita.
+- Salasanan palautuslinkki osoittaa aina luotettuun sovellusosoitteeseen.
+- Suuret tai viallisesti muotoillut sähköpostit eivät enää jumita palvelinta: tekstiksi muunnos on nopea kaikilla
+  syötteillä.
+- Sähköpostiketjuun yhdistäminen varmistaa lähettäjän, jottei ketjuun voi liittää viestiä vieraalla osoitteella.
+  Kirjautumiskoodin uudelleenlähetys ei enää nollaa yritysten laskuria.
+
+**Miten**
+- Asetukset › Oma tili (nykyinen salasana vahvistukseksi). Asetukset › Isännöitsijätoimiston tiedot › AI
+  (sähköpostipalvelin, suodatus). Muutokset näkyvät myös tehtävien viennissä ja asukasportaalissa.
+
+**Testit:** server/test/security.test.ts · PR #38
+
 ## 19.10.2026 · Roolit: omat roolit ja niiden näkemät taulut
 
 **Mitä muutettiin**
