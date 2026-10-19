@@ -19,7 +19,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Asukasportaali tietokoneella ja puhelimella: Muuttoilmoitus, Jonot ja valikko. Henkilökunta: Muutot ja tehtävälista puhelimella.
 
-**Testit:** T-131–T-135
+**Testit:** T-131–T-135 · PR #36
 
 ## 19.10.2026 · Asunnot, osakas- ja asukasroolit sekä sivupalkin Perustiedot-ryhmä
 
