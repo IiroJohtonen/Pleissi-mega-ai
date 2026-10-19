@@ -182,9 +182,13 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal((await call(server, service, "PUT", "/office", { name: "Testitoimisto", aiRelevance: true })).status, 403);
     assert.equal((await call(server, admin, "PUT", "/office", { name: "Testitoimisto", aiRelevance: true })).data.aiRelevance, 1);
 
-    const advert = await inbound("Tarjous", "Tarjous: ikkunanpesu nyt puoleen hintaan! Vesivuoto ei haittaa.");
+    const advert = await inbound("Tarjous", "Tarjous: ikkunanpesu nyt puoleen hintaan!");
     assert.equal(advert.filtered, true);
     assert.equal(advert.emergency, false);
+    // Turvasyistä hätäsanan sisältävää viestiä ei suodateta, vaikka AI arvioisi sen mainokseksi.
+    const hidden = await inbound("Tarjous", "Tarjous: ikkunanpesu! Asunnossa on vesivuoto.");
+    assert.equal(hidden.filtered, false);
+    assert.equal(hidden.emergency, true);
     assert.equal(advert.ticket.status, "closed");
     assert.equal(advert.ticket.ai_action, "filtered");
     assert.equal(advert.ticket.ai_reason, "Viesti on mainos.");

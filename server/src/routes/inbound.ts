@@ -47,6 +47,25 @@ function companyByResidentEmail(senderEmail: string | undefined, companyIds: str
   return rows.length === 1 ? rows[0].company_id : null;
 }
 
+// Ketjuun (In-Reply-To/References) liitettävän vastauksen lähettäjä varmennetaan tehtävän osallistujaksi,
+// jotta väärennetyllä In-Reply-To-otsakkeella ei voi kaapata ketjua ja saada isännöinnin vastauksia itselleen.
+function threadEmail(sender: string): string {
+  return (sender.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? "").toLowerCase();
+}
+function knownThreadEmails(ticketId: string): Set<string> {
+  const emails = new Set<string>();
+  const residents = db.prepare(`
+    SELECT lower(r.email) AS email FROM residents r
+    WHERE r.email IS NOT NULL AND (
+      r.id = (SELECT resident_id FROM tickets WHERE id = ?)
+      OR r.id IN (SELECT resident_id FROM ticket_reporters WHERE ticket_id = ?))
+  `).all(ticketId, ticketId) as { email: string | null }[];
+  for (const row of residents) if (row.email) emails.add(row.email);
+  const senders = db.prepare("SELECT sender FROM messages WHERE ticket_id = ?").all(ticketId) as { sender: string }[];
+  for (const row of senders) { const email = threadEmail(row.sender); if (email) emails.add(email); }
+  return emails;
+}
+
 inboundRouter.post("/inbound/messages", async (req, res) => {
   // Tämä reitti on vain palvelimen oman postintuonnin käyttöön (sisäinen tunniste). Kirjautunut henkilökunta
   // ei saa luoda viestejä tätä kautta: muuten käyttäjä voisi tehdä tehtäviä toisiin taloyhtiöihin ja väärentää
@@ -102,7 +121,13 @@ if (input.sourceMessageId) {
     `).get(...threadIds) as { ticket_id: string } | undefined;
     const existingTicket = linked && getAuthorizedTicket(linked.ticket_id) as any;
 
-    if (existingTicket) {
+    // Lähettäjän pitää olla ketjun osallistuja (sama sähköposti kuin ilmoittajalla tai aiemmalla viestillä).
+    // Muuten viestiä ei liitetä olemassa olevaan tehtävään, vaan se käsitellään uutena (väärennetty ketju).
+    const senderVerified = existingTicket
+      && (input.senderEmail ?? "").toLowerCase() !== ""
+      && knownThreadEmails(existingTicket.id).has((input.senderEmail ?? "").toLowerCase());
+
+    if (existingTicket && senderVerified) {
       const timestamp = now();
       // Suljettu tehtävä avataan uudelleen päätösjonoon ja vastattu muuttuu avoimeksi; muuten se pysyy
       // nykyisellä käsittelijällään ennallaan.

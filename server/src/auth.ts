@@ -533,12 +533,14 @@ authRouter.put("/users/:id", (req, res) => {
     email: z.email(),
     role: z.string().trim().min(1).refine(roleExists).optional(),
     // Tyhjä = salasanaa ei vaihdeta.
-    password: z.string().optional()
+    password: z.string().optional(),
+    // Oman sähköpostin tai salasanan vaihto vaatii nykyisen salasanan (varastettu istunto ei riitä takuaseen).
+    currentPassword: z.string().optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista nimi, sähköposti ja rooli." });
 
-  const user = db.prepare("SELECT id, role FROM users WHERE id = ?").get(req.params.id) as
-    | { id: string; role: string }
+  const user = db.prepare("SELECT id, role, email, password_hash FROM users WHERE id = ?").get(req.params.id) as
+    | { id: string; role: string; email: string; password_hash: string }
     | undefined;
   if (!user) return res.status(404).json({ error: "Käyttäjää ei löytynyt." });
 
@@ -556,6 +558,16 @@ authRouter.put("/users/:id", (req, res) => {
   const { name, email, password } = parsed.data;
   if (password && password.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: `Salasanassa pitää olla vähintään ${MIN_PASSWORD_LENGTH} merkkiä.` });
+  }
+
+  // Omaa sähköpostia tai salasanaa vaihdettaessa pitää antaa nykyinen salasana. Näin varastetulla istunnolla
+  // ei voi vaihtaa osoitetta ja ohjata salasanan palautusta pysyvästi hyökkääjälle. Pääkäyttäjä saa muuttaa
+  // muiden tietoja ilman tätä (hänen oikeutensa riittää).
+  const changesOwnEmail = self && email.toLowerCase() !== user.email.toLowerCase();
+  if (self && (changesOwnEmail || password)) {
+    if (!parsed.data.currentPassword || !verifyPassword(parsed.data.currentPassword, user.password_hash)) {
+      return res.status(403).json({ error: "Vahvista muutos nykyisellä salasanallasi." });
+    }
   }
 
   const emailTaken = db.prepare("SELECT 1 FROM users WHERE email = ? AND id != ?").get(email, user.id);

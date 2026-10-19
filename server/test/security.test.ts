@@ -4,6 +4,7 @@ import {
   ADMIN_EMAIL, call, inbound, login, MANAGER_EMAIL, OTHER_MANAGER_EMAIL, PASSWORD, SERVICE_EMAIL, startServer, type TestServer
 } from "./helpers.js";
 import { htmlToText } from "../src/mail-common.js";
+import { isPublicMailHost } from "../src/routes/gmail.js";
 
 // Tietoturvaregressiot: jokainen testi vastaa korjattua haavoittuvuutta, jottei se palaa.
 describe("tietoturva", () => {
@@ -97,5 +98,48 @@ describe("tietoturva", () => {
     htmlToText("<style".repeat(400000));
     htmlToText("<".repeat(400000));
     assert.ok(Date.now() - t0 < 1000, "htmlToText kesti liian kauan");
+  });
+
+  it("väärennetyllä In-Reply-To-otsakkeella ei voi kaapata toisen tehtävän ketjua", async () => {
+    // Asukkaan sähköposti luo tehtävän ja tallentaa viestin tunnisteen.
+    const first = await inbound(server, admin, {
+      companyId: "demo-company", senderName: "Liisa", senderEmail: "liisa@example.com",
+      subject: "Hanan vuoto", body: "Keittiön hana vuotaa.", channel: "email", sourceMessageId: "<msg-1@mail>"
+    });
+    const ticketId = first.data.ticketId as string;
+    // Ulkopuolinen väärentää In-Reply-To:n samaan ketjuun, mutta eri lähettäjällä.
+    const hijack = await inbound(server, admin, {
+      companyId: "demo-company", senderName: "Ulkopuolinen", senderEmail: "attacker@evil.fi",
+      subject: "Re: Hanan vuoto", body: "Lähetä lasku tänne.", channel: "email",
+      sourceMessageId: "<msg-2@mail>", threadMessageIds: ["<msg-1@mail>"]
+    });
+    assert.notEqual(hijack.data.appended, true, "väärennetty vastaus liitettiin tehtävään");
+    // Oikea lähettäjä pääsee jatkamaan ketjua.
+    const legit = await inbound(server, admin, {
+      companyId: "demo-company", senderName: "Liisa", senderEmail: "liisa@example.com",
+      subject: "Re: Hanan vuoto", body: "Vuoto jatkuu.", channel: "email",
+      sourceMessageId: "<msg-3@mail>", threadMessageIds: ["<msg-1@mail>"]
+    });
+    assert.equal(legit.data.appended, true);
+    assert.equal(legit.data.ticketId, ticketId);
+  });
+
+  it("oman sähköpostin tai salasanan vaihto vaatii nykyisen salasanan", async () => {
+    const adminId = await usersById(ADMIN_EMAIL);
+    const noPw = await call(server, admin, "PUT", `/users/${adminId}`, { name: "Demo", email: "uusi@toimisto.fi", role: "Pääkäyttäjä" });
+    assert.equal(noPw.status, 403);
+    const wrongPw = await call(server, admin, "PUT", `/users/${adminId}`, { name: "Demo", email: "uusi@toimisto.fi", role: "Pääkäyttäjä", currentPassword: "vaara" });
+    assert.equal(wrongPw.status, 403);
+    const ok = await call(server, admin, "PUT", `/users/${adminId}`, { name: "Demo", email: "uusi@toimisto.fi", role: "Pääkäyttäjä", currentPassword: PASSWORD });
+    assert.equal(ok.status, 200);
+  });
+
+  it("postipalvelimen osoitteeksi ei kelpaa sisäverkon osoite (SSRF)", () => {
+    for (const host of ["127.0.0.1", "localhost", "169.254.169.254", "10.0.0.5", "192.168.1.1", "kotilo", "metadata.internal"]) {
+      assert.equal(isPublicMailHost(host), false, host);
+    }
+    for (const host of ["imap.gmail.com", "outlook.office365.com", "mail.example.fi"]) {
+      assert.equal(isPublicMailHost(host), true, host);
+    }
   });
 });

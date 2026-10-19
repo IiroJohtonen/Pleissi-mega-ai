@@ -184,7 +184,7 @@ loginCodesRouter.post("/auth/resend-code", async (req, res) => {
   if (!user) return res.status(401).json({ error: expired });
 
   const code = newCode();
-  db.prepare("UPDATE login_challenges SET code_hash = ?, attempts = 0, sends = sends + 1, sent_at = ? WHERE id_hash = ?")
+  db.prepare("UPDATE login_challenges SET code_hash = ?, sends = sends + 1, sent_at = ? WHERE id_hash = ?")
     .run(codeHash(parsed.data.challengeId, code), new Date().toISOString(), challenge.id_hash);
   try {
     await sendCode(user, code);

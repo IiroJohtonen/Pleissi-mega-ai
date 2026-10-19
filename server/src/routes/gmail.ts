@@ -51,17 +51,29 @@ function connectTarget(req: Request, res: Response): string | null {
   return null;
 }
 
-type ConnectState = { provider: "gmail" | "microsoft"; target: string; userName: string; returnTo: string; expiresAt: number };
+type ConnectState = { provider: "gmail" | "microsoft"; target: string; userName: string; returnTo: string; expiresAt: number; browserNonce: string };
+
+// Yhdistämisen aloittaneen selaimen eväste. Vastauksen viimeistely (Googlen/Microsoftin paluu) hyväksytään
+// vain samasta selaimesta, jotta aloittaja ei voi lähettää kirjautumislinkkiä kollegalle ja tallentaa tämän
+// postilaatikkoa omalle tililleen.
+const CONNECT_COOKIE = "kotilo_mail_connect";
+function readConnectCookie(req: Request): string {
+  const match = (req.headers.cookie ?? "").match(/(?:^|;\s*)kotilo_mail_connect=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
 const connectStates = new Map<string, ConnectState>();
 
 function startConnect(req: Request, res: Response, provider: ConnectState["provider"]): string | null {
   const target = connectTarget(req, res);
   if (!target) return null;
   const state = crypto.randomBytes(24).toString("hex");
+  const browserNonce = crypto.randomBytes(24).toString("hex");
   const origin = typeof req.headers.origin === "string" && /^https?:\/\/[^\s/]+$/.test(req.headers.origin)
     ? req.headers.origin
     : process.env.APP_URL || "http://localhost:5173";
-  connectStates.set(state, { provider, target, userName: res.locals.user?.name ?? "Pääkäyttäjä", returnTo: origin, expiresAt: Date.now() + 10 * 60 * 1000 });
+  connectStates.set(state, { provider, target, userName: res.locals.user?.name ?? "Pääkäyttäjä", returnTo: origin, expiresAt: Date.now() + 10 * 60 * 1000, browserNonce });
+  // Eväste kulkee mukana, kun palveluntarjoaja ohjaa selaimen takaisin /gmail/callback-osoitteeseen.
+  res.cookie(CONNECT_COOKIE, browserNonce, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 10 * 60 * 1000, path: "/api" });
   return state;
 }
 
@@ -99,8 +111,14 @@ ${returnTo ? `<a href="${escape(returnTo)}/#/settings" style="color:#2f6ba8;font
   );
   const state = typeof req.query.state === "string" ? connectStates.get(req.query.state) : undefined;
   if (typeof req.query.state === "string") connectStates.delete(req.query.state);
+  const browserNonce = readConnectCookie(req);
+  res.clearCookie(CONNECT_COOKIE, { path: "/api" });
   if (!state || state.expiresAt < Date.now() || state.provider !== provider) {
     return page("Yhdistäminen epäonnistui", "Kirjautumispyyntö on vanhentunut tai virheellinen. Aloita yhdistäminen uudelleen Pleissin asetuksista.");
+  }
+  // Viimeistelyn pitää tapahtua samassa selaimessa, josta yhdistäminen aloitettiin.
+  if (!browserNonce || browserNonce !== state.browserNonce) {
+    return page("Viimeistele samassa selaimessa", "Sähköpostitilin yhdistäminen pitää viimeistellä samassa selaimessa, josta se aloitettiin. Aloita uudelleen Pleissin asetuksista.", state.returnTo);
   }
   if (typeof req.query.code !== "string") {
     return page("Yhdistäminen peruttiin", `${label}-tiliä ei yhdistetty.`, state.returnTo);
@@ -119,7 +137,26 @@ gmailRouter.get("/gmail/callback", (req, res) => connectCallback(req, res, "gmai
 gmailRouter.get("/mail/microsoft/callback", (req, res) => connectCallback(req, res, "microsoft"));
 
 // IMAP/SMTP-tilin yhdistäminen: yhteys kokeillaan ennen tallennusta, jotta virheelliset tiedot huomataan heti.
-const hostSchema = z.string().trim().min(3).max(200).regex(/^[a-z0-9.-]+$/i, "Palvelimen osoite on virheellinen.");
+// Postipalvelimen osoitteeksi kelpaa vain julkinen verkkonimi. Sisäverkon ja pilven metatieto-osoitteet
+// torjutaan, jottei asetuksilla voi saada palvelinta ottamaan yhteyttä sisäisiin palveluihin (SSRF).
+export function isPublicMailHost(host: string): boolean {
+  const value = host.trim().toLowerCase().replace(/\.$/, "");
+  if (!value || !value.includes(".")) return false; // yksiosaiset nimet (esim. docker-palvelun nimi, localhost)
+  if (/(^|\.)(localhost|local|internal|intranet|lan|home|corp)$/.test(value)) return false;
+  const ipv4 = value.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const [a, b] = ipv4.slice(1).map(Number);
+    if (ipv4.slice(1).some(part => Number(part) > 255)) return false;
+    if (a === 0 || a === 10 || a === 127 || a >= 224) return false;      // tämä verkko, yksityinen, loopback, multicast/varattu
+    if (a === 169 && b === 254) return false;                            // link-local ja pilven metatieto
+    if (a === 192 && b === 168) return false;                            // yksityinen
+    if (a === 172 && b >= 16 && b <= 31) return false;                   // yksityinen
+    if (a === 100 && b >= 64 && b <= 127) return false;                  // CGNAT
+  }
+  return true;
+}
+const hostSchema = z.string().trim().min(3).max(200).regex(/^[a-z0-9.-]+$/i, "Palvelimen osoite on virheellinen.")
+  .refine(host => process.env.NODE_ENV === "test" || isPublicMailHost(host), "Palvelimen osoitteeksi tarvitaan julkinen verkkonimi.");
 const portSchema = z.coerce.number().int().min(1).max(65535);
 gmailRouter.post("/mail/imap", async (req, res) => {
   const target = connectTarget(req, res);

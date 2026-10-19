@@ -58,7 +58,7 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
     req.params.id,
-    parsed.data.actor,
+    res.locals.user?.name ?? parsed.data.actor,
     `decision_${parsed.data.decision}`,
     JSON.stringify({
       decision: parsed.data.decision,
@@ -389,7 +389,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     id("message"),
     req.params.id,
     "outbound",
-    parsed.data.actor,
+    res.locals.user?.name ?? parsed.data.actor,
     subject,
     body,
     timestamp,
@@ -416,7 +416,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
     req.params.id,
-    parsed.data.actor,
+    res.locals.user?.name ?? parsed.data.actor,
     "reply_sent",
     JSON.stringify({ to: recipient, ...(cc.length > 0 ? { cc: cc.join(", ") } : {}), subject }),
     timestamp
