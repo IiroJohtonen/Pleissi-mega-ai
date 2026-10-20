@@ -85,40 +85,36 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
   res.json({ ok: true, status });
 });
 
-// Pyytää AI:lta uuden vastausehdotuksen yhtiön dokumentaation pohjalta. Ehdotuksen peruste ja
-// lähde tallennetaan tehtävälle; itse luonnos palautetaan käsittelijän muokattavaksi eikä sitä
-// tallenneta ennen kuin käsittelijä tallentaa sen.
+// Pyytää AI:lta vastausehdotuksen yhtiön dokumentaation ja tehtävän sähköpostiketjun pohjalta. Ehdotuksen
+// voi pyytää uudelleen: kun asukkaalle on jo vastattu, AI lukee koko ketjun lähetettyine vastauksineen ja
+// kirjoittaa seuraavan vastauksen. Peruste ja lähde tallennetaan tehtävälle; itse luonnos palautetaan
+// käsittelijän muokattavaksi eikä sitä tallenneta ennen kuin käsittelijä tallentaa sen.
+const CONVERSATION_MESSAGES = 20;
+const CONVERSATION_MESSAGE_CHARS = 3000;
+const CONVERSATION_CHARS = 24000;
+
 ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
   const ticket = getAuthorizedTicket(req.params.id) as any;
   if (!ticket) return res.status(404).json({ error: "Ticket not found" });
-
-  const alreadySuggested = db.prepare(
-    "SELECT 1 FROM audit_log WHERE ticket_id = ? AND action = 'ai_suggested' LIMIT 1"
-  ).get(req.params.id);
-  if (alreadySuggested) {
-    return res.status(409).json({ error: "AI-ehdotus on jo pyydetty tälle tehtävälle." });
-  }
 
   // Käsittelijän valinnainen lisätieto, jonka AI ottaa huomioon luonnoksessa.
   const options = z.object({ context: z.string().trim().max(2000).optional() }).safeParse(req.body ?? {});
   if (!options.success) return res.status(400).json({ error: "Lisätieto saa olla enintään 2000 merkkiä." });
 
   const messages = db.prepare(
-    "SELECT direction, body FROM messages WHERE ticket_id = ? ORDER BY created_at"
-  ).all(req.params.id) as { direction: string; body: string }[];
-  const conversation = messages.length
-    ? messages
-        .slice(-6)
-        .map(message => `${message.direction === "inbound" ? "Asukas" : "Isännöinti"}: ${message.body.slice(0, 2000)}`)
-        .join("\n\n")
-    : ticket.summary;
+    "SELECT direction, body, created_at, channel FROM messages WHERE ticket_id = ? ORDER BY created_at"
+  ).all(req.params.id) as ConversationMessage[];
+  // Jatkovastaus: asukkaalle on jo lähetetty vastaus, joten AI jatkaa keskustelua eikä aloita alusta.
+  // Urakoitsijalle lähetetty työtilaus ei ole vastaus asukkaalle.
+  const followUp = messages.some(message => message.direction === "outbound" && message.channel !== "contractor");
+  const conversation = messages.length ? conversationText(messages) : ticket.summary;
 
   // AI saa vain tehtävään osuvat palat: haku otsikon, viimeisimpien viestien ja lisätiedon perusteella.
   const chunks = selectKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? ""].join("\n"));
   // Arkaluonteinen tehtävä ei mene AI:lle: ehdotus tehdään dokumentaatiohaulla.
   const sensitive = detectSensitivity(ticket.id, `${ticket.subject}\n${conversation}`);
   const { result: suggestion } = await withAiLog(ticket.id, () =>
-    suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", { allowAi: !sensitive }));
+    suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", { allowAi: !sensitive, followUp }));
   const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
   const timestamp = now();
 
@@ -137,7 +133,10 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     req.params.id,
     "ai",
     "ai_suggested",
-    JSON.stringify({ source_id: source?.knowledgeId ?? null, chunk_id: source?.id ?? null, used_ai: suggestion.usedAi, sensitive }),
+    JSON.stringify({
+      source_id: source?.knowledgeId ?? null, chunk_id: source?.id ?? null, used_ai: suggestion.usedAi, sensitive,
+      follow_up: followUp || undefined
+    }),
     timestamp
   );
 
@@ -155,9 +154,30 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     reason: suggestion.reason,
     source: source ? { id: source.knowledgeId, title: source.documentTitle, chunkId: source.id, page: source.page } : null,
     usedAi: suggestion.usedAi,
-    sensitive
+    sensitive,
+    followUp
   });
 });
+
+// Sähköpostiketju AI:lle vanhimmasta uusimpaan. Pitkästä ketjusta otetaan uusimmat viestit, jotta
+// asukkaan viimeisin viesti ja jo lähetetyt vastaukset ovat aina mukana.
+type ConversationMessage = { direction: string; body: string; created_at: string; channel: string };
+
+function conversationText(messages: ConversationMessage[]) {
+  const parts: string[] = [];
+  let length = 0;
+  const recent = messages.slice(-CONVERSATION_MESSAGES);
+  for (let index = recent.length - 1; index >= 0; index--) {
+    const message = recent[index];
+    const who = message.direction === "inbound" ? "Asukas"
+      : message.channel === "contractor" ? "Isännöinti (viesti urakoitsijalle)" : "Isännöinti (lähetetty vastaus)";
+    const part = `${who}, ${message.created_at.slice(0, 10)}: ${message.body.trim().slice(0, CONVERSATION_MESSAGE_CHARS)}`;
+    if (parts.length && length + part.length > CONVERSATION_CHARS) break;
+    parts.unshift(part);
+    length += part.length;
+  }
+  return parts.join("\n\n");
+}
 
 // Käsittelijä merkitsee tehtävän arkaluonteiseksi tai poistaa merkinnän.
 ticketActionsRouter.put("/tickets/:id/sensitive", (req, res) => {

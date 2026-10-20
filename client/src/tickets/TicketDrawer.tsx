@@ -305,12 +305,13 @@ export function TicketDrawer({
     setSuggestError("");
   }, [ticket.id]);
 
-  // AI-ehdotuksen voi pyytää tehtävälle vain kerran; aiempi pyyntö näkyy lokissa.
-  const suggestionUsed = Boolean(suggestion) || detail.audit.some(a => a.action === "ai_suggested");
+  // AI-ehdotuksen voi pyytää uudelleen; aiempi pyyntö näkyy lokissa. Kun asukkaalle on jo vastattu,
+  // uusi ehdotus on jatkovastaus, jossa AI ottaa huomioon koko sähköpostiketjun.
+  const suggestedBefore = Boolean(suggestion) || detail.audit.some(a => a.action === "ai_suggested");
   // Dokumenttia ehdotetaan vasta, kun tehtävälle on pyydetty AI-ehdotus.
   const aiSource = suggestion
     ? suggestion.source
-    : suggestionUsed && ticket.knowledge_source_id && ticket.knowledge_source_title
+    : suggestedBefore && ticket.knowledge_source_id && ticket.knowledge_source_title
       ? { id: ticket.knowledge_source_id, title: ticket.knowledge_source_title, chunkId: ticket.knowledge_source_chunk_id, page: ticket.knowledge_source_page }
       : null;
 
@@ -357,10 +358,13 @@ export function TicketDrawer({
         source: { id: string; title: string; chunkId?: string | null; page?: number | string | null } | null;
         usedAi: boolean;
         sensitive?: boolean;
+        followUp?: boolean;
       }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
       setSuggestionToast({
-        title: result.usedAi
+        title: result.usedAi && result.followUp
+          ? t("AI on luonut uuden ehdotuksen. Se ottaa huomioon tehtävän sähköpostit ja asukkaalle jo lähetetyt vastaukset. Tarkista ja muokkaa tekstiä ennen lähettämistä.")
+          : result.usedAi
           ? t("AI on luonut ehdotuksen tälle tehtävälle. Tarkista ja muokkaa tekstiä ennen lähettämistä.")
           : result.sensitive
           ? t("Tehtävä on arkaluonteinen, joten sitä ei lähetetty AI:lle. Ehdotus tehtiin avainsanahaulla dokumentaatiosta.")
@@ -1060,14 +1064,14 @@ export function TicketDrawer({
             <button
               className="ai-button"
               onClick={openSuggestionPrompt}
-              disabled={suggesting || suggestionUsed}
-              title={suggestionUsed ? t("AI-ehdotuksen voi pyytää tehtävälle vain kerran.") : undefined}
+              disabled={suggesting}
             >
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2l1.900 5.600a4 4 0 0 0 2.500 2.500L22 12l-5.600 1.900a4 4 0 0 0-2.500 2.500L12 22l-1.900-5.600a4 4 0 0 0-2.500-2.500L2 12l5.600-1.900a4 4 0 0 0 2.500-2.500z" />
               </svg>
-              {suggesting ? t("AI kirjoittaa…") : suggestionUsed ? t("AI-ehdotus pyydetty")
-                : ticket.sensitive ? t("Pyydä ehdotus dokumentaatiosta") : t("Pyydä AI-ehdotus")}
+              {suggesting ? t("AI kirjoittaa…")
+                : ticket.sensitive ? (suggestedBefore ? t("Pyydä uusi ehdotus dokumentaatiosta") : t("Pyydä ehdotus dokumentaatiosta"))
+                : suggestedBefore ? t("Pyydä uusi AI-ehdotus") : t("Pyydä AI-ehdotus")}
             </button>
           </div>
           {/* Arkaluonteinen tehtävä (esim. terveystietoja) ei mene AI:lle; merkinnän voi asettaa ja poistaa. */}
