@@ -17,7 +17,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Tehtävä › Vastaus asukkaalle › Pyydä AI-ehdotus / Pyydä uusi AI-ehdotus.
 
-**Testit:** T-151–T-153
+**Testit:** T-151–T-153 · PR #42
 
 ## 20.10.2026 · Vastaukseen tehtävän liitteitä ja dokumentaation tiedostoja
 
