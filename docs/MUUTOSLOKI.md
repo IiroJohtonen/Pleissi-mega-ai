@@ -16,7 +16,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Tehtävä › Vastaus asukkaalle › viestikentän alla ennen Lähetä-painiketta.
 
-**Testit:** T-148–T-150
+**Testit:** T-148–T-150 · PR #41
 
 ## 20.10.2026 · Esittelyaineisto: alustan tyhjennys ja uudet esimerkkitiedot
 
