@@ -7,7 +7,7 @@ import { suggestReply } from "../ai.js";
 import { withAiLog } from "../ai-log.js";
 import { selectKnowledgeChunks } from "../knowledge-chunks.js";
 import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
-import { attachmentsDir, db } from "../db.js";
+import { attachmentsDir, db, knowledgeFilesDir } from "../db.js";
 import { type OutgoingAttachment, parseSender, replyAccountsFor, sendEmail } from "../mail.js";
 import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
@@ -258,29 +258,54 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
       filename: z.string().trim().min(1).max(200),
       mimeType: z.string().max(120).default("application/octet-stream"),
       data: z.string()
-    })).max(MAX_REPLY_ATTACHMENTS).optional()
+    })).max(MAX_REPLY_ATTACHMENTS).optional(),
+    // Tehtävän omat liitteet ja taloyhtiön dokumentaation tiedostot, jotka lähetetään vastauksen mukana.
+    ticketAttachmentIds: z.array(z.string().min(1)).max(MAX_REPLY_ATTACHMENTS).optional(),
+    knowledgeIds: z.array(z.string().min(1)).max(MAX_REPLY_ATTACHMENTS).optional()
   });
   const parsed = schema.safeParse(req.body);
-  if (!parsed.success) {
+  const fileCount = parsed.success
+    ? (parsed.data.attachments?.length ?? 0) + (parsed.data.ticketAttachmentIds?.length ?? 0) + (parsed.data.knowledgeIds?.length ?? 0)
+    : 0;
+  if (!parsed.success || fileCount > MAX_REPLY_ATTACHMENTS) {
     return res.status(400).json({ error: `Vastaus ei voi olla tyhjä, ja liitteitä voi olla enintään ${MAX_REPLY_ATTACHMENTS}.` });
   }
 
-  const outgoing: OutgoingAttachment[] = (parsed.data.attachments ?? []).map(attachment => ({
+  const ticket = getAuthorizedTicket(req.params.id) as any;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+  // stored = liite on jo tehtävän liitteissä (tehtävän omat liitteet), joten sitä ei tallenneta eikä tarkisteta uudelleen.
+  const outgoing: (OutgoingAttachment & { stored: boolean })[] = (parsed.data.attachments ?? []).map(attachment => ({
     filename: attachment.filename,
     mimeType: attachment.mimeType || "application/octet-stream",
-    content: Buffer.from(attachment.data, "base64")
+    content: Buffer.from(attachment.data, "base64"),
+    stored: false
   }));
+  for (const attachmentId of new Set(parsed.data.ticketAttachmentIds ?? [])) {
+    const row = db.prepare("SELECT id, filename, mime_type FROM attachments WHERE id = ? AND ticket_id = ?").get(attachmentId, ticket.id) as
+      { id: string; filename: string; mime_type: string } | undefined;
+    const content = row ? await fs.readFile(path.join(attachmentsDir, row.id)).catch(() => null) : null;
+    if (!row || !content) return res.status(404).json({ error: "Tehtävän liitettä ei löytynyt." });
+    outgoing.push({ filename: row.filename, mimeType: row.mime_type || "application/octet-stream", content, stored: true });
+  }
+  // Dokumentaatiosta kelpaavat taloyhtiön voimassa olevat tiedostot, eivät henkilökunnan sisäiset dokumentit.
+  for (const knowledgeId of new Set(parsed.data.knowledgeIds ?? [])) {
+    const row = db.prepare(`
+      SELECT id, file_name, mime_type FROM knowledge
+      WHERE id = ? AND company_id = ? AND kind = 'document' AND file_name IS NOT NULL AND status = 'active' AND audience != 'internal'
+    `).get(knowledgeId, ticket.company_id) as { id: string; file_name: string; mime_type: string | null } | undefined;
+    const content = row ? await fs.readFile(path.join(knowledgeFilesDir, row.id)).catch(() => null) : null;
+    if (!row || !content) return res.status(404).json({ error: "Dokumenttia ei löytynyt tämän taloyhtiön dokumentaatiosta." });
+    outgoing.push({ filename: row.file_name, mimeType: row.mime_type || "application/octet-stream", content, stored: false });
+  }
   if (outgoing.some(attachment => attachment.content.length === 0)) {
     return res.status(400).json({ error: "Liitetiedosto on tyhjä tai sitä ei voitu lukea." });
   }
   if (outgoing.reduce((total, attachment) => total + attachment.content.length, 0) > MAX_REPLY_ATTACHMENT_BYTES) {
     return res.status(413).json({ error: "Liitteiden yhteiskoko saa olla enintään 15 Mt." });
   }
-  const unsafe = await unsafeFileMessage(outgoing);
+  const unsafe = await unsafeFileMessage(outgoing.filter(attachment => !attachment.stored));
   if (unsafe) return res.status(400).json({ error: unsafe });
-
-  const ticket = getAuthorizedTicket(req.params.id) as any;
-  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
 
   const cc = (parsed.data.cc ?? "").split(/[,;\s]+/).map(address => address.trim()).filter(Boolean);
   const invalidCc = cc.find(address => !/^[^\s<>,;@]+@[^\s<>,;@]+\.[^\s<>,;@]+$/.test(address));
@@ -357,7 +382,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
       subject,
       body,
       sourceMessageId: gmailImport?.gmail_message_id,
-      attachments: outgoing,
+      attachments: outgoing.map(({ filename, mimeType, content }) => ({ filename, mimeType, content })),
       companyId: ticket.company_id,
       accountId: fromAccount?.id
     });
@@ -397,7 +422,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   );
 
   // Lähetetyt liitteet tallennetaan tehtävän liitteisiin samaan paikkaan kuin saapuneet.
-  for (const attachment of outgoing) {
+  for (const attachment of outgoing.filter(item => !item.stored)) {
     const attachmentId = id("attachment");
     await fs.writeFile(path.join(attachmentsDir, attachmentId), attachment.content);
     db.prepare(`

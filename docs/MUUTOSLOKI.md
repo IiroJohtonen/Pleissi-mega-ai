@@ -3,6 +3,21 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 20.10.2026 · Vastaukseen tehtävän liitteitä ja dokumentaation tiedostoja
+
+**Mitä muutettiin**
+- Asukkaalle lähtevään vastaukseen voi nyt liittää tiedoston omalta koneelta, tehtävällä jo olevan liitteen (esim.
+  asukkaan lähettämä kuva tai huoltoyhtiön raportti) tai taloyhtiön dokumentaatiosta tiedoston (esim. järjestyssäännöt).
+- Valinnat **Tehtävän liitteet** ja **Dokumentaatiosta** ovat Liitä tiedosto -painikkeen vieressä. Valitut näkyvät listana,
+  ja ne voi poistaa ×-merkistä.
+- Dokumentaatiosta tarjotaan vain taloyhtiön käytössä olevat tiedostot, ei henkilökunnan sisäisiä dokumentteja.
+  Liitteitä voi olla yhteensä enintään 10 ja enintään 15 Mt.
+
+**Miten**
+- Tehtävä › Vastaus asukkaalle › viestikentän alla ennen Lähetä-painiketta.
+
+**Testit:** T-148–T-150
+
 ## 20.10.2026 · Esittelyaineisto: alustan tyhjennys ja uudet esimerkkitiedot
 
 **Mitä muutettiin**
