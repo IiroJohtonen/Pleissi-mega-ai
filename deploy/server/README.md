@@ -136,6 +136,24 @@ powershell -ExecutionPolicy Bypass -File deploy\server\deploy.ps1 -Server root@P
 
 Tietokanta, liitteet ja asetukset säilyvät.
 
+## Esittelyaineisto
+
+Esittelyä varten alustan voi tyhjentää ja täyttää kuvitteellisella aineistolla: neljä taloyhtiötä asuntoineen ja
+asukkaineen, noin 70 tehtävää (myös AI-ehdotuksia ja vanhoja hoidettuja), dokumentit, avaimet lainoineen, sauna- ja
+pyykkituvan vuorot, autopaikat, jonot, mittarilukemat, muutot, remontit, tiedotteet ja hallituksen tunnukset.
+
+```
+powershell -ExecutionPolicy Bypass -File deploy\server\demo-reset.ps1 -Server root@app.kotilo.io -Salasana "Esittely-2026" -Sahkoposti oma@osoite.fi
+```
+
+- Kaikki nykyiset tiedot ja käyttäjät poistuvat. Varmuuskopio otetaan ensin kansioon `/opt/kotilo/varmuuskopiot`.
+- Toimiston asetukset, perustiedot ja AI-kulujen seuranta säilyvät.
+- Pääkäyttäjä kirjautuu `-Sahkoposti`-osoitteella (oletus demo@pohjantahti-isannointi.fi). Anna oma osoitteesi, jos
+  kirjautumiskoodi on käytössä, jotta koodi tulee perille.
+- Muut tunnukset samalla salasanalla: isännöitsijät hanna.lehtonen@, mikko.rantanen@ ja jari.salminen@ sekä asiakaspalvelu
+  elina.koskinen@pohjantahti-isannointi.fi, asukasportaali liisa@example.com ja matti@example.com, hallitus
+  hallitus.koivikko@example.com (myös honkaranta, satamakulma ja pihlajapuisto).
+
 ## Varmuuskopiot
 
 - Kotilo ottaa tietokannasta ja liitteistä varmuuskopion kerran päivässä kansioon `/opt/kotilo/varmuuskopiot` ja säilyttää 14 uusinta.

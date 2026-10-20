@@ -1073,7 +1073,8 @@ export function seed() {
   backfillKnowledge();
   const company = db.prepare("SELECT id FROM companies WHERE id = ?").get("demo-company");
   if (company) {
-    seedUrgentExamples();
+    // Kiireelliset esimerkit kuuluvat alkuperäiseen testiaineistoon; esittelyaineistoon (demo-reset) niitä ei lisätä.
+    if (db.prepare("SELECT 1 FROM tickets WHERE id = 'ticket-1'").get()) seedUrgentExamples();
     return;
   }
 

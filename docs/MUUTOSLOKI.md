@@ -3,6 +3,23 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 20.10.2026 · Esittelyaineisto: alustan tyhjennys ja uudet esimerkkitiedot
+
+**Mitä muutettiin**
+- Uudella komennolla alustan saa tyhjennettyä ja täytettyä esittelyä varten kuvitteellisella aineistolla. Ennen
+  tyhjennystä otetaan automaattisesti varmuuskopio.
+- Aineistossa on neljä taloyhtiötä (Koivikko, Honkaranta, Satamakulma ja Pihlajapuisto), 36 asuntoa, noin 50 asukasta ja
+  noin 70 tehtävää: avoimia AI-ehdotuksineen, hätä- ja kiireellisiä, huoltoyhtiölle tilattuja, tunnistamattomia ja vanhoja
+  hoidettuja raporttien historiaksi.
+- Lisäksi dokumentit, avaimet ja avainlainat, sauna- ja pyykkituvan vuorot, autopaikat, jonot, mittarilukemat, muutot,
+  remontit, tiedotteet, lämmityspaikkatilaukset ja hallituksen tunnukset.
+- Kaikki nykyiset tiedot ja käyttäjät poistuvat. Toimiston asetukset säilyvät. Kaikilla esittelytunnuksilla on sama salasana.
+
+**Miten**
+- Koneelta: `deploy\server\demo-reset.ps1` uusimman version viennin jälkeen (ohje: deploy/server/README.md).
+
+**Testit:** T-144–T-147
+
 ## 19.10.2026 · Päätösjonon ehdotus on nyt "AI:n ehdotus"
 
 **Mitä muutettiin**
