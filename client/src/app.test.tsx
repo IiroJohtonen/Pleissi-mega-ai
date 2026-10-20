@@ -666,6 +666,42 @@ describe("sovellus", () => {
     }
   });
 
+  it("vastaukseen voi liittää tehtävän liitteen ja dokumentaation tiedoston", async () => {
+    const detail = {
+      ticket: { ...overdueTicket, status: "waiting_manager", company_name: "As Oy Koivikko" },
+      messages: [{ id: "m1", direction: "inbound", sender: "Matti <matti@example.com>", subject: "Häiriö", body: "Naapuri metelöi", created_at: "2026-10-14T10:00:00Z", channel: "email" }],
+      audit: [], reporters: [], apartments: [], notes: [], workOrders: [], contractor: null, replyAccounts: [],
+      attachments: [{ id: "a1", filename: "valokuva.jpg", mime_type: "image/jpeg", size: 2048, created_at: "2026-10-14T10:00:01Z", direction: "inbound", message_id: "m1" }]
+    };
+    responses["/tickets/ticket-1"] = detail;
+    responses["/companies/demo-company/knowledge"] = [
+      { id: "k1", title: "Järjestyssäännöt", kind: "document", file_name: "jarjestyssaannot.pdf", audience: "ai" },
+      { id: "k2", title: "Sisäinen ohje", kind: "document", file_name: "sisainen.pdf", audience: "internal" },
+      { id: "k3", title: "Saunavuorot", kind: "fact", file_name: null, audience: "ai" }
+    ];
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      fireEvent.click(await screen.findByRole("button", { name: "Liitä tehtävän liite" }));
+      fireEvent.click(screen.getByRole("option", { name: "valokuva.jpg (2 kt)" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Liitä dokumentti dokumentaatiosta" }));
+      // Vain taloyhtiön käytössä olevat tiedostot tarjotaan, ei sisäisiä ohjeita eikä vakiotietoja.
+      expect(screen.getAllByRole("option").map(option => option.textContent)).toEqual(["Järjestyssäännöt (jarjestyssaannot.pdf)"]);
+      fireEvent.click(screen.getByRole("option", { name: "Järjestyssäännöt (jarjestyssaannot.pdf)" }));
+      expect(screen.getByRole("button", { name: "Poista liite jarjestyssaannot.pdf" })).toBeTruthy();
+
+      fireEvent.change(document.querySelector(".draft-editor")!, { target: { value: "Liitteenä järjestyssäännöt." } });
+      fireEvent.click(screen.getByRole("button", { name: "Lähetä" }));
+      await vi.waitFor(() => expect(calls.some(request => request.url.endsWith("/tickets/ticket-1/reply"))).toBe(true));
+      const reply = JSON.parse(calls.find(request => request.url.endsWith("/tickets/ticket-1/reply"))?.body ?? "{}");
+      expect(reply.ticketAttachmentIds).toEqual(["a1"]);
+      expect(reply.knowledgeIds).toEqual(["k1"]);
+    } finally {
+      delete responses["/tickets/ticket-1"];
+      delete responses["/companies/demo-company/knowledge"];
+    }
+  });
+
   it("näyttää saapuneen viestin liitteet aikajanalla pikkukuvina", async () => {
     const detail = {
       ticket: { ...overdueTicket, company_name: "As Oy Koivikko" },

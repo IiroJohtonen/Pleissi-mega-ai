@@ -2214,5 +2214,8 @@ export const en: Record<string, string> = {
   "Roolilla on käyttäjiä. Vaihda heille ensin toinen rooli.": "The role has users. Change their role first.",
   "Poista rooli": "Delete role",
   "Nykyinen salasana": "Current password",
-  "Vahvista sähköpostin tai salasanan vaihto": "Confirm the email or password change"
+  "Vahvista sähköpostin tai salasanan vaihto": "Confirm the email or password change",
+  "Liitä tehtävän liite": "Attach a task file",
+  "Dokumentaatiosta": "From documentation",
+  "Liitä dokumentti dokumentaatiosta": "Attach a document from documentation"
 };

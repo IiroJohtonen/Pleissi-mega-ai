@@ -5174,3 +5174,16 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
 .role-tables-head button { padding: 5px 10px; font-size: 12px; }
 .role-tables .queue-access { padding-left: 22px; }
 .role-tables .queue-access legend { margin-left: -22px; }
+
+/* Vastauksen liitteet: tehtävän liitteiden ja dokumentaation valinta samannäköisenä kuin Liitä tiedosto. */
+.attach-dropdown .dropdown-trigger {
+  padding: 7px 12px;
+  border: 1px dashed #b8bdc2;
+  border-radius: 9px;
+  background: transparent;
+  color: #37475a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.attach-dropdown .dropdown-trigger:hover:not(:disabled) { border-color: #3f7fbf; color: #28548f; }
+.attach-dropdown ul { min-width: 280px; }

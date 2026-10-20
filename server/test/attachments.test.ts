@@ -123,6 +123,32 @@ describe("liitteet", () => {
     assert.equal((await call(server, resident, "GET", "/portal/tickets/ticket-1")).status, 404);
     assert.equal((await call(server, admin, "GET", "/portal/me")).status, 403);
   });
+  it("vastaukseen voi valita tehtävän omia liitteitä ja taloyhtiön dokumentteja, ei muiden tehtävien tai sisäisiä", async () => {
+    const ticketId = await createTicket(server, admin);
+    const otherTicketId = await createTicket(server, admin);
+    const own = (await call(server, admin, "POST", `/tickets/${ticketId}/attachments`, {
+      attachments: [{ filename: "kuva.png", mimeType: "image/png", data: PNG }]
+    })).data.attachmentIds[0];
+    const foreign = (await call(server, admin, "POST", `/tickets/${otherTicketId}/attachments`, {
+      attachments: [{ filename: "muu.pdf", mimeType: "application/pdf", data: PDF }]
+    })).data.attachmentIds[0];
+    const upload = async (audience: string) => (await (await fetch(
+      `${server.url}/api/companies/demo-company/knowledge/documents?${new URLSearchParams({ fileName: `ohje-${audience}.txt`, mimeType: "text/plain", audience })}`,
+      { method: "POST", headers: { Authorization: `Bearer ${admin}`, "Content-Type": "application/octet-stream" }, body: "Järjestyssäännöt" }
+    )).json()).knowledgeId as string;
+    const publicDoc = await upload("ai");
+    const internalDoc = await upload("internal");
+
+    const reply = (body: Record<string, unknown>) => call(server, admin, "POST", `/tickets/${ticketId}/reply`, { body: "Liitteenä ohje.", ...body });
+    // Kelvolliset liitteet hyväksytään; lähetys pysähtyy vasta siihen, ettei tehtävällä ole vastaanottajaa.
+    const valid = await reply({ ticketAttachmentIds: [own], knowledgeIds: [publicDoc] });
+    assert.equal(valid.status, 400);
+    assert.match(valid.data.error, /sähköpostiosoitetta/);
+    assert.equal((await reply({ ticketAttachmentIds: [foreign] })).status, 404);
+    assert.equal((await reply({ knowledgeIds: [internalDoc] })).status, 404);
+    const tooMany = await reply({ ticketAttachmentIds: Array(6).fill(own), knowledgeIds: Array(5).fill(publicDoc) });
+    assert.equal(tooMany.status, 400);
+  });
 });
 
 describe("virustarkistus (ClamAV)", () => {

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { DownloadLink, FactDropdown } from "../components/common";
+import { DownloadLink, Dropdown, FactDropdown } from "../components/common";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
@@ -222,12 +222,34 @@ export function TicketDrawer({
   const [sendError, setSendError] = useState("");
   // Vastauksen mukana lähetettävät liitteet; tallentuvat lähetyksessä tehtävän liitteisiin.
   const [replyFiles, setReplyFiles] = useState<File[]>([]);
-  const replyFilesSize = replyFiles.reduce((total, file) => total + file.size, 0);
+  // Vastaukseen valitut tehtävän omat liitteet ja taloyhtiön dokumentaation tiedostot (tunnisteet).
+  const [replyTicketFiles, setReplyTicketFiles] = useState<string[]>([]);
+  const [replyDocs, setReplyDocs] = useState<string[]>([]);
+  // Taloyhtiön dokumentit, joissa on tiedosto; henkilökunnan sisäisiä dokumentteja ei lähetetä asukkaalle.
+  const [companyDocs, setCompanyDocs] = useState<{ id: string; title: string; file_name: string }[]>([]);
+  const replyFilesSize = replyFiles.reduce((total, file) => total + file.size, 0)
+    + detail.attachments.filter(attachment => replyTicketFiles.includes(attachment.id)).reduce((total, attachment) => total + attachment.size, 0);
   const replyFilesTooLarge = replyFilesSize > MAX_REPLY_ATTACHMENT_BYTES;
+  const replyFileCount = replyFiles.length + replyTicketFiles.length + replyDocs.length;
 
   useEffect(() => {
     setReplyFiles([]);
+    setReplyTicketFiles([]);
+    setReplyDocs([]);
   }, [ticket.id]);
+
+  useEffect(() => {
+    // Tunnistamattoman tehtävän taloyhtiö ei ole vielä varma, joten dokumentteja ei tarjota.
+    if (!ticket.company_id || ticket.company_pending) {
+      setCompanyDocs([]);
+      return;
+    }
+    api<{ id: string; title: string; kind: string; file_name: string | null; audience?: string }[]>(`/companies/${encodeURIComponent(ticket.company_id)}/knowledge`)
+      .then(rows => setCompanyDocs(rows
+        .filter(row => row.kind === "document" && row.file_name && row.audience !== "internal")
+        .map(row => ({ id: row.id, title: row.title, file_name: row.file_name ?? "" }))))
+      .catch(() => setCompanyDocs([]));
+  }, [ticket.company_id, ticket.company_pending]);
 
   // Kuvaus on tehtävän alkuperäinen viesti; käsin luodulla tehtävällä sen tiivistelmä.
   const firstInbound = detail.messages.find(m => m.direction === "inbound");
@@ -644,11 +666,15 @@ export function TicketDrawer({
             filename: file.name,
             mimeType: file.type || "application/octet-stream",
             data: await fileToBase64(file)
-          })))
+          }))),
+          ticketAttachmentIds: replyTicketFiles,
+          knowledgeIds: replyDocs
         })
       });
       setDraft("");
       setReplyFiles([]);
+      setReplyTicketFiles([]);
+      setReplyDocs([]);
       setReplyTargetId(null);
       setCc("");
       setSentTo(result.to);
@@ -1168,12 +1194,63 @@ export function TicketDrawer({
                   // Sama tiedosto voidaan valita uudelleen poistamisen jälkeen.
                   onChange={event => {
                     const picked = [...(event.target.files ?? [])];
-                    setReplyFiles(current => [...current, ...picked].slice(0, MAX_REPLY_ATTACHMENTS));
+                    setReplyFiles(current => [...current, ...picked].slice(0, Math.max(MAX_REPLY_ATTACHMENTS - replyTicketFiles.length - replyDocs.length, current.length)));
                     event.target.value = "";
                     setSendError("");
                   }}
                 />
               </label>
+              {/* Tehtävällä jo olevat liitteet ja taloyhtiön dokumentit valitaan listasta. */}
+              {detail.attachments.some(attachment => !replyTicketFiles.includes(attachment.id)) && (
+                <Dropdown
+                  className="attach-dropdown"
+                  value=""
+                  placeholder={t("Tehtävän liitteet")}
+                  ariaLabel={t("Liitä tehtävän liite")}
+                  disabled={replyFileCount >= MAX_REPLY_ATTACHMENTS}
+                  options={detail.attachments
+                    .filter(attachment => !replyTicketFiles.includes(attachment.id))
+                    .map(attachment => ({ value: attachment.id, label: `${attachment.filename} (${formatFileSize(attachment.size)})` }))}
+                  onChange={value => { setReplyTicketFiles(current => [...current, value]); setSendError(""); }}
+                />
+              )}
+              {companyDocs.some(doc => !replyDocs.includes(doc.id)) && (
+                <Dropdown
+                  className="attach-dropdown"
+                  value=""
+                  placeholder={t("Dokumentaatiosta")}
+                  ariaLabel={t("Liitä dokumentti dokumentaatiosta")}
+                  disabled={replyFileCount >= MAX_REPLY_ATTACHMENTS}
+                  options={companyDocs
+                    .filter(doc => !replyDocs.includes(doc.id))
+                    .map(doc => ({ value: doc.id, label: `${doc.title} (${doc.file_name})` }))}
+                  onChange={value => { setReplyDocs(current => [...current, value]); setSendError(""); }}
+                />
+              )}
+              {detail.attachments.filter(attachment => replyTicketFiles.includes(attachment.id)).map(attachment => (
+                <span className="reply-file" key={attachment.id}>
+                  {attachment.filename} <small>{formatFileSize(attachment.size)}</small>
+                  <button
+                    onClick={() => setReplyTicketFiles(current => current.filter(item => item !== attachment.id))}
+                    title={t("Poista liite")}
+                    aria-label={t("Poista liite {0}", attachment.filename)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {companyDocs.filter(doc => replyDocs.includes(doc.id)).map(doc => (
+                <span className="reply-file" key={doc.id}>
+                  {doc.file_name} <small>{t("Dokumentaatio")}</small>
+                  <button
+                    onClick={() => setReplyDocs(current => current.filter(item => item !== doc.id))}
+                    title={t("Poista liite")}
+                    aria-label={t("Poista liite {0}", doc.file_name)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
               {replyFiles.map((file, index) => (
                 <span className="reply-file" key={`${file.name}-${index}`}>
                   {file.name} <small>{formatFileSize(file.size)}</small>
