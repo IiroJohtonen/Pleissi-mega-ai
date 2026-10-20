@@ -3,6 +3,22 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 20.10.2026 · AI-ehdotuksen voi pyytää uudelleen, ja se lukee sähköpostiketjun
+
+**Mitä muutettiin**
+- AI-ehdotuksen voi nyt pyytää tehtävälle useamman kerran. Ensimmäisen ehdotuksen jälkeen painikkeessa lukee
+  **Pyydä uusi AI-ehdotus**.
+- Kun asukkaalle on jo lähetetty vastaus, AI lukee uutta ehdotusta tehdessään tehtävän sähköpostiketjun (oikealla
+  näkyvät viestit) vanhimmasta uusimpaan, myös jo lähetetyt vastaukset. Se kirjoittaa seuraavan vastauksen samaan
+  ketjuun: vastaa asukkaan uusimpaan viestiin eikä toista jo kerrottua.
+- Ilmoitus kertoo, kun uusi ehdotus on tehty sähköpostiketjun perusteella. Urakoitsijalle lähetettyjä työtilauksia
+  ei tulkita asukkaalle lähetetyiksi vastauksiksi.
+
+**Miten**
+- Tehtävä › Vastaus asukkaalle › Pyydä AI-ehdotus / Pyydä uusi AI-ehdotus.
+
+**Testit:** T-151–T-153 · PR #42
+
 ## 20.10.2026 · Vastaukseen tehtävän liitteitä ja dokumentaation tiedostoja
 
 **Mitä muutettiin**

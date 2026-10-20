@@ -387,7 +387,7 @@ export function AiSuggestModal({
               placeholder={t("Esim. Huoltomies käy torstaina klo 10. Asukkaan ei tarvitse olla paikalla.")}
             />
           </label>
-          <p className="reply-hint">{t("AI-ehdotuksen voi pyytää tehtävälle vain kerran. Lisätieto ei näy asukkaalle sellaisenaan.")}</p>
+          <p className="reply-hint">{t("Ehdotuksen voi pyytää uudelleen. Kun asukkaalle on jo vastattu, AI lukee myös tehtävän sähköpostit ja kirjoittaa seuraavan vastauksen. Lisätieto ei näy asukkaalle sellaisenaan.")}</p>
           <div className="draft-actions">
             <button className="primary" type="submit">{t("Pyydä ehdotus")}</button>
             <button type="button" onClick={onClose}>{t("Peruuta")}</button>

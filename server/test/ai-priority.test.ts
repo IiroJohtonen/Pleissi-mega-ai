@@ -265,7 +265,7 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.match(JSON.stringify(request.body.messages), /Manager's notes:\\nHuoltomies käy torstaina klo 10\./);
     // Asukkaan yhteystiedot ja tunnisteet eivät mene AI:lle, mutta käsittelijän lisätieto menee sellaisenaan.
     // Vain asukkaan teksti maskataan; dokumentaatiossa saa olla toimiston omia numeroita.
-    const sent = JSON.stringify(request.body.messages).split("Conversation so far:")[1].split("Manager's notes:")[0];
+    const sent = JSON.stringify(request.body.messages).split("Conversation so far")[1].split("Manager's notes:")[0];
     assert.match(sent, /Soittakaa \[puhelin\] tai \[sähköposti\], tilini \[tilinumero\], hetu \[henkilötunnus\]/);
     assert.doesNotMatch(sent, /4567|example\.com|010190/);
     // Vastausehdotus: oma malli, lyhyt tokenraja ja vakio-ohje välimuistilohkona.
@@ -274,6 +274,37 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.deepEqual(request.body.thinking, { type: "between_tools" });
     assert.deepEqual(request.body.system[0].cache_control, { type: "ephemeral" });
     assert.doesNotMatch(request.body.system[0].text, /Ilmanvaihto/);
+  });
+
+  it("AI-ehdotuksen voi pyytää uudelleen, ja vastauksen jälkeen AI lukee koko sähköpostiketjun", async () => {
+    const created = await postInbound(server, admin, {
+      companyId: "demo-company", senderName: "Asukas", senderEmail: "asukas@example.com", subject: "Parvekkeen ovi",
+      body: "Parvekkeen ovi ei mene kiinni.", channel: "email"
+    });
+    const ticketId = created.data.ticketId as string;
+
+    const first = await call(server, admin, "POST", `/tickets/${ticketId}/suggest`, {});
+    assert.equal(first.status, 200);
+    assert.equal(first.data.followUp, false);
+    assert.match(requests.at(-1).body.messages[0].content, /Reply type:\nFirst reply to the resident\./);
+
+    // Asukkaalle lähetetty vastaus tallentuu tehtävän viestiketjuun.
+    const sent = await call(server, admin, "POST", `/tickets/${ticketId}/message`, {
+      sender: "Isännöinti", subject: "Re: Parvekkeen ovi", body: "Huoltomies tulee katsomaan ovea torstaina.", channel: "email"
+    });
+    assert.equal(sent.status, 200);
+
+    const second = await call(server, admin, "POST", `/tickets/${ticketId}/suggest`, {});
+    assert.equal(second.status, 200);
+    assert.equal(second.data.followUp, true);
+    const content = requests.at(-1).body.messages[0].content as string;
+    // Ketju vanhimmasta uusimpaan: asukkaan viesti ja lähetetty vastaus ovat mukana.
+    assert.match(content, /Asukas, \d{4}-\d{2}-\d{2}: Parvekkeen ovi ei mene kiinni\.[\s\S]*Isännöinti \(lähetetty vastaus\), \d{4}-\d{2}-\d{2}: Huoltomies tulee katsomaan ovea torstaina\./);
+    assert.match(content, /Reply type:\nFollow-up/);
+    const audit = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data.audit as { action: string; details: string }[];
+    const suggestions = audit.filter(row => row.action === "ai_suggested");
+    assert.equal(suggestions.length, 2);
+    assert.ok(suggestions.some(row => JSON.parse(row.details).follow_up === true));
   });
 
   it("AI saa vain tehtävään osuvat palat muodossa [pala] otsikko (lähde)", async () => {

@@ -837,6 +837,18 @@ describe("sovellus", () => {
       expect(await screen.findByText("Käsittelijän lisätieto.")).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: "Sulje ilmoitus" }));
       expect(screen.queryByText("Käsittelijän lisätieto.")).toBeNull();
+
+      // Ehdotuksen voi pyytää uudelleen; jatkovastauksessa AI on lukenut myös sähköpostiketjun.
+      responses["/tickets/ticket-1/suggest"] = { draft: "Huoltomies kävi jo.", reason: "Aiempi vastaus.", source: null, usedAi: true, followUp: true };
+      const again = screen.getByRole("button", { name: /Pyydä uusi AI-ehdotus/ }) as HTMLButtonElement;
+      expect(again.disabled).toBe(false);
+      // Edellinen ehdotus on luonnoksessa, joten korvaaminen varmistetaan.
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+      fireEvent.click(again);
+      fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Pyydä ehdotus" }));
+      expect(await screen.findByText(/ottaa huomioon tehtävän sähköpostit/)).toBeTruthy();
+      expect(calls.filter(request => request.url.endsWith("/tickets/ticket-1/suggest"))).toHaveLength(2);
+      confirm.mockRestore();
     } finally {
       delete responses["/tickets/ticket-1"];
       delete responses["/tickets/ticket-1/suggest"];
