@@ -18,7 +18,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Koneelta: `deploy\server\demo-reset.ps1` uusimman version viennin jälkeen (ohje: deploy/server/README.md).
 
-**Testit:** T-144–T-147
+**Testit:** T-144–T-147 · PR #40
 
 ## 19.10.2026 · Päätösjonon ehdotus on nyt "AI:n ehdotus"
 
