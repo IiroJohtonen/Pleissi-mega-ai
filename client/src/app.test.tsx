@@ -155,6 +155,26 @@ describe("sovellus", () => {
     }
   });
 
+  it("näyttää päätösjonon alla omat käsittelyssä olevat tehtävät", async () => {
+    const inProgress = { ...overdueTicket, id: "ticket-6", ticket_number: 6, subject: "Oma käsittelyssä", status: "waiting_manager" };
+    const othersInProgress = { ...inProgress, id: "ticket-7", ticket_number: 7, subject: "Toisen käsittelyssä", assignee_id: "user-2" };
+    const answered = { ...inProgress, id: "ticket-8", ticket_number: 8, subject: "Oma vastattu", status: "answered" };
+    const original = responses["/tickets?companyId=all"];
+    responses["/tickets?companyId=all"] = [overdueTicket, inProgress, othersInProgress, answered];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      const heading = await screen.findByRole("heading", { name: /Käsittelyssä olevat tehtäväsi/ });
+      expect(heading.querySelector("b")?.textContent).toBe("1");
+      expect(screen.getByText("Oma käsittelyssä")).toBeTruthy();
+      // Ylempi lista sisältää edelleen vain uudet ja avoimet tehtävät.
+      expect(screen.getByRole("heading", { name: /Avoimet tehtäväsi/ }).querySelector("b")?.textContent).toBe("1");
+      expect(screen.queryByText("Toisen käsittelyssä")).toBeNull();
+      expect(screen.queryByText("Oma vastattu")).toBeNull();
+    } finally {
+      responses["/tickets?companyId=all"] = original;
+    }
+  });
+
   it("laskee muistutukset päätösjonoon ja näyttää ne suodatettuna listana", async () => {
     const waiting = {
       ...overdueTicket, id: "ticket-4", ticket_number: 4, subject: "Odottava kysymys", due_date: null, status: "waiting_manager",
