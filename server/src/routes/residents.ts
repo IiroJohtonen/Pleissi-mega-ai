@@ -102,7 +102,7 @@ function resolveApartment(companyId: string, input: { apartmentId?: string; addr
 const rolesText = (roles: readonly string[]) => RESIDENT_ROLES.filter(role => roles.includes(role)).join(",");
 
 // Lisää asukkaan yhtiöön ja luo asunnon, jos sitä ei vielä ole. Palauttaa virheen tekstinä.
-function addResident(companyId: string, input: unknown): { residentId: string } | { error: string; status: number } {
+export function addResident(companyId: string, input: unknown): { residentId: string } | { error: string; status: number } {
   const parsed = residentSchema.safeParse(input);
   if (!parsed.success) return { error: "Tarkista nimi, sähköposti, osoite ja asunto.", status: 400 };
 

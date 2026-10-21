@@ -5188,3 +5188,32 @@ em.sensitive-tag { padding: 1px 8px; font-size: 11px; }
 }
 .attach-dropdown .dropdown-trigger:hover:not(:disabled) { border-color: #3f7fbf; color: #28548f; }
 .attach-dropdown ul { min-width: 280px; }
+
+/* Uuden tehtävän asukashaku: taloyhtiön asukkaat ja Muu-valinta. */
+.resident-combo { display: grid; gap: 8px; }
+.resident-combo-field { position: relative; }
+.resident-combo > label { color: #4b535d; font-size: 12px; font-weight: 700; }
+.resident-combo ul {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  width: min(420px, 100%);
+  max-height: 320px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  background: #eef1f5;
+  border: 1px solid #cdd3da;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(13, 16, 20, .14);
+}
+.resident-combo li { display: grid; gap: 2px; padding: 7px 9px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+.resident-combo li:hover { background: #dfe3e7; }
+.resident-combo li span { color: #898f95; font-size: 11px; font-weight: 400; }
+.resident-combo li.empty-option { color: #898f95; cursor: default; }
+.resident-combo li.empty-option:hover { background: none; }
+.resident-combo li.other-option { border-top: 1px solid #d9dde2; border-radius: 0 0 7px 7px; }
+.resident-combo li.clear-option { color: #9c2b1f; }
+.resident-combo-details { color: #6b737c; font-size: 12px; }

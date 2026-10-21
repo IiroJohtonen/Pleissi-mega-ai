@@ -2221,4 +2221,9 @@ export const en: Record<string, string> = {
   "Ehdotuksen voi pyytää uudelleen. Kun asukkaalle on jo vastattu, AI lukee myös tehtävän sähköpostit ja kirjoittaa seuraavan vastauksen. Lisätieto ei näy asukkaalle sellaisenaan.": "You can request a new suggestion. Once the resident has been replied to, the AI also reads the ticket's emails and writes the next reply. The information is not shown to the resident as such.",
   "Käsittelyssä olevat tehtäväsi": "Your tickets in progress",
   "Sinulla ei ole käsittelyssä olevia tehtäviä.": "You have no tickets in progress.",
+  "Hae taloyhtiön asukasta (valinnainen)": "Search the housing company's residents (optional)",
+  "Taloyhtiöllä ei ole asukkaita": "The housing company has no residents",
+  "Kirjoita asukkaan nimi, osoite ja asunto": "Enter the resident's name, address and apartment",
+  "Ei asukasta": "No resident",
+  "Henkilö lisätään taloyhtiön asukkaaksi ja tehtävän ilmoittajaksi.": "The person is added as a resident of the housing company and as the reporter of the ticket.",
 };
