@@ -17,7 +17,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Kaikki tehtävät › + Luo tehtävä › Asukas.
 
-**Testit:** T-156–T-158
+**Testit:** T-156–T-158 · PR #44
 
 ## 21.10.2026 · Päätösjonon alla omat käsittelyssä olevat tehtävät
 
