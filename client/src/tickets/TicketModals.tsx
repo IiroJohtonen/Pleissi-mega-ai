@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api, errorMessage } from "../session";
-import type { Company } from "../types";
+import type { Company, Resident } from "../types";
 import { t } from "../i18n";
 
 // Sulkemisen syyt ja se, mitä kukin tarkoittaa asukkaan kannalta.
@@ -88,6 +88,8 @@ export function SkipTicketModal({
   );
 }
 
+const OTHER_RESIDENT = "__other__";
+
 export function TicketCreateModal({
   companies,
   defaultCompanyId,
@@ -103,8 +105,8 @@ export function TicketCreateModal({
     summary: string;
     type: string;
     priority: string;
-    residentName?: string;
-    apartmentNumber?: string;
+    residentId?: string;
+    newResident?: { name: string; address: string; apartmentNumber: string };
   }) => Promise<void>;
 }) {
   const [companyId, setCompanyId] = useState(defaultCompanyId);
@@ -112,13 +114,38 @@ export function TicketCreateModal({
   const [summary, setSummary] = useState("");
   const [type, setType] = useState("Ilmoitus");
   const [priority, setPriority] = useState("normal");
-  const [residentName, setResidentName] = useState("");
-  const [apartmentNumber, setApartmentNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Ilmoittaja: valitun taloyhtiön asukas, OTHER_RESIDENT = "Muu" (nimi, osoite ja asunto kirjoitetaan) tai tyhjä.
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [residentId, setResidentId] = useState("");
+  // Asukashaun teksti; null = haku kiinni, jolloin kentässä näkyy valittu ilmoittaja.
+  const [residentQuery, setResidentQuery] = useState<string | null>(null);
+  const [other, setOther] = useState({ name: "", address: "", apartmentNumber: "" });
+
+  useEffect(() => {
+    setResidents([]);
+    setResidentId("");
+    if (!companyId) return;
+    api<Resident[]>(`/companies/${encodeURIComponent(companyId)}/residents`).then(setResidents).catch(() => setResidents([]));
+  }, [companyId]);
+
+  const resident = residents.find(item => item.id === residentId);
+  const isOther = residentId === OTHER_RESIDENT;
+  const search = (residentQuery ?? "").trim().toLowerCase();
+  const residentMatches = residents
+    .filter(item => [item.name, item.apartment_number, item.address, item.email].some(value => value?.toLowerCase().includes(search)))
+    .slice(0, 8);
+  const otherReady = Boolean(other.name.trim() && other.address.trim() && other.apartmentNumber.trim());
+  const ready = Boolean(subject.trim() && summary.trim() && (!isOther || otherReady));
+
+  function chooseResident(value: string) {
+    setResidentId(value);
+    setResidentQuery(null);
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!subject.trim() || !summary.trim()) return;
+    if (!ready) return;
 
     setSubmitting(true);
     try {
@@ -128,8 +155,10 @@ export function TicketCreateModal({
         summary: summary.trim(),
         type,
         priority,
-        residentName: residentName.trim() || undefined,
-        apartmentNumber: apartmentNumber.trim() || undefined
+        residentId: resident?.id,
+        newResident: isOther
+          ? { name: other.name.trim(), address: other.address.trim(), apartmentNumber: other.apartmentNumber.trim() }
+          : undefined
       });
     } finally {
       setSubmitting(false);
@@ -177,15 +206,72 @@ export function TicketCreateModal({
             </select>
           </label>
 
-          <label>
-            <span>{t("Asukkaan nimi")}</span>
-            <input value={residentName} onChange={e => setResidentName(e.target.value)} placeholder={t("Valinnainen")} />
-          </label>
+          <div className="resident-combo">
+            <label htmlFor="new-ticket-resident">{t("Asukas")}</label>
+            <div className="resident-combo-field">
+              <input
+                id="new-ticket-resident"
+                value={residentQuery ?? (isOther ? t("Muu") : resident?.name ?? "")}
+                placeholder={t("Hae taloyhtiön asukasta (valinnainen)")}
+                autoComplete="off"
+                onFocus={() => setResidentQuery("")}
+                onChange={event => setResidentQuery(event.target.value)}
+                onBlur={() => setResidentQuery(null)}
+                onKeyDown={event => {
+                  if (event.key === "Escape") event.currentTarget.blur();
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (residentMatches.length > 0) chooseResident(residentMatches[0].id);
+                    event.currentTarget.blur();
+                  }
+                }}
+              />
+              {residentQuery !== null && (
+                <ul role="listbox" aria-label={t("Asukkaat")}>
+                  {residentMatches.map(item => (
+                    // mousedown ehtii ennen kentän blur-tapahtumaa, joka sulkee listan.
+                    <li key={item.id} role="option" aria-selected={item.id === residentId} onMouseDown={() => chooseResident(item.id)}>
+                      <strong>{item.name}</strong>
+                      <span>{[item.apartment_number, item.address, item.email].filter(Boolean).join(" · ")}</span>
+                    </li>
+                  ))}
+                  {residentMatches.length === 0 && (
+                    <li className="empty-option">{residents.length ? t("Ei hakua vastaavia asukkaita") : t("Taloyhtiöllä ei ole asukkaita")}</li>
+                  )}
+                  <li className="other-option" role="option" aria-selected={isOther} onMouseDown={() => chooseResident(OTHER_RESIDENT)}>
+                    <strong>{t("Muu")}</strong>
+                    <span>{t("Kirjoita asukkaan nimi, osoite ja asunto")}</span>
+                  </li>
+                  {residentId && <li className="clear-option" onMouseDown={() => chooseResident("")}>{t("Ei asukasta")}</li>}
+                </ul>
+              )}
+            </div>
+            {resident && (
+              <small className="resident-combo-details">
+                {[resident.apartment_number, resident.address, resident.email].filter(Boolean).join(" · ")}
+              </small>
+            )}
+          </div>
 
-          <label>
-            <span>{t("Asunto")}</span>
-            <input value={apartmentNumber} onChange={e => setApartmentNumber(e.target.value)} placeholder={t("Valinnainen, esim. A 12")} />
-          </label>
+          {isOther && (
+            <>
+              <div className="signature-fields">
+                <label>
+                  <span>{t("Asukkaan nimi")}</span>
+                  <input value={other.name} onChange={e => setOther({ ...other, name: e.target.value })} maxLength={200} autoFocus />
+                </label>
+                <label>
+                  <span>{t("Osoite")}</span>
+                  <input value={other.address} onChange={e => setOther({ ...other, address: e.target.value })} placeholder={t("Esim. Koivikkotie 10")} maxLength={200} />
+                </label>
+                <label>
+                  <span>{t("Asunto")}</span>
+                  <input value={other.apartmentNumber} onChange={e => setOther({ ...other, apartmentNumber: e.target.value })} placeholder={t("Esim. A 12")} maxLength={40} />
+                </label>
+              </div>
+              <p className="reply-hint">{t("Henkilö lisätään taloyhtiön asukkaaksi ja tehtävän ilmoittajaksi.")}</p>
+            </>
+          )}
 
           <label>
             <span>{t("Kuvaus")}</span>
@@ -194,7 +280,7 @@ export function TicketCreateModal({
 
           <div className="drawer-actions compact-actions">
             <button type="button" onClick={onClose}>{t("Peruuta")}</button>
-            <button className="primary" type="submit" disabled={submitting || !subject.trim() || !summary.trim()}>
+            <button className="primary" type="submit" disabled={submitting || !ready}>
               {submitting ? t("Luodaan…") : t("Luo tehtävä")}
             </button>
           </div>

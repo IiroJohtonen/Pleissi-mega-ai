@@ -155,6 +155,43 @@ describe("sovellus", () => {
     }
   });
 
+  it("uuden tehtävän asukkaaksi voi valita taloyhtiön asukkaan tai Muu-valinnalla kirjoittaa uuden", async () => {
+    responses["/companies/demo-company/residents"] = [
+      { id: "r1", name: "Matti Meikäläinen", email: "matti@example.com", apartment_number: "A 1", address: "Koivikkotie 1" }
+    ];
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets");
+      fireEvent.click(await screen.findByRole("button", { name: "+ Luo tehtävä" }));
+      fireEvent.change(screen.getByPlaceholderText("Esim. Käytävävalot"), { target: { value: "Ovikello" } });
+      fireEvent.change(screen.getByPlaceholderText("Kerro tehtävän sisältö..."), { target: { value: "Ovikello ei soi." } });
+
+      const residentInput = screen.getByLabelText("Asukas");
+      await vi.waitFor(() => expect(calls.some(request => request.url.endsWith("/companies/demo-company/residents"))).toBe(true));
+      fireEvent.focus(residentInput);
+      fireEvent.mouseDown(await screen.findByText("Matti Meikäläinen"));
+      expect(screen.getByText("A 1 · Koivikkotie 1 · matti@example.com")).toBeTruthy();
+
+      // Muu avaa kentät nimelle, osoitteelle ja asunnolle; luonti odottaa, että ne on täytetty.
+      fireEvent.focus(residentInput);
+      fireEvent.mouseDown(screen.getByText("Muu"));
+      const submit = screen.getByRole("button", { name: "Luo tehtävä" }) as HTMLButtonElement;
+      expect(submit.disabled).toBe(true);
+      fireEvent.change(screen.getByLabelText("Asukkaan nimi"), { target: { value: "Olli Ohikulkija" } });
+      fireEvent.change(screen.getByLabelText("Osoite"), { target: { value: "Uusitie 5" } });
+      fireEvent.change(screen.getByLabelText("Asunto"), { target: { value: "C 7" } });
+      expect(submit.disabled).toBe(false);
+      fireEvent.click(submit);
+
+      await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets"))).toBe(true));
+      const body = JSON.parse(calls.find(request => request.method === "POST" && request.url.endsWith("/tickets"))!.body);
+      expect(body.residentId).toBeUndefined();
+      expect(body.newResident).toEqual({ name: "Olli Ohikulkija", address: "Uusitie 5", apartmentNumber: "C 7" });
+    } finally {
+      delete responses["/companies/demo-company/residents"];
+    }
+  });
+
   it("näyttää päätösjonon alla omat käsittelyssä olevat tehtävät", async () => {
     const inProgress = { ...overdueTicket, id: "ticket-6", ticket_number: 6, subject: "Oma käsittelyssä", status: "waiting_manager" };
     const othersInProgress = { ...inProgress, id: "ticket-7", ticket_number: 7, subject: "Toisen käsittelyssä", assignee_id: "user-2" };

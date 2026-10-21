@@ -16,6 +16,7 @@ import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
 import { moveTicketToCompany, suggestCompany } from "../ticket-company.js";
 import { ticketForm } from "../portal-form-data.js";
 import { deleteAiRequests } from "../ai-log.js";
+import { addResident } from "./residents.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -97,6 +98,13 @@ ticketsRouter.post("/tickets", (req, res) => {
     priority: z.enum(["emergency", "urgent", "normal", "low"]).default("normal"),
     residentName: z.string().optional(),
     apartmentNumber: z.string().optional(),
+    // Ilmoittajaksi valittu taloyhtiön asukas, tai "Muu"-valinnalla kirjoitettu uusi asukas.
+    residentId: z.string().min(1).optional(),
+    newResident: z.object({
+      name: z.string().trim().min(1).max(200),
+      address: z.string().trim().min(1).max(200),
+      apartmentNumber: z.string().trim().min(1).max(40)
+    }).optional(),
     sourceChannel: z.string().default("manual")
   });
 
@@ -108,48 +116,77 @@ ticketsRouter.post("/tickets", (req, res) => {
   const company = db.prepare("SELECT id FROM companies WHERE id = ?").get(companyId) as { id: string } | undefined;
   if (!company) return res.status(404).json({ error: "Company not found" });
 
+  // Valittu asukas tulee tehtävän ilmoittajaksi, ja tehtävän asunto on hänen asuntonsa, kuten kun ilmoittaja
+  // valitaan tehtäväsivulla. "Muu" lisää henkilön ensin taloyhtiön asukkaaksi.
+  const { residentId, newResident } = parsed.data;
+  if (residentId && !db.prepare("SELECT 1 FROM residents WHERE id = ? AND company_id = ?").get(residentId, companyId)) {
+    return res.status(404).json({ error: "Asukasta ei löytynyt tästä yhtiöstä." });
+  }
+
   const ticketId = id("ticket");
   const timestamp = now();
-  const apartment = parsed.data.apartmentNumber
-    ? db.prepare("SELECT id FROM apartments WHERE company_id = ? AND apartment_number = ?").get(companyId, parsed.data.apartmentNumber) as { id: string } | undefined
-    : undefined;
-  const resident = parsed.data.residentName
-    ? db.prepare("SELECT id FROM residents WHERE company_id = ? AND lower(name) = lower(?)").get(companyId, parsed.data.residentName) as { id: string } | undefined
-    : undefined;
+  const actor = res.locals.user?.name ?? "isannoitsija";
 
-  db.prepare(`
-    INSERT INTO tickets
-    (id, company_id, apartment_id, resident_id, type, priority, status, subject, summary,
-     source_channel, ai_action, ai_reason, draft, created_at, updated_at, assignee_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    ticketId,
-    companyId,
-    apartment?.id ?? null,
-    resident?.id ?? null,
-    parsed.data.type,
-    parsed.data.priority,
-    "waiting_manager",
-    parsed.data.subject,
-    parsed.data.summary,
-    parsed.data.sourceChannel,
-    "human",
-    "Manuaalinen tehtävä",
-    "",
-    timestamp,
-    timestamp,
-    // Käsin luotu tehtävä on luojansa käsittelyssä.
-    res.locals.user?.id ?? null
-  );
+  const created = db.transaction(() => {
+    let reporterId = residentId ?? null;
+    if (!reporterId && newResident) {
+      const added = addResident(companyId, { ...newResident, email: "" });
+      if ("error" in added) return added;
+      reporterId = added.residentId;
+    }
+    const reporter = reporterId
+      ? db.prepare("SELECT id, name, apartment_id FROM residents WHERE id = ?").get(reporterId) as { id: string; name: string; apartment_id: string }
+      : undefined;
+    const apartment = !reporter && parsed.data.apartmentNumber
+      ? db.prepare("SELECT id FROM apartments WHERE company_id = ? AND apartment_number = ?").get(companyId, parsed.data.apartmentNumber) as { id: string } | undefined
+      : undefined;
+    const resident = reporter ?? (parsed.data.residentName
+      ? db.prepare("SELECT id FROM residents WHERE company_id = ? AND lower(name) = lower(?)").get(companyId, parsed.data.residentName) as { id: string } | undefined
+      : undefined);
 
-  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
-    id("audit"),
-    ticketId,
-    "isannoitsija",
-    "ticket_created_manual",
-    JSON.stringify({ subject: parsed.data.subject, source_channel: parsed.data.sourceChannel }),
-    timestamp
-  );
+    db.prepare(`
+      INSERT INTO tickets
+      (id, company_id, apartment_id, resident_id, type, priority, status, subject, summary,
+       source_channel, ai_action, ai_reason, draft, created_at, updated_at, assignee_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      ticketId,
+      companyId,
+      reporter?.apartment_id ?? apartment?.id ?? null,
+      resident?.id ?? null,
+      parsed.data.type,
+      parsed.data.priority,
+      "waiting_manager",
+      parsed.data.subject,
+      parsed.data.summary,
+      parsed.data.sourceChannel,
+      "human",
+      "Manuaalinen tehtävä",
+      "",
+      timestamp,
+      timestamp,
+      // Käsin luotu tehtävä on luojansa käsittelyssä.
+      res.locals.user?.id ?? null
+    );
+
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+      id("audit"),
+      ticketId,
+      "isannoitsija",
+      "ticket_created_manual",
+      JSON.stringify({ subject: parsed.data.subject, source_channel: parsed.data.sourceChannel }),
+      timestamp
+    );
+
+    if (reporter) {
+      db.prepare("INSERT OR IGNORE INTO ticket_reporters (ticket_id, resident_id) VALUES (?, ?)").run(ticketId, reporter.id);
+      db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+        id("audit"), ticketId, actor, "reporter_linked", JSON.stringify({ resident_id: reporter.id, name: reporter.name }), timestamp
+      );
+    }
+    return { ok: true as const };
+  })();
+  if ("error" in created) return res.status(created.status).json({ error: created.error });
 
   if (parsed.data.priority === "emergency") void alertEmergency(ticketId, res.locals.user?.id);
 

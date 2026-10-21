@@ -165,6 +165,40 @@ describe("tehtävät ja määräajat", () => {
     assert.equal((await ticket(id)).ticket.status, "waiting_manager");
   });
 
+  it("uuden tehtävän ilmoittajaksi voi valita asukkaan tai kirjoittaa uuden (Muu)", async () => {
+    const residents = (await call(server, service, "GET", "/companies/demo-company/residents")).data as any[];
+    const picked = residents[0];
+    const created = await call(server, service, "POST", "/tickets", {
+      companyId: "demo-company", subject: "Ovikello", summary: "Ovikello ei soi", residentId: picked.id
+    });
+    assert.equal(created.status, 201);
+    const detail = await ticket(created.data.ticketId);
+    assert.equal(detail.ticket.resident_id, picked.id);
+    assert.equal(detail.ticket.apartment_id, picked.apartment_id);
+    assert.deepEqual(detail.reporters.map((r: any) => r.id), [picked.id]);
+    assert.ok(detail.audit.some((row: any) => row.action === "reporter_linked"));
+
+    // Muu: henkilö lisätään taloyhtiön asukkaaksi ja asunto luodaan tarvittaessa.
+    const other = await call(server, service, "POST", "/tickets", {
+      companyId: "demo-company", subject: "Vuoto", summary: "Vesi tippuu",
+      newResident: { name: "Olli Ohikulkija", address: "Uusitie 5", apartmentNumber: "C 7" }
+    });
+    assert.equal(other.status, 201);
+    const otherDetail = await ticket(other.data.ticketId);
+    assert.equal(otherDetail.reporters[0].name, "Olli Ohikulkija");
+    assert.equal(otherDetail.reporters[0].apartment_number, "C 7");
+    const after = (await call(server, service, "GET", "/companies/demo-company/residents")).data as any[];
+    assert.ok(after.some(r => r.name === "Olli Ohikulkija" && r.address === "Uusitie 5"));
+
+    // Toisen yhtiön tai tuntematon asukas hylätään, eikä tehtävää luoda.
+    assert.equal((await call(server, service, "POST", "/tickets", {
+      companyId: "demo-company", subject: "X", summary: "Y", residentId: "ei-ole"
+    })).status, 404);
+    assert.equal((await call(server, service, "POST", "/tickets", {
+      companyId: "demo-company", subject: "X", summary: "Y", newResident: { name: "Nimi", address: "", apartmentNumber: "A 1" }
+    })).status, 400);
+  });
+
   it("tuntemattoman yhtiön tehtäviä ei palauteta", async () => {
     assert.equal((await call(server, admin, "GET", "/tickets?companyId=ei-ole")).status, 403);
     assert.equal((await call(server, admin, "GET", "/tickets/ei-ole")).status, 404);

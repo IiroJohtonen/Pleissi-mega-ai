@@ -3,6 +3,22 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 21.10.2026 · Uuden tehtävän asukasvalinta ja Muu-vaihtoehto
+
+**Mitä muutettiin**
+- Kun luot uuden tehtävän käsin, Asukas-kenttä ehdottaa valitun taloyhtiön asukkaita. Voit hakea nimellä,
+  asunnolla, osoitteella tai sähköpostilla.
+- Valitusta asukkaasta tulee tehtävän ilmoittaja, ja tehtävän asunto, osoite ja sähköposti täyttyvät hänen
+  tiedoistaan samalla tavalla kuin kun ilmoittaja valitaan tehtäväsivulla.
+- Listan viimeinen vaihtoehto on **Muu**. Se avaa kentät asukkaan nimelle, osoitteelle ja asunnolle. Henkilö
+  lisätään taloyhtiön asukkaaksi (ja asunto tarvittaessa) ja tehtävän ilmoittajaksi.
+- Asukkaan valinta on edelleen vapaaehtoinen.
+
+**Miten**
+- Kaikki tehtävät › + Luo tehtävä › Asukas.
+
+**Testit:** T-156–T-158 · PR #44
+
 ## 21.10.2026 · Päätösjonon alla omat käsittelyssä olevat tehtävät
 
 **Mitä muutettiin**

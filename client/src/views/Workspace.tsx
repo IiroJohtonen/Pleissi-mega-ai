@@ -469,8 +469,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
     summary: string;
     type: string;
     priority: string;
-    residentName?: string;
-    apartmentNumber?: string;
+    residentId?: string;
+    newResident?: { name: string; address: string; apartmentNumber: string };
   }) {
     const response = await api<{ ok: boolean; ticketId: string; status: string }>("/tickets", {
       method: "POST",

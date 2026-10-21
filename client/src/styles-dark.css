@@ -2503,3 +2503,28 @@
 :root[data-theme="dark"] .attach-dropdown .dropdown-trigger:hover:not(:disabled) {
     color: #9dbbe4
 }
+:root[data-theme="dark"] .resident-combo > label {
+    color: #c8ced6
+}
+:root[data-theme="dark"] .resident-combo ul {
+    background: #2e3a49;
+    border: 1px solid #333e4d
+}
+:root[data-theme="dark"] .resident-combo li:hover {
+    background: #151b23
+}
+:root[data-theme="dark"] .resident-combo li span {
+    color: #acb5c0
+}
+:root[data-theme="dark"] .resident-combo li.empty-option {
+    color: #acb5c0
+}
+:root[data-theme="dark"] .resident-combo li.other-option {
+    border-top: 1px solid #364251
+}
+:root[data-theme="dark"] .resident-combo li.clear-option {
+    color: #ea9e96
+}
+:root[data-theme="dark"] .resident-combo-details {
+    color: #b9c1ca
+}
