@@ -14,7 +14,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 **Miten**
 - Päätösjono › avointen tehtävien alla.
 
-**Testit:** T-154–T-155
+**Testit:** T-154–T-155 · PR #43
 
 ## 20.10.2026 · AI-ehdotuksen voi pyytää uudelleen, ja se lukee sähköpostiketjun
 
