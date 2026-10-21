@@ -3874,6 +3874,7 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -.04em; }
 /* Päätösjonon otsikkorivi: otsikko ja järjestyksen valinta. */
 .queue-heading-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 14px 0 0; }
 .queue-heading-row .queue-subheading { margin: 0; }
+.queue-subheading-section { margin-top: 28px; }
 .queue-sort { display: flex; align-items: center; gap: 8px; color: #4f6680; font-size: 12.5px; font-weight: 600; }
 .queue-sort .fact-dropdown-trigger { padding: 6px 12px; font-size: 13.5px; font-weight: 600; color: #1c232a; }
 .queue-sort .fact-dropdown ul { left: auto; right: 0; min-width: 190px; }

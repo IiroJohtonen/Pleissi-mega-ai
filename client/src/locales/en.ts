@@ -2219,4 +2219,6 @@ export const en: Record<string, string> = {
   "Pyydä uusi ehdotus dokumentaatiosta": "Request a new suggestion from the documentation",
   "Pyydä uusi AI-ehdotus": "Request a new AI suggestion",
   "Ehdotuksen voi pyytää uudelleen. Kun asukkaalle on jo vastattu, AI lukee myös tehtävän sähköpostit ja kirjoittaa seuraavan vastauksen. Lisätieto ei näy asukkaalle sellaisenaan.": "You can request a new suggestion. Once the resident has been replied to, the AI also reads the ticket's emails and writes the next reply. The information is not shown to the resident as such.",
+  "Käsittelyssä olevat tehtäväsi": "Your tickets in progress",
+  "Sinulla ei ole käsittelyssä olevia tehtäviä.": "You have no tickets in progress.",
 };

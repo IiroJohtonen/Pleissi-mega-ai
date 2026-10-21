@@ -487,6 +487,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const queueTickets = allCompanyTickets
     .filter(ticket => queueTicketStatuses.includes(ticket.status) && ticket.assignee_id === user.id && ticket.kind !== "renovation")
     .sort((a, b) => compareQueue(a, b, queueSort));
+  // Päätösjonon alla ovat käyttäjän omat Käsittelyssä-tilaiset tehtävät samassa järjestyksessä.
+  const inProgressTickets = allCompanyTickets
+    .filter(ticket => ticket.status === "waiting_manager" && ticket.assignee_id === user.id && ticket.kind !== "renovation")
+    .sort((a, b) => compareQueue(a, b, queueSort));
   // Omat keskeneräiset tehtävät, jotka vaativat huomiota; näytetään päätösjonon kärjessä.
   const reminderOrder = { overdue: 0, due: 1, waiting: 2 };
   const reminderTickets = allCompanyTickets
@@ -586,6 +590,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     : tab === "my-tickets" ? [...visibleTickets].sort((a, b) => compareTickets(a, b, "created"))
     : visibleTickets;
 
+  const pagedInProgress = usePaged(inProgressTickets, `in-progress|${queueSort}`);
   const pagedTickets = usePaged(listedTickets, [
     tab, JSON.stringify([companyFilter, priorityFilter, typeFilter, statusFilter, dueFilter]),
     JSON.stringify(columnSearch), ticketSort?.key, ticketSort?.descending
@@ -605,6 +610,29 @@ export function Workspace({ user }: { user: OfficeUser }) {
     status,
     count: allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && ticket.status === status).length
   }));
+
+  function renderTicketCard(ticket: Ticket) {
+    return (
+      <TicketCard
+        key={ticket.id}
+        ticket={ticket}
+        // Päätösjonon korteissa ei ole määräaikatägejä (määräaika näkyy tehtäväsivulla); odotusmuistutus näkyy.
+        reminders={ticketReminders(ticket, reminderSettings).filter(reminder =>
+          tab === "queue" ? reminder.kind === "waiting" : reminder.kind !== "overdue")}
+        compact={tab !== "queue"}
+        companyName={ticket.company_pending
+          ? t("Taloyhtiö tunnistamatta")
+          : companies.find(company => company.id === ticket.company_id)?.name}
+        users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}
+        allUsers={officeUsers}
+        canAssign={canAssignTickets(companies.find(company => company.id === ticket.company_id))}
+        assignToMe={tab !== "queue"}
+        onAssign={assigneeId => assignTicket(ticket.id, assigneeId)}
+        onOpen={() => openTicket(ticket.id)}
+        onDecision={(d) => requestDecision(ticket.id, d)}
+      />
+    );
+  }
 
   return (
     <div className={`app ${navOpen ? "nav-open" : ""} ${navPinned ? "" : "nav-collapsed"}`}>
@@ -1116,32 +1144,24 @@ export function Workspace({ user }: { user: OfficeUser }) {
               </div>
             )}
             {loading ? <div className="empty">{t("Ladataan…")}</div> :
-              pagedTickets.items.map(ticket => (
-                <TicketCard
-                  key={ticket.id}
-                  ticket={ticket}
-                  // Päätösjonon korteissa ei ole määräaikatägejä (määräaika näkyy tehtäväsivulla); odotusmuistutus näkyy.
-                  reminders={ticketReminders(ticket, reminderSettings).filter(reminder =>
-                    tab === "queue" ? reminder.kind === "waiting" : reminder.kind !== "overdue")}
-                  compact={tab !== "queue"}
-                  companyName={ticket.company_pending
-                    ? t("Taloyhtiö tunnistamatta")
-                    : companies.find(company => company.id === ticket.company_id)?.name}
-                  users={assignableUsers(companies.find(company => company.id === ticket.company_id), officeUsers)}
-                  allUsers={officeUsers}
-                  canAssign={canAssignTickets(companies.find(company => company.id === ticket.company_id))}
-                  assignToMe={tab !== "queue"}
-                  onAssign={assigneeId => assignTicket(ticket.id, assigneeId)}
-                  onOpen={() => openTicket(ticket.id)}
-                  onDecision={(d) => requestDecision(ticket.id, d)}
-                />
-              ))
+              pagedTickets.items.map(renderTicketCard)
             }
             {!loading && pagedTickets.pager}
             {!loading && visibleTickets.length === 0 && (
               <div className="empty">
                 {emptyTicketMessages[tab] ?? t("Ei tehtäviä.")}
               </div>
+            )}
+            {!loading && tab === "queue" && (
+              <>
+                <h2 className="queue-subheading queue-subheading-section">
+                  {t("Käsittelyssä olevat tehtäväsi")}
+                  <b>{inProgressTickets.length}</b>
+                </h2>
+                {pagedInProgress.items.map(renderTicketCard)}
+                {pagedInProgress.pager}
+                {inProgressTickets.length === 0 && <div className="empty">{t("Sinulla ei ole käsittelyssä olevia tehtäviä.")}</div>}
+              </>
             )}
           </section>
         )}

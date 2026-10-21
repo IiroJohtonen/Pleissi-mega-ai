@@ -3,6 +3,19 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 21.10.2026 · Päätösjonon alla omat käsittelyssä olevat tehtävät
+
+**Mitä muutettiin**
+- Päätösjonossa on avointen tehtävien alla uusi osio **Käsittelyssä olevat tehtäväsi**. Siinä näkyvät sinulle
+  osoitetut tehtävät, joiden tila on Käsittelyssä, ja niiden määrä.
+- Osio noudattaa samaa järjestystä kuin avoimet tehtävät (Järjestys-valinta). Tehtävän saa auki kortista.
+- Remonttitehtävät ovat edelleen Remontit-osiossa, eivätkä ne näy päätösjonossa.
+
+**Miten**
+- Päätösjono › avointen tehtävien alla.
+
+**Testit:** T-154–T-155 · PR #43
+
 ## 20.10.2026 · AI-ehdotuksen voi pyytää uudelleen, ja se lukee sähköpostiketjun
 
 **Mitä muutettiin**
