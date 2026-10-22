@@ -2247,5 +2247,16 @@ export const en: Record<string, string> = {
   "Ei hakua vastaavia rivejä.": "No rows match the search.",
   "Taulussa ei ole rivejä.": "The table has no rows.",
   "Avaa taloyhtiö": "Open housing company",
-  "Data-osion taulut": "Data tables"
+  "Data-osion taulut": "Data tables",
+  // AI-agentti
+  "AI-agentti varasi vuoron asukkaalle": "AI agent booked a slot for the resident",
+  "AI-agentti lisäsi asukkaan autopaikkajonoon": "AI agent added the resident to the parking queue",
+  "AI-agentti vastasi asukkaalle": "AI agent replied to the resident",
+  "AI-agentti jätti tehtävän henkilökunnalle": "AI agent left the ticket to the staff",
+  "AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat": "AI agent handles sauna, laundry room and parking requests",
+  "Pois päältä kaikki tehtävät menevät päätösjonoon.": "When off, every ticket goes to the decision queue.",
+  "AI-agentti lukee tunnistetun asukkaan uuden tehtävän. Jos asukas haluaa varata saunan tai pyykkituvan, agentti varaa vapaan vuoron tai ehdottaa varatun tilalle vapaita vuoroja ja varaa asukkaan valitseman. Autopaikoista se kertoo vapaat paikat ja hinnat ja lisää asukkaan jonoon. Vastaus lähtee asukkaalle heti, myös toimiston ollessa kiinni, ja tehtävä näkyy AI tehtävissä. Muut asiat ja asiat, joita agentti ei saa ratkaistua, jäävät päätösjonoon. Jokainen uusi tehtävä on AI-kutsu.": "The AI agent reads each new ticket from an identified resident. If the resident wants to book the sauna or the laundry room, the agent books a free slot, or offers free slots instead of a booked one and books the one the resident chooses. For parking it tells the free spaces and prices and adds the resident to the queue. The reply reaches the resident at once, also when the office is closed, and the ticket appears under AI tasks. Other matters, and matters the agent cannot solve, stay in the decision queue. Every new ticket is one AI call.",
+  "AI ei ole käytössä palvelimella, joten agentti ei toistaiseksi käsittele tehtäviä.": "AI is not available on the server, so the agent does not handle tickets for now.",
+  "AI-agentin hoitamat tehtävät": "Tickets handled by the AI agent",
+  "Odottaa asukkaan vastausta": "Waiting for the resident's reply"
 };

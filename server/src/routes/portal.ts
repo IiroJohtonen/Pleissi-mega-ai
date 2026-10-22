@@ -18,6 +18,7 @@ import {
 } from "./bookings.js";
 import { aiPriorityEnabled } from "./office.js";
 import { assignToCompanyManager } from "./tickets.js";
+import { scheduleAgent } from "../ai-agent.js";
 
 export const portalRouter: Router = express.Router();
 
@@ -121,6 +122,8 @@ export async function createPortalTicket(
   if (result.emergency) void alertEmergency(ticketId);
 
   const attachmentError = await savePortalAttachments(ticketId, input.attachments, timestamp, resident.id);
+  // AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat itse, kun toimisto on kytkenyt sen päälle.
+  if (!result.emergency) scheduleAgent(ticketId, "new");
   return { ticketId, attachmentError };
 }
 
@@ -224,6 +227,7 @@ portalRouter.post("/portal/tickets/:id/messages", async (req, res) => {
     id("audit"), ticket.id, resident.name, reopened ? "reply_received_reopened" : "portal_message",
     JSON.stringify({ attachments: parsed.data.attachments.length }), timestamp
   );
+  scheduleAgent(ticket.id, "reply");
   res.status(201).json({ ok: true, reopened });
 });
 

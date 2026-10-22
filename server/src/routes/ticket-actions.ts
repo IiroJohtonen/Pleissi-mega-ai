@@ -8,10 +8,12 @@ import { withAiLog } from "../ai-log.js";
 import { selectKnowledgeChunks } from "../knowledge-chunks.js";
 import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
 import { attachmentsDir, db, knowledgeFilesDir } from "../db.js";
-import { type OutgoingAttachment, parseSender, replyAccountsFor, sendEmail } from "../mail.js";
+import { type OutgoingAttachment, replyAccountsFor } from "../mail.js";
 import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
+import { sendTicketReply } from "../ticket-reply.js";
 import { id, now, unsafeFileMessage } from "../util.js";
+import { scheduleAgent } from "../ai-agent.js";
 
 export const ticketActionsRouter: Router = express.Router();
 
@@ -81,6 +83,9 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
   if (parsed.data.decision === "human" && ticket.status !== "waiting_manager") {
     notifyTicketStatus(req.params.id, "in_progress", res.locals.user?.name ?? parsed.data.actor);
   }
+
+  // "AI hoitaa": AI-agentti ottaa tehtävän hoitaakseen, jos se on agentin aihepiiriä; muuten tehtävä palaa jonoon.
+  if (parsed.data.decision === "ai") scheduleAgent(req.params.id, "manual");
 
   res.json({ ok: true, status });
 });
@@ -340,106 +345,17 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     return res.status(400).json({ error: "Valitulta sähköpostitililtä ei voi lähettää. Valitse toinen lähettäjä." });
   }
 
-  type InboundRow = { sender: string; subject: string; created_at: string };
-  const inbound = parsed.data.messageId
-    ? db.prepare(`
-        SELECT sender, subject, created_at
-        FROM messages
-        WHERE id = ? AND ticket_id = ? AND direction = 'inbound'
-      `).get(parsed.data.messageId, req.params.id) as InboundRow | undefined
-    : db.prepare(`
-        SELECT sender, subject, created_at
-        FROM messages
-        WHERE ticket_id = ? AND direction = 'inbound'
-        ORDER BY created_at DESC
-        LIMIT 1
-      `).get(req.params.id) as InboundRow | undefined;
-
-  if (parsed.data.messageId && !inbound) {
-    return res.status(404).json({ error: "Viestiä, johon vastataan, ei löytynyt tältä tehtävältä." });
-  }
-
-  // Vastaus lähtee ensisijaisesti alkuperäisen viestin lähettäjälle. Jos tehtävällä ei ole
-  // saapunutta sähköpostia, se lähtee tehtävään linkitettyjen asukkaiden osoitteisiin.
-  const replyTo = inbound ? parseSender(inbound.sender).email : "";
-  const reporterEmails = replyTo ? [] : (db.prepare(`
-    SELECT r.email
-    FROM ticket_reporters tr
-    JOIN residents r ON r.id = tr.resident_id
-    WHERE tr.ticket_id = ? AND r.email IS NOT NULL AND trim(r.email) != ''
-    ORDER BY r.name
-  `).all(req.params.id) as { email: string }[])
-    .map(row => row.email.trim())
-    .filter(email => /^[^\s<>,;@]+@[^\s<>,;@]+$/.test(email));
-
-  const recipient = replyTo || reporterEmails.join(", ");
-  if (!recipient) {
-    return res.status(400).json({
-      error: "Tehtävällä ei ole sähköpostiosoitetta, johon vastauksen voisi lähettää."
-    });
-  }
-
-  // Vastaus ketjutetaan siihen sähköpostiin, johon vastataan. Viestin ja sen tunnisteen
-  // yhdistää sama tallennushetki; vanhoilla viesteillä käytetään tehtävän ensimmäistä tuontia.
-  const gmailImport = replyTo && inbound
-    ? (db.prepare(
-        "SELECT gmail_message_id FROM gmail_imports WHERE ticket_id = ? AND created_at = ?"
-      ).get(req.params.id, inbound.created_at)
-      ?? db.prepare(
-        "SELECT gmail_message_id FROM gmail_imports WHERE ticket_id = ? ORDER BY created_at LIMIT 1"
-      ).get(req.params.id)) as { gmail_message_id: string } | undefined
-    : undefined;
-
-  const subject = !replyTo || !inbound
-    ? ticket.subject as string
-    : /^re:/i.test(inbound.subject.trim()) ? inbound.subject : `Re: ${inbound.subject}`;
-
-  let sentMessageId: string;
-  try {
-    const sent = await sendEmail({
-      to: recipient,
-      cc: cc.join(", ") || undefined,
-      subject,
-      body,
-      sourceMessageId: gmailImport?.gmail_message_id,
-      attachments: outgoing.map(({ filename, mimeType, content }) => ({ filename, mimeType, content })),
-      companyId: ticket.company_id,
-      accountId: fromAccount?.id
-    });
-    sentMessageId = sent.id;
-    console.log(`Vastaus lähetetty tehtävältä ${ticket.id} osoitteeseen ${recipient} tililtä ${fromAccount?.email || fromAccount?.id || "oletus"}.`);
-  } catch (error: any) {
-    console.error("Vastauksen lähetys epäonnistui:", error?.message ?? error);
-    const status = error?.status ?? error?.response?.status;
-    return res.status(502).json({
-      error: status === 403
-        ? "Sähköpostitililtä puuttuu lähetysoikeus. Yhdistä tili uudelleen asetuksista."
-        : "Sähköpostin lähetys epäonnistui. Yritä uudelleen."
-    });
-  }
-
-  const timestamp = now();
-
-  // Lähetetty viesti kirjataan ketjuun, jotta asukkaan vastaus siihen löytää tämän tehtävän
-  // silloinkin, kun tehtävä ei alun perin tullut sähköpostista.
-  if (sentMessageId) {
-    db.prepare(`
-      INSERT OR IGNORE INTO gmail_imports
-        (gmail_message_id, ticket_id, created_at)
-      VALUES (?, ?, ?)
-    `).run(sentMessageId, req.params.id, timestamp);
-  }
-
-  db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
-    id("message"),
-    req.params.id,
-    "outbound",
-    res.locals.user?.name ?? parsed.data.actor,
-    subject,
+  const reply = await sendTicketReply({
+    ticket,
     body,
-    timestamp,
-    "email"
-  );
+    actor: res.locals.user?.name ?? parsed.data.actor,
+    messageId: parsed.data.messageId,
+    account: fromAccount,
+    cc,
+    attachments: outgoing.map(({ filename, mimeType, content }) => ({ filename, mimeType, content }))
+  });
+  if (!reply.ok) return res.status(reply.status).json({ error: reply.error });
+  const { to: recipient, subject, timestamp } = reply;
 
   // Lähetetyt liitteet tallennetaan tehtävän liitteisiin samaan paikkaan kuin saapuneet.
   for (const attachment of outgoing.filter(item => !item.stored)) {

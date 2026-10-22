@@ -15,6 +15,7 @@ import { detectSensitivity } from "../ticket-sensitivity.js";
 import { aiPriorityEnabled, aiRelevanceEnabled } from "./office.js";
 import { findResident } from "./residents.js";
 import { assignToCompanyManager } from "./tickets.js";
+import { scheduleAgent } from "../ai-agent.js";
 
 export const inboundRouter: Router = express.Router();
 
@@ -170,6 +171,8 @@ if (input.sourceMessageId) {
         `).run(input.sourceMessageId, existingTicket.id, timestamp);
       }
 
+      // AI-agentin hoitamassa tehtävässä agentti jatkaa asukkaan vastauksesta (esim. valittu vuoro).
+      scheduleAgent(existingTicket.id, "reply");
       return res.status(201).json({ ticketId: existingTicket.id, messageId: appendedMessageId, appended: true, reopened });
     }
   }
@@ -323,6 +326,8 @@ if (input.sourceMessageId) {
 }
 
   if (result.emergency && !filtered) void alertEmergency(ticketId);
+  // AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat itse, kun toimisto on kytkenyt sen päälle.
+  if (!filtered && !result.emergency && !form) scheduleAgent(ticketId, "new");
 
   res.status(201).json({
     ticketId,

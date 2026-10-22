@@ -163,7 +163,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [clock, setClock] = useState(Date.now());
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
   // Sivupalkin kohdat, jotka käyttäjän rooli näkee.
-  const taskSubTabs = canSeeTable("unidentified") || canSeeTable("my-tickets");
+  const taskSubTabs = canSeeTable("unidentified") || canSeeTable("my-tickets") || canSeeTable("tickets");
   const visibleNavGroups = navGroups
     .map(group => ({ ...group, tabs: group.tabs.filter(item => canSeeTable(item)) }))
     .filter(group => group.tabs.length > 0);
@@ -517,8 +517,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(a, b, "created"));
   // Omat tehtävät: käsittelijän kaikki aloitetut tehtävät kaikista yhtiöistä.
   const myTickets = allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && MY_TICKET_STATUSES.includes(ticket.status));
-  // AI tehtävät -näkymä on piilotettu sivupalkista, mutta osoite toimii edelleen.
-  const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
+  // AI tehtävät: AI-agentin hoitamat tehtävät. Laskurissa ovat ne, joissa agentti odottaa asukkaan vastausta.
+  const aiTickets = tickets.filter(ticket => ticket.ai_action === "ai");
+  const aiWaitingCount = aiTickets.filter(ticket => ticket.status === "waiting_third_party").length;
   const ticketTypes = [...new Set(tickets.map(ticket => ticket.type))].sort((a, b) => a.localeCompare(b, "fi"));
   // Määräaikasuodattimen valinnat; "other" = ei myöhässä, ei umpeutumassa eikä muistutusta.
   function dueMatches(ticket: Ticket, kind: string): boolean {
@@ -527,7 +528,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     if (kind === "reminders") return ticketReminders(ticket, reminderSettings).length > 0;
     return !["overdue", "due_soon", "reminders"].some(other => dueMatches(ticket, other));
   }
-  const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unidentified";
+  const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unidentified" || tab === "ai-handled";
   // Tilasuodattimen vaihtoehdot: näkymän mahdolliset tilat.
   const statusOptions = tab === "my-tickets" ? ownTicketStatuses : tab === "unidentified" ? openTicketStatuses : ticketStatuses;
   // Muistutukset koskevat kaikkia omia keskeneräisiä tehtäviä kaikista yhtiöistä, myös päätösjonon avoimia.
@@ -710,6 +711,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   <TabIcon tab="my-tickets" />
                   {t("Omat tehtävät")}
                   <b>{myTickets.length}</b>
+                </button>
+              )}
+              {canSeeTable("tickets") && (
+                <button
+                  className={`nav-sub ${tab === "ai-handled" ? "active" : ""}`}
+                  onClick={() => openTaskList("ai-handled")}
+                  title={t("AI-agentin hoitamat tehtävät")}
+                >
+                  <TabIcon tab="ai-handled" />
+                  {t("AI tehtävät")}
+                  {aiWaitingCount > 0 && <b title={t("Odottaa asukkaan vastausta")}>{aiWaitingCount}</b>}
                 </button>
               )}
             </>

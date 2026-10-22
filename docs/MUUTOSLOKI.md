@@ -3,6 +3,33 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 22.10.2026 · AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat
+
+**Mitä muutettiin**
+- Uusi asetus **AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat** (oletuksena pois päältä).
+- Kun asetus on päällä, AI-agentti lukee tunnistetun asukkaan uuden tehtävän (sähköposti tai asukasportaali).
+- Jos asukas haluaa saunan tai pyykkituvan vuoron ja pyydetty aika on vapaa, agentti varaa sen ja vahvistaa
+  varauksen asukkaalle.
+- Jos pyydetty aika on varattu, agentti ehdottaa 2–4 vapaata vuoroa pyydetystä päivästä kolmen päivän päähän.
+  Kun asukas vastaa ja valitsee vuoron, agentti varaa sen ja sulkee tehtävän.
+- Autopaikoista agentti kertoo paikkatyypit, hinnat, vapaat paikat ja asukkaan jonosijan, ja lisää asukkaan
+  autopaikkajonoon. Paikan luovutus jää henkilökunnalle.
+- Vastaus lähtee heti, myös toimiston ollessa kiinni: sähköpostiin samaan viestiketjuun ja portaalin tehtävään
+  portaaliviestinä. Viestin lopussa kerrotaan, että vastaus on automaattinen.
+- Muut asiat (vikailmoitukset, muutot ym.) ja asiat, joita agentti ei saa ratkaistua, jäävät päätösjonoon.
+  Jos agentti oli jo ottanut tehtävän hoitaakseen, tehtävä palaa jonoon sisäisen muistiinpanon kanssa.
+- Agentti ei voi varata aikaa, jota asukas ei ole valinnut, eikä toisen asukkaan nimiin.
+- Sivupalkissa Kaikki tehtävät -kohdan alla on taas **AI tehtävät**: agentin hoitamat tehtävät. Laskuri
+  näyttää tehtävät, joissa agentti odottaa asukkaan vastausta.
+- Tehtävän lokiin kirjataan agentin varaukset, vastaukset ja siirrot henkilökunnalle.
+
+**Miten**
+- Asetukset › Isännöitsijätoimiston tiedot › AI › AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat.
+- Sivupalkki › Kaikki tehtävät › AI tehtävät.
+- Vaatii palvelimelle AI-avaimen. Jokainen uusi asukkaan tehtävä on silloin AI-kutsu.
+
+**Testit:** T-163–T-168 · Pleissi Mega AI
+
 ## 22.10.2026 · Pleissi Mega AI: kopio Kotilosta ja Data-osio
 
 **Mitä muutettiin**

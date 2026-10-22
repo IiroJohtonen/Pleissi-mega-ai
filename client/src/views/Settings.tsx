@@ -467,6 +467,8 @@ export type OfficeInfo = {
   aiPriority?: number; aiAvailable?: boolean;
   // aiRelevance: 1 = AI tarkistaa, koskeeko saapuva sähköposti taloyhtiön asioita.
   aiRelevance?: number;
+  // aiAgent: 1 = AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat itse.
+  aiAgent?: number;
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
   // twoFactor: kirjautumiskoodi sähköpostiin; twoFactorOverridden: palvelin on kytkenyt sen pois.
@@ -739,6 +741,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
   const [dueReminderDays, setDueReminderDays] = useState(1);
   const [aiPriority, setAiPriority] = useState(false);
   const [aiRelevance, setAiRelevance] = useState(false);
+  const [aiAgent, setAiAgent] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
   const [twoFactor, setTwoFactor] = useState(false);
@@ -771,6 +774,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         setDueReminderDays(office.dueReminderDays ?? 1);
         setAiPriority(Boolean(office.aiPriority));
         setAiRelevance(Boolean(office.aiRelevance));
+        setAiAgent(Boolean(office.aiAgent));
         setAiAvailable(office.aiAvailable !== false);
         setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
         setTwoFactor(Boolean(office.twoFactor));
@@ -807,7 +811,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
         body: JSON.stringify({
-          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance,
+          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent,
           aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates, aiPrompt,
           unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
         })
@@ -1105,6 +1109,26 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         </p>
         {aiRelevance && !aiAvailable && (
           <p className="send-error">{t("AI ei ole käytössä palvelimella, joten sähköposteja ei toistaiseksi suodateta.")}</p>
+        )}
+
+        <label className="switch-row">
+          <span>
+            <strong>{t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat")}</strong>
+            <small>{t("Pois päältä kaikki tehtävät menevät päätösjonoon.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={aiAgent}
+            onChange={event => { setAiAgent(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("AI-agentti lukee tunnistetun asukkaan uuden tehtävän. Jos asukas haluaa varata saunan tai pyykkituvan, agentti varaa vapaan vuoron tai ehdottaa varatun tilalle vapaita vuoroja ja varaa asukkaan valitseman. Autopaikoista se kertoo vapaat paikat ja hinnat ja lisää asukkaan jonoon. Vastaus lähtee asukkaalle heti, myös toimiston ollessa kiinni, ja tehtävä näkyy AI tehtävissä. Muut asiat ja asiat, joita agentti ei saa ratkaistua, jäävät päätösjonoon. Jokainen uusi tehtävä on AI-kutsu.")}
+        </p>
+        {aiAgent && !aiAvailable && (
+          <p className="send-error">{t("AI ei ole käytössä palvelimella, joten agentti ei toistaiseksi käsittele tehtäviä.")}</p>
         )}
 
         </CollapseSection>

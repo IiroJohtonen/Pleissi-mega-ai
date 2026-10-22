@@ -782,6 +782,22 @@ if (!officeColumns.some(existing => existing.name === "ai_prompt")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN ai_prompt INTEGER NOT NULL DEFAULT 1");
 }
 
+// AI-agentti hoitaa asukkaiden sauna-, pyykkitupa- ja autopaikka-asiat itsenäisesti (1 = päällä). Oletuksena pois.
+if (!officeColumns.some(existing => existing.name === "ai_agent")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN ai_agent INTEGER NOT NULL DEFAULT 0");
+}
+// AI-agentin asukkaalle tarjoamat vuorot. Agentti saa varata tarjotun vuoron vasta, kun asukas on vastannut
+// tarjoukseen, joten varaus ei synny pelkästä AI:n päätelmästä.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ai_agent_offers (
+    ticket_id TEXT NOT NULL,
+    resource TEXT NOT NULL,
+    starts_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (ticket_id, resource, starts_at)
+  )
+`);
+
 // Toistuvien aiheiden raportti: aiheet, jotka jätettiin pois, koska niistä on jo dokumentaatio.
 if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]).some(column => column.name === "covered")) {
   db.exec("ALTER TABLE topic_reports ADD COLUMN covered TEXT NOT NULL DEFAULT '[]'");
