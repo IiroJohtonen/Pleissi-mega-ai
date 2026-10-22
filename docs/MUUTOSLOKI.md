@@ -3,6 +3,27 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 22.10.2026 · Pleissi Mega AI: kopio Kotilosta ja Data-osio
+
+**Mitä muutettiin**
+- Pleissi Mega AI on kopio Kotilosta. Siihen lisätään myöhemmin paljon AI-ominaisuuksia.
+- Sivupalkissa on taloyhtiöosion yläpuolella uusi otsikko **Data**. Sen alla ovat samat ryhmät ja sivut kuin
+  taloyhtiön alla: Dokumentaatio, Perustiedot, Tilat ja Ilmoitukset.
+- Data-osion taulut näyttävät jokaisen taloyhtiön jokaisen tietueen ilman suodatusta. Mukana ovat myös
+  esimerkiksi poismuuttaneet asukkaat, käsitellyt muutto- ja remontti-ilmoitukset, päättyneet jonot,
+  menneet sauna- ja pyykkituvan vuorot sekä dokumenttien vanhat versiot. Jokaisella rivillä on taloyhtiön nimi.
+- Taulua voi hakea hakukentällä ja järjestää napsauttamalla sarakkeen otsikkoa. Taloyhtiön nimi avaa saman
+  sivun kyseisen taloyhtiön omana näkymänä.
+- **Kaikki taloyhtiöt** -lista on siirretty taloyhtiövalikon lopusta Data-otsikon alle. Taloyhtiövalikossa
+  ovat nyt vain taloyhtiöt.
+- Data-taulun näkee käyttäjä, jonka rooli näkee saman sivun taloyhtiön alla (Asetukset › Roolit).
+
+**Miten**
+- Sivupalkki › Data › esim. Perustiedot › Asukkaat.
+- Sivupalkki › Data › Kaikki taloyhtiöt.
+
+**Testit:** T-159–T-162 · Pleissi Mega AI
+
 ## 21.10.2026 · Uuden tehtävän asukasvalinta ja Muu-vaihtoehto
 
 **Mitä muutettiin**

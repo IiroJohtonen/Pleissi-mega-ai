@@ -3,7 +3,7 @@ import { Dropdown, FactDropdown, MultiSelect, NavToggle, TabIcon, usePaged } fro
 import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
-import { canSeeTab, firstVisibleTab, navGroups } from "../role-tables";
+import { canSeeTab, dataTables, firstVisibleTab, navGroups } from "../role-tables";
 import { actorName, api, canSeeTable, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
   assignableUsers, canAssignTickets, compareQueue, compareTickets, fetchTicketDetail, isDueSoon, isOverdue, type ReminderSettings, ticketColumns,
@@ -17,6 +17,7 @@ import { Announcements } from "./Announcements";
 import { AuditLog } from "./AuditLog";
 import { BookingCalendar } from "./Bookings";
 import { Companies } from "./Companies";
+import { DataTable } from "./DataTable";
 import { isKeyLate, KeyRegister } from "./Keys";
 import { Knowledge } from "./Knowledge";
 import { MeterReadings } from "./Meters";
@@ -40,8 +41,6 @@ const reportTabs: [ReportsTab, string][] = [["metrics", t("Mittarit")], ["custom
 const reportTabIcons: Record<ReportsTab, TicketTab> = { metrics: "reports", custom: "my-tickets", company: "companies" };
 // Ryhmän alasivun nimi, kun se poikkeaa näkymän otsikosta.
 const navItemTitles: Partial<Record<TicketTab, string>> = { knowledge: t("Kaikki dokumentit") };
-// Taloyhtiövalikon viimeinen kohta avaa taloyhtiöiden listan.
-const ALL_COMPANIES = "__all__";
 // Sivupalkissa valittu taloyhtiö, jonka tiedot, dokumentaatio, asukkaat, tilat ja ilmoitukset näytetään.
 // Tämä on ainoa taloyhtiön valinta; tehtävälistat näyttävät kaikki yhtiöt. Valinta säilyy selaimessa.
 const NAV_COMPANY_KEY = "kotilo.navCompany";
@@ -117,6 +116,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
   useEffect(() => {
     if (!tabAllowed) navigate(firstVisibleTab());
   }, [tabAllowed]);
+  // Data ilman taulua (esim. #/data) avaa ensimmäisen taulun, jonka rooli näkee.
+  useEffect(() => {
+    const first = dataTables.find(item => canSeeTable(item));
+    if (tab === "data" && !routeParam && first) navigate("data", first);
+  }, [tab, routeParam]);
   // Avatun tehtävän tallentamattomat muutokset: navigointi varmistaa poistumisen.
   const ticketDirty = useRef(false);
   const setTab = (next: TicketTab) => {
@@ -283,10 +287,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
   useEffect(() => {
     if (tab === "my-tickets" || tab === "ai-handled" || tab === "unidentified") setMyTicketsOpen(true);
     if (tab === "reports") setReportsOpen(true);
-    // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään.
+    // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään. Data-osion ryhmien avaimet alkavat data-.
+    const dataGroup = tab === "data" ? navGroups.find(item => item.tabs.includes(routeParam as TicketTab)) : undefined;
+    if (dataGroup) setClosedGroups(current => current.filter(key => key !== "data" && key !== `data-${dataGroup.key}`));
+    if (tab === "companies" && !routeParam) setClosedGroups(current => current.filter(key => key !== "data"));
     const group = navGroups.find(item => item.tabs.includes(tab));
     if (group) setClosedGroups(current => current.filter(key => key !== group.key));
-  }, [tab]);
+  }, [tab, routeParam]);
 
   // Alavalikon laskurit: käsittelyä odottavat muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
   async function refreshNavCounts() {
@@ -725,7 +732,69 @@ export function Workspace({ user }: { user: OfficeUser }) {
           ))}
           </>
           )}
-          {/* Taloyhtiöosio: otsikkona taloyhtiön valinta, jonka viimeinen kohta avaa kaikkien yhtiöiden listan. */}
+          {/* Data: taloyhtiöosion alasivut kaikista taloyhtiöistä suodattamattomina sekä kaikkien taloyhtiöiden lista. */}
+          {(canSeeTable("companies") || visibleNavGroups.length > 0) && (
+          <div className="nav-company-section nav-data-section">
+            <div className="nav-group">
+              <button
+                className={tab === "data" ? "active" : ""}
+                onClick={() => {
+                  const first = dataTables.find(item => canSeeTable(item));
+                  if (first) navigate("data", first); else navigate("companies");
+                }}
+              >
+                <TabIcon tab="data" />
+                {t("Data")}
+              </button>
+              <NavToggle open={!closedGroups.includes("data")} label={t("Data-osion taulut")} onToggle={() => toggleGroup("data")} />
+            </div>
+            {!closedGroups.includes("data") && (
+            <div className="nav-subs">
+              {canSeeTable("companies") && (
+                <button className={`nav-sub ${tab === "companies" && !routeParam ? "active" : ""}`} onClick={() => navigate("companies")}>
+                  <TabIcon tab="companies" />
+                  {t("Kaikki taloyhtiöt")}
+                </button>
+              )}
+              {visibleNavGroups.map(group => {
+                const key = `data-${group.key}`;
+                const open = !closedGroups.includes(key);
+                return (
+                <Fragment key={key}>
+                  <button
+                    className={`nav-label ${open ? "open" : ""}`}
+                    onClick={() => toggleGroup(key)}
+                    aria-expanded={open}
+                    title={`${open ? t("Piilota") : t("Näytä")} ${group.label}`}
+                  >
+                    {group.label}
+                    <svg
+                      className="tab-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  {open && group.tabs.map(item => (
+                    <button key={item} className={`nav-sub ${tab === "data" && routeParam === item ? "active" : ""}`} onClick={() => navigate("data", item)}>
+                      <TabIcon tab={item} />
+                      {navItemTitles[item] ?? tabTitles[item]}
+                    </button>
+                  ))}
+                </Fragment>
+                );
+              })}
+            </div>
+            )}
+          </div>
+          )}
+          {/* Taloyhtiöosio: otsikkona taloyhtiön valinta; alasivut koskevat valittua yhtiötä. */}
           {(canSeeTable("companies") || visibleNavGroups.length > 0) && (
           <div className="nav-company-section">
             <Dropdown
@@ -734,11 +803,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
               value={navCompany?.id ?? ""}
               placeholder={t("Valitse taloyhtiö")}
               ariaLabel={t("Taloyhtiö")}
-              options={[
-                ...companies.map(company => ({ value: company.id, label: company.name })),
-                ...(canSeeTable("companies") ? [{ value: ALL_COMPANIES, label: t("Kaikki taloyhtiöt…") }] : [])
-              ]}
-              onChange={value => value === ALL_COMPANIES ? setTab("companies") : changeCompany(value)}
+              options={companies.map(company => ({ value: company.id, label: company.name }))}
+              onChange={changeCompany}
             />
             <div className="nav-subs">
               {navCompany && canSeeTable("companies") && (
@@ -827,7 +893,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
           <div>
             {/* Toimiston nimi tulee isännöitsijätoimiston asetuksista ja päivittyy tallennettaessa. */}
             <p className="eyebrow">PLEISSI / {MANAGEMENT_OFFICE.name}</p>
-            <h1>{tab === "reports" ? reportTabs.find(([key]) => key === reportsTab)?.[1] : tabTitles[tab]}</h1>
+            <h1>
+              {tab === "reports" ? reportTabs.find(([key]) => key === reportsTab)?.[1]
+                : tab === "data" && routeParam ? `${t("Data")} › ${navItemTitles[routeParam as TicketTab] ?? tabTitles[routeParam as TicketTab]}`
+                : tabTitles[tab]}
+            </h1>
           </div>
         </header>
         )}
@@ -844,6 +914,15 @@ export function Workspace({ user }: { user: OfficeUser }) {
             onOpenEntry={entryId => navigate(tab, entryId ?? undefined)}
           />
         )
+          : tab === "data" ? (
+            routeParam ? (
+              <DataTable
+                key={routeParam}
+                table={routeParam as TicketTab}
+                onOpenCompany={companyId => { setNavCompanyId(companyId); navigate(routeParam as TicketTab); }}
+              />
+            ) : null
+          )
           : tab === "search" ? (
             <SearchResults
               query={routeParam ?? ""}

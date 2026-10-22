@@ -471,18 +471,49 @@ describe("sovellus", () => {
     expect(document.querySelector(".topbar .dropdown")).toBeNull();
     // Valinnalla on aina arvo, joten alasivut näkyvät heti.
     await vi.waitFor(() => expect(picker.textContent).toContain("As Oy Koivikko"));
-    expect(screen.getByText("Pyykkitupa")).toBeTruthy();
-    expect(screen.getByText("Yhtiön tiedot")).toBeTruthy();
+    const section = within(picker.closest(".nav-company-section") as HTMLElement);
+    expect(section.getByText("Pyykkitupa")).toBeTruthy();
+    expect(section.getByText("Yhtiön tiedot")).toBeTruthy();
     expect(localStorage.getItem("kotilo.navCompany")).toBe("demo-company");
-    // Valikon viimeinen kohta avaa kaikkien taloyhtiöiden listan.
+    // Valikossa ovat vain taloyhtiöt; kaikkien taloyhtiöiden lista on Data-osiossa.
     fireEvent.click(picker);
-    fireEvent.click(screen.getByRole("option", { name: "Kaikki taloyhtiöt…" }));
-    await vi.waitFor(() => expect(window.location.hash).toBe("#/companies"));
+    expect(screen.queryByRole("option", { name: "Kaikki taloyhtiöt…" })).toBeNull();
+  });
+
+  it("Data-osiossa ovat kaikki taloyhtiöt ja taloyhtiöosion taulut kaikista taloyhtiöistä", async () => {
+    responses["/data/residents"] = [
+      { id: "r1", company_id: "demo-company", company_name: "As Oy Koivikko", name: "Kalle Koivikko", apartment_number: "A 1", moved_out_at: null },
+      { id: "r2", company_id: "other-company", company_name: "As Oy Toinen", name: "Tiina Toinen", apartment_number: "B 2", moved_out_at: "2026-01-31" }
+    ];
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/residents");
+      const dataSection = (await screen.findByRole("button", { name: "Data" })).closest(".nav-data-section") as HTMLElement;
+      const data = within(dataSection);
+      // Data on taloyhtiöosion yläpuolella, ja siinä ovat samat ryhmät ja alasivut.
+      expect(dataSection.compareDocumentPosition(screen.getByRole("button", { name: "Taloyhtiö" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      for (const label of ["Dokumentaatio", "Perustiedot", "Tilat", "Ilmoitukset"]) expect(data.getByTitle(`Piilota ${label}`)).toBeTruthy();
+      for (const label of ["Kaikki dokumentit", "Asukkaat", "Asunnot", "Jonot", "Avaimet", "Sauna", "Pyykkitupa", "Autopaikat", "Tiedotteet", "Muutot", "Remontit", "Lukemat"]) {
+        expect(data.getByText(label)).toBeTruthy();
+      }
+      fireEvent.click(data.getByText("Kaikki taloyhtiöt"));
+      await vi.waitFor(() => expect(window.location.hash).toBe("#/companies"));
+
+      fireEvent.click(data.getByText("Asukkaat"));
+      await vi.waitFor(() => expect(window.location.hash).toBe("#/data/residents"));
+      // Myös toisen taloyhtiön ja poismuuttaneet asukkaat näkyvät.
+      expect(await screen.findByText("Tiina Toinen")).toBeTruthy();
+      expect(screen.getByText("Kalle Koivikko")).toBeTruthy();
+      expect(screen.getByRole("columnheader", { name: /Taloyhtiö/ })).toBeTruthy();
+      expect(screen.getByText("2 riviä · 2 taloyhtiötä")).toBeTruthy();
+    } finally {
+      delete responses["/data/residents"];
+    }
   });
 
   it("Perustiedot-ryhmässä ovat asukkaat, asunnot, jonot ja avaimet; muutot ovat ilmoituksissa", async () => {
     await renderApp(staff("Isännöitsijä"), "#/residents");
-    const group = await screen.findByRole("button", { name: /Perustiedot/ });
+    const section = within((await screen.findByRole("button", { name: "Taloyhtiö" })).closest(".nav-company-section") as HTMLElement);
+    const group = await section.findByRole("button", { name: /Perustiedot/ });
     const items = (heading: Element) => {
       const labels: string[] = [];
       for (let next = heading.nextElementSibling; next && !next.classList.contains("nav-label"); next = next.nextElementSibling) {
@@ -491,8 +522,8 @@ describe("sovellus", () => {
       return labels;
     };
     expect(items(group)).toEqual(["Asukkaat", "Asunnot", "Jonot", "Avaimet"]);
-    expect(items(screen.getByRole("button", { name: /Ilmoitukset/ }))).toEqual(["Tiedotteet", "Muutot", "Remontit", "Lukemat"]);
-    expect(items(screen.getByRole("button", { name: /^Tilat/ }))).toEqual(["Sauna", "Pyykkitupa", "Autopaikat"]);
+    expect(items(section.getByRole("button", { name: /Ilmoitukset/ }))).toEqual(["Tiedotteet", "Muutot", "Remontit", "Lukemat"]);
+    expect(items(section.getByRole("button", { name: /^Tilat/ }))).toEqual(["Sauna", "Pyykkitupa", "Autopaikat"]);
   });
 
   it("asunnon tietueella ovat henkilöt rooleineen, avaimet ja väliotsikot", async () => {
@@ -563,13 +594,14 @@ describe("sovellus", () => {
   it("sulkee ja avaa alavalikon ryhmän ja muistaa valinnan", async () => {
     // Alavalikko on auki, kun ollaan jollakin sen sivuista.
     await renderApp(staff("Isännöitsijä"), "#/waitlist");
-    expect(await screen.findByText("Pyykkitupa")).toBeTruthy();
-    fireEvent.click(screen.getByTitle("Piilota Tilat"));
-    expect(screen.queryByText("Pyykkitupa")).toBeNull();
-    expect(screen.getByText("Tiedotteet")).toBeTruthy();
+    const section = within((await screen.findByRole("button", { name: "Taloyhtiö" })).closest(".nav-company-section") as HTMLElement);
+    expect(await section.findByText("Pyykkitupa")).toBeTruthy();
+    fireEvent.click(section.getByTitle("Piilota Tilat"));
+    expect(section.queryByText("Pyykkitupa")).toBeNull();
+    expect(section.getByText("Tiedotteet")).toBeTruthy();
     expect(JSON.parse(localStorage.getItem("kotilo.closedNavGroups") ?? "[]")).toEqual(["facilities"]);
-    fireEvent.click(screen.getByTitle("Näytä Tilat"));
-    expect(screen.getByText("Pyykkitupa")).toBeTruthy();
+    fireEvent.click(section.getByTitle("Näytä Tilat"));
+    expect(section.getByText("Pyykkitupa")).toBeTruthy();
   });
 
   it("näyttää dokumentaation listana ja rajaa alasivut AI:n ja sisäisen mukaan", async () => {

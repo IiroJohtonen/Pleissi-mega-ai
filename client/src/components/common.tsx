@@ -109,6 +109,12 @@ const tabIcons: Record<TicketTab, string[]> = {
     "M8 13.500a4 4 0 1 0 8 0a4 4 0 1 0-8 0",
     "M7.500 6.500h.01"
   ],
+  // Tietokanta: kolme päällekkäistä kerrosta.
+  data: [
+    "M4 6a8 3 0 1 0 16 0a8 3 0 1 0-16 0",
+    "M4 6v6a8 3 0 0 0 16 0V6",
+    "M4 12v6a8 3 0 0 0 16 0v-6"
+  ],
   companies: [
     "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
     "M9 22V12h6v10"

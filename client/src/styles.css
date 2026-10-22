@@ -269,6 +269,12 @@ nav button.active {
 .data-table tr.clickable:hover td, .data-table tr.clickable:focus-visible td { background: #f3f6f9; }
 .data-table td strong { color: #1d2329; }
 
+/* Data-osion taulu: sarakkeen otsikko järjestää, taloyhtiön nimi avaa yhtiön oman näkymän. */
+.data-table th button.data-sort { padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.data-table th button.data-sort:hover, .data-table th button.data-sort.active { color: #1d2329; }
+.data-table td button.data-company-link { padding: 0; border: 0; background: none; color: #3f7fbf; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.data-table td button.data-company-link:hover { text-decoration: underline; }
+
 .nav-group {
   display: flex;
   align-items: center;
@@ -3934,7 +3940,6 @@ nav .nav-company-select .dropdown-trigger span { flex: 1; }
 nav .nav-company-select ul { z-index: 30; max-height: 360px; }
 nav .nav-company-select li button { padding: 8px 10px; border-radius: 8px; color: #272e35; font-weight: 500; transform: none; }
 nav .nav-company-select li button:hover { background: #eef1f5; color: #272e35; transform: none; }
-nav .nav-company-select li:last-child button { border-top: 1px solid #eceef0; border-radius: 0 0 8px 8px; margin-top: 4px; color: #3f7fbf; font-weight: 600; }
 
 @media (min-width: 761px) {
   .app.nav-collapsed { padding-left: 68px; }

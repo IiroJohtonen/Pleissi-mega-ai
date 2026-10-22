@@ -113,6 +113,13 @@
 :root[data-theme="dark"] .data-table td strong {
     color: #e0e3e7
 }
+:root[data-theme="dark"] .data-table th button.data-sort:hover,
+:root[data-theme="dark"] .data-table th button.data-sort.active {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .data-table td button.data-company-link {
+    color: #99bbdd
+}
 :root[data-theme="dark"] .company small,
 :root[data-theme="dark"] .company span {
     color: #acb4c0
