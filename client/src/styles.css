@@ -163,6 +163,7 @@ nav button.active {
 .drawer-section .ai-reason { margin-top: 0; }
 
 .suggest-header .ai-button svg { width: 15px; height: 15px; color: #9bd3ff; }
+.suggest-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .suggest-header .ai-button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: inset 0 0 0 1px rgba(155, 211, 255, .6), 0 6px 16px rgba(13, 16, 20, .16);

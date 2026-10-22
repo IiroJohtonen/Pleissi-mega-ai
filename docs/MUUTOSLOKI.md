@@ -3,6 +3,29 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 22.10.2026 · AI-agentti käynnistetään tehtävän painikkeesta
+
+**Mitä muutettiin**
+- AI-agentti ei enää lue jokaista uutta tehtävää itsestään. Tehtävällä on uusi painike **Anna AI-agentin
+  hoitaa** AI-ehdotuksen vieressä, ja agentti käsittelee tehtävän vasta, kun painiketta painetaan. Näin
+  AI-kutsuja ei tehdä turhaan.
+- Painike toimii kaikilla tehtävillä. Sauna-, pyykkitupa- ja autopaikka-asiat agentti hoitaa kuten ennenkin:
+  se vastaa asukkaalle ja tarvittaessa varaa vuoron. Muut asiat se jättää käsittelijälle ja kirjoittaa
+  perustelun tehtävän sisäiseksi muistiinpanoksi.
+- Painalluksen jälkeen ruudun yläreunaan tulee ilmoitus tuloksesta: agentti hoiti ja sulki tehtävän, agentti
+  vastasi ja odottaa asukkaan vastausta, tai agentti jätti tehtävän käsittelijälle (syy näkyy ilmoituksessa).
+- Jos agentti ei voi käsitellä tehtävää (esim. ilmoittajaa ei ole tunnistettu asukkaaksi tai tehtävä on
+  arkaluonteinen), syy näytetään heti eikä AI:ta kutsuta.
+- Kun asukas vastaa agentin hoitamaan tehtävään (esim. valitsee tarjotun vuoron), agentti jatkaa itse kuten
+  ennenkin, myös toimiston ollessa kiinni.
+- Asetus on nyt nimeltään **AI-agentti käytössä**: se näyttää painikkeen tehtävillä.
+
+**Miten**
+- Avaa tehtävä › Vastaus asukkaalle › Anna AI-agentin hoitaa.
+- Asetukset › Isännöitsijätoimiston tiedot › AI › AI-agentti käytössä.
+
+**Testit:** T-169–T-171 (lisäksi T-164–T-168 päivitetty painikkeen mukaisiksi) · Pleissi Mega AI
+
 ## 22.10.2026 · AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat
 
 **Mitä muutettiin**

@@ -13,7 +13,7 @@ import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
 import { sendTicketReply } from "../ticket-reply.js";
 import { id, now, unsafeFileMessage } from "../util.js";
-import { scheduleAgent } from "../ai-agent.js";
+import { AgentUnavailableError, runAgentNow } from "../ai-agent.js";
 
 export const ticketActionsRouter: Router = express.Router();
 
@@ -84,10 +84,19 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
     notifyTicketStatus(req.params.id, "in_progress", res.locals.user?.name ?? parsed.data.actor);
   }
 
-  // "AI hoitaa": AI-agentti ottaa tehtävän hoitaakseen, jos se on agentin aihepiiriä; muuten tehtävä palaa jonoon.
-  if (parsed.data.decision === "ai") scheduleAgent(req.params.id, "manual");
-
   res.json({ ok: true, status });
+});
+
+// Käsittelijä antaa tehtävän AI-agentille. Agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat
+// (vastaa asukkaalle ja tarvittaessa varaa vuoron); muut asiat se jättää henkilökunnalle perusteluineen.
+ticketActionsRouter.post("/tickets/:id/agent", async (req, res) => {
+  if (!getAuthorizedTicket(req.params.id)) return res.status(404).json({ error: "Ticket not found" });
+  try {
+    res.json(await runAgentNow(req.params.id));
+  } catch (error) {
+    if (error instanceof AgentUnavailableError) return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
 });
 
 // Pyytää AI:lta vastausehdotuksen yhtiön dokumentaation ja tehtävän sähköpostiketjun pohjalta. Ehdotuksen

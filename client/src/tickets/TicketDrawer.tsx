@@ -331,6 +331,33 @@ export function TicketDrawer({
     else void requestSuggestion("");
   }
 
+  // AI-agentti käsittelee tehtävän vasta, kun käsittelijä painaa painiketta. Agentti voi vastata asukkaalle ja
+  // varata vuoron; muut asiat se jättää käsittelijälle perustelun kanssa.
+  const [agentRunning, setAgentRunning] = useState(false);
+  async function runAgent() {
+    if (!window.confirm(t("AI-agentti lukee tehtävän. Sauna-, pyykkitupa- ja autopaikka-asioissa se vastaa asukkaalle itse ja voi varata vuoron. Muut asiat se jättää sinulle. Jatketaanko?"))) return;
+    setAgentRunning(true);
+    setSuggestError("");
+    try {
+      const result = await api<{ outcome: "replied" | "handed_over"; reason: string; resolved: boolean; booked: boolean }>(
+        `/tickets/${ticket.id}/agent`, { method: "POST" }
+      );
+      setSuggestionToast(result.outcome === "handed_over"
+        ? { title: t("AI-agentti jätti tehtävän sinulle."), message: result.reason }
+        : {
+          title: result.resolved ? t("AI-agentti hoiti tehtävän ja sulki sen.") : t("AI-agentti vastasi asukkaalle ja odottaa hänen vastaustaan."),
+          message: result.booked ? t("Agentti varasi vuoron asukkaalle. Vastaus ja varaus näkyvät tehtävän aikajanalla.")
+            : result.resolved ? t("Vastaus näkyy tehtävän aikajanalla.")
+            : t("Tehtävä näkyy AI tehtävissä. Kun asukas vastaa, agentti jatkaa itse.")
+        });
+      await onChanged();
+    } catch (error) {
+      setSuggestError(errorMessage(error, t("AI-agentin käsittely epäonnistui. Yritä uudelleen.")));
+    } finally {
+      setAgentRunning(false);
+    }
+  }
+
   const [sensitiveSaving, setSensitiveSaving] = useState(false);
   async function toggleSensitive() {
     const next = !ticket.sensitive;
@@ -1061,10 +1088,25 @@ export function TicketDrawer({
         <section className="drawer-section">
           <div className="suggest-header">
             <h3>{t("Vastaus asukkaalle")}</h3>
+            <div className="suggest-actions">
+            {MANAGEMENT_OFFICE.aiAgent && (
+              <button
+                className="ai-button"
+                onClick={() => void runAgent()}
+                disabled={agentRunning || suggesting || Boolean(ticket.sensitive)}
+                title={ticket.sensitive ? t("Arkaluonteista tehtävää ei lähetetä AI:lle.") : t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat ja vastaa asukkaalle")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 8h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z" />
+                  <path d="M12 4v4M9 13h.01M15 13h.01M10 16h4" />
+                </svg>
+                {agentRunning ? t("AI-agentti käsittelee…") : t("Anna AI-agentin hoitaa")}
+              </button>
+            )}
             <button
               className="ai-button"
               onClick={openSuggestionPrompt}
-              disabled={suggesting}
+              disabled={suggesting || agentRunning}
             >
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2l1.900 5.600a4 4 0 0 0 2.500 2.500L22 12l-5.600 1.900a4 4 0 0 0-2.500 2.500L12 22l-1.900-5.600a4 4 0 0 0-2.500-2.500L2 12l5.600-1.900a4 4 0 0 0 2.500-2.500z" />
@@ -1073,6 +1115,7 @@ export function TicketDrawer({
                 : ticket.sensitive ? (suggestedBefore ? t("Pyydä uusi ehdotus dokumentaatiosta") : t("Pyydä ehdotus dokumentaatiosta"))
                 : suggestedBefore ? t("Pyydä uusi AI-ehdotus") : t("Pyydä AI-ehdotus")}
             </button>
+            </div>
           </div>
           {/* Arkaluonteinen tehtävä (esim. terveystietoja) ei mene AI:lle; merkinnän voi asettaa ja poistaa. */}
           <p className={ticket.sensitive ? "sensitive-note active" : "sensitive-note"}>

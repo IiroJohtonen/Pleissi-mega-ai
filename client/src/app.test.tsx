@@ -945,6 +945,38 @@ describe("sovellus", () => {
     }
   });
 
+  it("AI-agentti käsittelee tehtävän vasta painikkeesta ja kertoo tuloksen", async () => {
+    const office = responses["/office"];
+    responses["/tickets/ticket-1"] = {
+      ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [],
+      notes: [], workOrders: [], contractor: null, attachments: []
+    };
+    responses["/tickets/ticket-1/agent"] = { outcome: "replied", reason: "", resolved: false, booked: false };
+    try {
+      // Ilman toimiston asetusta painiketta ei ole.
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      expect(await screen.findByRole("button", { name: /Pyydä AI-ehdotus/ }, { timeout: 5000 })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Anna AI-agentin hoitaa/ })).toBeNull();
+      cleanup();
+
+      responses["/office"] = { ...(office as object), aiAgent: 1, aiAvailable: true };
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      const button = await screen.findByRole("button", { name: /Anna AI-agentin hoitaa/ }, { timeout: 5000 });
+      // Tehtävän avaaminen ei kutsu agenttia.
+      expect(calls.some(request => request.url.endsWith("/agent"))).toBe(false);
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+      fireEvent.click(button);
+      await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets/ticket-1/agent"))).toBe(true));
+      expect(await screen.findByText("AI-agentti vastasi asukkaalle ja odottaa hänen vastaustaan.")).toBeTruthy();
+      confirm.mockRestore();
+    } finally {
+      responses["/office"] = office;
+      delete responses["/tickets/ticket-1"];
+      delete responses["/tickets/ticket-1/agent"];
+    }
+  });
+
   it("päätösjonossa ei ole Osoita minulle -painiketta, koska tehtävät on jo osoitettu käyttäjälle", async () => {
     mockApi();
     await renderApp(staff("Asiakaspalvelu"), "#/queue");

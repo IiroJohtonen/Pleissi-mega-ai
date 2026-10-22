@@ -11,7 +11,7 @@ type Request = { messages: { role: string; content: string | { type: string; con
 // Valepalvelin Anthropicin rajapinnan tilalle: vastaa AI-agentin pyyntöihin käsikirjoituksen mukaan, jotta
 // agentin koko kulku voidaan testata ilman oikeaa AI:ta. script saa pyynnön ja palauttaa seuraavan
 // työkalukutsun tai null, jolloin agentti lopettaa.
-function fakeAnthropic(script: (request: Request, lastResult: string, firstMessage: string) => ToolCall | null) {
+function fakeAnthropic(script: (request: Request, lastResult: string, firstMessage: string) => ToolCall | null, onCall: () => void) {
   let calls = 0;
   const server = http.createServer((req, res) => {
     let body = "";
@@ -27,6 +27,7 @@ function fakeAnthropic(script: (request: Request, lastResult: string, firstMessa
         .join("\n");
       const call = script(request, lastResult, firstMessage);
       calls++;
+      onCall();
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({
         id: `msg_${calls}`, type: "message", role: "assistant", model: "claude-opus-5-5",
@@ -54,6 +55,7 @@ describe("AI-agentti", () => {
   const day = addDays(helsinkiParts(new Date().toISOString()).day, 5);
   const requested = helsinkiIso(day, 18);
   let offered: string[] = [];
+  let aiCalls = 0;
 
   before(async () => {
     fake = await fakeAnthropic((_request, lastResult, firstMessage) => {
@@ -88,7 +90,7 @@ describe("AI-agentti", () => {
       // Muu asia: henkilökunnalle.
       if (!lastResult) return { name: "hand_over_to_staff", input: { reason: "Vikailmoitus kuuluu huollolle." } };
       return null;
-    });
+    }, () => { aiCalls++; });
     server = await startServer({ env: { ANTHROPIC_API_KEY: "test-key", ANTHROPIC_BASE_URL: fake.url } });
     admin = await login(server, ADMIN_EMAIL);
     await call(server, admin, "PUT", "/residents/resident-1", {
@@ -131,8 +133,19 @@ describe("AI-agentti", () => {
     assert.equal(created.status, 201);
     const ticketId = created.data.ticketId;
 
-    // Agentti vastaa asukkaalle ja jää odottamaan valintaa AI tehtävissä.
-    const proposed = await waitFor(ticketId, detail => detail.ticket.ai_action === "ai");
+    // Uusi tehtävä ei käynnistä agenttia: AI-kutsuja ei tehdä ennen kuin käsittelijä painaa painiketta.
+    await new Promise(resolve => setTimeout(resolve, 300));
+    assert.equal(aiCalls, 0);
+    const untouched = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    assert.equal(untouched.ticket.status, "open");
+    assert.ok(!logged("ai_agent_replied")(untouched));
+
+    // Käsittelijä antaa tehtävän agentille. Agentti vastaa asukkaalle ja jää odottamaan valintaa AI tehtävissä.
+    const run = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
+    assert.equal(run.status, 200);
+    assert.deepEqual([run.data.outcome, run.data.resolved, run.data.booked], ["replied", false, false]);
+    const proposed = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    assert.equal(proposed.ticket.ai_action, "ai");
     assert.equal(proposed.ticket.status, "waiting_third_party");
     assert.equal(offered.length, 2);
     // Tarjotut vuorot ovat vapaita ja alkavat aikaisintaan pyydettynä päivänä.
@@ -144,7 +157,7 @@ describe("AI-agentti", () => {
     const portal = (await call(server, matti, "GET", `/portal/tickets/${ticketId}`)).data;
     assert.ok(portal.messages.some((message: any) => message.direction === "outbound"));
 
-    // Asukas valitsee ensimmäisen vuoron; agentti varaa sen ja sulkee tehtävän.
+    // Asukas valitsee ensimmäisen vuoron; agentti jatkaa itse, varaa vuoron ja sulkee tehtävän.
     assert.equal((await call(server, matti, "POST", `/portal/tickets/${ticketId}/messages`, { body: "Käy ensimmäinen", attachments: [] })).status, 201);
     const closed = await waitFor(ticketId, detail => detail.ticket.status === "closed");
     assert.equal(closed.ticket.ai_action, "ai");
@@ -157,7 +170,10 @@ describe("AI-agentti", () => {
     const created = await call(server, matti, "POST", "/portal/tickets", {
       subject: "Pyykkitupa", description: "Varaatko minulle pyykkitupa-ajan?", type: "Pyyntö", attachments: []
     });
-    const detail = await waitFor(created.data.ticketId, logged("ai_agent_handover"));
+    const run = await call(server, admin, "POST", `/tickets/${created.data.ticketId}/agent`);
+    assert.deepEqual([run.data.outcome, run.data.booked], ["handed_over", false]);
+    const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
+    assert.ok(logged("ai_agent_handover")(detail));
     assert.ok(!logged("ai_agent_booked")(detail));
     assert.equal(detail.ticket.status, "open");
   });
@@ -166,9 +182,24 @@ describe("AI-agentti", () => {
     const created = await call(server, matti, "POST", "/portal/tickets", {
       subject: "Hana vuotaa", description: "Keittiön hana tippuu.", type: "Vikailmoitus", attachments: []
     });
-    const detail = await waitFor(created.data.ticketId, logged("ai_agent_handover"));
+    const run = await call(server, admin, "POST", `/tickets/${created.data.ticketId}/agent`);
+    assert.deepEqual([run.data.outcome, run.data.reason], ["handed_over", "Vikailmoitus kuuluu huollolle."]);
+    const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
     assert.equal(detail.ticket.status, "open");
     assert.equal(detail.ticket.ai_action, "pending_decision");
     assert.ok(!detail.messages.some((message: any) => message.direction === "outbound"));
+    // Perustelu näkyy käsittelijälle tehtävän sisäisenä muistiinpanona.
+    assert.ok(detail.notes.some((item: any) => item.body.includes("Vikailmoitus kuuluu huollolle.")));
+  });
+
+  it("kertoo, miksi agentti ei voi käsitellä tehtävää", async () => {
+    const created = await call(server, admin, "POST", "/tickets", {
+      companyId: "demo-company", subject: "Kysymys", summary: "Tunnistamaton lähettäjä kysyy saunasta."
+    });
+    assert.equal(created.status, 201);
+    const ticketId = created.data.ticketId;
+    const run = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
+    assert.equal(run.status, 400);
+    assert.match(run.data.error, /ilmoittajaa ei ole tunnistettu/);
   });
 });

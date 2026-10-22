@@ -467,7 +467,7 @@ export type OfficeInfo = {
   aiPriority?: number; aiAvailable?: boolean;
   // aiRelevance: 1 = AI tarkistaa, koskeeko saapuva sähköposti taloyhtiön asioita.
   aiRelevance?: number;
-  // aiAgent: 1 = AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat itse.
+  // aiAgent: 1 = tehtävällä on Anna AI-agentin hoitaa -painike.
   aiAgent?: number;
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
@@ -818,6 +818,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       });
       MANAGEMENT_OFFICE.name = office.name;
       MANAGEMENT_OFFICE.aiPrompt = office.aiPrompt !== 0;
+      MANAGEMENT_OFFICE.aiAgent = Boolean(office.aiAgent) && office.aiAvailable !== false;
       setStoredRetention(office.retentionMonths ?? 0);
       await onSaved();
       setSaved(true);
@@ -1113,8 +1114,8 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
 
         <label className="switch-row">
           <span>
-            <strong>{t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat")}</strong>
-            <small>{t("Pois päältä kaikki tehtävät menevät päätösjonoon.")}</small>
+            <strong>{t("AI-agentti käytössä")}</strong>
+            <small>{t("Sauna-, pyykkitupa- ja autopaikka-asiat käsittelijän pyynnöstä.")}</small>
           </span>
           <input
             type="checkbox"
@@ -1125,7 +1126,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
           <i aria-hidden="true" />
         </label>
         <p className="reply-hint">
-          {t("AI-agentti lukee tunnistetun asukkaan uuden tehtävän. Jos asukas haluaa varata saunan tai pyykkituvan, agentti varaa vapaan vuoron tai ehdottaa varatun tilalle vapaita vuoroja ja varaa asukkaan valitseman. Autopaikoista se kertoo vapaat paikat ja hinnat ja lisää asukkaan jonoon. Vastaus lähtee asukkaalle heti, myös toimiston ollessa kiinni, ja tehtävä näkyy AI tehtävissä. Muut asiat ja asiat, joita agentti ei saa ratkaistua, jäävät päätösjonoon. Jokainen uusi tehtävä on AI-kutsu.")}
+          {t("Tehtävällä näkyy Anna AI-agentin hoitaa -painike. Agentti käsittelee tehtävän vasta, kun painiketta painetaan, joten AI-kutsuja ei tehdä turhaan. Jos asukas haluaa varata saunan tai pyykkituvan, agentti varaa vapaan vuoron tai ehdottaa varatun tilalle vapaita vuoroja ja varaa asukkaan valitseman, kun asukas vastaa – myös toimiston ollessa kiinni. Autopaikoista se kertoo vapaat paikat ja hinnat ja lisää asukkaan jonoon. Agentin hoitamat tehtävät näkyvät AI tehtävissä. Muut asiat agentti jättää käsittelijälle perustelun kanssa.")}
         </p>
         {aiAgent && !aiAvailable && (
           <p className="send-error">{t("AI ei ole käytössä palvelimella, joten agentti ei toistaiseksi käsittele tehtäviä.")}</p>
