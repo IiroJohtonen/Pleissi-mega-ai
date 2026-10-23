@@ -62,7 +62,8 @@ const MICROSOFT_ERRORS: Record<string, string> = {
   AADSTS65001: "Organisaation ylläpitäjän pitää hyväksyä sovellus ennen käyttöä.",
   AADSTS90072: "Tiliä ei ole sovelluksen organisaatiossa. Valitse Azure-portaalissa tilityypiksi kaikki organisaatiot ja henkilökohtaiset Microsoft-tilit.",
   AADSTS50194: "Sovellus on rajattu yhteen organisaatioon. Valitse Azure-portaalissa tilityypiksi useat organisaatiot tai aseta MS_TENANT organisaatiosi tunnukseksi.",
-  AADSTS54005: "Kirjautumiskoodi oli jo käytetty. Aloita yhdistäminen uudelleen."
+  AADSTS54005: "Kirjautumiskoodi oli jo käytetty. Aloita yhdistäminen uudelleen.",
+  AADSTS90023: "Azure käsittelee sovellusta julkisena sovelluksena, joka ei saa käyttää salaisuutta. Siirrä paluuosoite Azure-portaalin Authentication-sivulla Web-kohtaan (pois kohdista Mobile and desktop applications ja Single-page application) ja aseta Allow public client flows arvoon No."
 };
 
 export function microsoftErrorMessage(description: string): string {

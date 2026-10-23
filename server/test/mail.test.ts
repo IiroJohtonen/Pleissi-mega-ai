@@ -85,6 +85,8 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.match(message, /AADSTS7000215/);
     assert.match(message, /Value-kenttä/);
     assert.match(modules.microsoft.microsoftErrorMessage("AADSTS999999: tuntematon"), /AADSTS999999.*Yhdistä tili uudelleen/);
+    // Paluuosoite julkisen sovelluksen alustalla: virhe kertoo, mitä Azuresta muutetaan.
+    assert.match(modules.microsoft.microsoftErrorMessage("AADSTS90023: Public clients can't send a client secret."), /AADSTS90023.*Allow public client flows/);
     assert.equal(modules.microsoft.microsoftErrorMessage(""), "Microsoft-kirjautuminen epäonnistui. Yhdistä tili uudelleen asetuksista.");
   });
 
