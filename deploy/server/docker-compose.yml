@@ -1,9 +1,12 @@
-# Pleissi Mega AI palvelimella: alusta Caddy-välityspalvelimen takana osoitteessa test2.kotilo.io.
-# Caddy hakee ja uusii HTTPS-varmenteet itse (Let's Encrypt).
+# Pleissi Mega AI samalla palvelimella Kotilon tuotantoversion kanssa, osoitteessa test2.kotilo.io.
 # Käynnistys tehdään skriptillä remote-deploy.sh, joka antaa projektille nimen "pleissi-ai". Nimi ja kansio
-# /opt/pleissi-ai erottavat asennuksen Kotilon tuotantoversiosta (/opt/kotilo, projekti "kotilo").
+# /opt/pleissi-ai erottavat asennuksen Kotilosta (/opt/kotilo, projekti "kotilo"), ja tietokanta on oma.
+#
+# Omaa Caddya ei ole: portit 80 ja 443 ovat Kotilon Caddyn. Palvelu liittyy Kotilon verkkoon
+# (kotilo_default) nimellä pleissi-ai, ja Kotilon Caddyfile ohjaa test2.kotilo.io:n sille. Palvelun nimi ei
+# saa olla "kotilo", koska silloin Kotilon Caddy voisi ohjata app.kotilo.io:n liikenteen Mega AI:lle.
 services:
-  kotilo:
+  pleissi-ai:
     build:
       context: ../..
     restart: unless-stopped
@@ -11,28 +14,18 @@ services:
     env_file: /opt/pleissi-ai/.env
     volumes:
       # Tietokanta, liitteet ja tietopankin tiedostot.
-      - kotilo-data:/data
+      - pleissi-ai-data:/data
       # Päivittäiset varmuuskopiot palvelimen levylle, josta ne voi kopioida muualle.
       - /opt/pleissi-ai/varmuuskopiot:/backups
       # Gmailin OAuth-clientin tiedosto (credentials.json).
       - /opt/pleissi-ai/config:/config:ro
-
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    depends_on:
+    networks:
       - kotilo
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # Varmenteet säilyvät uudelleenkäynnistysten yli.
-      - caddy-data:/data
-      - caddy-config:/config
+
+networks:
+  kotilo:
+    name: kotilo_default
+    external: true
 
 volumes:
-  kotilo-data:
-  caddy-data:
-  caddy-config:
+  pleissi-ai-data:

@@ -24,7 +24,7 @@ if ($answer -ne "POISTA") { Write-Host "Peruttu. Mitään ei muutettu."; exit 1 
 $resetArgs = "--vahvista --salasana='$Salasana'"
 if ($Sahkoposti) { $resetArgs += " --sahkoposti='$Sahkoposti'" }
 # Sovellus pysäytetään ajon ajaksi ja käynnistetään lopuksi uudelleen, vaikka ajo epäonnistuisi.
-$remote = "cd /opt/pleissi-ai/app/deploy/server && C='docker compose -p pleissi-ai -f docker-compose.yml'; `$C stop kotilo; `$C run --rm --no-deps kotilo node dist/demo-reset.js $resetArgs; status=`$?; `$C up -d kotilo; exit `$status"
+$remote = "cd /opt/pleissi-ai/app/deploy/server && C='docker compose -p pleissi-ai -f docker-compose.yml'; `$C stop pleissi-ai; `$C run --rm --no-deps pleissi-ai node dist/demo-reset.js $resetArgs; status=`$?; `$C up -d pleissi-ai; exit `$status"
 & ssh $Server $remote
 if ($LASTEXITCODE -ne 0) { throw "Esittelyaineiston luonti epäonnistui. Alusta käynnistettiin uudelleen ennallaan; katso virhe yltä." }
 

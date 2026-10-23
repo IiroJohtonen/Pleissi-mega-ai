@@ -1,6 +1,6 @@
 # Kotilon julkaisu osoitteeseen kotilo.io
 
-> **Pleissi Mega AI:** julkaistaan omalle palvelimelleen osoitteeseen `test2.kotilo.io` ohjeen [server/README.md](server/README.md) mukaan. Tämä tiedosto on Kotilon ohje alustan ajamisesta omalla koneella, eikä sitä käytetä Mega AI:n julkaisuun.
+> **Pleissi Mega AI:** julkaistaan Kotilon palvelimelle osoitteeseen `test2.kotilo.io` ohjeen [server/README.md](server/README.md) mukaan. Tämä tiedosto on Kotilon ohje alustan ajamisesta omalla koneella, eikä sitä käytetä Mega AI:n julkaisuun.
 
 Rakenne on kaksiosainen, jotta esittelysivua ja alustaa voi kehittää erikseen:
 

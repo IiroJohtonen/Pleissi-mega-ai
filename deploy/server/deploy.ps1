@@ -21,12 +21,7 @@ $archive = Join-Path $env:TEMP "pleissi-ai-release.tar.gz"
 & $git -C $root archive --format=tar.gz -o $archive HEAD
 if ($LASTEXITCODE -ne 0) { throw "Paketin luonti epäonnistui." }
 
-# Mega AI on Kotilon kopio, ja molemmat tarvitsevat palvelimen portit 80 ja 443. Kotilon tuotantopalvelimelle
-# ei asenneta, jotta tuotanto ei pysähdy eikä sen tietoja käytetä vahingossa.
-& ssh $Server "test ! -d /opt/kotilo"
-if ($LASTEXITCODE -eq 255) { throw "SSH-yhteys palvelimeen $Server epäonnistui." }
-if ($LASTEXITCODE -ne 0) { throw "Palvelimella $Server on Kotilon tuotantoversio (/opt/kotilo). Pleissi Mega AI asennetaan omalle palvelimelleen." }
-
+# Mega AI asennetaan Kotilon rinnalle omaan kansioonsa; Kotilon tiedostoihin (/opt/kotilo) ei kosketa.
 & ssh $Server "mkdir -p /opt/pleissi-ai"
 if ($LASTEXITCODE -ne 0) { throw "SSH-yhteys palvelimeen $Server epäonnistui." }
 & scp $archive "${Server}:/opt/pleissi-ai/release.tar.gz"

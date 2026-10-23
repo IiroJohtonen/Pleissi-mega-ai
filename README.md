@@ -128,7 +128,7 @@ Palautus: pysäytä palvelin ja kopioi varmuuskopion `kotilo.sqlite`, `attachmen
 
 ## Julkaisu osoitteeseen kotilo.io
 
-Esittelysivu on kansiossa `site/` ja julkaistaan osoitteeseen `kotilo.io`. Pleissi Mega AI julkaistaan omalle palvelimelleen osoitteeseen `test2.kotilo.io`, erilleen Kotilon tuotantoversiosta (`app.kotilo.io`). Vaiheet ja skriptit ovat tiedostossa [deploy/server/README.md](deploy/server/README.md).
+Esittelysivu on kansiossa `site/` ja julkaistaan osoitteeseen `kotilo.io`. Pleissi Mega AI julkaistaan Kotilon tuotantoversion (`app.kotilo.io`) kanssa samalle palvelimelle osoitteeseen `test2.kotilo.io`, omaan kansioonsa ja omalla tietokannallaan. Vaiheet ja skriptit ovat tiedostossa [deploy/server/README.md](deploy/server/README.md).
 
 ## Tuotantoajo
 

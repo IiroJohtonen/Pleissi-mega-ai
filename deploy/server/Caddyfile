@@ -1,7 +1,0 @@
-# Pleissi Mega AI: alustan palvelin tarjoaa rajapinnan ja käyttöliittymän samasta osoitteesta.
-# Caddy hakee varmenteen vain tässä tiedostossa nimetyille osoitteille, joten osoitteen DNS-tietueen
-# pitää osoittaa tähän palvelimeen. Kotisivu (kansio site) on Kotilon palvelimella, ei täällä.
-test2.kotilo.io {
-	encode zstd gzip
-	reverse_proxy kotilo:4000
-}
