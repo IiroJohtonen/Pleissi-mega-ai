@@ -24,7 +24,18 @@ export function microsoftConfigured(): boolean {
   return Boolean(process.env.MS_CLIENT_ID && process.env.MS_CLIENT_SECRET);
 }
 
-function microsoftRedirectUri(): string {
+// Yhdistämisen vaiheet kirjataan palvelimen lokiin samalla etuliitteellä, jotta ne löytyvät komennolla
+// docker compose logs ... | grep "Microsoft-yhteys". Salaisuuksia ja tunnisteita ei kirjata; client ID ei ole salainen.
+export function logMicrosoft(step: string, details: Record<string, unknown> = {}) {
+  console.log(`Microsoft-yhteys: ${step}`, JSON.stringify(details));
+}
+
+// Microsoftin virheteksti näytettäväksi: ensimmäinen rivi ilman aikaleimoja ja seurantatunnisteita.
+export function microsoftDescription(description: string) {
+  return (description.split(/\r?\n/)[0] ?? "").trim().slice(0, 300);
+}
+
+export function microsoftRedirectUri(): string {
   return process.env.MS_REDIRECT_URI || `http://localhost:${process.env.PORT || 4000}/api/mail/microsoft/callback`;
 }
 
@@ -37,6 +48,7 @@ function requireConfig() {
 
 export function microsoftAuthUrl(state: string): string {
   const { clientId } = requireConfig();
+  logMicrosoft("kirjautuminen aloitettu", { clientId, tenant: tenant(), redirectUri: microsoftRedirectUri() });
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
@@ -81,11 +93,19 @@ async function requestTokens(body: Record<string, string>): Promise<StoredTokens
   });
   const data = await response.json().catch(() => ({})) as {
     access_token?: string; refresh_token?: string; expires_in?: number; error?: string; error_description?: string;
+    error_codes?: number[]; trace_id?: string; correlation_id?: string;
   };
   if (!response.ok || !data.access_token) {
-    console.warn("Microsoft-tunnisteen haku epäonnistui:", data.error, data.error_description);
-    throw new Error(microsoftErrorMessage(data.error_description ?? data.error ?? ""));
+    // Koko vastaus ilman tunnisteita: Microsoftin selitys sekä seurantatunnisteet, joilla Microsoftin tuki löytää pyynnön.
+    logMicrosoft("tunnisteen haku epäonnistui", {
+      grantType: body.grant_type, status: response.status, error: data.error, errorCodes: data.error_codes,
+      description: data.error_description, traceId: data.trace_id, correlationId: data.correlation_id,
+      redirectUri: body.redirect_uri
+    });
+    const description = microsoftDescription(data.error_description ?? data.error ?? "");
+    throw new Error(`${microsoftErrorMessage(description)}${description ? ` Microsoftin viesti: ${description}` : ""}`);
   }
+  logMicrosoft("tunniste haettu", { grantType: body.grant_type, refreshToken: Boolean(data.refresh_token) });
   return {
     access_token: data.access_token,
     refresh_token: data.refresh_token ?? "",
@@ -116,8 +136,13 @@ async function graphFetch<T>(token: string, path: string, init: RequestInit = {}
 export async function connectMicrosoftAccount(accountId: string, code: string, connectedBy: string): Promise<string> {
   const tokens = await requestTokens({ grant_type: "authorization_code", code, redirect_uri: microsoftRedirectUri() });
   if (!tokens.refresh_token) throw new Error("Microsoft ei palauttanut pysyvää tunnistetta. Yritä yhdistämistä uudelleen.");
-  const me = await graphFetch<{ mail?: string; userPrincipalName?: string }>(tokens.access_token, "/me?$select=mail,userPrincipalName");
+  const me = await graphFetch<{ mail?: string; userPrincipalName?: string }>(tokens.access_token, "/me?$select=mail,userPrincipalName")
+    .catch(error => {
+      logMicrosoft("tilin tietojen haku epäonnistui", { error: error?.message ?? String(error) });
+      throw error;
+    });
   const email = me.mail || me.userPrincipalName || "";
+  logMicrosoft("tilin tiedot haettu", { email, accountId });
   if (!email) throw new Error("Microsoft-tilin sähköpostiosoitetta ei saatu luettua.");
   // Gmail-osoitteella luodun Microsoft-tilin posti menee Gmailiin, joten Microsoftin laatikko pysyy tyhjänä.
   if (/@(gmail|googlemail)\.com$/i.test(email)) {

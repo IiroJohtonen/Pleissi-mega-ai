@@ -7,7 +7,7 @@ import { connectGmailAccount, gmailAuthUrl, gmailConfigured } from "../gmail.js"
 import { getMailStatus, mailAccountFor, OFFICE_ACCOUNT, userAccountId } from "../mail.js";
 import { disconnectMailAccount } from "../mail-common.js";
 import { connectImapAccount } from "../mail-imap.js";
-import { connectMicrosoftAccount, microsoftAuthUrl, microsoftConfigured } from "../mail-microsoft.js";
+import { connectMicrosoftAccount, logMicrosoft, microsoftAuthUrl, microsoftConfigured, microsoftDescription } from "../mail-microsoft.js";
 
 // Sähköpostitilien yhdistäminen ja tila. Reittien nimet /gmail/... ovat ajalta, jolloin Gmail oli ainoa
 // vaihtoehto; ne koskevat nyt kaikkia palveluja. Uudet palvelut ovat polussa /mail/...
@@ -111,6 +111,15 @@ ${returnTo ? `<a href="${escape(returnTo)}/#/settings" style="color:#2f6ba8;font
   );
   const state = typeof req.query.state === "string" ? connectStates.get(req.query.state) : undefined;
   if (typeof req.query.state === "string") connectStates.delete(req.query.state);
+  // Kirjautumispalvelu palauttaa virheen osoitteen parametreissa (error, error_description) ilman koodia.
+  const providerError = typeof req.query.error === "string" ? req.query.error : "";
+  const providerDescription = typeof req.query.error_description === "string" ? microsoftDescription(req.query.error_description) : "";
+  if (provider === "microsoft") {
+    logMicrosoft("paluu kirjautumisesta", {
+      code: typeof req.query.code === "string", error: providerError || undefined, description: providerDescription || undefined,
+      knownState: Boolean(state), target: state?.target
+    });
+  }
   const browserNonce = readConnectCookie(req);
   res.clearCookie(CONNECT_COOKIE, { path: "/api" });
   if (!state || state.expiresAt < Date.now() || state.provider !== provider) {
@@ -121,12 +130,17 @@ ${returnTo ? `<a href="${escape(returnTo)}/#/settings" style="color:#2f6ba8;font
     return page("Viimeistele samassa selaimessa", "Sähköpostitilin yhdistäminen pitää viimeistellä samassa selaimessa, josta se aloitettiin. Aloita uudelleen Pleissin asetuksista.", state.returnTo);
   }
   if (typeof req.query.code !== "string") {
+    // Käyttäjä perui kirjautumisen (access_denied) tai palvelu hylkäsi pyynnön: näytetään palvelun oma selitys.
+    if (providerError && providerError !== "access_denied") {
+      return page("Yhdistäminen epäonnistui", `${label} hylkäsi kirjautumisen: ${providerDescription || providerError}`, state.returnTo);
+    }
     return page("Yhdistäminen peruttiin", `${label}-tiliä ei yhdistetty.`, state.returnTo);
   }
   try {
     const email = provider === "gmail"
       ? await connectGmailAccount(state.target, req.query.code, state.userName)
       : await connectMicrosoftAccount(state.target, req.query.code, state.userName);
+    if (provider === "microsoft") logMicrosoft("tili yhdistetty", { email, target: state.target });
     page(`${label}-tili yhdistetty`, `Tili ${email} on nyt käytössä. Voit sulkea tämän välilehden.`, state.returnTo);
   } catch (error: any) {
     console.error(`${label}-tilin yhdistäminen epäonnistui:`, error?.message ?? error);
