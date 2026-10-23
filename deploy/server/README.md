@@ -1,13 +1,19 @@
-# Kotilo palvelimella (UpCloud)
+# Pleissi Mega AI palvelimella (UpCloud)
 
-Palvelin tarjoaa alustan osoitteessa `app.kotilo.io` ja kotisivun testiosoitteessa `test.kotilo.io`. Osoitteet `kotilo.io` ja `www.kotilo.io` osoittavat toistaiseksi muualle. Kun niiden DNS-tietueet osoittavat palvelimeen, kotisivu siirretään niihin lisäämällä osoitteet tiedoston `Caddyfile` kotisivulohkoon.
+Pleissi Mega AI on Kotilon kopio, johon lisätään AI-ominaisuuksia. Se asennetaan **omalle palvelimelleen**
+osoitteeseen `test2.kotilo.io`, erilleen Kotilon tuotantoversiosta (`app.kotilo.io`):
 
-| Osoite | Sisältö | Lähde repossa |
+| | Pleissi Mega AI | Kotilo (tuotanto) |
 | --- | --- | --- |
-| `test.kotilo.io` | Kotisivu | `site/` |
-| `app.kotilo.io` | Alusta | `client/` ja `server/` |
+| Osoite | `test2.kotilo.io` | `app.kotilo.io` |
+| Kansio palvelimella | `/opt/pleissi-ai` | `/opt/kotilo` |
+| Docker-projekti | `pleissi-ai` | `kotilo` |
+| Tietokanta | oma | oma |
 
-Palvelimella on kaksi konttia: Kotilo ja Caddy. Caddy ottaa vastaan liikenteen, hakee HTTPS-varmenteet itse, ohjaa `app.kotilo.io`:n Kotilolle ja tarjoaa kotisivun tiedostot suoraan.
+Kumpikin tarvitsee palvelimen portit 80 ja 443, joten samalle palvelimelle niitä ei asenneta. Julkaisuskripti
+keskeyttää, jos palvelimella on Kotilon tuotantoversio. Kotisivu (`site/`) julkaistaan Kotilon palvelimelta.
+
+Palvelimella on kaksi konttia: alusta ja Caddy. Caddy ottaa vastaan liikenteen, hakee HTTPS-varmenteet itse ja ohjaa `test2.kotilo.io`:n alustalle.
 
 ## 1. SSH-avain omalle koneelle
 
@@ -40,12 +46,11 @@ Lisää domainin DNS-hallinnassa A-tietue, joka osoittaa palvelimen IP-osoittees
 
 | Nimi | Tyyppi | Arvo |
 | --- | --- | --- |
-| `app` | A | palvelimen IP |
-| `test` | A | palvelimen IP |
+| `test2` | A | Pleissi Mega AI:n palvelimen IP |
 
-Kun kotisivu siirretään pääosoitteeseen, tarvitaan samanlaiset tietueet nimille `@` (eli kotilo.io) ja `www`.
+Älä muuta tietueita `app`, `test`, `@` tai `www`: ne kuuluvat Kotilolle.
 
-Muutos tulee voimaan yleensä muutamassa minuutissa, joskus vasta tunnin kuluessa. Voit tarkistaa sen komennolla `nslookup app.kotilo.io`.
+Muutos tulee voimaan yleensä muutamassa minuutissa, joskus vasta tunnin kuluessa. Voit tarkistaa sen komennolla `nslookup test2.kotilo.io`.
 
 ## 4. Asennus
 
@@ -55,19 +60,19 @@ Kehitysrepon juuressa:
 powershell -ExecutionPolicy Bypass -File deploy\server\deploy.ps1 -Server root@PALVELIMEN-IP
 ```
 
-Ensimmäisellä kerralla SSH kysyy, luotetaanko palvelimeen: vastaa `yes`. Komento vie viimeisimmän commitin palvelimelle, asentaa Dockerin ja palomuurin, luo asetustiedoston ja käynnistää Kotilon. Ensimmäinen kerta kestää muutaman minuutin.
+Ensimmäisellä kerralla SSH kysyy, luotetaanko palvelimeen: vastaa `yes`. Komento vie viimeisimmän commitin palvelimelle, asentaa Dockerin ja palomuurin, luo asetustiedoston ja käynnistää alustan. Ensimmäinen kerta kestää muutaman minuutin.
 
-Lopuksi komento tulostaa aloitussalasanan. Kirjaudu osoitteessa `https://app.kotilo.io` tunnuksella `demo@pohjantahti-isannointi.fi` ja vaihda käyttäjien osoitteet ja salasanat heti asetuksista. Tietokanta on uusi ja tyhjä: kehitysversion tehtävät ja asukkaat eivät siirry.
+Lopuksi komento tulostaa aloitussalasanan. Kirjaudu osoitteessa `https://test2.kotilo.io` tunnuksella `demo@pohjantahti-isannointi.fi` ja vaihda käyttäjien osoitteet ja salasanat heti asetuksista. Tietokanta on uusi ja tyhjä: kehitysversion tehtävät ja asukkaat eivät siirry.
 
 Jos varmenne ei heti toimi, DNS ei ole vielä ehtinyt päivittyä. Caddy yrittää uudelleen itse.
 
 ## 5. Asetukset palvelimella
 
-Asetukset ovat tiedostossa `/opt/kotilo/.env`. AI-avain lisätään sinne:
+Asetukset ovat tiedostossa `/opt/pleissi-ai/.env`. AI-avain lisätään sinne:
 
 ```powershell
 ssh root@PALVELIMEN-IP
-nano /opt/kotilo/.env        # lisää ANTHROPIC_API_KEY=..., tallenna Ctrl+O, poistu Ctrl+X
+nano /opt/pleissi-ai/.env        # lisää ANTHROPIC_API_KEY=..., tallenna Ctrl+O, poistu Ctrl+X
 exit
 ```
 
@@ -79,11 +84,11 @@ Saapuva ja lähtevä posti kulkee toimiston tai taloyhtiön sähköpostitilin ka
 
 ### Gmail
 
-1. Google Cloud -konsolissa OAuth-clientin **Authorized redirect URIs** -listaan lisätään `https://app.kotilo.io/api/gmail/callback`.
+1. Google Cloud -konsolissa OAuth-clientin **Authorized redirect URIs** -listaan lisätään `https://test2.kotilo.io/api/gmail/callback`.
 2. Vie OAuth-clientin tiedosto palvelimelle:
 
    ```powershell
-   scp server\credentials.json root@PALVELIMEN-IP:/opt/kotilo/config/credentials.json
+   scp server\credentials.json root@PALVELIMEN-IP:/opt/pleissi-ai/config/credentials.json
    ```
 
 3. Yhdistä tili alustassa painikkeella **Gmail**.
@@ -94,15 +99,15 @@ Sovellus rekisteröidään kerran Microsoftin Azure-portaaliin. Kirjaudu toimist
 
 1. Avaa https://portal.azure.com → **Microsoft Entra ID → App registrations → New registration**.
 2. **Name:** Kotilo. **Supported account types:** *Accounts in any organizational directory and personal Microsoft accounts*.
-3. **Redirect URI:** tyyppi **Web**, osoite `https://app.kotilo.io/api/mail/microsoft/callback`.
+3. **Redirect URI:** tyyppi **Web**, osoite `https://test2.kotilo.io/api/mail/microsoft/callback`.
 4. Kopioi **Application (client) ID**.
 5. **Certificates & secrets → New client secret** ja kopioi salaisuuden **Value** (näytetään vain kerran). Salaisuus vanhenee valitun ajan kuluttua; tee silloin uusi ja vaihda se palvelimelle.
-6. Lisää palvelimen tiedostoon `/opt/kotilo/.env`:
+6. Lisää palvelimen tiedostoon `/opt/pleissi-ai/.env`:
 
    ```
    MS_CLIENT_ID=kopioitu-client-id
    MS_CLIENT_SECRET=kopioitu-salaisuus
-   MS_REDIRECT_URI=https://app.kotilo.io/api/mail/microsoft/callback
+   MS_REDIRECT_URI=https://test2.kotilo.io/api/mail/microsoft/callback
    ```
 
 7. Aja kohdan 4 julkaisukomento uudelleen, jotta asetukset tulevat voimaan.
@@ -126,6 +131,8 @@ Jokainen toimiston käyttäjä voi yhdistää oman postilaatikkonsa itse: **Aset
 
 Lisää kehitysversion tiedostoon `server\.env` rivi `GMAIL_DISABLED=1`. Muuten kehitysversio ja palvelin lukevat samaa postilaatikkoa, ja sama viesti päätyy kumpaankin.
 
+Sama koskee Kotilon tuotantoversiota: yhdistä Pleissi Mega AI:hin eri postilaatikko kuin Kotiloon, muuten sama viesti tulee tehtäväksi molempiin.
+
 ## Päivittäminen
 
 Kun uusi versio on commitoitu kehitysrepoon, aja sama komento kuin asennuksessa:
@@ -143,10 +150,10 @@ asukkaineen, noin 70 tehtävää (myös AI-ehdotuksia ja vanhoja hoidettuja), do
 pyykkituvan vuorot, autopaikat, jonot, mittarilukemat, muutot, remontit, tiedotteet ja hallituksen tunnukset.
 
 ```
-powershell -ExecutionPolicy Bypass -File deploy\server\demo-reset.ps1 -Server root@app.kotilo.io -Salasana "Esittely-2026" -Sahkoposti oma@osoite.fi
+powershell -ExecutionPolicy Bypass -File deploy\server\demo-reset.ps1 -Server root@test2.kotilo.io -Salasana "Esittely-2026" -Sahkoposti oma@osoite.fi
 ```
 
-- Kaikki nykyiset tiedot ja käyttäjät poistuvat. Varmuuskopio otetaan ensin kansioon `/opt/kotilo/varmuuskopiot`.
+- Kaikki nykyiset tiedot ja käyttäjät poistuvat. Varmuuskopio otetaan ensin kansioon `/opt/pleissi-ai/varmuuskopiot`.
 - Toimiston asetukset, perustiedot ja AI-kulujen seuranta säilyvät.
 - Pääkäyttäjä kirjautuu `-Sahkoposti`-osoitteella (oletus demo@pohjantahti-isannointi.fi). Anna oma osoitteesi, jos
   kirjautumiskoodi on käytössä, jotta koodi tulee perille.
@@ -156,7 +163,7 @@ powershell -ExecutionPolicy Bypass -File deploy\server\demo-reset.ps1 -Server ro
 
 ## Varmuuskopiot
 
-- Kotilo ottaa tietokannasta ja liitteistä varmuuskopion kerran päivässä kansioon `/opt/kotilo/varmuuskopiot` ja säilyttää 14 uusinta.
+- Kotilo ottaa tietokannasta ja liitteistä varmuuskopion kerran päivässä kansioon `/opt/pleissi-ai/varmuuskopiot` ja säilyttää 14 uusinta.
 - UpCloudin oma varmuuskopiointi (kohta 2) kopioi koko palvelimen levyn, eli myös nämä kopiot. Se suojaa tilanteelta, jossa palvelin tai sen levy menetetään.
 - Varmuuskopiotiedostot eivät ole erikseen salattuja: ne ovat suojassa vain niin kauan kuin ne ovat salatulla levyllä. Jos kopioita siirretään palvelimen ulkopuolelle, ne pitää salata ennen siirtoa.
 
@@ -165,9 +172,9 @@ Palautus: pysäytä kontit, kopioi varmuuskopion `kotilo.sqlite`, `attachments` 
 ## Hyödyllisiä komentoja palvelimella
 
 ```bash
-cd /opt/kotilo/app/deploy/server
-docker compose -p kotilo ps                  # ovatko kontit käynnissä
-docker compose -p kotilo logs -f kotilo      # Kotilon loki
-docker compose -p kotilo logs -f caddy       # varmenteet ja liikenne
-docker compose -p kotilo restart kotilo      # uudelleenkäynnistys
+cd /opt/pleissi-ai/app/deploy/server
+docker compose -p pleissi-ai ps                  # ovatko kontit käynnissä
+docker compose -p pleissi-ai logs -f kotilo      # Kotilon loki
+docker compose -p pleissi-ai logs -f caddy       # varmenteet ja liikenne
+docker compose -p pleissi-ai restart kotilo      # uudelleenkäynnistys
 ```

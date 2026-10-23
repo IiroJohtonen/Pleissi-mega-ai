@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # Ajetaan palvelimella skriptistä deploy.ps1. Asentaa Dockerin ensimmäisellä kerralla, luo asetustiedoston
-# ja käynnistää tai päivittää Kotilon. Sovelluksen tiedostot ovat kansiossa /opt/kotilo/app.
+# ja käynnistää tai päivittää Pleissi Mega AI:n. Sovelluksen tiedostot ovat kansiossa /opt/pleissi-ai/app.
 set -euo pipefail
 
-BASE=/opt/kotilo
+BASE=/opt/pleissi-ai
 APP="$BASE/app"
 COMPOSE="$APP/deploy/server/docker-compose.yml"
+
+# Kotilon tuotantoversio käyttää samoja portteja 80 ja 443: Mega AI:ta ei asenneta sen rinnalle.
+if [ -d /opt/kotilo ]; then
+  echo "Palvelimella on Kotilon tuotantoversio (/opt/kotilo). Pleissi Mega AI asennetaan omalle palvelimelleen." >&2
+  exit 1
+fi
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Asennetaan Docker..."
@@ -44,15 +50,15 @@ if [ ! -f "$BASE/.env" ]; then
   echo "Luotiin asetustiedosto $BASE/.env oletusarvoilla."
 fi
 
-echo "Käännetään ja käynnistetään Kotilo. Ensimmäinen kerta kestää muutaman minuutin."
-docker compose -p kotilo -f "$COMPOSE" up -d --build --remove-orphans
+echo "Käännetään ja käynnistetään Pleissi Mega AI. Ensimmäinen kerta kestää muutaman minuutin."
+docker compose -p pleissi-ai -f "$COMPOSE" up -d --build --remove-orphans
 # Päivitys vaihtaa sovelluskansion uuteen, joten Caddy käynnistetään uudelleen, jotta se lukee
-# uuden Caddyfilen ja kotisivun tiedostot eikä jää vanhan kansion varaan.
-docker compose -p kotilo -f "$COMPOSE" restart caddy
+# uuden Caddyfilen eikä jää vanhan kansion varaan.
+docker compose -p pleissi-ai -f "$COMPOSE" restart caddy
 docker image prune -f >/dev/null
 
 echo
-docker compose -p kotilo -f "$COMPOSE" ps
+docker compose -p pleissi-ai -f "$COMPOSE" ps
 echo
 # Aloitussalasana tulostuu lokiin vain, kun tietokanta luodaan ensimmäisen kerran.
-docker compose -p kotilo -f "$COMPOSE" logs --no-log-prefix kotilo 2>/dev/null | grep -i "salasana" || true
+docker compose -p pleissi-ai -f "$COMPOSE" logs --no-log-prefix kotilo 2>/dev/null | grep -i "salasana" || true

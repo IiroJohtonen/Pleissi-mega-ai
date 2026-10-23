@@ -1,20 +1,21 @@
-# Kotilo palvelimella: alusta ja kotisivu saman Caddy-välityspalvelimen takana.
+# Pleissi Mega AI palvelimella: alusta Caddy-välityspalvelimen takana osoitteessa test2.kotilo.io.
 # Caddy hakee ja uusii HTTPS-varmenteet itse (Let's Encrypt).
-# Käynnistys tehdään skriptillä remote-deploy.sh, joka antaa projektille nimen "kotilo".
+# Käynnistys tehdään skriptillä remote-deploy.sh, joka antaa projektille nimen "pleissi-ai". Nimi ja kansio
+# /opt/pleissi-ai erottavat asennuksen Kotilon tuotantoversiosta (/opt/kotilo, projekti "kotilo").
 services:
   kotilo:
     build:
       context: ../..
     restart: unless-stopped
     # Asetukset ja salaisuudet ovat palvelimella sovelluskansion ulkopuolella, jotta päivitys ei koske niihin.
-    env_file: /opt/kotilo/.env
+    env_file: /opt/pleissi-ai/.env
     volumes:
       # Tietokanta, liitteet ja tietopankin tiedostot.
       - kotilo-data:/data
       # Päivittäiset varmuuskopiot palvelimen levylle, josta ne voi kopioida muualle.
-      - /opt/kotilo/varmuuskopiot:/backups
+      - /opt/pleissi-ai/varmuuskopiot:/backups
       # Gmailin OAuth-clientin tiedosto (credentials.json).
-      - /opt/kotilo/config:/config:ro
+      - /opt/pleissi-ai/config:/config:ro
 
   caddy:
     image: caddy:2
@@ -27,8 +28,6 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # Kotisivu repon kansiosta site.
-      - ../../site:/srv/site:ro
       # Varmenteet säilyvät uudelleenkäynnistysten yli.
       - caddy-data:/data
       - caddy-config:/config

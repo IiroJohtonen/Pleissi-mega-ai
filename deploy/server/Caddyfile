@@ -1,21 +1,7 @@
-# Alusta: Kotilon palvelin tarjoaa rajapinnan ja käyttöliittymän samasta osoitteesta.
-# Caddy hakee varmenteen vain tässä tiedostossa nimetyille osoitteille, joten jokaisen osoitteen
-# DNS-tietueen pitää osoittaa tähän palvelimeen.
-app.kotilo.io {
+# Pleissi Mega AI: alustan palvelin tarjoaa rajapinnan ja käyttöliittymän samasta osoitteesta.
+# Caddy hakee varmenteen vain tässä tiedostossa nimetyille osoitteille, joten osoitteen DNS-tietueen
+# pitää osoittaa tähän palvelimeen. Kotisivu (kansio site) on Kotilon palvelimella, ei täällä.
+test2.kotilo.io {
 	encode zstd gzip
 	reverse_proxy kotilo:4000
-}
-
-# Kotisivu (repon kansio site). Toistaiseksi testiosoitteessa: kotilo.io ja www.kotilo.io
-# osoittavat vielä muualle. Kun niiden DNS-tietueet osoittavat tänne, lisää osoitteet tälle riville.
-test.kotilo.io {
-	encode zstd gzip
-	# Yhteydenottolomake lähetetään alustan rajapintaan samasta osoitteesta.
-	handle /api/contact {
-		reverse_proxy kotilo:4000
-	}
-	handle {
-		root * /srv/site
-		file_server
-	}
 }
