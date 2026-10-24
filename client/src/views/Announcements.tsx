@@ -265,7 +265,7 @@ export function Announcements({ companies, defaultCompanyId, routeParam = null, 
             onChange={setStairwellFilter}
           />
         </div>
-        {isManager() && <button className="secondary" onClick={openForm}>{t("Uusi tiedote")}</button>}
+        {isManager() && <button className="primary" onClick={openForm}>{t("Uusi tiedote")}</button>}
       </div>
 
       {notice && <p className="portal-sent">{notice}</p>}

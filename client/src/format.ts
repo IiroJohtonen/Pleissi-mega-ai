@@ -101,7 +101,17 @@ export function actionLabel(action: string) {
     renovation_supervision: t("Valvontakäynti"),
     renovation_completed: t("Remontti valmis"),
     renovation_inspected: t("Remontti tarkastettu"),
-    reporter_unlinked: t("Asukkaan linkitys poistettu")
+    reporter_unlinked: t("Asukkaan linkitys poistettu"),
+    ai_agent_booked: t("AI-agentti varasi vuoron asukkaalle"),
+    ai_agent_waitlist: t("AI-agentti lisäsi asukkaan autopaikkajonoon"),
+    ai_agent_replied: t("AI-agentti vastasi asukkaalle"),
+    ai_agent_handover: t("AI-agentti jätti tehtävän henkilökunnalle"),
+    topic_changed: t("Aihe vaihdettu"),
+    incident_linked: t("Liitetty mahdolliseen yhteiseen vikaan"),
+    incident_unlinked: t("Irrotettu yhteisestä viasta"),
+    incident_replied: t("Vastattu yhteisen vian viestillä"),
+    incident_reply_failed: t("Yhteisen vian vastaus ei lähtenyt"),
+    incident_closed: t("Suljettu, kun yhteinen vika korjattiin")
   }[action] || action;
 }
 

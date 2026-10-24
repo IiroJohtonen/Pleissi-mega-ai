@@ -49,6 +49,34 @@ export function today() {
   return new Date().toLocaleDateString("sv-SE");
 }
 
+// Taloyhtiöiden varausvuorot ovat Suomen aikaa riippumatta palvelimen aikavyöhykkeestä.
+const HELSINKI = "Europe/Helsinki";
+
+// Suomen aikaa oleva kellonaika (päivä VVVV-KK-PP ja tunti) ISO-muodossa (UTC).
+export function helsinkiIso(day: string, hour: number) {
+  const guess = new Date(`${day}T${String(hour).padStart(2, "0")}:00:00Z`);
+  const zone = new Intl.DateTimeFormat("en-US", { timeZone: HELSINKI, timeZoneName: "shortOffset" })
+    .formatToParts(guess).find(part => part.type === "timeZoneName")?.value ?? "GMT+2";
+  const offset = Number(/GMT([+-]\d+)/.exec(zone)?.[1] ?? 2);
+  return new Date(guess.getTime() - offset * 3600_000).toISOString();
+}
+
+// Aikaleiman päivä (VVVV-KK-PP), tunti ja minuutti Suomen aikaa.
+export function helsinkiParts(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: HELSINKI, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  }).formatToParts(new Date(iso));
+  const part = (type: string) => parts.find(item => item.type === type)?.value ?? "";
+  return { day: `${part("year")}-${part("month")}-${part("day")}`, hour: Number(part("hour")), minute: Number(part("minute")) };
+}
+
+// Päivä VVVV-KK-PP, johon lisätään päiviä.
+export function addDays(day: string, days: number) {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 // Tarkistaa vastaanotettavat tiedostot ennen tallennusta. Palauttaa käyttäjälle näytettävän virheen
 // tai null, kun kaikki tiedostot voidaan ottaa vastaan.
 export async function unsafeFileMessage(files: { filename: string; content: Buffer }[]): Promise<string | null> {
@@ -62,3 +90,10 @@ export async function unsafeFileMessage(files: { filename: string; content: Buff
 }
 
 export const VALID_EMAIL = /^[^\s<>,;@]+@[^\s<>,;@]+$/;
+
+// Asunnon rappu: asukkaan tietoihin kirjattu Rappu tai, jos sitä ei ole, asunnon numeron alkukirjaimet
+// ("B 34" -> "B"). Ilman kumpaakaan rappua ei ole.
+export function stairwellOf(apartmentNumber?: string | null, staircase?: string | null) {
+  if (staircase?.trim()) return staircase.trim().toUpperCase();
+  return (apartmentNumber ?? "").trim().match(/^[A-Za-zÅÄÖåäö]+/)?.[0].toUpperCase() ?? "";
+}

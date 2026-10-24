@@ -6,6 +6,7 @@ import { triage } from "../ai.js";
 import { attachAiLog, withAiLog } from "../ai-log.js";
 import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
+import { processIncidents } from "../incidents.js";
 import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
 import { QUEUE_POSITION_SQL } from "../booking-queue.js";
@@ -18,6 +19,7 @@ import {
 } from "./bookings.js";
 import { aiPriorityEnabled } from "./office.js";
 import { assignToCompanyManager } from "./tickets.js";
+import { continueAgent } from "../ai-agent.js";
 
 export const portalRouter: Router = express.Router();
 
@@ -119,6 +121,8 @@ export async function createPortalTicket(
   beforeAttachments?.(ticketId);
 
   if (result.emergency) void alertEmergency(ticketId);
+  // Aihe ja yhteisten vikojen tunnistus taustalla.
+  void processIncidents(ticketId);
 
   const attachmentError = await savePortalAttachments(ticketId, input.attachments, timestamp, resident.id);
   return { ticketId, attachmentError };
@@ -224,6 +228,8 @@ portalRouter.post("/portal/tickets/:id/messages", async (req, res) => {
     id("audit"), ticket.id, resident.name, reopened ? "reply_received_reopened" : "portal_message",
     JSON.stringify({ attachments: parsed.data.attachments.length }), timestamp
   );
+  // AI-agentin hoitamassa tehtävässä agentti jatkaa asukkaan vastauksesta (esim. valittu vuoro).
+  continueAgent(ticket.id);
   res.status(201).json({ ok: true, reopened });
 });
 

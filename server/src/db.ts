@@ -782,6 +782,68 @@ if (!officeColumns.some(existing => existing.name === "ai_prompt")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN ai_prompt INTEGER NOT NULL DEFAULT 1");
 }
 
+// AI-agentti hoitaa asukkaiden sauna-, pyykkitupa- ja autopaikka-asiat itsenäisesti (1 = päällä). Oletuksena pois.
+if (!officeColumns.some(existing => existing.name === "ai_agent")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN ai_agent INTEGER NOT NULL DEFAULT 0");
+}
+// AI-agentin asukkaalle tarjoamat vuorot. Agentti saa varata tarjotun vuoron vasta, kun asukas on vastannut
+// tarjoukseen, joten varaus ei synny pelkästä AI:n päätelmästä.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ai_agent_offers (
+    ticket_id TEXT NOT NULL,
+    resource TEXT NOT NULL,
+    starts_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (ticket_id, resource, starts_at)
+  )
+`);
+
+// Tehtävän aihe (lämmitys, hissi, vesivuoto…) yhteisten vikojen tunnistusta ja suodatusta varten.
+// topic_source: keywords = päätelty tekstistä, manual = käsittelijän valitsema (ei päätellä uudelleen).
+{
+  const columns = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
+  if (!columns.includes("topic")) db.exec("ALTER TABLE tickets ADD COLUMN topic TEXT");
+  if (!columns.includes("topic_source")) db.exec("ALTER TABLE tickets ADD COLUMN topic_source TEXT");
+}
+if (!officeColumns.some(existing => existing.name === "incident_detection")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");
+}
+// Aiheittaiset rajat, jotka isännöitsijä on muuttanut: {"heating": {"tracked": true, "threshold": 3, "windowHours": 24}}.
+// Puuttuva aihe käyttää oletusta (incidents.ts).
+if (!officeColumns.some(existing => existing.name === "incident_rules")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN incident_rules TEXT NOT NULL DEFAULT '{}'");
+}
+// Mahdollinen yhteinen vika: usea asunto on ilmoittanut samasta aiheesta lyhyessä ajassa.
+// stairwell = '' koskee koko taloyhtiötä. status: open, ordered (työtilaus tehty), resolved, dismissed.
+// auto_reply = 1: uusiin samanaiheisiin ilmoituksiin vastataan heti reply_message-viestillä.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS incidents (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    topic TEXT NOT NULL,
+    stairwell TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'open',
+    first_report_at TEXT NOT NULL,
+    last_report_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    ai_summary TEXT,
+    ai_summary_at TEXT,
+    auto_reply INTEGER NOT NULL DEFAULT 0,
+    reply_message TEXT NOT NULL DEFAULT '',
+    announced_at TEXT,
+    ordered_at TEXT,
+    handled_by TEXT,
+    handled_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS incident_tickets (
+    ticket_id TEXT PRIMARY KEY,
+    incident_id TEXT NOT NULL,
+    linked_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS incident_tickets_incident ON incident_tickets (incident_id);
+`);
+
 // Toistuvien aiheiden raportti: aiheet, jotka jätettiin pois, koska niistä on jo dokumentaatio.
 if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]).some(column => column.name === "covered")) {
   db.exec("ALTER TABLE topic_reports ADD COLUMN covered TEXT NOT NULL DEFAULT '[]'");

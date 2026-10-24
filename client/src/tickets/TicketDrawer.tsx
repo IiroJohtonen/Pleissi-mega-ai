@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, Dropdown, FactDropdown } from "../components/common";
+import { placeLabel, topicLabel, topicOptions } from "../topics";
+import { IncidentDrawer } from "../views/Incidents";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
@@ -331,6 +333,33 @@ export function TicketDrawer({
     else void requestSuggestion("");
   }
 
+  // AI-agentti käsittelee tehtävän vasta, kun käsittelijä painaa painiketta. Agentti voi vastata asukkaalle ja
+  // varata vuoron; muut asiat se jättää käsittelijälle perustelun kanssa.
+  const [agentRunning, setAgentRunning] = useState(false);
+  async function runAgent() {
+    if (!window.confirm(t("AI-agentti lukee tehtävän. Sauna-, pyykkitupa- ja autopaikka-asioissa se vastaa asukkaalle itse ja voi varata vuoron. Muut asiat se jättää sinulle. Jatketaanko?"))) return;
+    setAgentRunning(true);
+    setSuggestError("");
+    try {
+      const result = await api<{ outcome: "replied" | "handed_over"; reason: string; resolved: boolean; booked: boolean }>(
+        `/tickets/${ticket.id}/agent`, { method: "POST" }
+      );
+      setSuggestionToast(result.outcome === "handed_over"
+        ? { title: t("AI-agentti jätti tehtävän sinulle."), message: result.reason }
+        : {
+          title: result.resolved ? t("AI-agentti hoiti tehtävän ja sulki sen.") : t("AI-agentti vastasi asukkaalle ja odottaa hänen vastaustaan."),
+          message: result.booked ? t("Agentti varasi vuoron asukkaalle. Vastaus ja varaus näkyvät tehtävän aikajanalla.")
+            : result.resolved ? t("Vastaus näkyy tehtävän aikajanalla.")
+            : t("Tehtävä näkyy AI tehtävissä. Kun asukas vastaa, agentti jatkaa itse.")
+        });
+      await onChanged();
+    } catch (error) {
+      setSuggestError(errorMessage(error, t("AI-agentin käsittely epäonnistui. Yritä uudelleen.")));
+    } finally {
+      setAgentRunning(false);
+    }
+  }
+
   const [sensitiveSaving, setSensitiveSaving] = useState(false);
   async function toggleSensitive() {
     const next = !ticket.sensitive;
@@ -431,6 +460,16 @@ export function TicketDrawer({
   const [residents, setResidents] = useState<Resident[]>([]);
   const [linking, setLinking] = useState(false);
 
+  // Mahdollinen yhteinen vika, johon tehtävä on liitetty.
+  const [incident, setIncident] = useState<{ id: string; topic: string; stairwell: string; status: string; reporters: number } | null>(null);
+  const [incidentOpen, setIncidentOpen] = useState(false);
+  useEffect(() => {
+    setIncidentOpen(false);
+    api<typeof incident>(`/tickets/${encodeURIComponent(ticket.id)}/incident`)
+      .then(found => setIncident(found && (found.status === "open" || found.status === "ordered") ? found : null))
+      .catch(() => setIncident(null));
+  }, [ticket.id, ticket.updated_at]);
+
   useEffect(() => {
     api<Resident[]>(`/companies/${encodeURIComponent(ticket.company_id)}/residents`)
       .then(setResidents)
@@ -444,7 +483,9 @@ export function TicketDrawer({
     : residents;
   // Tietokenttien muutokset kerätään tähän ja tallennetaan vasta Tallenna-painikkeesta. Tehtävän
   // taustapäivitys ei koske niihin, joten keskeneräinen muokkaus säilyy.
-  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string; companyId?: string };
+  type FieldEdits = {
+    type?: string; topic?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string; companyId?: string;
+  };
   const [edits, setEdits] = useState<FieldEdits>({});
   const [saveError, setSaveError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -460,6 +501,7 @@ export function TicketDrawer({
 
   const savedFields = {
     type: ticket.type,
+    topic: ticket.topic ?? "other",
     priority: ticket.priority,
     assigneeId: ticket.assignee_id ?? null,
     dueDate: ticket.due_date ?? null,
@@ -785,6 +827,17 @@ export function TicketDrawer({
         {ticket.company_pending ? (
           <UnidentifiedCompanyPanel ticket={ticket} companies={companies} users={officeUsers} onChanged={onChanged} />
         ) : null}
+        {incident && (
+          <p className="incident-notice">
+            <span>
+              {t("Kuuluu mahdolliseen yhteiseen vikaan: {0}, {1} ({2} asuntoa).", topicLabel(incident.topic), placeLabel(incident.stairwell), incident.reporters)}
+            </span>
+            <button type="button" onClick={() => setIncidentOpen(true)}>{t("Avaa yhteinen vika")}</button>
+          </p>
+        )}
+        {incidentOpen && incident && (
+          <IncidentDrawer incidentId={incident.id} onClose={() => setIncidentOpen(false)} onChanged={onChanged} onOpenTicket={() => setIncidentOpen(false)} />
+        )}
         <h2>{ticket.subject}</h2>
 
         <dl className="ticket-facts">
@@ -1001,6 +1054,17 @@ export function TicketDrawer({
                 ) : "-"}
             </dd>
           </div>
+          <div className={edits.topic !== undefined ? "changed" : ""}>
+            <dt>{t("Aihe")}</dt>
+            <dd>
+              <FactDropdown
+                value={shown.topic}
+                options={topicOptions}
+                disabled={updatingFields}
+                onChange={topic => edit("topic", topic)}
+              />
+            </dd>
+          </div>
         </dl>
 
         {aiPromptOpen && <AiSuggestModal onClose={() => setAiPromptOpen(false)} onSubmit={context => void requestSuggestion(context)} />}
@@ -1061,18 +1125,27 @@ export function TicketDrawer({
         <section className="drawer-section">
           <div className="suggest-header">
             <h3>{t("Vastaus asukkaalle")}</h3>
+            <div className="suggest-actions">
+            {MANAGEMENT_OFFICE.aiAgent && (
+              <button
+                className="ai-button"
+                onClick={() => void runAgent()}
+                disabled={agentRunning || suggesting || Boolean(ticket.sensitive)}
+                title={ticket.sensitive ? t("Arkaluonteista tehtävää ei lähetetä AI:lle.") : t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat ja vastaa asukkaalle")}
+              >
+                {agentRunning ? t("AI-agentti käsittelee…") : t("Anna AI-agentin hoitaa")}
+              </button>
+            )}
             <button
               className="ai-button"
               onClick={openSuggestionPrompt}
-              disabled={suggesting}
+              disabled={suggesting || agentRunning}
             >
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 2l1.900 5.600a4 4 0 0 0 2.500 2.500L22 12l-5.600 1.900a4 4 0 0 0-2.500 2.500L12 22l-1.900-5.600a4 4 0 0 0-2.500-2.500L2 12l5.600-1.900a4 4 0 0 0 2.500-2.500z" />
-              </svg>
               {suggesting ? t("AI kirjoittaa…")
                 : ticket.sensitive ? (suggestedBefore ? t("Pyydä uusi ehdotus dokumentaatiosta") : t("Pyydä ehdotus dokumentaatiosta"))
                 : suggestedBefore ? t("Pyydä uusi AI-ehdotus") : t("Pyydä AI-ehdotus")}
             </button>
+            </div>
           </div>
           {/* Arkaluonteinen tehtävä (esim. terveystietoja) ei mene AI:lle; merkinnän voi asettaa ja poistaa. */}
           <p className={ticket.sensitive ? "sensitive-note active" : "sensitive-note"}>

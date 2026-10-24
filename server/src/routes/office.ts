@@ -6,6 +6,7 @@ import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
 import { aiRequestPayload } from "../ai-log.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
+import { ADJUSTABLE_TOPICS, detectionRules, RULE_LIMITS, saveDetectionRules } from "../incidents.js";
 import { id, now } from "../util.js";
 import { AI_MODEL_CHOICES, getMasterData, MASTER_DATA_DEFAULTS, masterDataSchema, saveMasterData } from "../master-data.js";
 import { loginCodeMailReady, loginCodeSetting } from "../login-codes.js";
@@ -18,7 +19,8 @@ const OFFICE_SELECT = `
          reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority,
          ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays,
          ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent, two_factor AS twoFactor,
-         resident_status_updates AS residentStatusUpdates, ai_prompt AS aiPrompt
+         resident_status_updates AS residentStatusUpdates, ai_prompt AS aiPrompt, ai_agent AS aiAgent,
+         incident_detection AS incidentDetection
   FROM office_settings WHERE id = 1
 `;
 
@@ -33,6 +35,8 @@ function officeSettings() {
     unidentifiedQueueUsers: queue.users,
     canHandleUnidentified: isQueueHandler(),
     aiAvailable: Boolean(process.env.ANTHROPIC_API_KEY),
+    // Yhteisten vikojen tunnistuksen rajat aiheittain.
+    incidentRules: detectionRules(),
     twoFactorOverridden: process.env.TWO_FACTOR_DISABLED === "1"
   };
 }
@@ -47,6 +51,12 @@ export function aiPriorityEnabled(): boolean {
 export function aiRelevanceEnabled(): boolean {
   const row = db.prepare("SELECT ai_relevance FROM office_settings WHERE id = 1").get() as { ai_relevance: number } | undefined;
   return Boolean(row?.ai_relevance);
+}
+
+// Hoitaako AI-agentti asukkaiden sauna-, pyykkitupa- ja autopaikka-asiat itse. Oletuksena pois.
+export function aiAgentEnabled(): boolean {
+  const row = db.prepare("SELECT ai_agent FROM office_settings WHERE id = 1").get() as { ai_agent: number } | undefined;
+  return Boolean(row?.ai_agent);
 }
 
 officeRouter.get("/office", (_req, res) => {
@@ -76,9 +86,24 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     // Asukas saa sähköpostin, kun hänen tehtävänsä tila muuttuu.
     residentStatusUpdates: z.boolean().optional(),
     // AI-ehdotusta pyydettäessä kysytään lisätietoa ikkunassa.
-    aiPrompt: z.boolean().optional()
+    aiPrompt: z.boolean().optional(),
+    // AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat itse.
+    aiAgent: z.boolean().optional(),
+    // Usean asunnon samanaiheiset ilmoitukset näytetään mahdollisena yhteisenä vikana.
+    incidentDetection: z.boolean().optional(),
+    // Aiheittaiset rajat: seurataanko, montako asuntoa ja minkä ajan sisällä.
+    incidentRules: z.array(z.object({
+      topic: z.string().refine(topic => (ADJUSTABLE_TOPICS as string[]).includes(topic)),
+      tracked: z.boolean(),
+      threshold: z.number().int().min(RULE_LIMITS.threshold.min).max(RULE_LIMITS.threshold.max),
+      windowHours: z.number().int().min(RULE_LIMITS.windowHours.min).max(RULE_LIMITS.windowHours.max)
+    })).optional()
   }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues.some(issue => issue.path[0] === "incidentRules")
+      ? `Yhteisten vikojen rajoissa asuntoja pitää olla ${RULE_LIMITS.threshold.min}–${RULE_LIMITS.threshold.max} ja aikaikkunan ${RULE_LIMITS.windowHours.min}–${RULE_LIMITS.windowHours.max} tuntia.`
+      : "Tarkista toimiston nimi ja tiedot." });
+  }
   if (parsed.data.twoFactor && !loginCodeSetting() && !loginCodeMailReady()) {
     return res.status(400).json({ error: "Yhdistä ensin toimiston sähköpostitili. Kirjautumiskoodit lähetetään sen kautta." });
   }
@@ -125,6 +150,13 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   if (parsed.data.aiPrompt !== undefined) {
     db.prepare("UPDATE office_settings SET ai_prompt = ? WHERE id = 1").run(parsed.data.aiPrompt ? 1 : 0);
   }
+  if (parsed.data.aiAgent !== undefined) {
+    db.prepare("UPDATE office_settings SET ai_agent = ? WHERE id = 1").run(parsed.data.aiAgent ? 1 : 0);
+  }
+  if (parsed.data.incidentDetection !== undefined) {
+    db.prepare("UPDATE office_settings SET incident_detection = ? WHERE id = 1").run(parsed.data.incidentDetection ? 1 : 0);
+  }
+  if (parsed.data.incidentRules) saveDetectionRules(parsed.data.incidentRules);
   refreshBudgetAlerts();
   res.json(officeSettings());
 });

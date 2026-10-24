@@ -8,7 +8,9 @@ const featureLabels: Record<string, string> = {
   chunking: t("dokumentin pilkonta"),
   format: t("tiedon muotoilu"),
   compare: t("dokumenttiversioiden vertailu"),
-  topics: t("toistuvien aiheiden raportti")
+  topics: t("toistuvien aiheiden raportti"),
+  agent: t("AI-agentti"),
+  incident: t("yhteisen vian tulkinta")
 };
 
 // Lokimerkinnän otsikko: mihin AI:ta käytettiin.

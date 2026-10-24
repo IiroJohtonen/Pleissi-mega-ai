@@ -3,6 +3,142 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 24.10.2026 · Yhtenäiset painikkeet ja yhteisten vikojen rajat asetuksiin
+
+**Mitä muutettiin**
+- Kaikki toimintopainikkeet ovat saman kokoisia ja näköisiä: tavallinen painike on valkoinen harmaalla reunalla,
+  päätoiminto sininen ja poisto punaisella tekstillä. Teksti on tavallista eikä lihavoitua.
+- Hiiren alla painike tummuu hieman, näppäimistöllä valittu painike saa sinisen kehyksen, ja painike, jota ei voi
+  juuri nyt käyttää, on harmaa eikä läpikuultava.
+- Näkymän päätoiminto on sininen: Lisää asukas, Luo dokumentti, Uusi tiedote ja Lisää taloyhtiö.
+- Yhteisten vikojen rajat ovat säädettävissä: jokaiselle aiheelle voi valita, seurataanko sitä, montako eri
+  asuntoa tarvitaan ja minkä ajan sisällä. Palauta oletusrajat palauttaa alkuperäiset arvot.
+
+**Miten**
+- Painikkeet näkyvät koko sovelluksessa, esim. tehtävän yläpalkissa ja päätösjonon korteissa.
+- Asetukset › Isännöitsijätoimiston tiedot › AI › Tunnista yhteiset viat › rajataulukko.
+
+**Testit:** T-184–T-186 · Pleissi Mega AI
+
+## 24.10.2026 · Mahdolliset yhteiset viat
+
+**Mitä muutettiin**
+- Jokainen tehtävä saa aiheen (esim. lämmitys, lämmin vesi, vesivuoto, hissi, sähkö). Aihe näkyy tehtävällä, sen
+  voi vaihtaa, ja Kaikki tehtävät -listan voi suodattaa aiheen mukaan.
+- Kun useampi eri asunto ilmoittaa samasta aiheesta lyhyessä ajassa ja selvästi tavallista enemmän (esim. kolme
+  saman portaan asuntoa kylmästä vuorokauden sisällä), Päätösjonon yläosaan tulee Mahdolliset yhteiset viat -rivi
+  ja vastuuisännöitsijä saa sähköpostin. Saman asunnon useampi viesti lasketaan yhdeksi.
+- Yhteisen vian näkymässä on tilanne (montako asuntoa, mistä portaasta, milloin) ja selitys, miksi vika on
+  todennäköisemmin yhteinen kuin yksittäisen asunnon asia. Tunnistus on laskentaa eikä maksa AI-kuluja.
+- AI-tulkinnan voi pyytää painikkeesta: AI arvioi todennäköisen syyn, ehdottaa toimenpiteet ja kirjoittaa
+  luonnokset työtilaukseksi, tiedotteeksi ja vastaukseksi. Arkaluonteisten ilmoitusten tekstiä ei lähetetä AI:lle.
+- Samasta näkymästä voi lähettää yhden työtilauksen huoltoyhtiölle, julkaista tiedotteen portaan tai koko
+  taloyhtiön asukkaille, vastata kaikille ilmoittajille ja merkitä vian korjatuksi, jolloin kaikki ilmoitukset
+  suljetaan viestin kera.
+- Halutessa uusiin samanaiheisiin ilmoituksiin vastataan automaattisesti, myös toimiston ollessa kiinni. AI-agentti
+  vastaa yhteiseen vikaan kuuluvaan tehtävään samalla viestillä ilman AI-kutsua.
+- Toisen portaan ilmoitus liitetään samaan vikaan, joka laajenee koskemaan koko taloyhtiötä. Väärin liitetyn
+  ilmoituksen voi irrottaa, ja Ei yhteinen vika -painike sulkee vian.
+
+**Miten**
+- Päätösjono › Mahdolliset yhteiset viat (näkyy, kun vika on tunnistettu).
+- Tehtävä › Aihe-kenttä ja ilmoitus Kuuluu mahdolliseen yhteiseen vikaan.
+- Asetukset › Isännöitsijätoimiston tiedot › AI › Tunnista yhteiset viat (oletuksena päällä).
+
+**Testit:** T-176–T-183 · Pleissi Mega AI
+
+## 24.10.2026 · Rauhallisempi ulkoasu
+
+**Mitä muutettiin**
+- Koko sovellus käyttää nyt yhtä yhtenäistä väri-, kirjasin- ja välistyskokoelmaa (kuvattu tiedostossa
+  DESIGN.md). Väreillä on merkitys: punainen ja keltainen kertovat kiireestä, sininen on painike tai valittu kohta.
+- Mustat päätoimintopainikkeet ovat nyt sinisiä. Valitut välilehdet ja suodattimet näkyvät vaaleansinisinä.
+- Nimilaput ja otsikot ovat tavallisella kirjoitusasulla eivätkä ISOILLA KIRJAIMILLA.
+- Tehtäväkortissa otsikko on ensin, ja taloyhtiö, asunto, asukas ja numero ovat tavallista tekstiä.
+  Tehtäväkorteilla ja -riveillä ei ole värillisiä reunoja; prioriteettimerkki näkyy vain kiireellisillä ja
+  hätätehtävillä.
+- Päätösjonon laskurit ovat yhdellä rauhallisella rivillä. Tehtävä- ja asukaslistan rivit ovat yhtenäisenä listana.
+- Sauna- ja pyykkituvan kalenterit käyttävät samaa sinistä väriä oranssin ja turkoosin sijaan.
+- AI-painikkeista on poistettu kipinä- ja robottikuvakkeet, ja AI-ehdotus näkyy lainauksena.
+- Sivun yläosan PLEISSI / toimisto -teksti on poistettu. Kenttien kohdistuskehys on sininen.
+- Tumma tila käyttää samoja värejä tummina versioina.
+
+**Miten**
+- Näkyy koko sovelluksessa, erityisesti päätösjonossa, tehtävälistassa, asukaslistassa ja saunakalenterissa.
+
+**Testit:** T-172–T-175 · Pleissi Mega AI
+
+## 22.10.2026 · AI-agentti käynnistetään tehtävän painikkeesta
+
+**Mitä muutettiin**
+- AI-agentti ei enää lue jokaista uutta tehtävää itsestään. Tehtävällä on uusi painike **Anna AI-agentin
+  hoitaa** AI-ehdotuksen vieressä, ja agentti käsittelee tehtävän vasta, kun painiketta painetaan. Näin
+  AI-kutsuja ei tehdä turhaan.
+- Painike toimii kaikilla tehtävillä. Sauna-, pyykkitupa- ja autopaikka-asiat agentti hoitaa kuten ennenkin:
+  se vastaa asukkaalle ja tarvittaessa varaa vuoron. Muut asiat se jättää käsittelijälle ja kirjoittaa
+  perustelun tehtävän sisäiseksi muistiinpanoksi.
+- Painalluksen jälkeen ruudun yläreunaan tulee ilmoitus tuloksesta: agentti hoiti ja sulki tehtävän, agentti
+  vastasi ja odottaa asukkaan vastausta, tai agentti jätti tehtävän käsittelijälle (syy näkyy ilmoituksessa).
+- Jos agentti ei voi käsitellä tehtävää (esim. ilmoittajaa ei ole tunnistettu asukkaaksi tai tehtävä on
+  arkaluonteinen), syy näytetään heti eikä AI:ta kutsuta.
+- Kun asukas vastaa agentin hoitamaan tehtävään (esim. valitsee tarjotun vuoron), agentti jatkaa itse kuten
+  ennenkin, myös toimiston ollessa kiinni.
+- Asetus on nyt nimeltään **AI-agentti käytössä**: se näyttää painikkeen tehtävillä.
+
+**Miten**
+- Avaa tehtävä › Vastaus asukkaalle › Anna AI-agentin hoitaa.
+- Asetukset › Isännöitsijätoimiston tiedot › AI › AI-agentti käytössä.
+
+**Testit:** T-169–T-171 (lisäksi T-164–T-168 päivitetty painikkeen mukaisiksi) · Pleissi Mega AI
+
+## 22.10.2026 · AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat
+
+**Mitä muutettiin**
+- Uusi asetus **AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat** (oletuksena pois päältä).
+- Kun asetus on päällä, AI-agentti lukee tunnistetun asukkaan uuden tehtävän (sähköposti tai asukasportaali).
+- Jos asukas haluaa saunan tai pyykkituvan vuoron ja pyydetty aika on vapaa, agentti varaa sen ja vahvistaa
+  varauksen asukkaalle.
+- Jos pyydetty aika on varattu, agentti ehdottaa 2–4 vapaata vuoroa pyydetystä päivästä kolmen päivän päähän.
+  Kun asukas vastaa ja valitsee vuoron, agentti varaa sen ja sulkee tehtävän.
+- Autopaikoista agentti kertoo paikkatyypit, hinnat, vapaat paikat ja asukkaan jonosijan, ja lisää asukkaan
+  autopaikkajonoon. Paikan luovutus jää henkilökunnalle.
+- Vastaus lähtee heti, myös toimiston ollessa kiinni: sähköpostiin samaan viestiketjuun ja portaalin tehtävään
+  portaaliviestinä. Viestin lopussa kerrotaan, että vastaus on automaattinen.
+- Muut asiat (vikailmoitukset, muutot ym.) ja asiat, joita agentti ei saa ratkaistua, jäävät päätösjonoon.
+  Jos agentti oli jo ottanut tehtävän hoitaakseen, tehtävä palaa jonoon sisäisen muistiinpanon kanssa.
+- Agentti ei voi varata aikaa, jota asukas ei ole valinnut, eikä toisen asukkaan nimiin.
+- Sivupalkissa Kaikki tehtävät -kohdan alla on taas **AI tehtävät**: agentin hoitamat tehtävät. Laskuri
+  näyttää tehtävät, joissa agentti odottaa asukkaan vastausta.
+- Tehtävän lokiin kirjataan agentin varaukset, vastaukset ja siirrot henkilökunnalle.
+
+**Miten**
+- Asetukset › Isännöitsijätoimiston tiedot › AI › AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat.
+- Sivupalkki › Kaikki tehtävät › AI tehtävät.
+- Vaatii palvelimelle AI-avaimen. Jokainen uusi asukkaan tehtävä on silloin AI-kutsu.
+
+**Testit:** T-163–T-168 · Pleissi Mega AI
+
+## 22.10.2026 · Pleissi Mega AI: kopio Kotilosta ja Data-osio
+
+**Mitä muutettiin**
+- Pleissi Mega AI on kopio Kotilosta. Siihen lisätään myöhemmin paljon AI-ominaisuuksia.
+- Sivupalkissa on taloyhtiöosion yläpuolella uusi otsikko **Data**. Sen alla ovat samat ryhmät ja sivut kuin
+  taloyhtiön alla: Dokumentaatio, Perustiedot, Tilat ja Ilmoitukset.
+- Data-osion taulut näyttävät jokaisen taloyhtiön jokaisen tietueen ilman suodatusta. Mukana ovat myös
+  esimerkiksi poismuuttaneet asukkaat, käsitellyt muutto- ja remontti-ilmoitukset, päättyneet jonot,
+  menneet sauna- ja pyykkituvan vuorot sekä dokumenttien vanhat versiot. Jokaisella rivillä on taloyhtiön nimi.
+- Taulua voi hakea hakukentällä ja järjestää napsauttamalla sarakkeen otsikkoa. Taloyhtiön nimi avaa saman
+  sivun kyseisen taloyhtiön omana näkymänä.
+- **Kaikki taloyhtiöt** -lista on siirretty taloyhtiövalikon lopusta Data-otsikon alle. Taloyhtiövalikossa
+  ovat nyt vain taloyhtiöt.
+- Data-taulun näkee käyttäjä, jonka rooli näkee saman sivun taloyhtiön alla (Asetukset › Roolit).
+
+**Miten**
+- Sivupalkki › Data › esim. Perustiedot › Asukkaat.
+- Sivupalkki › Data › Kaikki taloyhtiöt.
+
+**Testit:** T-159–T-162 · Pleissi Mega AI
+
 ## 21.10.2026 · Uuden tehtävän asukasvalinta ja Muu-vaihtoehto
 
 **Mitä muutettiin**

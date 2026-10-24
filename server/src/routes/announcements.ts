@@ -4,7 +4,7 @@ import { companyIdFromContext } from "../access.js";
 import { requireManager } from "../auth.js";
 import { db } from "../db.js";
 import { sendEmail } from "../mail.js";
-import { ACTIVE_RESIDENT, id, now, VALID_EMAIL } from "../util.js";
+import { ACTIVE_RESIDENT, id, now, stairwellOf, VALID_EMAIL } from "../util.js";
 import { portalResident } from "./portal.js";
 
 export const announcementsRouter: Router = express.Router();
@@ -13,13 +13,6 @@ export const announcementsRouter: Router = express.Router();
 // Tiedotteet: isännöitsijän viesti koko taloyhtiön tai yhden rapun asukkaille. Tiedote näkyy
 // asukasportaalissa ja lähetetään haluttaessa sähköpostilla piilokopiona.
 // ---------------------------------------------------------------------------------------------
-// Asunnon rappu: asukkaan tietoihin kirjattu Rappu tai, jos sitä ei ole, asunnon numeron alkukirjaimet
-// ("B 34" -> "B"). Ilman kumpaakaan rappua ei ole.
-function stairwellOf(apartmentNumber?: string | null, staircase?: string | null) {
-  if (staircase?.trim()) return staircase.trim().toUpperCase();
-  return (apartmentNumber ?? "").trim().match(/^[A-Za-zÅÄÖåäö]+/)?.[0].toUpperCase() ?? "";
-}
-
 function announcementAudience(companyId: string) {
   const rows = db.prepare(`
     SELECT r.email, a.apartment_number, a.staircase

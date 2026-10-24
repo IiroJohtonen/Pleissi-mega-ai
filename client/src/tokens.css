@@ -1,0 +1,70 @@
+/* Pleissin ulkoasun muuttujat (DESIGN.md). Tyylit käyttävät näitä nimiä eivätkä värikoodeja suoraan.
+   Tämä tiedosto ei kulje tumman tilan generoinnin läpi: tumman tilan arvot ovat tässä itse. */
+
+:root {
+  --canvas: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #f8f9fb;
+  --ink: #1c2733;
+  --ink-2: #4b5866;
+  --ink-3: #65717f;
+  --line: #dfe4ea;
+  --line-strong: #c8d0da;
+  --field-border: #84909d;
+  --primary: #2b5c8a;
+  --primary-hover: #224a70;
+  --primary-tint: #e9f0f7;
+  --on-primary: #ffffff;
+  --chrome: #172230;
+  --danger: #b23b2b;
+  --danger-tint: #fbecea;
+  --warning: #8a5a00;
+  --warning-tint: #fdf2d8;
+  --success: #2f6b45;
+  --success-tint: #e6f1ea;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 19px;
+  --text-2xl: 26px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --shadow-pop: 0 8px 24px rgba(23, 34, 48, .16);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+}
+
+:root[data-theme="dark"] {
+  --canvas: #121a24;
+  --surface: #1a2431;
+  --surface-2: #1f2a38;
+  --ink: #e6ebf1;
+  --ink-2: #b3bfcc;
+  --ink-3: #8d9aa8;
+  --line: #2a3646;
+  --line-strong: #3a4859;
+  --field-border: #6a7b8e;
+  --primary: #7fb0de;
+  --primary-hover: #a3c7ea;
+  --primary-tint: #1f3247;
+  --on-primary: #10202f;
+  --chrome: #0e151e;
+  --danger: #f0a093;
+  --danger-tint: #3a2220;
+  --warning: #e8c170;
+  --warning-tint: #352a14;
+  --success: #8fcfa3;
+  --success-tint: #1d3326;
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, .45);
+}

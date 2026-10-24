@@ -3,7 +3,7 @@ import { Dropdown, FactDropdown, MultiSelect, NavToggle, TabIcon, usePaged } fro
 import { priorityLabel, queueTicketStatuses, statusLabel, ticketStatuses } from "../format";
 import { type QueueSort, saveNavPinned, saveQueueSort, storedNavPinned, storedQueueSort } from "../preferences";
 import { emptyTicketMessages, navigate, paramIsTicket, parseRoute, tabTitles, useRoute } from "../routing";
-import { canSeeTab, firstVisibleTab, navGroups } from "../role-tables";
+import { canSeeTab, dataTables, firstVisibleTab, navGroups } from "../role-tables";
 import { actorName, api, canSeeTable, MANAGEMENT_OFFICE, type OfficeUser } from "../session";
 import {
   assignableUsers, canAssignTickets, compareQueue, compareTickets, fetchTicketDetail, isDueSoon, isOverdue, type ReminderSettings, ticketColumns,
@@ -17,6 +17,7 @@ import { Announcements } from "./Announcements";
 import { AuditLog } from "./AuditLog";
 import { BookingCalendar } from "./Bookings";
 import { Companies } from "./Companies";
+import { DataTable } from "./DataTable";
 import { isKeyLate, KeyRegister } from "./Keys";
 import { Knowledge } from "./Knowledge";
 import { MeterReadings } from "./Meters";
@@ -32,6 +33,8 @@ import { type HistoryEntry, readHistory, rememberTicket } from "../history";
 import { documentNumberQuery, type SearchResponse, SearchResults, ticketNumberQuery } from "./Search";
 import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
+import { IncidentList } from "./Incidents";
+import { topicOptions } from "../topics";
 import { t } from "../i18n";
 
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
@@ -40,8 +43,6 @@ const reportTabs: [ReportsTab, string][] = [["metrics", t("Mittarit")], ["custom
 const reportTabIcons: Record<ReportsTab, TicketTab> = { metrics: "reports", custom: "my-tickets", company: "companies" };
 // Ryhmän alasivun nimi, kun se poikkeaa näkymän otsikosta.
 const navItemTitles: Partial<Record<TicketTab, string>> = { knowledge: t("Kaikki dokumentit") };
-// Taloyhtiövalikon viimeinen kohta avaa taloyhtiöiden listan.
-const ALL_COMPANIES = "__all__";
 // Sivupalkissa valittu taloyhtiö, jonka tiedot, dokumentaatio, asukkaat, tilat ja ilmoitukset näytetään.
 // Tämä on ainoa taloyhtiön valinta; tehtävälistat näyttävät kaikki yhtiöt. Valinta säilyy selaimessa.
 const NAV_COMPANY_KEY = "kotilo.navCompany";
@@ -102,6 +103,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       .then(office => {
         MANAGEMENT_OFFICE.name = office.name;
         MANAGEMENT_OFFICE.aiPrompt = office.aiPrompt !== 0;
+        MANAGEMENT_OFFICE.aiAgent = Boolean(office.aiAgent) && office.aiAvailable !== false;
         setOfficeVersion(version => version + 1);
         setReminderSettings({ replyDays: office.replyReminderDays ?? 2, dueDays: office.dueReminderDays ?? 1 });
       })
@@ -117,6 +119,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
   useEffect(() => {
     if (!tabAllowed) navigate(firstVisibleTab());
   }, [tabAllowed]);
+  // Data ilman taulua (esim. #/data) avaa ensimmäisen taulun, jonka rooli näkee.
+  useEffect(() => {
+    const first = dataTables.find(item => canSeeTable(item));
+    if (tab === "data" && !routeParam && first) navigate("data", first);
+  }, [tab, routeParam]);
   // Avatun tehtävän tallentamattomat muutokset: navigointi varmistaa poistumisen.
   const ticketDirty = useRef(false);
   const setTab = (next: TicketTab) => {
@@ -130,6 +137,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
   // Suodattimet ovat monivalintoja: valitut arvot, null = kaikki (oletus).
   const [priorityFilter, setPriorityFilter] = useState<string[] | null>(null);
   const [typeFilter, setTypeFilter] = useState<string[] | null>(null);
+  const [topicFilter, setTopicFilter] = useState<string[] | null>(null);
+  // Kasvaa, kun tehtävät ladataan uudelleen, jotta yhteisten vikojen lista päivittyy samalla.
+  const [incidentRefresh, setIncidentRefresh] = useState(0);
   // Tilasuodatin on käytössä Kaikki tehtävät- ja Omat tehtävät -näkymissä; muut näkymät on jo rajattu tilan mukaan.
   // Valitut tilat; null = kaikki tilat (oletus).
   const [statusFilter, setStatusFilter] = useState<string[] | null>(null);
@@ -150,6 +160,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   function openTaskList(next: TicketTab) {
     setPriorityFilter(null);
     setTypeFilter(null);
+    setTopicFilter(null);
     setStatusFilter(null);
     setCompanyFilter(null);
     setDueFilter(null);
@@ -159,7 +170,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   const [clock, setClock] = useState(Date.now());
   const [myTicketsOpen, setMyTicketsOpen] = useState(true);
   // Sivupalkin kohdat, jotka käyttäjän rooli näkee.
-  const taskSubTabs = canSeeTable("unidentified") || canSeeTable("my-tickets");
+  const taskSubTabs = canSeeTable("unidentified") || canSeeTable("my-tickets") || canSeeTable("tickets");
   const visibleNavGroups = navGroups
     .map(group => ({ ...group, tabs: group.tabs.filter(item => canSeeTable(item)) }))
     .filter(group => group.tabs.length > 0);
@@ -283,10 +294,13 @@ export function Workspace({ user }: { user: OfficeUser }) {
   useEffect(() => {
     if (tab === "my-tickets" || tab === "ai-handled" || tab === "unidentified") setMyTicketsOpen(true);
     if (tab === "reports") setReportsOpen(true);
-    // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään.
+    // Suljettu ryhmä aukeaa, kun sen näkymään siirrytään. Data-osion ryhmien avaimet alkavat data-.
+    const dataGroup = tab === "data" ? navGroups.find(item => item.tabs.includes(routeParam as TicketTab)) : undefined;
+    if (dataGroup) setClosedGroups(current => current.filter(key => key !== "data" && key !== `data-${dataGroup.key}`));
+    if (tab === "companies" && !routeParam) setClosedGroups(current => current.filter(key => key !== "data"));
     const group = navGroups.find(item => item.tabs.includes(tab));
     if (group) setClosedGroups(current => current.filter(key => key !== group.key));
-  }, [tab]);
+  }, [tab, routeParam]);
 
   // Alavalikon laskurit: käsittelyä odottavat muutto- ja remontti-ilmoitukset sekä myöhässä olevat avaimet.
   async function refreshNavCounts() {
@@ -317,6 +331,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     const rows = await api<Ticket[]>("/tickets?companyId=all");
     setAllCompanyTickets([...rows].sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created")));
     setLoading(false);
+    setIncidentRefresh(count => count + 1);
 
     // Päivitetään avoin tehtävä osoitteen perusteella, jotta juuri suljettu paneeli ei aukea uudelleen.
     const route = parseRoute();
@@ -510,8 +525,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
     .sort((a, b) => compareTickets(a, b, "priority") || compareTickets(a, b, "created"));
   // Omat tehtävät: käsittelijän kaikki aloitetut tehtävät kaikista yhtiöistä.
   const myTickets = allCompanyTickets.filter(ticket => ticket.assignee_id === user.id && MY_TICKET_STATUSES.includes(ticket.status));
-  // AI tehtävät -näkymä on piilotettu sivupalkista, mutta osoite toimii edelleen.
-  const aiTickets = tickets.filter(ticket => ticket.status === "waiting_third_party" && ticket.ai_action === "ai");
+  // AI tehtävät: AI-agentin hoitamat tehtävät. Laskurissa ovat ne, joissa agentti odottaa asukkaan vastausta.
+  const aiTickets = tickets.filter(ticket => ticket.ai_action === "ai");
+  const aiWaitingCount = aiTickets.filter(ticket => ticket.status === "waiting_third_party").length;
   const ticketTypes = [...new Set(tickets.map(ticket => ticket.type))].sort((a, b) => a.localeCompare(b, "fi"));
   // Määräaikasuodattimen valinnat; "other" = ei myöhässä, ei umpeutumassa eikä muistutusta.
   function dueMatches(ticket: Ticket, kind: string): boolean {
@@ -520,7 +536,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     if (kind === "reminders") return ticketReminders(ticket, reminderSettings).length > 0;
     return !["overdue", "due_soon", "reminders"].some(other => dueMatches(ticket, other));
   }
-  const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unidentified";
+  const statusFilterTab = tab === "tickets" || tab === "my-tickets" || tab === "unidentified" || tab === "ai-handled";
   // Tilasuodattimen vaihtoehdot: näkymän mahdolliset tilat.
   const statusOptions = tab === "my-tickets" ? ownTicketStatuses : tab === "unidentified" ? openTicketStatuses : ticketStatuses;
   // Muistutukset koskevat kaikkia omia keskeneräisiä tehtäviä kaikista yhtiöistä, myös päätösjonon avoimia.
@@ -533,6 +549,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     picked(companyFilter, ticket.company_id)
     && picked(priorityFilter, ticket.priority)
     && picked(typeFilter, ticket.type)
+    && picked(topicFilter, ticket.topic ?? "other")
     && (!statusFilterTab || picked(statusFilter, ticket.status))
     && (dueFilter === null || dueFilter.some(kind => dueMatches(ticket, kind)))
     && ticketColumns.every(column => {
@@ -550,6 +567,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       options: ["emergency", "urgent", "normal", "low"].map(priority => ({ value: priority, label: priorityLabel(priority) })) },
     { key: "type", label: t("Tyyppi"), value: typeFilter, onChange: setTypeFilter,
       options: ticketTypes.map(type => ({ value: type, label: t(type) })) },
+    { key: "topic", label: t("Aihe"), value: topicFilter, onChange: setTopicFilter, options: topicOptions },
     ...(statusFilterTab
       ? [{ key: "status", label: t("Tila"), value: statusFilter, onChange: setStatusFilter,
           options: statusOptions.map(status => ({ value: status, label: statusLabel(status) })) }]
@@ -592,7 +610,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   const pagedInProgress = usePaged(inProgressTickets, `in-progress|${queueSort}`);
   const pagedTickets = usePaged(listedTickets, [
-    tab, JSON.stringify([companyFilter, priorityFilter, typeFilter, statusFilter, dueFilter]),
+    tab, JSON.stringify([companyFilter, priorityFilter, typeFilter, topicFilter, statusFilter, dueFilter]),
     JSON.stringify(columnSearch), ticketSort?.key, ticketSort?.descending
   ].join("|"));
 
@@ -705,6 +723,17 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   <b>{myTickets.length}</b>
                 </button>
               )}
+              {canSeeTable("tickets") && (
+                <button
+                  className={`nav-sub ${tab === "ai-handled" ? "active" : ""}`}
+                  onClick={() => openTaskList("ai-handled")}
+                  title={t("AI-agentin hoitamat tehtävät")}
+                >
+                  <TabIcon tab="ai-handled" />
+                  {t("AI tehtävät")}
+                  {aiWaitingCount > 0 && <b title={t("Odottaa asukkaan vastausta")}>{aiWaitingCount}</b>}
+                </button>
+              )}
             </>
           )}
           {/* Raportit: alasivuina mittarit, omat raportit ja taloyhtiön raportit. */}
@@ -725,7 +754,69 @@ export function Workspace({ user }: { user: OfficeUser }) {
           ))}
           </>
           )}
-          {/* Taloyhtiöosio: otsikkona taloyhtiön valinta, jonka viimeinen kohta avaa kaikkien yhtiöiden listan. */}
+          {/* Data: taloyhtiöosion alasivut kaikista taloyhtiöistä suodattamattomina sekä kaikkien taloyhtiöiden lista. */}
+          {(canSeeTable("companies") || visibleNavGroups.length > 0) && (
+          <div className="nav-company-section nav-data-section">
+            <div className="nav-group">
+              <button
+                className={tab === "data" ? "active" : ""}
+                onClick={() => {
+                  const first = dataTables.find(item => canSeeTable(item));
+                  if (first) navigate("data", first); else navigate("companies");
+                }}
+              >
+                <TabIcon tab="data" />
+                {t("Data")}
+              </button>
+              <NavToggle open={!closedGroups.includes("data")} label={t("Data-osion taulut")} onToggle={() => toggleGroup("data")} />
+            </div>
+            {!closedGroups.includes("data") && (
+            <div className="nav-subs">
+              {canSeeTable("companies") && (
+                <button className={`nav-sub ${tab === "companies" && !routeParam ? "active" : ""}`} onClick={() => navigate("companies")}>
+                  <TabIcon tab="companies" />
+                  {t("Kaikki taloyhtiöt")}
+                </button>
+              )}
+              {visibleNavGroups.map(group => {
+                const key = `data-${group.key}`;
+                const open = !closedGroups.includes(key);
+                return (
+                <Fragment key={key}>
+                  <button
+                    className={`nav-label ${open ? "open" : ""}`}
+                    onClick={() => toggleGroup(key)}
+                    aria-expanded={open}
+                    title={`${open ? t("Piilota") : t("Näytä")} ${group.label}`}
+                  >
+                    {group.label}
+                    <svg
+                      className="tab-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  {open && group.tabs.map(item => (
+                    <button key={item} className={`nav-sub ${tab === "data" && routeParam === item ? "active" : ""}`} onClick={() => navigate("data", item)}>
+                      <TabIcon tab={item} />
+                      {navItemTitles[item] ?? tabTitles[item]}
+                    </button>
+                  ))}
+                </Fragment>
+                );
+              })}
+            </div>
+            )}
+          </div>
+          )}
+          {/* Taloyhtiöosio: otsikkona taloyhtiön valinta; alasivut koskevat valittua yhtiötä. */}
           {(canSeeTable("companies") || visibleNavGroups.length > 0) && (
           <div className="nav-company-section">
             <Dropdown
@@ -734,11 +825,8 @@ export function Workspace({ user }: { user: OfficeUser }) {
               value={navCompany?.id ?? ""}
               placeholder={t("Valitse taloyhtiö")}
               ariaLabel={t("Taloyhtiö")}
-              options={[
-                ...companies.map(company => ({ value: company.id, label: company.name })),
-                ...(canSeeTable("companies") ? [{ value: ALL_COMPANIES, label: t("Kaikki taloyhtiöt…") }] : [])
-              ]}
-              onChange={value => value === ALL_COMPANIES ? setTab("companies") : changeCompany(value)}
+              options={companies.map(company => ({ value: company.id, label: company.name }))}
+              onChange={changeCompany}
             />
             <div className="nav-subs">
               {navCompany && canSeeTable("companies") && (
@@ -825,9 +913,11 @@ export function Workspace({ user }: { user: OfficeUser }) {
         {!openTicketId && tabAllowed && (
         <header>
           <div>
-            {/* Toimiston nimi tulee isännöitsijätoimiston asetuksista ja päivittyy tallennettaessa. */}
-            <p className="eyebrow">PLEISSI / {MANAGEMENT_OFFICE.name}</p>
-            <h1>{tab === "reports" ? reportTabs.find(([key]) => key === reportsTab)?.[1] : tabTitles[tab]}</h1>
+            <h1>
+              {tab === "reports" ? reportTabs.find(([key]) => key === reportsTab)?.[1]
+                : tab === "data" && routeParam ? `${t("Data")} › ${navItemTitles[routeParam as TicketTab] ?? tabTitles[routeParam as TicketTab]}`
+                : tabTitles[tab]}
+            </h1>
           </div>
         </header>
         )}
@@ -844,6 +934,15 @@ export function Workspace({ user }: { user: OfficeUser }) {
             onOpenEntry={entryId => navigate(tab, entryId ?? undefined)}
           />
         )
+          : tab === "data" ? (
+            routeParam ? (
+              <DataTable
+                key={routeParam}
+                table={routeParam as TicketTab}
+                onOpenCompany={companyId => { setNavCompanyId(companyId); navigate(routeParam as TicketTab); }}
+              />
+            ) : null
+          )
           : tab === "search" ? (
             <SearchResults
               query={routeParam ?? ""}
@@ -953,6 +1052,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     setStatusFilter(null);
                     setPriorityFilter(null);
                     setTypeFilter(null);
+                    setTopicFilter(null);
                     setDueFilter(null);
                     setTab("unidentified");
                   }}
@@ -969,6 +1069,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                       setStatusFilter([status]);
                       setPriorityFilter(null);
                       setTypeFilter(null);
+                      setTopicFilter(null);
                       setDueFilter(null);
                       setTab("my-tickets");
                     }}
@@ -993,6 +1094,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     setStatusFilter(null);
                     setPriorityFilter(null);
                     setTypeFilter(null);
+                    setTopicFilter(null);
                     setDueFilter(["reminders"]);
                     setTab("my-tickets");
                   }}
@@ -1003,6 +1105,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 </button>
               </div>
             )}
+            {tab === "queue" && <IncidentList refreshKey={incidentRefresh} onOpenTicket={openTicket} />}
             {tab === "queue" && (
               <div className="queue-heading-row">
                 <h2 className="queue-subheading">
@@ -1038,6 +1141,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   setCompanyFilter(null);
                   setPriorityFilter(null);
                   setTypeFilter(null);
+                  setTopicFilter(null);
                   setStatusFilter(null);
                   setDueFilter(null);
                 }}>{t("Tyhjennä suodattimet")}</button>

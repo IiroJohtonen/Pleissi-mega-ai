@@ -17,6 +17,9 @@ export type Ticket = {
   apartment_number?: string;
   resident_name?: string;
   type: string;
+  // Aihe yhteisten vikojen tunnistukseen (esim. heating); topic_source manual = käsittelijän valitsema.
+  topic?: string | null;
+  topic_source?: string | null;
   // renovation = remonttitehtävä, joka ei mene päätösjonoon; muut tehtävät ovat "ticket".
   kind?: "ticket" | "renovation";
   priority: string;
@@ -171,7 +174,7 @@ export type TicketDetail = {
   erasurePending?: { reason: string; requested_by: string; created_at: string } | null;
 };
 
-export type TicketTab = "queue" | "unassigned" | "unidentified" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "apartments" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search";
+export type TicketTab = "queue" | "unassigned" | "unidentified" | "tickets" | "my-tickets" | "ai-handled" | "knowledge" | "knowledge-ai" | "knowledge-internal" | "reports" | "companies" | "residents" | "apartments" | "sauna" | "laundry" | "parking" | "announcements" | "moves" | "renovations" | "keys" | "meters" | "waitlist" | "settings" | "log" | "search" | "data";
 
 export type Resident = {
   id: string;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DownloadLink, TabIcon } from "../components/common";
+import { DownloadLink } from "../components/common";
 import {
   fileToBase64, formatDate, formatDay, formatFileSize, formatTicketNumber, MAX_REPLY_ATTACHMENT_BYTES,
   MAX_REPLY_ATTACHMENTS, priorityLabel, statusLabel
@@ -207,7 +207,6 @@ export function TicketCard({
   onOpen: () => void;
   onDecision: (d: "ai" | "human" | "skip") => void;
 }) {
-  const hasDraft = Boolean((ticket.draft || "").trim());
   const assignee = allUsers.find(user => user.id === ticket.assignee_id);
 
   if (compact) {
@@ -260,48 +259,51 @@ export function TicketCard({
     );
   }
 
+  // Kortissa korostetaan vain kiireellisyys ja tila; muut tiedot ovat tavallista tekstiä (DESIGN.md).
+  const urgent = ticket.priority === "emergency" || ticket.priority === "urgent";
   return (
     <article className={`ticket-card priority-${ticket.priority} ${ticket.status === "waiting_manager" ? "managed" : ""} ${ticket.priority === "emergency" ? "emergency" : ""}`} onClick={onOpen}>
-      <div className="ticket-top">
-        <span className="ticket-company" title={t("Taloyhtiö")}>
-          <TabIcon tab="companies" />
-          {companyName ?? t("Tuntematon yhtiö")}
-        </span>
-        <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
-        <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
-        <span className="type">{t(ticket.type)}</span>
-        <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
-        {/* Arkaluonteinen tehtävä (esim. terveystiedot): sisältö ei mene AI:lle, ja sen näkevät vain osa käyttäjistä. */}
-        {ticket.sensitive || ticket.restricted ? (
-          <span className="sensitive-tag" title={t("Tehtävä on arkaluonteinen: sitä ei lähetetä AI:lle, ja sen sisällön näkevät vain käsittelijä, vastuuisännöitsijä ja pääkäyttäjät.")}>
-            {t("Arkaluonteinen")}
-          </span>
-        ) : null}
-        <span className="date" title={t("Päivitetty {0}", formatDate(ticket.updated_at || ticket.created_at))}>{t("Saapunut {0}", formatDate(ticket.created_at))}</span>
-      </div>
-
       <div className="ticket-main">
-        <div>
-          <h2>{ticket.subject}</h2>
-          <div className="meta">
-            {/* Asunto ja asukas omilla väreillään; tunnistamaton näkyy varoitusvärillä. */}
-            <span className={ticket.apartment_number ? "meta-apartment" : "meta-unknown"}>{ticket.apartment_number || t("Asuntoa ei tunnistettu")}</span>
-            <span className={ticket.resident_name ? "meta-resident" : "meta-unknown"}>{ticket.resident_name || t("Asukasta ei tunnistettu")}</span>
-            <span className="assignee-pill">{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
-            {hasDraft && <span className="draft-pill">{t("Luonnos tallennettu")}</span>}
-            {ticket.has_new_reply ? <span className="new-reply">{t("Uusi viesti")}</span> : null}
-            {reminders.map(reminder => <span key={reminder.kind} className={`reminder-chip reminder-${reminder.kind}`}>{reminder.text}</span>)}
+        <div className="ticket-body">
+          <div className="ticket-heading">
+            <h2>{ticket.subject}</h2>
+            {urgent && <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>}
+            <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
+            {/* Arkaluonteinen tehtävä (esim. terveystiedot): sisältö ei mene AI:lle, ja sen näkevät vain osa käyttäjistä. */}
+            {ticket.sensitive || ticket.restricted ? (
+              <span className="sensitive-tag" title={t("Tehtävä on arkaluonteinen: sitä ei lähetetä AI:lle, ja sen sisällön näkevät vain käsittelijä, vastuuisännöitsijä ja pääkäyttäjät.")}>
+                {t("Arkaluonteinen")}
+              </span>
+            ) : null}
           </div>
+          <p className="ticket-meta">
+            <span className="ticket-company" title={t("Taloyhtiö")}>{companyName ?? t("Tuntematon yhtiö")}</span>
+            {/* Tunnistamaton asunto tai asukas näkyy varoitusvärillä. */}
+            <span className={ticket.apartment_number ? "" : "meta-unknown"}>{ticket.apartment_number || t("Asuntoa ei tunnistettu")}</span>
+            <span className={ticket.resident_name ? "" : "meta-unknown"}>{ticket.resident_name || t("Asukasta ei tunnistettu")}</span>
+            <span className="ticket-number">#{formatTicketNumber(ticket.ticket_number)}</span>
+            <span>{t(ticket.type)}</span>
+          </p>
+          <p className="ticket-meta">
+            <span>{assignee ? t("Käsittelijä: {0}", assignee.name) : t("Ei käsittelijää")}</span>
+            <span title={t("Päivitetty {0}", formatDate(ticket.updated_at || ticket.created_at))}>{t("Saapunut {0}", formatDate(ticket.created_at))}</span>
+          </p>
+          {(ticket.has_new_reply || reminders.length > 0) && (
+            <p className="ticket-notices">
+              {ticket.has_new_reply ? <span className="new-reply">{t("Uusi viesti")}</span> : null}
+              {reminders.map(reminder => <span key={reminder.kind} className={`reminder-chip reminder-${reminder.kind}`}>{reminder.text}</span>)}
+            </p>
+          )}
         </div>
 
         <div className="recommendation">
-          <small>{ticket.ai_suggested ? t("AI:N EHDOTUS") : t("LUONNOS")}</small>
+          <small>{ticket.ai_suggested ? t("AI-ehdotus") : t("Luonnos")}</small>
           {/* Peruste näytetään vain, kun AI-ehdotus on pyydetty ja sille löytyi lähde dokumentaatiosta. */}
           {ticket.ai_suggested && ticket.knowledge_source_title ? <strong>{ticket.ai_reason}</strong> : null}
           <p>{ticket.draft || t("Ei tallennettua luonnosta.")}</p>
           {ticket.ai_suggested && ticket.knowledge_source_title ? (
             <span className="source-pill">
-              📄 {ticket.knowledge_source_title}{ticket.knowledge_source_page ? `, ${t("s. {0}", String(ticket.knowledge_source_page))}` : ""}
+              {t("Lähde: {0}", `${ticket.knowledge_source_title}${ticket.knowledge_source_page ? `, ${t("s. {0}", String(ticket.knowledge_source_page))}` : ""}`)}
             </span>
           ) : null}
         </div>
