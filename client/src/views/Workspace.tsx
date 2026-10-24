@@ -904,8 +904,6 @@ export function Workspace({ user }: { user: OfficeUser }) {
         {!openTicketId && tabAllowed && (
         <header>
           <div>
-            {/* Toimiston nimi tulee isännöitsijätoimiston asetuksista ja päivittyy tallennettaessa. */}
-            <p className="eyebrow">PLEISSI / {MANAGEMENT_OFFICE.name}</p>
             <h1>
               {tab === "reports" ? reportTabs.find(([key]) => key === reportsTab)?.[1]
                 : tab === "data" && routeParam ? `${t("Data")} › ${navItemTitles[routeParam as TicketTab] ?? tabTitles[routeParam as TicketTab]}`

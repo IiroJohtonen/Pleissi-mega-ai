@@ -1096,10 +1096,6 @@ export function TicketDrawer({
                 disabled={agentRunning || suggesting || Boolean(ticket.sensitive)}
                 title={ticket.sensitive ? t("Arkaluonteista tehtävää ei lähetetä AI:lle.") : t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat ja vastaa asukkaalle")}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 8h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z" />
-                  <path d="M12 4v4M9 13h.01M15 13h.01M10 16h4" />
-                </svg>
                 {agentRunning ? t("AI-agentti käsittelee…") : t("Anna AI-agentin hoitaa")}
               </button>
             )}
@@ -1108,9 +1104,6 @@ export function TicketDrawer({
               onClick={openSuggestionPrompt}
               disabled={suggesting || agentRunning}
             >
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 2l1.900 5.600a4 4 0 0 0 2.500 2.500L22 12l-5.600 1.900a4 4 0 0 0-2.500 2.500L12 22l-1.900-5.600a4 4 0 0 0-2.500-2.500L2 12l5.600-1.900a4 4 0 0 0 2.500-2.500z" />
-              </svg>
               {suggesting ? t("AI kirjoittaa…")
                 : ticket.sensitive ? (suggestedBefore ? t("Pyydä uusi ehdotus dokumentaatiosta") : t("Pyydä ehdotus dokumentaatiosta"))
                 : suggestedBefore ? t("Pyydä uusi AI-ehdotus") : t("Pyydä AI-ehdotus")}

@@ -239,10 +239,11 @@ describe("sovellus", () => {
     }
   });
 
-  it("näyttää sivun yläotsikossa isännöitsijätoimiston nimen asetuksista", async () => {
+  it("näyttää isännöitsijätoimiston nimen asetuksista yläpalkissa eikä toista sitä sivun otsikon yllä", async () => {
     await renderApp(staff("Isännöitsijä"), "#/queue");
     await screen.findAllByText("Saunavuoron varaus");
-    expect(await screen.findByText("PLEISSI / Testitoimisto Oy")).toBeTruthy();
+    await vi.waitFor(() => expect(document.querySelector(".topbar-office")?.textContent).toBe("Testitoimisto Oy"));
+    expect(screen.queryByText(/PLEISSI \//)).toBeNull();
   });
 
   it("yhdistää muun sähköpostin IMAP-tiedoilla toimiston asetuksista", async () => {

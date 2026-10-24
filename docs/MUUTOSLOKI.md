@@ -3,6 +3,26 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 24.10.2026 · Rauhallisempi ulkoasu
+
+**Mitä muutettiin**
+- Koko sovellus käyttää nyt yhtä yhtenäistä väri-, kirjasin- ja välistyskokoelmaa (kuvattu tiedostossa
+  DESIGN.md). Väreillä on merkitys: punainen ja keltainen kertovat kiireestä, sininen on painike tai valittu kohta.
+- Mustat päätoimintopainikkeet ovat nyt sinisiä. Valitut välilehdet ja suodattimet näkyvät vaaleansinisinä.
+- Nimilaput ja otsikot ovat tavallisella kirjoitusasulla eivätkä ISOILLA KIRJAIMILLA.
+- Tehtäväkortissa otsikko on ensin, ja taloyhtiö, asunto, asukas ja numero ovat tavallista tekstiä.
+  Prioriteettimerkki ja värillinen reuna näkyvät vain kiireellisillä ja hätätehtävillä.
+- Päätösjonon laskurit ovat yhdellä rauhallisella rivillä. Tehtävä- ja asukaslistan rivit ovat yhtenäisenä listana.
+- Sauna- ja pyykkituvan kalenterit käyttävät samaa sinistä väriä oranssin ja turkoosin sijaan.
+- AI-painikkeista on poistettu kipinä- ja robottikuvakkeet, ja AI-ehdotus näkyy lainauksena.
+- Sivun yläosan PLEISSI / toimisto -teksti on poistettu. Kenttien kohdistuskehys on sininen.
+- Tumma tila käyttää samoja värejä tummina versioina.
+
+**Miten**
+- Näkyy koko sovelluksessa, erityisesti päätösjonossa, tehtävälistassa, asukaslistassa ja saunakalenterissa.
+
+**Testit:** T-172–T-175 · Pleissi Mega AI
+
 ## 22.10.2026 · AI-agentti käynnistetään tehtävän painikkeesta
 
 **Mitä muutettiin**
