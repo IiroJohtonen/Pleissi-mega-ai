@@ -6,6 +6,7 @@ import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
 import { aiRequestPayload } from "../ai-log.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
+import { ADJUSTABLE_TOPICS, detectionRules, RULE_LIMITS, saveDetectionRules } from "../incidents.js";
 import { id, now } from "../util.js";
 import { AI_MODEL_CHOICES, getMasterData, MASTER_DATA_DEFAULTS, masterDataSchema, saveMasterData } from "../master-data.js";
 import { loginCodeMailReady, loginCodeSetting } from "../login-codes.js";
@@ -34,6 +35,8 @@ function officeSettings() {
     unidentifiedQueueUsers: queue.users,
     canHandleUnidentified: isQueueHandler(),
     aiAvailable: Boolean(process.env.ANTHROPIC_API_KEY),
+    // Yhteisten vikojen tunnistuksen rajat aiheittain.
+    incidentRules: detectionRules(),
     twoFactorOverridden: process.env.TWO_FACTOR_DISABLED === "1"
   };
 }
@@ -87,9 +90,20 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     // AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat itse.
     aiAgent: z.boolean().optional(),
     // Usean asunnon samanaiheiset ilmoitukset näytetään mahdollisena yhteisenä vikana.
-    incidentDetection: z.boolean().optional()
+    incidentDetection: z.boolean().optional(),
+    // Aiheittaiset rajat: seurataanko, montako asuntoa ja minkä ajan sisällä.
+    incidentRules: z.array(z.object({
+      topic: z.string().refine(topic => (ADJUSTABLE_TOPICS as string[]).includes(topic)),
+      tracked: z.boolean(),
+      threshold: z.number().int().min(RULE_LIMITS.threshold.min).max(RULE_LIMITS.threshold.max),
+      windowHours: z.number().int().min(RULE_LIMITS.windowHours.min).max(RULE_LIMITS.windowHours.max)
+    })).optional()
   }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues.some(issue => issue.path[0] === "incidentRules")
+      ? `Yhteisten vikojen rajoissa asuntoja pitää olla ${RULE_LIMITS.threshold.min}–${RULE_LIMITS.threshold.max} ja aikaikkunan ${RULE_LIMITS.windowHours.min}–${RULE_LIMITS.windowHours.max} tuntia.`
+      : "Tarkista toimiston nimi ja tiedot." });
+  }
   if (parsed.data.twoFactor && !loginCodeSetting() && !loginCodeMailReady()) {
     return res.status(400).json({ error: "Yhdistä ensin toimiston sähköpostitili. Kirjautumiskoodit lähetetään sen kautta." });
   }
@@ -142,6 +156,7 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   if (parsed.data.incidentDetection !== undefined) {
     db.prepare("UPDATE office_settings SET incident_detection = ? WHERE id = 1").run(parsed.data.incidentDetection ? 1 : 0);
   }
+  if (parsed.data.incidentRules) saveDetectionRules(parsed.data.incidentRules);
   refreshBudgetAlerts();
   res.json(officeSettings());
 });

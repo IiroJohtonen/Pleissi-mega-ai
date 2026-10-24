@@ -588,7 +588,7 @@ export function Residents({
         </div>
         <div className="toolbar-actions">
           <button className="secondary" onClick={() => setImporting(true)}>{t("Tuo asukkaita")}</button>
-          <button className="secondary" onClick={() => openForm(null)}>{t("Lisää asukas")}</button>
+          <button className="primary" onClick={() => openForm(null)}>{t("Lisää asukas")}</button>
         </div>
       </div>
 

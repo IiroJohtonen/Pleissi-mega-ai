@@ -135,7 +135,7 @@ export function Companies({
     <section className="content">
       <div className="residents-toolbar">
         <span>{companies.length}{" "}{t("taloyhtiötä")}</span>
-        {isManager() && <button className="secondary" onClick={() => setAdding(true)}>{t("Lisää taloyhtiö")}</button>}
+        {isManager() && <button className="primary" onClick={() => setAdding(true)}>{t("Lisää taloyhtiö")}</button>}
       </div>
 
       {companies.length === 0 ? <div className="empty">{t("Ei taloyhtiöitä.")}</div> : (

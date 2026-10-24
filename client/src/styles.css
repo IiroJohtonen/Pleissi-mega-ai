@@ -5217,3 +5217,131 @@ em.sensitive-tag { padding: 1px 8px; font-size: var(--text-xs); }
 }
 .incident-notice button:hover { background: var(--surface-2); }
 .incident-tickets .quiet-button { justify-self: end; }
+
+/* ---------------------------------------------------------------------------------------------
+   Painikkeet (DESIGN.md › Osat). Yksi järjestelmä koko sovellukseen: toissijainen on oletus,
+   ensisijainen (.primary) sininen, vaarallinen (.danger) punainen teksti ja hiljainen pelkkä teksti.
+   Sama korkeus, kirjasin ja tilat (hover, painallus, fokus, ei käytössä) kaikissa.
+   --------------------------------------------------------------------------------------------- */
+.actions button, .drawer-actions button, .draft-actions button, .toolbar-actions button, .suggest-actions button,
+.knowledge-entry-actions button, .report-builder-actions button, .privacy-actions button, .portal-ticket-actions button,
+.portal-sheet-actions button, .attachments-menu > button, .reporter-link button, .note-form button, .pager button,
+.chunk-buttons button, .attach-button, .incident-notice button, .suggest-header .ai-button, .board-members .suggest-header button,
+.board-member-list button, button.secondary, button.refresh, .filter-chips > button.create-ticket, .ai-button.topic-create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+}
+.actions button:hover:not(:disabled), .drawer-actions button:hover:not(:disabled), .draft-actions button:hover:not(:disabled),
+.toolbar-actions button:hover:not(:disabled), .suggest-actions button:hover:not(:disabled), .knowledge-entry-actions button:hover:not(:disabled),
+.report-builder-actions button:hover:not(:disabled), .privacy-actions button:hover:not(:disabled), .portal-ticket-actions button:hover:not(:disabled),
+.portal-sheet-actions button:hover:not(:disabled), .attachments-menu > button:hover:not(:disabled), .reporter-link button:hover:not(:disabled),
+.note-form button:hover:not(:disabled), .pager button:hover:not(:disabled), .chunk-buttons button:hover:not(:disabled), .attach-button:hover:not(:disabled),
+.incident-notice button:hover:not(:disabled), .suggest-header .ai-button:hover:not(:disabled), .board-members .suggest-header button:hover:not(:disabled),
+.board-member-list button:hover:not(:disabled), button.secondary:hover:not(:disabled), button.refresh:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--field-border);
+  box-shadow: none;
+}
+.actions button:active:not(:disabled), .drawer-actions button:active:not(:disabled), .draft-actions button:active:not(:disabled),
+.toolbar-actions button:active:not(:disabled), button.secondary:active:not(:disabled), .attachments-menu > button:active:not(:disabled) {
+  background: var(--line);
+}
+.actions button:focus-visible, .drawer-actions button:focus-visible, .draft-actions button:focus-visible, .toolbar-actions button:focus-visible,
+.suggest-actions button:focus-visible, .knowledge-entry-actions button:focus-visible, .report-builder-actions button:focus-visible,
+.portal-ticket-actions button:focus-visible, .attachments-menu > button:focus-visible, .note-form button:focus-visible, .pager button:focus-visible,
+.chunk-buttons button:focus-visible, .incident-notice button:focus-visible, button.secondary:focus-visible, button.primary:focus-visible,
+button.danger:focus-visible, .filter-chips > button.create-ticket:focus-visible, .ai-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Ensisijainen: yksi näkymää kohden. */
+button.primary, .filter-chips > button.create-ticket, .ai-button.topic-create,
+.actions button.primary, .drawer-actions button.primary, .draft-actions button.primary, .report-builder-actions button.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+button.primary:hover:not(:disabled), .filter-chips > button.create-ticket:hover:not(:disabled), .ai-button.topic-create:hover:not(:disabled),
+.actions button.primary:hover:not(:disabled), .drawer-actions button.primary:hover:not(:disabled), .draft-actions button.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: var(--on-primary);
+}
+
+/* Vaarallinen: punainen teksti, täytetty vain lopullisessa vahvistuksessa (.danger-fill). */
+button.danger, .actions button.danger, .drawer-actions button.danger, .draft-actions .danger, .knowledge-entry-actions button.danger,
+.chunk-buttons button.danger {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--danger);
+}
+button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:disabled), .draft-actions .danger:hover:not(:disabled),
+.knowledge-entry-actions button.danger:hover:not(:disabled), .chunk-buttons button.danger:hover:not(:disabled) {
+  background: var(--danger-tint);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.drawer-actions button.danger-fill, button.danger-fill { background: var(--danger); border-color: var(--danger); color: #fff; }
+.drawer-actions button.danger-fill:hover:not(:disabled), button.danger-fill:hover:not(:disabled) { background: var(--danger); border-color: var(--danger); filter: brightness(.92); }
+
+/* Ei käytössä: selvästi erottuva, ei läpikuultava. */
+.actions button:disabled, .drawer-actions button:disabled, .draft-actions button:disabled, .toolbar-actions button:disabled,
+.suggest-actions button:disabled, .knowledge-entry-actions button:disabled, .report-builder-actions button:disabled,
+.portal-ticket-actions button:disabled, .attachments-menu > button:disabled, .note-form button:disabled, .pager button:disabled,
+.chunk-buttons button:disabled, .incident-notice button:disabled, button.secondary:disabled, button.primary:disabled, button.danger:disabled,
+.filter-chips > button.create-ticket:disabled, .suggest-header .ai-button:disabled {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink-3);
+  opacity: 1;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* Hiljainen: pelkkä teksti toissijaisille toiminnoille rivin sisällä. */
+.quiet-button, .draft-actions button.quiet-button, .incident-tickets button.quiet-button {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.quiet-button:hover:not(:disabled), .draft-actions button.quiet-button:hover:not(:disabled) { background: var(--primary-tint); border: 0; text-decoration: none; }
+.quiet-button:disabled { background: none; color: var(--ink-3); }
+
+/* Painikkeen sisäinen lukumäärä ja kuvake. */
+.attachments-menu > button b { font-weight: 500; }
+.actions button svg, .drawer-actions button svg, .draft-actions button svg, .attachments-menu > button svg { width: 16px; height: 16px; flex: none; }
+
+/* Yhteisten vikojen rajat asetuksissa */
+.incident-rules { margin: 4px 0 18px; max-width: 640px; }
+.incident-rules table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); font-size: var(--text-sm); }
+.incident-rules th, .incident-rules td { padding: 6px 12px; border-top: 1px solid var(--line); text-align: left; }
+.incident-rules thead th { border-top: 0; background: var(--surface-2); color: var(--ink-2); font-size: var(--text-xs); font-weight: 500; }
+.incident-rules tbody th { font-weight: 500; color: var(--ink); }
+.incident-rules select { min-height: 32px; padding: 0 8px; border: 1px solid var(--field-border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; }
+.incident-rules select:disabled { background: var(--surface-2); color: var(--ink-3); border-color: var(--line); }
+.incident-rules input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+.incident-rules tr.rule-off th { color: var(--ink-3); }
+.incident-rules table td > select { width: auto; min-width: 84px; height: 32px; min-height: 32px; padding: 0 8px; font-size: var(--text-sm); }
+.incident-rules table td > select:disabled { background: var(--surface-2); color: var(--ink-3); border-color: var(--line); }

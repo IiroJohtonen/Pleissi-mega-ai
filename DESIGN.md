@@ -68,9 +68,15 @@ Painot: 400 teksti, 500 korostus ja painikkeet, 600 otsikot. Rivin pituus enint�
 
 ## Osat
 
-- **Painikkeet:** ensisijainen (`--primary`, valkoinen teksti) yksi per näkymä; toissijainen (`--surface`,
-  `--line-strong`-reuna); hiljainen (pelkkä teksti `--primary`). Kaikilla näkyvä fokus (2 px `--primary`-ääriviiva)
-  ja selvästi erottuva poistettu tila. Ei kuvakkeita koristeena, ei nuolia tekstin perässä.
+- **Painikkeet:** kaikki toimintopainikkeet ovat 36 px korkeita, `--radius-md`, `--text-sm` ja paino 500 (tyylit
+  `styles.css`:n lopussa, Painikkeet-lohko).
+  - Ensisijainen (`.primary`, `--primary` ja valkoinen teksti): yksi per näkymä, esim. Lisää asukas, Lähetä.
+  - Toissijainen (oletus): `--surface`, `--line-strong`-reuna, hover `--surface-2`.
+  - Vaarallinen (`.danger`): punainen teksti, hover `--danger-tint`; täytetty (`.danger-fill`) vain lopullisessa
+    vahvistuksessa.
+  - Hiljainen (`.quiet-button`): pelkkä `--primary`-teksti rivin sisäisille toiminnoille (Irrota, Tallenna vastaamatta).
+  - Kaikilla näkyvä fokus (2 px `--primary`-ääriviiva) ja ei käytössä -tila `--surface-2`-taustalla ja
+    `--ink-3`-tekstillä (ei läpikuultava). Ei varjoja, ei kuvakkeita koristeena, ei nuolia tekstin perässä.
 - **Merkit (tila, prioriteetti):** `--radius-sm`, `--text-xs`, paino 500, taustana värin tint-sävy. Vain tila ja
   prioriteetti ovat merkkejä; taloyhtiö, asunto, asukas ja käsittelijä ovat tekstiä.
 - **Listat:** yksi paneeli, rivit `--line`-viivoin, otsikkorivi `--surface-2`-taustalla. Valittu tai hover-rivi

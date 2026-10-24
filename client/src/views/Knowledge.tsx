@@ -478,7 +478,7 @@ export function KnowledgeBase({
             </button>
           )}
           {isManager() && <button className="secondary" onClick={() => setForm({ mode: "document" })}>{t("Lataa dokumentti")}</button>}
-          {isManager() && <button className="secondary" onClick={() => setForm({ mode: "fact" })}>{t("Luo dokumentti")}</button>}
+          {isManager() && <button className="primary" onClick={() => setForm({ mode: "fact" })}>{t("Luo dokumentti")}</button>}
         </div>
       </div>
 

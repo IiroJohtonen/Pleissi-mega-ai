@@ -13,6 +13,7 @@ import { t } from "../i18n";
 import { setTheme, storedTheme } from "../theme";
 import { MasterDataSettings } from "./MasterData";
 import { CollapseSection, jumpToSection } from "../components/CollapseSection";
+import { topicLabel, topicOptions } from "../topics";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -471,6 +472,8 @@ export type OfficeInfo = {
   aiAgent?: number;
   // incidentDetection: 1 = usean asunnon samanaiheiset ilmoitukset näytetään mahdollisena yhteisenä vikana.
   incidentDetection?: number;
+  // Tunnistuksen rajat aiheittain: seurataanko, montako asuntoa ja minkä ajan (tuntia) sisällä.
+  incidentRules?: IncidentRule[];
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
   // twoFactor: kirjautumiskoodi sähköpostiin; twoFactorOverridden: palvelin on kytkenyt sen pois.
@@ -745,6 +748,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
   const [aiRelevance, setAiRelevance] = useState(false);
   const [aiAgent, setAiAgent] = useState(false);
   const [incidentDetection, setIncidentDetection] = useState(true);
+  const [incidentRules, setIncidentRules] = useState<IncidentRule[]>([]);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
   const [twoFactor, setTwoFactor] = useState(false);
@@ -779,6 +783,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         setAiRelevance(Boolean(office.aiRelevance));
         setAiAgent(Boolean(office.aiAgent));
         setIncidentDetection(office.incidentDetection !== 0);
+        setIncidentRules(office.incidentRules ?? []);
         setAiAvailable(office.aiAvailable !== false);
         setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
         setTwoFactor(Boolean(office.twoFactor));
@@ -816,6 +821,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         method: "PUT",
         body: JSON.stringify({
           name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection,
+          incidentRules: incidentRules.map(({ topic, tracked, threshold, windowHours }) => ({ topic, tracked, threshold, windowHours })),
           aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates, aiPrompt,
           unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
         })
@@ -823,6 +829,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       MANAGEMENT_OFFICE.name = office.name;
       MANAGEMENT_OFFICE.aiPrompt = office.aiPrompt !== 0;
       MANAGEMENT_OFFICE.aiAgent = Boolean(office.aiAgent) && office.aiAvailable !== false;
+      setIncidentRules(office.incidentRules ?? []);
       setStoredRetention(office.retentionMonths ?? 0);
       await onSaved();
       setSaved(true);
@@ -1152,6 +1159,9 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         <p className="reply-hint">
           {t("Jokainen tehtävä saa aiheen (esim. lämmitys, hissi tai vesivuoto). Kun useampi asunto ilmoittaa samasta aiheesta lyhyessä ajassa ja selvästi tavallista enemmän, vastuuisännöitsijä saa sähköpostin ja asia näkyy päätösjonon yläosassa. Tunnistus on laskentaa eikä käytä AI:ta; AI-tulkinnan voi pyytää erikseen.")}
         </p>
+        {incidentDetection && incidentRules.length > 0 && (
+          <IncidentRulesTable rules={incidentRules} onChange={rules => { setIncidentRules(rules); setSaved(false); }} />
+        )}
 
         </CollapseSection>
 
@@ -2051,5 +2061,92 @@ function OfficeRoles() {
         </div>
       )}
     </aside>
+  );
+}
+
+export type IncidentRule = {
+  topic: string; label: string; tracked: boolean; threshold: number; windowHours: number;
+  defaults: { tracked: boolean; threshold: number; windowHours: number };
+};
+
+// Aikaikkuna tunteina valintoina; muu tallennettu arvo näytetään omana vaihtoehtonaan.
+const WINDOW_CHOICES = [6, 12, 24, 48, 72, 168, 336];
+const THRESHOLD_CHOICES = [2, 3, 4, 5, 6, 8, 10, 15, 20];
+// Aiheet samassa järjestyksessä kuin tehtävän Aihe-valikossa.
+const topicOrder = (topic: string) => topicOptions.findIndex(option => option.value === topic);
+const windowLabel = (hours: number) =>
+  hours % 24 === 0 ? (hours === 24 ? t("1 vuorokausi") : t("{0} vuorokautta", hours / 24)) : t("{0} tuntia", hours);
+
+// Yhteisten vikojen rajat aiheittain: seurataanko aihetta, montako eri asuntoa ja minkä ajan sisällä.
+function IncidentRulesTable({ rules, onChange }: { rules: IncidentRule[]; onChange: (rules: IncidentRule[]) => void }) {
+  const update = (topic: string, change: Partial<IncidentRule>) =>
+    onChange(rules.map(rule => (rule.topic === topic ? { ...rule, ...change } : rule)));
+  const changed = rules.some(rule => rule.tracked !== rule.defaults.tracked || rule.threshold !== rule.defaults.threshold
+    || rule.windowHours !== rule.defaults.windowHours);
+  return (
+    <div className="incident-rules">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{t("Aihe")}</th>
+            <th scope="col">{t("Seurataan")}</th>
+            <th scope="col">{t("Asuntoja vähintään")}</th>
+            <th scope="col">{t("Aikaikkuna")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...rules].sort((a, b) => topicOrder(a.topic) - topicOrder(b.topic)).map(rule => (
+            <tr key={rule.topic} className={rule.tracked ? "" : "rule-off"}>
+              <th scope="row">{topicLabel(rule.topic)}</th>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={rule.tracked}
+                  aria-label={t("Seurataan: {0}", topicLabel(rule.topic))}
+                  onChange={event => update(rule.topic, { tracked: event.target.checked })}
+                />
+              </td>
+              <td>
+                <select
+                  value={rule.threshold}
+                  disabled={!rule.tracked}
+                  aria-label={t("Asuntoja vähintään: {0}", topicLabel(rule.topic))}
+                  onChange={event => update(rule.topic, { threshold: Number(event.target.value) })}
+                >
+                  {[...new Set([...THRESHOLD_CHOICES, rule.threshold])].sort((a, b) => a - b).map(count => (
+                    <option key={count} value={count}>{count}</option>
+                  ))}
+                </select>
+              </td>
+              <td>
+                <select
+                  value={rule.windowHours}
+                  disabled={!rule.tracked}
+                  aria-label={t("Aikaikkuna: {0}", topicLabel(rule.topic))}
+                  onChange={event => update(rule.topic, { windowHours: Number(event.target.value) })}
+                >
+                  {[...new Set([...WINDOW_CHOICES, rule.windowHours])].sort((a, b) => a - b).map(hours => (
+                    <option key={hours} value={hours}>{windowLabel(hours)}</option>
+                  ))}
+                </select>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="reply-hint">
+        {t("Yhteinen vika syntyy, kun vähintään näin moni eri asunto ilmoittaa aiheesta aikaikkunan sisällä ja ilmoituksia on selvästi tavallista enemmän. Saman asunnon useampi viesti lasketaan yhdeksi.")}
+      </p>
+      {changed && (
+        <div className="draft-actions">
+          <button
+            type="button"
+            onClick={() => onChange(rules.map(rule => ({ ...rule, ...rule.defaults })))}
+          >
+            {t("Palauta oletusrajat")}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

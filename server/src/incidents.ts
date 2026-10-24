@@ -129,6 +129,53 @@ export const TOPIC_KEYS = Object.keys(TOPIC_RULES) as TopicKey[];
 const rule = (topic: string): TopicRule => TOPIC_RULES[topic as TopicKey] ?? TOPIC_RULES.other;
 export const isTopic = (value: string): value is TopicKey => value in TOPIC_RULES;
 
+// Aiheet, joiden seurantaa ja rajoja isännöitsijä voi muuttaa (varaukset ja muu eivät ole vikoja).
+export const ADJUSTABLE_TOPICS: TopicKey[] = TOPIC_KEYS.filter(topic => topic !== "booking" && topic !== "other");
+export const RULE_LIMITS = { threshold: { min: 2, max: 50 }, windowHours: { min: 1, max: 720 } };
+
+export type DetectionRule = { topic: TopicKey; label: string; tracked: boolean; threshold: number; windowHours: number;
+  defaults: { tracked: boolean; threshold: number; windowHours: number } };
+
+// Tunnistuksen rajat: oletukset, joiden päälle tulevat asetuksista muutetut arvot.
+export function detectionRules(): DetectionRule[] {
+  const row = db.prepare("SELECT incident_rules FROM office_settings WHERE id = 1").get() as { incident_rules: string } | undefined;
+  let saved: Record<string, Partial<{ tracked: boolean; threshold: number; windowHours: number }>> = {};
+  try {
+    saved = JSON.parse(row?.incident_rules || "{}");
+  } catch {
+    saved = {};
+  }
+  return ADJUSTABLE_TOPICS.map(topic => {
+    const base = TOPIC_RULES[topic];
+    const custom = saved[topic] ?? {};
+    const clamp = (value: unknown, fallback: number, { min, max }: { min: number; max: number }) =>
+      Number.isInteger(value) && (value as number) >= min && (value as number) <= max ? value as number : fallback;
+    return {
+      topic, label: base.label,
+      tracked: typeof custom.tracked === "boolean" ? custom.tracked : base.tracked,
+      threshold: clamp(custom.threshold, base.threshold, RULE_LIMITS.threshold),
+      windowHours: clamp(custom.windowHours, base.windowHours, RULE_LIMITS.windowHours),
+      defaults: { tracked: base.tracked, threshold: base.threshold, windowHours: base.windowHours }
+    };
+  });
+}
+
+// Tallentaa vain oletuksesta poikkeavat arvot, jotta oletusten muutos koodissa koskee muita aiheita.
+export function saveDetectionRules(rules: { topic: string; tracked: boolean; threshold: number; windowHours: number }[]) {
+  const changed: Record<string, { tracked?: boolean; threshold?: number; windowHours?: number }> = {};
+  for (const item of rules) {
+    if (!ADJUSTABLE_TOPICS.includes(item.topic as TopicKey)) continue;
+    const base = TOPIC_RULES[item.topic as TopicKey];
+    const diff = {
+      ...(item.tracked !== base.tracked ? { tracked: item.tracked } : {}),
+      ...(item.threshold !== base.threshold ? { threshold: item.threshold } : {}),
+      ...(item.windowHours !== base.windowHours ? { windowHours: item.windowHours } : {})
+    };
+    if (Object.keys(diff).length) changed[item.topic] = diff;
+  }
+  db.prepare("UPDATE office_settings SET incident_rules = ? WHERE id = 1").run(JSON.stringify(changed));
+}
+
 // Tavallinen taso: montako eri asuntoa ilmoittaa aiheesta keskimäärin ikkunan mittaisessa ajassa
 // edellisten 90 päivän aikana. Poikkeama vaatii vähintään kolminkertaisen määrän.
 const BASELINE_DAYS = 90;
@@ -252,9 +299,10 @@ export function detectIncidents(companyId?: string): { created: string[]; attach
   const attached: { incidentId: string; ticketIds: string[] }[] = [];
   if (!incidentDetectionEnabled()) return { created, attached };
   const companyIds = companyId ? [companyId] : [...AUTHORIZED_COMPANY_IDS];
+  const rules = detectionRules();
   for (const company of companyIds) {
-    for (const topic of TOPIC_KEYS) {
-      const topicRule = TOPIC_RULES[topic];
+    for (const topicRule of rules) {
+      const topic = topicRule.topic;
       if (!topicRule.tracked) continue;
 
       const open = db.prepare(`SELECT * FROM incidents WHERE company_id = ? AND topic = ? AND status IN ${ACTIVE} ORDER BY created_at DESC LIMIT 1`)

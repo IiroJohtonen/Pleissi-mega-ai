@@ -3,6 +3,23 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 24.10.2026 · Yhtenäiset painikkeet ja yhteisten vikojen rajat asetuksiin
+
+**Mitä muutettiin**
+- Kaikki toimintopainikkeet ovat saman kokoisia ja näköisiä: tavallinen painike on valkoinen harmaalla reunalla,
+  päätoiminto sininen ja poisto punaisella tekstillä. Teksti on tavallista eikä lihavoitua.
+- Hiiren alla painike tummuu hieman, näppäimistöllä valittu painike saa sinisen kehyksen, ja painike, jota ei voi
+  juuri nyt käyttää, on harmaa eikä läpikuultava.
+- Näkymän päätoiminto on sininen: Lisää asukas, Luo dokumentti, Uusi tiedote ja Lisää taloyhtiö.
+- Yhteisten vikojen rajat ovat säädettävissä: jokaiselle aiheelle voi valita, seurataanko sitä, montako eri
+  asuntoa tarvitaan ja minkä ajan sisällä. Palauta oletusrajat palauttaa alkuperäiset arvot.
+
+**Miten**
+- Painikkeet näkyvät koko sovelluksessa, esim. tehtävän yläpalkissa ja päätösjonon korteissa.
+- Asetukset › Isännöitsijätoimiston tiedot › AI › Tunnista yhteiset viat › rajataulukko.
+
+**Testit:** T-184–T-186 · Pleissi Mega AI
+
 ## 24.10.2026 · Mahdolliset yhteiset viat
 
 **Mitä muutettiin**

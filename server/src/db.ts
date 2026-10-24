@@ -808,6 +808,11 @@ db.exec(`
 if (!officeColumns.some(existing => existing.name === "incident_detection")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");
 }
+// Aiheittaiset rajat, jotka isännöitsijä on muuttanut: {"heating": {"tracked": true, "threshold": 3, "windowHours": 24}}.
+// Puuttuva aihe käyttää oletusta (incidents.ts).
+if (!officeColumns.some(existing => existing.name === "incident_rules")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN incident_rules TEXT NOT NULL DEFAULT '{}'");
+}
 // Mahdollinen yhteinen vika: usea asunto on ilmoittanut samasta aiheesta lyhyessä ajassa.
 // stairwell = '' koskee koko taloyhtiötä. status: open, ordered (työtilaus tehty), resolved, dismissed.
 // auto_reply = 1: uusiin samanaiheisiin ilmoituksiin vastataan heti reply_message-viestillä.

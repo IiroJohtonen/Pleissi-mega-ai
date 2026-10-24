@@ -1127,3 +1127,7 @@
 :root[data-theme="dark"] .resident-combo li.clear-option {
     color: #ea9e96
 }
+:root[data-theme="dark"] .drawer-actions button.danger-fill,
+:root[data-theme="dark"] button.danger-fill {
+    color: #ffffff
+}

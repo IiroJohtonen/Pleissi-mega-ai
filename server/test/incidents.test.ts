@@ -223,3 +223,58 @@ describe("yhteisen vian AI-tulkinta", () => {
     assert.doesNotMatch(prompt, /raskaana/);
   });
 });
+
+describe("yhteisten vikojen rajat", () => {
+  let server: TestServer;
+  let admin: string;
+
+  before(async () => {
+    server = await startServer();
+    admin = await login(server, ADMIN_EMAIL);
+  });
+
+  after(async () => {
+    await server.stop();
+  });
+
+  it("rajat näkyvät asetuksissa ja muutettu raja vaikuttaa tunnistukseen", async () => {
+    const office = (await call(server, admin, "GET", "/office")).data;
+    const elevator = office.incidentRules.find((item: any) => item.topic === "elevator");
+    assert.deepEqual([elevator.tracked, elevator.threshold, elevator.windowHours], [true, 2, 24]);
+    assert.ok(!office.incidentRules.some((item: any) => item.topic === "booking" || item.topic === "other"));
+
+    // Väärä raja hylätään selkeällä viestillä.
+    const invalid = await call(server, admin, "PUT", "/office", { name: office.name, incidentRules: [{ topic: "elevator", tracked: true, threshold: 1, windowHours: 24 }] });
+    assert.equal(invalid.status, 400);
+    assert.match(invalid.data.error, /Yhteisten vikojen rajoissa/);
+
+    // Hissi vaatii nyt kolme asuntoa.
+    const saved = await call(server, admin, "PUT", "/office", { name: office.name, incidentRules: [{ topic: "elevator", tracked: true, threshold: 3, windowHours: 48 }] });
+    assert.equal(saved.status, 200);
+    const changed = saved.data.incidentRules.find((item: any) => item.topic === "elevator");
+    assert.deepEqual([changed.threshold, changed.windowHours, changed.defaults.threshold], [3, 48, 2]);
+
+    const tokens: string[] = [];
+    for (const apartment of ["C 1", "C 2", "C 3"]) {
+      const email = `rule-${apartment.replace(" ", "").toLowerCase()}@example.com`;
+      await call(server, admin, "POST", "/companies/demo-company/residents", {
+        name: `Asukas ${apartment}`, email, address: "Koivikkotie 10", apartmentNumber: apartment, password: PASSWORD
+      });
+      tokens.push(await login(server, email));
+    }
+    const report = async (token: string) => {
+      await call(server, token, "POST", "/portal/tickets", { subject: "Hissi", description: "Hissi ei toimi.", type: "Vikailmoitus", attachments: [] });
+      await call(server, admin, "POST", "/incidents/detect");
+      return ((await call(server, admin, "GET", "/incidents")).data as any[]).filter(item => item.topic === "elevator");
+    };
+    await report(tokens[0]);
+    assert.equal((await report(tokens[1])).length, 0);
+    assert.equal((await report(tokens[2])).length, 1);
+
+    // Seurannan voi kytkeä pois aiheittain.
+    const off = await call(server, admin, "PUT", "/office", { name: office.name, incidentRules: [{ topic: "heating", tracked: false, threshold: 3, windowHours: 24 }] });
+    assert.equal(off.data.incidentRules.find((item: any) => item.topic === "heating").tracked, false);
+    // Edellinen hissin muutos palasi oletukseen, koska tallennus korvaa kaikki muutokset kerralla.
+    assert.equal(off.data.incidentRules.find((item: any) => item.topic === "elevator").threshold, 2);
+  });
+});
