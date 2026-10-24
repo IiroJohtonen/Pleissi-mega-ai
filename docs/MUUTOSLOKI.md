@@ -11,7 +11,8 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Mustat päätoimintopainikkeet ovat nyt sinisiä. Valitut välilehdet ja suodattimet näkyvät vaaleansinisinä.
 - Nimilaput ja otsikot ovat tavallisella kirjoitusasulla eivätkä ISOILLA KIRJAIMILLA.
 - Tehtäväkortissa otsikko on ensin, ja taloyhtiö, asunto, asukas ja numero ovat tavallista tekstiä.
-  Prioriteettimerkki ja värillinen reuna näkyvät vain kiireellisillä ja hätätehtävillä.
+  Tehtäväkorteilla ja -riveillä ei ole värillisiä reunoja; prioriteettimerkki näkyy vain kiireellisillä ja
+  hätätehtävillä.
 - Päätösjonon laskurit ovat yhdellä rauhallisella rivillä. Tehtävä- ja asukaslistan rivit ovat yhtenäisenä listana.
 - Sauna- ja pyykkituvan kalenterit käyttävät samaa sinistä väriä oranssin ja turkoosin sijaan.
 - AI-painikkeista on poistettu kipinä- ja robottikuvakkeet, ja AI-ehdotus näkyy lainauksena.

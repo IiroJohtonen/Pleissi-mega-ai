@@ -74,7 +74,7 @@ Painot: 400 teksti, 500 korostus ja painikkeet, 600 otsikot. Rivin pituus enint�
 - **Merkit (tila, prioriteetti):** `--radius-sm`, `--text-xs`, paino 500, taustana värin tint-sävy. Vain tila ja
   prioriteetti ovat merkkejä; taloyhtiö, asunto, asukas ja käsittelijä ovat tekstiä.
 - **Listat:** yksi paneeli, rivit `--line`-viivoin, otsikkorivi `--surface-2`-taustalla. Valittu tai hover-rivi
-  `--surface-2`. Kiireellisellä rivillä vasen 3 px:n reuna `--danger` tai `--warning`, muilla ei reunaa.
+  `--surface-2`. Riveillä ja korteilla ei ole värillistä reunaa; kiireen kertoo prioriteettimerkki.
 - **Kentät:** `--surface`, reuna `--field-border`, `--radius-md`, korkeus 36 px.
 - **Navigaatio:** `--chrome`-pohjainen sivupalkki; valittu kohta vaalea tausta ja paino 500.
 - **AI-toiminnot:** tavallisia painikkeita, joissa lukee mitä tapahtuu. Ei kipinäkuvakkeita eikä erillistä
