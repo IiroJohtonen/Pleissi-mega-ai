@@ -1,6 +1,6 @@
 # Kotilon julkaisu osoitteeseen kotilo.io
 
-> **Palvelimelle (suositus):** jos käytössä on palvelin, esimerkiksi UpCloud, seuraa ohjetta [server/README.md](server/README.md). Tämä tiedosto kuvaa vaihtoehdon, jossa alusta pyörii omalla koneella.
+> **Pleissi Mega AI:** julkaistaan Kotilon palvelimelle osoitteeseen `test2.kotilo.io` ohjeen [server/README.md](server/README.md) mukaan. Tämä tiedosto on Kotilon ohje alustan ajamisesta omalla koneella, eikä sitä käytetä Mega AI:n julkaisuun.
 
 Rakenne on kaksiosainen, jotta esittelysivua ja alustaa voi kehittää erikseen:
 

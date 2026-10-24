@@ -18,7 +18,7 @@ const OFFICE_SELECT = `
          reminder_emails AS reminderEmails, retention_months AS retentionMonths, ai_priority AS aiPriority,
          ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays,
          ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent, two_factor AS twoFactor,
-         resident_status_updates AS residentStatusUpdates, ai_prompt AS aiPrompt
+         resident_status_updates AS residentStatusUpdates, ai_prompt AS aiPrompt, ai_agent AS aiAgent
   FROM office_settings WHERE id = 1
 `;
 
@@ -49,6 +49,12 @@ export function aiRelevanceEnabled(): boolean {
   return Boolean(row?.ai_relevance);
 }
 
+// Hoitaako AI-agentti asukkaiden sauna-, pyykkitupa- ja autopaikka-asiat itse. Oletuksena pois.
+export function aiAgentEnabled(): boolean {
+  const row = db.prepare("SELECT ai_agent FROM office_settings WHERE id = 1").get() as { ai_agent: number } | undefined;
+  return Boolean(row?.ai_agent);
+}
+
 officeRouter.get("/office", (_req, res) => {
   res.json(officeSettings());
 });
@@ -76,7 +82,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     // Asukas saa sähköpostin, kun hänen tehtävänsä tila muuttuu.
     residentStatusUpdates: z.boolean().optional(),
     // AI-ehdotusta pyydettäessä kysytään lisätietoa ikkunassa.
-    aiPrompt: z.boolean().optional()
+    aiPrompt: z.boolean().optional(),
+    // AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat itse.
+    aiAgent: z.boolean().optional()
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista toimiston nimi ja tiedot." });
   if (parsed.data.twoFactor && !loginCodeSetting() && !loginCodeMailReady()) {
@@ -124,6 +132,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
   }
   if (parsed.data.aiPrompt !== undefined) {
     db.prepare("UPDATE office_settings SET ai_prompt = ? WHERE id = 1").run(parsed.data.aiPrompt ? 1 : 0);
+  }
+  if (parsed.data.aiAgent !== undefined) {
+    db.prepare("UPDATE office_settings SET ai_agent = ? WHERE id = 1").run(parsed.data.aiAgent ? 1 : 0);
   }
   refreshBudgetAlerts();
   res.json(officeSettings());

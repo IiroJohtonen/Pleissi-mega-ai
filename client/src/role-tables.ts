@@ -36,9 +36,14 @@ export const roleTableTitles: Partial<Record<TicketTab, string>> = {
   companies: t("Taloyhtiöiden tiedot")
 };
 
+// Data-osion taulut: taloyhtiöosion alasivut kaikista taloyhtiöistä. Data-taulun näkee, jos rooli näkee
+// saman alasivun, joten Data ei ole roolien valinnoissa omana tauluna.
+export const dataTables: TicketTab[] = navGroups.flatMap(group => group.tabs);
+
 // Saako käyttäjä avata näkymän. Avatun tehtävän näkee, jos rooli näkee jonkin tehtävälistan.
 export function canSeeTab(tab: TicketTab, param?: string | null) {
   if (ALWAYS_VISIBLE.includes(tab)) return true;
+  if (tab === "data") return param ? dataTables.includes(param as TicketTab) && canSeeTable(param) : dataTables.some(canSeeTable);
   if (param && paramIsTicket(tab) && TASK_TABS.some(canSeeTable)) return true;
   return canSeeTable(TAB_ALIASES[tab] ?? tab);
 }

@@ -8,7 +8,9 @@ export const MANAGEMENT_OFFICE = {
   name: "Pohjantähti Isännöinti Oy",
   email: "toimisto@pohjantahti-isannointi.fi",
   // Avataanko AI-ehdotusta pyydettäessä ikkuna lisätiedoille (toimiston asetus).
-  aiPrompt: true
+  aiPrompt: true,
+  // Onko AI-agentti käytössä: tehtävällä näkyy silloin Anna AI-agentin hoitaa -painike (toimiston asetus).
+  aiAgent: false
 };
 
 // mail_email = käyttäjän oman, Kotiloon yhdistetyn postilaatikon osoite. manager = roolilla on isännöitsijän

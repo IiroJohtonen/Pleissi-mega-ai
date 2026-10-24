@@ -18,6 +18,7 @@ import {
 } from "./bookings.js";
 import { aiPriorityEnabled } from "./office.js";
 import { assignToCompanyManager } from "./tickets.js";
+import { continueAgent } from "../ai-agent.js";
 
 export const portalRouter: Router = express.Router();
 
@@ -224,6 +225,8 @@ portalRouter.post("/portal/tickets/:id/messages", async (req, res) => {
     id("audit"), ticket.id, resident.name, reopened ? "reply_received_reopened" : "portal_message",
     JSON.stringify({ attachments: parsed.data.attachments.length }), timestamp
   );
+  // AI-agentin hoitamassa tehtävässä agentti jatkaa asukkaan vastauksesta (esim. valittu vuoro).
+  continueAgent(ticket.id);
   res.status(201).json({ ok: true, reopened });
 });
 

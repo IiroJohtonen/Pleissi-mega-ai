@@ -85,6 +85,8 @@ describe("sähköpostipalvelujen yhteiset osat", () => {
     assert.match(message, /AADSTS7000215/);
     assert.match(message, /Value-kenttä/);
     assert.match(modules.microsoft.microsoftErrorMessage("AADSTS999999: tuntematon"), /AADSTS999999.*Yhdistä tili uudelleen/);
+    // Paluuosoite julkisen sovelluksen alustalla: virhe kertoo, mitä Azuresta muutetaan.
+    assert.match(modules.microsoft.microsoftErrorMessage("AADSTS90023: Public clients can't send a client secret."), /AADSTS90023.*Allow public client flows/);
     assert.equal(modules.microsoft.microsoftErrorMessage(""), "Microsoft-kirjautuminen epäonnistui. Yhdistä tili uudelleen asetuksista.");
   });
 
@@ -293,6 +295,19 @@ describe("sähköpostitilien yhdistäminen", () => {
     const callback = await call(server, null, "GET", "/mail/microsoft/callback?state=tuntematon&code=x");
     assert.equal(callback.status, 200);
     assert.match(String(callback.data), /vanhentunut tai virheellinen/);
+  });
+
+  it("näyttää ja kirjaa lokiin Microsoftin hylkäämän kirjautumisen syyn", async () => {
+    const started = await call(server, admin, "POST", "/mail/microsoft/connect", { target: "office" });
+    const state = new URL(started.data.url).searchParams.get("state");
+    const cookie = (started.headers.get("set-cookie") ?? "").split(";")[0];
+    const description = "AADSTS90023: Public clients can't send a client secret.\r\nTrace ID: abc";
+    const callback = await call(server, null, "GET",
+      `/mail/microsoft/callback?state=${state}&error=invalid_request&error_description=${encodeURIComponent(description)}`, undefined, { Cookie: cookie });
+    assert.match(String(callback.data), /hylkäsi kirjautumisen: AADSTS90023: Public clients/);
+    assert.doesNotMatch(String(callback.data), /Trace ID/);
+    assert.match(server.output(), /Microsoft-yhteys: kirjautuminen aloitettu .*testi-client/);
+    assert.match(server.output(), /Microsoft-yhteys: paluu kirjautumisesta .*invalid_request/);
   });
 
   it("jokainen käyttäjä voi yhdistää oman postilaatikkonsa", async () => {

@@ -57,6 +57,8 @@ Aseta `ANTHROPIC_API_KEY` tiedostoon `server/.env`. Ilman avainta vastausehdotuk
 
 Saapuvan tehtävän prioriteetin voi antaa AI:n arvioitavaksi: Asetukset → Isännöitsijätoimiston tiedot → AI. Asetus on oletuksena pois päältä, jolloin prioriteetti päätellään avainsanoista. Jokainen saapuva viesti on silloin yksi AI-kutsu. Samasta paikasta voi kytkeä päälle tarkistuksen, jossa AI pitää taloyhtiöön liittymättömät sähköpostit (mainokset, uutiskirjeet, automaattivastaukset) poissa päätösjonosta; ne tallentuvat suljettuina tehtävinä. Molemmat arviot tehdään samalla kutsulla.
 
+**AI-agentti** (Asetukset → Isännöitsijätoimiston tiedot → AI, oletuksena pois) hoitaa asukkaan sauna-, pyykkitupa- ja autopaikka-asiat. Agentti (`server/src/ai-agent.ts`) käsittelee tehtävän vasta, kun käsittelijä painaa tehtävällä **Anna AI-agentin hoitaa**, joten AI-kutsuja ei tehdä tehtäviin, joita kukaan ei ole antanut agentille. Asukkaan vastaus agentin hoitamaan tehtävään (esim. valittu vuoro) käsitellään heti, myös toimiston ollessa kiinni. Agentti käyttää palvelimen työkaluja: vapaiden vuorojen haku, vuoron tarkistus ja varaus, autopaikkatiedot ja autopaikkajonoon lisäys. Varatun vuoron tilalle se tarjoaa vapaita vuoroja (oletuksena pyydetystä päivästä kolmen päivän päähän) ja varaa asukkaan valitseman, kun asukas vastaa. Vastaus lähtee samaan sähköpostiketjuun tai portaaliin. Muut asiat se jättää käsittelijälle perustelun kanssa. Turvarajat ovat koodissa: työkalut koskevat vain tehtävän taloyhtiötä ja asukasta, tarjottu vuoro varataan vasta asukkaan vastattua, ja autopaikan luovutus jää henkilökunnalle. Malli on oletuksena `claude-opus-5-5` (muuttuja `ANTHROPIC_AGENT_MODEL`).
+
 ### Sähköposti
 
 Saapuva ja lähtevä posti kulkee toimiston tai taloyhtiön sähköpostitilin kautta. Tili yhdistetään asetuksista (Asetukset → Isännöitsijätoimiston tiedot → Toimiston sähköpostitili); taloyhtiölle voi yhdistää oman tilin, muuten käytetään toimiston tiliä. Palveluja on kolme:
@@ -126,7 +128,7 @@ Palautus: pysäytä palvelin ja kopioi varmuuskopion `kotilo.sqlite`, `attachmen
 
 ## Julkaisu osoitteeseen kotilo.io
 
-Esittelysivu on kansiossa `site/` ja julkaistaan osoitteeseen `kotilo.io`. Alusta julkaistaan osoitteeseen `app.kotilo.io` erillisestä tuotantokopiosta. Vaiheet ja skriptit ovat tiedostossa [deploy/README.md](deploy/README.md).
+Esittelysivu on kansiossa `site/` ja julkaistaan osoitteeseen `kotilo.io`. Pleissi Mega AI julkaistaan Kotilon tuotantoversion (`app.kotilo.io`) kanssa samalle palvelimelle osoitteeseen `test2.kotilo.io`, omaan kansioonsa ja omalla tietokannallaan. Vaiheet ja skriptit ovat tiedostossa [deploy/server/README.md](deploy/server/README.md).
 
 ## Tuotantoajo
 

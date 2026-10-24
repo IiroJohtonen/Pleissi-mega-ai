@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { TicketTab } from "./types";
 import { t } from "./i18n";
 
-export const ticketTabs: TicketTab[] = ["queue", "unassigned", "unidentified", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "apartments", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log", "search"];
+export const ticketTabs: TicketTab[] = ["queue", "unassigned", "unidentified", "tickets", "my-tickets", "ai-handled", "knowledge", "knowledge-ai", "knowledge-internal", "reports", "companies", "residents", "apartments", "sauna", "laundry", "parking", "announcements", "moves", "renovations", "keys", "meters", "waitlist", "settings", "log", "search", "data"];
 
 type Route = { tab: TicketTab; param: string | null };
 
@@ -18,7 +18,7 @@ export function parseRoute(): Route {
 }
 
 // Osoitteen jälkimmäinen osa on tehtävän tunniste vain tehtävänäkymissä; Taloyhtiöissä se on
-// yhtiön ja Dokumentaatiossa dokumentin tunniste.
+// yhtiön, Dokumentaatiossa dokumentin ja Datassa taulun tunniste.
 export function paramIsTicket(tab: TicketTab) {
   return tab === "queue" || tab === "unassigned" || tab === "unidentified" || tab === "tickets" || tab === "my-tickets" || tab === "ai-handled";
 }
@@ -62,7 +62,8 @@ export const tabTitles: Record<TicketTab, string> = {
   residents: t("Asukkaat"),
   apartments: t("Asunnot"),
   settings: t("Asetukset"),
-  search: t("Haku")
+  search: t("Haku"),
+  data: t("Data")
 };
 
 export const emptyTicketMessages: Partial<Record<TicketTab, string>> = {
