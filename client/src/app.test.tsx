@@ -192,6 +192,35 @@ describe("sovellus", () => {
     }
   });
 
+  it("näyttää päätösjonon yläosassa mahdollisen yhteisen vian ja avaa sen toimenpiteineen", async () => {
+    const incident = {
+      id: "incident-1", companyId: "demo-company", companyName: "As Oy Koivikko", topic: "heating", stairwell: "B", status: "open",
+      firstReportAt: "2026-10-24T06:00:00.000Z", lastReportAt: "2026-10-24T08:00:00.000Z", createdAt: "2026-10-24T08:00:00.000Z",
+      summary: "3 asuntoa B-portaasta (B 1, B 2, B 3) on ilmoittanut aiheesta lämmitys.",
+      ai: null, aiAt: null, autoReply: false, replyMessage: "", announcedAt: null, orderedAt: null, handledBy: null, handledAt: null,
+      drafts: { workOrder: "Pyydämme tarkistamaan lämmityksen (B-portaan osalta).", announcementTitle: "Lämmitys: vika selvityksessä",
+        announcementBody: "Vika on tiedossa.", reply: "Kiitos ilmoituksestasi. Vika on tiedossa." },
+      reporters: 3,
+      tickets: [{ id: "ticket-1", ticketNumber: 1, subject: "Kylmä asunto", status: "open", createdAt: "2026-10-24T06:00:00.000Z",
+        apartmentNumber: "B 1", stairwell: "B", residentName: "Asukas B 1" }]
+    };
+    responses["/incidents"] = [incident];
+    responses["/incidents/incident-1"] = incident;
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/queue");
+      expect(await screen.findByRole("heading", { name: /Mahdolliset yhteiset viat/ })).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: /Lämmitys, B-porras/ }));
+      expect(await screen.findByRole("heading", { name: "Mahdollinen yhteinen vika: Lämmitys" })).toBeTruthy();
+      expect(screen.getByText(incident.summary)).toBeTruthy();
+      expect((screen.getByDisplayValue(incident.drafts.workOrder) as HTMLTextAreaElement).tagName).toBe("TEXTAREA");
+      expect(screen.getByRole("button", { name: "Pyydä AI-tulkinta" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Merkitse korjatuksi ja sulje ilmoitukset" })).toBeTruthy();
+    } finally {
+      delete responses["/incidents"];
+      delete responses["/incidents/incident-1"];
+    }
+  });
+
   it("näyttää päätösjonon alla omat käsittelyssä olevat tehtävät", async () => {
     const inProgress = { ...overdueTicket, id: "ticket-6", ticket_number: 6, subject: "Oma käsittelyssä", status: "waiting_manager" };
     const othersInProgress = { ...inProgress, id: "ticket-7", ticket_number: 7, subject: "Toisen käsittelyssä", assignee_id: "user-2" };

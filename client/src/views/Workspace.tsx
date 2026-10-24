@@ -33,6 +33,8 @@ import { type HistoryEntry, readHistory, rememberTicket } from "../history";
 import { documentNumberQuery, type SearchResponse, SearchResults, ticketNumberQuery } from "./Search";
 import { type OfficeInfo, Settings } from "./Settings";
 import { Waitlists } from "./Waitlists";
+import { IncidentList } from "./Incidents";
+import { topicOptions } from "../topics";
 import { t } from "../i18n";
 
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
@@ -135,6 +137,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
   // Suodattimet ovat monivalintoja: valitut arvot, null = kaikki (oletus).
   const [priorityFilter, setPriorityFilter] = useState<string[] | null>(null);
   const [typeFilter, setTypeFilter] = useState<string[] | null>(null);
+  const [topicFilter, setTopicFilter] = useState<string[] | null>(null);
+  // Kasvaa, kun tehtävät ladataan uudelleen, jotta yhteisten vikojen lista päivittyy samalla.
+  const [incidentRefresh, setIncidentRefresh] = useState(0);
   // Tilasuodatin on käytössä Kaikki tehtävät- ja Omat tehtävät -näkymissä; muut näkymät on jo rajattu tilan mukaan.
   // Valitut tilat; null = kaikki tilat (oletus).
   const [statusFilter, setStatusFilter] = useState<string[] | null>(null);
@@ -155,6 +160,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
   function openTaskList(next: TicketTab) {
     setPriorityFilter(null);
     setTypeFilter(null);
+    setTopicFilter(null);
     setStatusFilter(null);
     setCompanyFilter(null);
     setDueFilter(null);
@@ -325,6 +331,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     const rows = await api<Ticket[]>("/tickets?companyId=all");
     setAllCompanyTickets([...rows].sort((a, b) => compareTickets(a, b, "priority") || compareTickets(b, a, "created")));
     setLoading(false);
+    setIncidentRefresh(count => count + 1);
 
     // Päivitetään avoin tehtävä osoitteen perusteella, jotta juuri suljettu paneeli ei aukea uudelleen.
     const route = parseRoute();
@@ -542,6 +549,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
     picked(companyFilter, ticket.company_id)
     && picked(priorityFilter, ticket.priority)
     && picked(typeFilter, ticket.type)
+    && picked(topicFilter, ticket.topic ?? "other")
     && (!statusFilterTab || picked(statusFilter, ticket.status))
     && (dueFilter === null || dueFilter.some(kind => dueMatches(ticket, kind)))
     && ticketColumns.every(column => {
@@ -559,6 +567,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
       options: ["emergency", "urgent", "normal", "low"].map(priority => ({ value: priority, label: priorityLabel(priority) })) },
     { key: "type", label: t("Tyyppi"), value: typeFilter, onChange: setTypeFilter,
       options: ticketTypes.map(type => ({ value: type, label: t(type) })) },
+    { key: "topic", label: t("Aihe"), value: topicFilter, onChange: setTopicFilter, options: topicOptions },
     ...(statusFilterTab
       ? [{ key: "status", label: t("Tila"), value: statusFilter, onChange: setStatusFilter,
           options: statusOptions.map(status => ({ value: status, label: statusLabel(status) })) }]
@@ -601,7 +610,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
 
   const pagedInProgress = usePaged(inProgressTickets, `in-progress|${queueSort}`);
   const pagedTickets = usePaged(listedTickets, [
-    tab, JSON.stringify([companyFilter, priorityFilter, typeFilter, statusFilter, dueFilter]),
+    tab, JSON.stringify([companyFilter, priorityFilter, typeFilter, topicFilter, statusFilter, dueFilter]),
     JSON.stringify(columnSearch), ticketSort?.key, ticketSort?.descending
   ].join("|"));
 
@@ -1043,6 +1052,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     setStatusFilter(null);
                     setPriorityFilter(null);
                     setTypeFilter(null);
+                    setTopicFilter(null);
                     setDueFilter(null);
                     setTab("unidentified");
                   }}
@@ -1059,6 +1069,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                       setStatusFilter([status]);
                       setPriorityFilter(null);
                       setTypeFilter(null);
+                      setTopicFilter(null);
                       setDueFilter(null);
                       setTab("my-tickets");
                     }}
@@ -1083,6 +1094,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                     setStatusFilter(null);
                     setPriorityFilter(null);
                     setTypeFilter(null);
+                    setTopicFilter(null);
                     setDueFilter(["reminders"]);
                     setTab("my-tickets");
                   }}
@@ -1093,6 +1105,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                 </button>
               </div>
             )}
+            {tab === "queue" && <IncidentList refreshKey={incidentRefresh} onOpenTicket={openTicket} />}
             {tab === "queue" && (
               <div className="queue-heading-row">
                 <h2 className="queue-subheading">
@@ -1128,6 +1141,7 @@ export function Workspace({ user }: { user: OfficeUser }) {
                   setCompanyFilter(null);
                   setPriorityFilter(null);
                   setTypeFilter(null);
+                  setTopicFilter(null);
                   setStatusFilter(null);
                   setDueFilter(null);
                 }}>{t("Tyhjennä suodattimet")}</button>

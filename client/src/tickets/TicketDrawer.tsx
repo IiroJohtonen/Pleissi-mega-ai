@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, Dropdown, FactDropdown } from "../components/common";
+import { placeLabel, topicLabel, topicOptions } from "../topics";
+import { IncidentDrawer } from "../views/Incidents";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
@@ -458,6 +460,16 @@ export function TicketDrawer({
   const [residents, setResidents] = useState<Resident[]>([]);
   const [linking, setLinking] = useState(false);
 
+  // Mahdollinen yhteinen vika, johon tehtävä on liitetty.
+  const [incident, setIncident] = useState<{ id: string; topic: string; stairwell: string; status: string; reporters: number } | null>(null);
+  const [incidentOpen, setIncidentOpen] = useState(false);
+  useEffect(() => {
+    setIncidentOpen(false);
+    api<typeof incident>(`/tickets/${encodeURIComponent(ticket.id)}/incident`)
+      .then(found => setIncident(found && (found.status === "open" || found.status === "ordered") ? found : null))
+      .catch(() => setIncident(null));
+  }, [ticket.id, ticket.updated_at]);
+
   useEffect(() => {
     api<Resident[]>(`/companies/${encodeURIComponent(ticket.company_id)}/residents`)
       .then(setResidents)
@@ -471,7 +483,9 @@ export function TicketDrawer({
     : residents;
   // Tietokenttien muutokset kerätään tähän ja tallennetaan vasta Tallenna-painikkeesta. Tehtävän
   // taustapäivitys ei koske niihin, joten keskeneräinen muokkaus säilyy.
-  type FieldEdits = { type?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string; companyId?: string };
+  type FieldEdits = {
+    type?: string; topic?: string; priority?: string; assigneeId?: string | null; dueDate?: string | null; reporterId?: string; status?: string; companyId?: string;
+  };
   const [edits, setEdits] = useState<FieldEdits>({});
   const [saveError, setSaveError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -487,6 +501,7 @@ export function TicketDrawer({
 
   const savedFields = {
     type: ticket.type,
+    topic: ticket.topic ?? "other",
     priority: ticket.priority,
     assigneeId: ticket.assignee_id ?? null,
     dueDate: ticket.due_date ?? null,
@@ -812,6 +827,17 @@ export function TicketDrawer({
         {ticket.company_pending ? (
           <UnidentifiedCompanyPanel ticket={ticket} companies={companies} users={officeUsers} onChanged={onChanged} />
         ) : null}
+        {incident && (
+          <p className="incident-notice">
+            <span>
+              {t("Kuuluu mahdolliseen yhteiseen vikaan: {0}, {1} ({2} asuntoa).", topicLabel(incident.topic), placeLabel(incident.stairwell), incident.reporters)}
+            </span>
+            <button type="button" onClick={() => setIncidentOpen(true)}>{t("Avaa yhteinen vika")}</button>
+          </p>
+        )}
+        {incidentOpen && incident && (
+          <IncidentDrawer incidentId={incident.id} onClose={() => setIncidentOpen(false)} onChanged={onChanged} onOpenTicket={() => setIncidentOpen(false)} />
+        )}
         <h2>{ticket.subject}</h2>
 
         <dl className="ticket-facts">
@@ -1026,6 +1052,17 @@ export function TicketDrawer({
                     <small>{t("Ei linkitetty asukkaaseen")}</small>
                   </span>
                 ) : "-"}
+            </dd>
+          </div>
+          <div className={edits.topic !== undefined ? "changed" : ""}>
+            <dt>{t("Aihe")}</dt>
+            <dd>
+              <FactDropdown
+                value={shown.topic}
+                options={topicOptions}
+                disabled={updatingFields}
+                onChange={topic => edit("topic", topic)}
+              />
             </dd>
           </div>
         </dl>

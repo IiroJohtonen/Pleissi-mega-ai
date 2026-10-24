@@ -5,6 +5,7 @@ import { raiseAlert, resolveAlert } from "./alerts.js";
 import { createBackup, hasBackupToday } from "./backup.js";
 import { processPendingErasures } from "./resident-erasure.js";
 import { db } from "./db.js";
+import { startIncidentJob } from "./incidents.js";
 import { sendEmail } from "./mail.js";
 import { deleteTicket } from "./routes/tickets.js";
 import { id, now, today, WAITING_SINCE_SQL } from "./util.js";
@@ -144,4 +145,7 @@ export function startMaintenanceJobs() {
   };
   erasures();
   setInterval(erasures, 5 * 60 * 1000);
+
+  // Tehtävien aiheet ja yhteisten vikojen tunnistus.
+  startIncidentJob();
 }

@@ -3,6 +3,33 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 24.10.2026 · Mahdolliset yhteiset viat
+
+**Mitä muutettiin**
+- Jokainen tehtävä saa aiheen (esim. lämmitys, lämmin vesi, vesivuoto, hissi, sähkö). Aihe näkyy tehtävällä, sen
+  voi vaihtaa, ja Kaikki tehtävät -listan voi suodattaa aiheen mukaan.
+- Kun useampi eri asunto ilmoittaa samasta aiheesta lyhyessä ajassa ja selvästi tavallista enemmän (esim. kolme
+  saman portaan asuntoa kylmästä vuorokauden sisällä), Päätösjonon yläosaan tulee Mahdolliset yhteiset viat -rivi
+  ja vastuuisännöitsijä saa sähköpostin. Saman asunnon useampi viesti lasketaan yhdeksi.
+- Yhteisen vian näkymässä on tilanne (montako asuntoa, mistä portaasta, milloin) ja selitys, miksi vika on
+  todennäköisemmin yhteinen kuin yksittäisen asunnon asia. Tunnistus on laskentaa eikä maksa AI-kuluja.
+- AI-tulkinnan voi pyytää painikkeesta: AI arvioi todennäköisen syyn, ehdottaa toimenpiteet ja kirjoittaa
+  luonnokset työtilaukseksi, tiedotteeksi ja vastaukseksi. Arkaluonteisten ilmoitusten tekstiä ei lähetetä AI:lle.
+- Samasta näkymästä voi lähettää yhden työtilauksen huoltoyhtiölle, julkaista tiedotteen portaan tai koko
+  taloyhtiön asukkaille, vastata kaikille ilmoittajille ja merkitä vian korjatuksi, jolloin kaikki ilmoitukset
+  suljetaan viestin kera.
+- Halutessa uusiin samanaiheisiin ilmoituksiin vastataan automaattisesti, myös toimiston ollessa kiinni. AI-agentti
+  vastaa yhteiseen vikaan kuuluvaan tehtävään samalla viestillä ilman AI-kutsua.
+- Toisen portaan ilmoitus liitetään samaan vikaan, joka laajenee koskemaan koko taloyhtiötä. Väärin liitetyn
+  ilmoituksen voi irrottaa, ja Ei yhteinen vika -painike sulkee vian.
+
+**Miten**
+- Päätösjono › Mahdolliset yhteiset viat (näkyy, kun vika on tunnistettu).
+- Tehtävä › Aihe-kenttä ja ilmoitus Kuuluu mahdolliseen yhteiseen vikaan.
+- Asetukset › Isännöitsijätoimiston tiedot › AI › Tunnista yhteiset viat (oletuksena päällä).
+
+**Testit:** T-176–T-183 · Pleissi Mega AI
+
 ## 24.10.2026 · Rauhallisempi ulkoasu
 
 **Mitä muutettiin**

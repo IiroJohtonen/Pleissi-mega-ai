@@ -105,7 +105,13 @@ export function actionLabel(action: string) {
     ai_agent_booked: t("AI-agentti varasi vuoron asukkaalle"),
     ai_agent_waitlist: t("AI-agentti lisäsi asukkaan autopaikkajonoon"),
     ai_agent_replied: t("AI-agentti vastasi asukkaalle"),
-    ai_agent_handover: t("AI-agentti jätti tehtävän henkilökunnalle")
+    ai_agent_handover: t("AI-agentti jätti tehtävän henkilökunnalle"),
+    topic_changed: t("Aihe vaihdettu"),
+    incident_linked: t("Liitetty mahdolliseen yhteiseen vikaan"),
+    incident_unlinked: t("Irrotettu yhteisestä viasta"),
+    incident_replied: t("Vastattu yhteisen vian viestillä"),
+    incident_reply_failed: t("Yhteisen vian vastaus ei lähtenyt"),
+    incident_closed: t("Suljettu, kun yhteinen vika korjattiin")
   }[action] || action;
 }
 

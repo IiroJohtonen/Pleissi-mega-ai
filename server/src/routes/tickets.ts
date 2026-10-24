@@ -8,6 +8,7 @@ import {
 } from "../access.js";
 import { isAdmin, requireManager } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
+import { isTopic, processIncidents } from "../incidents.js";
 import { replyAccountsFor } from "../mail.js";
 import { renderSignature } from "../signature.js";
 import { alertEmergency, notifyTicketStatus, statusEventFor } from "../notify.js";
@@ -36,7 +37,7 @@ export async function deleteTicket(ticketId: string) {
       INSERT OR IGNORE INTO deleted_mail_messages (message_id, deleted_at)
       SELECT gmail_message_id, ? FROM gmail_imports WHERE ticket_id = ?
     `).run(now(), ticketId);
-    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log"]) {
+    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log", "incident_tickets"]) {
       db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
     }
     db.prepare("DELETE FROM renovation_notices WHERE ticket_id = ?").run(ticketId);
@@ -189,6 +190,8 @@ ticketsRouter.post("/tickets", (req, res) => {
   if ("error" in created) return res.status(created.status).json({ error: created.error });
 
   if (parsed.data.priority === "emergency") void alertEmergency(ticketId, res.locals.user?.id);
+  // Aihe ja yhteisten vikojen tunnistus taustalla.
+  void processIncidents(ticketId);
 
   res.status(201).json({ ok: true, ticketId, status: "waiting_manager" });
 });
@@ -406,6 +409,8 @@ ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
     dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     // Tilan voi vaihtaa käsin mihin tahansa tilaan.
     status: z.enum(TICKET_STATUSES).optional(),
+    // Aihe yhteisten vikojen tunnistukseen; käsittelijän valinta korvaa tekstistä päätellyn.
+    topic: z.string().refine(isTopic).optional(),
     actor: z.string().default("isannoitsija")
   });
   const parsed = schema.safeParse(req.body);
@@ -452,6 +457,19 @@ ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
     if (event) notifyTicketStatus(req.params.id, event, res.locals.user?.name ?? parsed.data.actor);
     // Poistopyynnön vuoksi säilytetty tehtävä anonymisoidaan heti, kun se suljetaan.
     if (parsed.data.status === "closed") await processPendingErasures();
+  }
+
+  if (parsed.data.topic && (parsed.data.topic !== ticket.topic || ticket.topic_source !== "manual")) {
+    db.prepare("UPDATE tickets SET topic = ?, topic_source = 'manual' WHERE id = ?").run(parsed.data.topic, req.params.id);
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+      id("audit"), req.params.id, res.locals.user?.name ?? parsed.data.actor, "topic_changed",
+      JSON.stringify({ from: ticket.topic ?? null, to: parsed.data.topic }), now()
+    );
+    // Toiseen aiheeseen siirretty tehtävä ei kuulu enää vanhan aiheen poikkeamaan.
+    const linked = db.prepare("SELECT i.topic FROM incident_tickets it JOIN incidents i ON i.id = it.incident_id WHERE it.ticket_id = ?")
+      .get(req.params.id) as { topic: string } | undefined;
+    if (linked && linked.topic !== parsed.data.topic) db.prepare("DELETE FROM incident_tickets WHERE ticket_id = ?").run(req.params.id);
+    void processIncidents(req.params.id);
   }
 
   const type = parsed.data.type ?? ticket.type;

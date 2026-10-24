@@ -5155,3 +5155,65 @@ em.sensitive-tag { padding: 1px 8px; font-size: var(--text-xs); }
 .resident-combo li.other-option { border-top: 1px solid var(--line); border-radius: 0 0 7px 7px; }
 .resident-combo li.clear-option { color: #9c2b1f; }
 .resident-combo-details { color: var(--ink-3); font-size: var(--text-xs); }
+
+/* Mahdolliset yhteiset viat päätösjonossa: yksi paneeli, rivit viivoin erotettuina (DESIGN.md). */
+.incident-list { margin: 20px 0 4px; }
+.incident-list .queue-subheading { margin: 0 0 10px; }
+.incident-list ul { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.incident-list li + li { border-top: 1px solid var(--line); }
+.incident-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 24px;
+  width: 100%; padding: 14px 18px; border: 0; border-radius: 0; background: none; color: var(--ink); text-align: left; font: inherit;
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+.incident-list li:first-child .incident-row { border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg); }
+.incident-list li:last-child .incident-row { border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
+.incident-row:hover { background: var(--surface-2); }
+.incident-row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.incident-row-title { display: grid; gap: 2px; }
+.incident-row-title strong { font-size: var(--text-lg); font-weight: 600; }
+.incident-row-title span, .incident-row-meta { color: var(--ink-2); font-size: var(--text-sm); }
+.incident-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-variant-numeric: tabular-nums; }
+.incident-status { display: inline-block; padding: 2px 6px; border-radius: var(--radius-sm); background: var(--line); color: var(--ink); font-size: var(--text-xs); font-weight: 500; }
+.incident-status.incident-open { background: var(--warning-tint); color: var(--warning); }
+.incident-status.incident-ordered { background: var(--primary-tint); color: var(--primary); }
+.incident-status.incident-resolved { background: var(--success-tint); color: var(--success); }
+
+/* Yhteisen vian paneeli */
+.drawer.incident-drawer { width: min(720px, 95vw); }
+.incident-drawer h2 { margin: 0 40px 4px 0; font-size: var(--text-xl); }
+.incident-subtitle { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 8px; color: var(--ink-2); }
+.incident-section { padding: 18px 0; border-top: 1px solid var(--line); }
+.incident-section:first-of-type { border-top: 0; }
+.incident-section h3 { margin: 0 0 8px; font-size: var(--text-lg); font-weight: 600; }
+.incident-section > p { margin: 0 0 10px; max-width: 70ch; }
+.incident-ai p { margin: 0 0 8px; }
+.incident-ai ol { margin: 0 0 8px; padding-left: 20px; }
+.incident-tickets { margin: 0; padding: 0; list-style: none; }
+.incident-tickets li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto auto; align-items: center; gap: 4px 14px; padding: 8px 0; font-size: var(--text-sm); color: var(--ink-2); }
+.incident-tickets li + li { border-top: 1px solid var(--line); }
+.incident-tickets .link-button { padding: 0; color: var(--primary); font-weight: 500; text-align: left; overflow-wrap: anywhere; }
+.incident-drawer .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); }
+.incident-drawer .checkbox-row input { width: auto; }
+.incident-drawer .draft-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.quiet-button { border: 0; background: none; color: var(--primary); font-weight: 500; padding: 6px 8px; }
+.quiet-button:hover:not(:disabled) { text-decoration: underline; }
+@media (max-width: 760px) {
+  .incident-tickets li { grid-template-columns: 1fr auto; }
+}
+
+/* Tehtäväsivun ilmoitus: tehtävä kuuluu yhteiseen vikaan. */
+.incident-notice {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--warning); background: var(--warning-tint); color: var(--ink);
+}
+.incident-drawer textarea, .incident-drawer input:not([type="checkbox"]) { font-size: var(--text-md); font-weight: 400; line-height: 1.5; }
+.incident-drawer .reply-hint { margin: 6px 0 10px; font-size: var(--text-sm); color: var(--ink-3); }
+.incident-drawer .incident-section .muted { font-size: var(--text-sm); }
+.incident-notice span { font-size: var(--text-sm); }
+.incident-notice button {
+  padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-md);
+  background: var(--surface); color: var(--ink); font: inherit; font-size: var(--text-sm); font-weight: 500;
+}
+.incident-notice button:hover { background: var(--surface-2); }
+.incident-tickets .quiet-button { justify-self: end; }

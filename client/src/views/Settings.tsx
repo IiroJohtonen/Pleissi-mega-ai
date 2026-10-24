@@ -469,6 +469,8 @@ export type OfficeInfo = {
   aiRelevance?: number;
   // aiAgent: 1 = tehtävällä on Anna AI-agentin hoitaa -painike.
   aiAgent?: number;
+  // incidentDetection: 1 = usean asunnon samanaiheiset ilmoitukset näytetään mahdollisena yhteisenä vikana.
+  incidentDetection?: number;
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
   // twoFactor: kirjautumiskoodi sähköpostiin; twoFactorOverridden: palvelin on kytkenyt sen pois.
@@ -742,6 +744,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
   const [aiPriority, setAiPriority] = useState(false);
   const [aiRelevance, setAiRelevance] = useState(false);
   const [aiAgent, setAiAgent] = useState(false);
+  const [incidentDetection, setIncidentDetection] = useState(true);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
   const [twoFactor, setTwoFactor] = useState(false);
@@ -775,6 +778,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         setAiPriority(Boolean(office.aiPriority));
         setAiRelevance(Boolean(office.aiRelevance));
         setAiAgent(Boolean(office.aiAgent));
+        setIncidentDetection(office.incidentDetection !== 0);
         setAiAvailable(office.aiAvailable !== false);
         setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
         setTwoFactor(Boolean(office.twoFactor));
@@ -811,7 +815,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
         body: JSON.stringify({
-          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent,
+          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection,
           aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates, aiPrompt,
           unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
         })
@@ -1132,6 +1136,23 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
           <p className="send-error">{t("AI ei ole käytössä palvelimella, joten agentti ei toistaiseksi käsittele tehtäviä.")}</p>
         )}
 
+        <label className="switch-row">
+          <span>
+            <strong>{t("Tunnista yhteiset viat")}</strong>
+            <small>{t("Usean asunnon samanaiheiset ilmoitukset näytetään päätösjonossa mahdollisena yhteisenä vikana.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={incidentDetection}
+            onChange={event => { setIncidentDetection(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("Jokainen tehtävä saa aiheen (esim. lämmitys, hissi tai vesivuoto). Kun useampi asunto ilmoittaa samasta aiheesta lyhyessä ajassa ja selvästi tavallista enemmän, vastuuisännöitsijä saa sähköpostin ja asia näkyy päätösjonon yläosassa. Tunnistus on laskentaa eikä käytä AI:ta; AI-tulkinnan voi pyytää erikseen.")}
+        </p>
+
         </CollapseSection>
 
         <CollapseSection id="ai-prompt" title={t("AI-ehdotukset")}>
@@ -1203,7 +1224,9 @@ const aiFeatureLabels: Record<string, string> = {
   suggest: t("Vastausehdotukset"),
   assess: t("Saapuvien viestien arviointi"),
   topics: t("Toistuvien aiheiden raportit"),
-  chunking: t("Dokumenttien pilkonta")
+  chunking: t("Dokumenttien pilkonta"),
+  agent: t("AI-agentti"),
+  incident: t("Yhteisten vikojen tulkinnat")
 };
 
 export const formatUsd = (value: number) => `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;

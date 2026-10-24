@@ -5,6 +5,7 @@ import { AUTHORIZED_COMPANY_IDS, companyIdForRecipients, companyIdFromContext, g
 import { triage } from "../ai.js";
 import { attachAiLog, withAiLog } from "../ai-log.js";
 import { db } from "../db.js";
+import { processIncidents } from "../incidents.js";
 import { apartmentForForm, detectEmailForm, formContact, formSubject, parseFormFields } from "../email-forms.js";
 import { FORM_TYPES } from "../portal-form-data.js";
 import { importSiteForm } from "../site-forms.js";
@@ -326,6 +327,8 @@ if (input.sourceMessageId) {
 }
 
   if (result.emergency && !filtered) void alertEmergency(ticketId);
+  // Aihe ja yhteisten vikojen tunnistus taustalla.
+  void processIncidents(ticketId);
 
   res.status(201).json({
     ticketId,

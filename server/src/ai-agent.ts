@@ -6,6 +6,7 @@ import { aiBudgetExhausted, recordAiUsage } from "./ai-budget.js";
 import { logAiRequest, withAiLog } from "./ai-log.js";
 import { slotLabel } from "./booking-queue.js";
 import { db } from "./db.js";
+import { drafts, type Incident } from "./incidents.js";
 import { chunkSourceLabel, selectKnowledgeChunks } from "./knowledge-chunks.js";
 import { maskPersonalData } from "./privacy-filter.js";
 import { BOOKING_RESOURCES, bookingRules, createBookings } from "./routes/bookings.js";
@@ -483,12 +484,15 @@ const rerun = new Set<string>();
 // tokeneita ei kulu tehtäviin, joita kukaan ei ole antanut agentille.
 export async function runAgentNow(ticketId: string): Promise<AgentResult> {
   if (!aiAgentEnabled()) throw new AgentUnavailableError("AI-agentti ei ole käytössä. Pääkäyttäjä voi kytkeä sen päälle AI-asetuksista.", 403);
-  if (!aiAvailable() || aiBudgetExhausted()) throw new AgentUnavailableError("AI ei ole juuri nyt käytettävissä.", 503);
   const ticket = loadTicket(ticketId);
   if (!ticket) throw new AgentUnavailableError("Tehtävää ei löytynyt.", 404);
   const reason = ineligibleReason(ticket);
   if (reason) throw new AgentUnavailableError(reason, 400);
   if (running.has(ticketId)) throw new AgentUnavailableError("AI-agentti käsittelee jo tätä tehtävää.", 409);
+  // Tehtävä kuuluu avoimeen yhteiseen vikaan: asukkaalle kerrotaan, että vika on tiedossa. AI:ta ei tarvita.
+  const incident = openIncidentOf(ticketId);
+  if (incident) return replyForIncident(ticket, incident);
+  if (!aiAvailable() || aiBudgetExhausted()) throw new AgentUnavailableError("AI ei ole juuri nyt käytettävissä.", 503);
   running.add(ticketId);
   try {
     const { result } = await withAiLog(ticketId, () => runAgent(ticket, true));
@@ -499,6 +503,24 @@ export async function runAgentNow(ticketId: string): Promise<AgentResult> {
   } finally {
     running.delete(ticketId);
   }
+}
+
+function openIncidentOf(ticketId: string): Incident | undefined {
+  return db.prepare(`
+    SELECT i.* FROM incident_tickets it JOIN incidents i ON i.id = it.incident_id
+    WHERE it.ticket_id = ? AND i.status IN ('open', 'ordered')
+  `).get(ticketId) as Incident | undefined;
+}
+
+// Vastaus poikkeaman viestillä (isännöitsijän kirjoittama tai valmis pohja). Tehtävä jää odottamaan
+// vian korjausta, ja se suljetaan yhdessä muiden ilmoitusten kanssa, kun poikkeama merkitään korjatuksi.
+async function replyForIncident(ticket: AgentTicket, incident: Incident): Promise<AgentResult> {
+  const message = incident.reply_message.trim() || drafts(incident).reply;
+  const sent = await deliverReply(ticket, message);
+  if (!sent.ok) throw new AgentUnavailableError(`Vastaus ei lähtenyt: ${sent.error}`, 502);
+  db.prepare("UPDATE tickets SET ai_action = 'ai', status = 'waiting_third_party', updated_at = ? WHERE id = ?").run(now(), ticket.id);
+  audit(ticket.id, "ai_agent_replied", { outcome: "awaiting_incident", incident: incident.id });
+  return { outcome: "replied", reason: "Tehtävä kuuluu mahdolliseen yhteiseen vikaan, joten asukkaalle kerrottiin, että vika on tiedossa.", resolved: false, booked: false };
 }
 
 // Asukas vastasi tehtävään, jota agentti hoitaa (esim. valitsi tarjotun vuoron): agentti jatkaa taustalla.

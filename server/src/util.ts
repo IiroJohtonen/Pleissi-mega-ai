@@ -90,3 +90,10 @@ export async function unsafeFileMessage(files: { filename: string; content: Buff
 }
 
 export const VALID_EMAIL = /^[^\s<>,;@]+@[^\s<>,;@]+$/;
+
+// Asunnon rappu: asukkaan tietoihin kirjattu Rappu tai, jos sitä ei ole, asunnon numeron alkukirjaimet
+// ("B 34" -> "B"). Ilman kumpaakaan rappua ei ole.
+export function stairwellOf(apartmentNumber?: string | null, staircase?: string | null) {
+  if (staircase?.trim()) return staircase.trim().toUpperCase();
+  return (apartmentNumber ?? "").trim().match(/^[A-Za-zÅÄÖåäö]+/)?.[0].toUpperCase() ?? "";
+}
