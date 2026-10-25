@@ -20,6 +20,8 @@ export type Ticket = {
   // Aihe yhteisten vikojen tunnistukseen (esim. heating); topic_source manual = käsittelijän valitsema.
   topic?: string | null;
   topic_source?: string | null;
+  // Mikä ratkaisi asian (käsittelijän kirjaama).
+  resolution?: string | null;
   // renovation = remonttitehtävä, joka ei mene päätösjonoon; muut tehtävät ovat "ticket".
   kind?: "ticket" | "renovation";
   priority: string;

@@ -20,7 +20,7 @@ const OFFICE_SELECT = `
          ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays,
          ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent, two_factor AS twoFactor,
          resident_status_updates AS residentStatusUpdates, ai_prompt AS aiPrompt, ai_agent AS aiAgent,
-         incident_detection AS incidentDetection
+         incident_detection AS incidentDetection, memory_auto AS memoryAuto
   FROM office_settings WHERE id = 1
 `;
 
@@ -91,6 +91,8 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     aiAgent: z.boolean().optional(),
     // Usean asunnon samanaiheiset ilmoitukset näytetään mahdollisena yhteisenä vikana.
     incidentDetection: z.boolean().optional(),
+    // AI ehdottaa taloyhtiön muistiin tietoja kerran viikossa.
+    memoryAuto: z.boolean().optional(),
     // Aiheittaiset rajat: seurataanko, montako asuntoa ja minkä ajan sisällä.
     incidentRules: z.array(z.object({
       topic: z.string().refine(topic => (ADJUSTABLE_TOPICS as string[]).includes(topic)),
@@ -157,6 +159,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     db.prepare("UPDATE office_settings SET incident_detection = ? WHERE id = 1").run(parsed.data.incidentDetection ? 1 : 0);
   }
   if (parsed.data.incidentRules) saveDetectionRules(parsed.data.incidentRules);
+  if (parsed.data.memoryAuto !== undefined) {
+    db.prepare("UPDATE office_settings SET memory_auto = ? WHERE id = 1").run(parsed.data.memoryAuto ? 1 : 0);
+  }
   refreshBudgetAlerts();
   res.json(officeSettings());
 });

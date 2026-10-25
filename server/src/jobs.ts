@@ -6,6 +6,7 @@ import { createBackup, hasBackupToday } from "./backup.js";
 import { processPendingErasures } from "./resident-erasure.js";
 import { db } from "./db.js";
 import { startIncidentJob } from "./incidents.js";
+import { weeklyMemoryProposals } from "./memory.js";
 import { sendEmail } from "./mail.js";
 import { deleteTicket } from "./routes/tickets.js";
 import { id, now, today, WAITING_SINCE_SQL } from "./util.js";
@@ -135,6 +136,8 @@ export function startMaintenanceJobs() {
     purgeExpiredData().catch(error => console.error("Säilytysajan poistot epäonnistuivat:", error?.message ?? error));
     backupDaily().catch(error => console.error("Varmuuskopiointi epäonnistui:", error?.message ?? error));
     refreshBudgetAlerts();
+    // Taloyhtiön muistin ehdotukset kerran viikossa, jos toimisto on kytkenyt ne päälle.
+    weeklyMemoryProposals().catch(error => console.error("Muistiehdotukset epäonnistuivat:", error?.message ?? error));
   };
   run();
   setInterval(run, 60 * 60 * 1000);

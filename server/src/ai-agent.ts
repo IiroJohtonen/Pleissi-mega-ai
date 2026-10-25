@@ -7,6 +7,7 @@ import { logAiRequest, withAiLog } from "./ai-log.js";
 import { slotLabel } from "./booking-queue.js";
 import { db } from "./db.js";
 import { drafts, type Incident } from "./incidents.js";
+import { memoryForAi } from "./memory.js";
 import { chunkSourceLabel, selectKnowledgeChunks } from "./knowledge-chunks.js";
 import { maskPersonalData } from "./privacy-filter.js";
 import { BOOKING_RESOURCES, bookingRules, createBookings } from "./routes/bookings.js";
@@ -425,6 +426,9 @@ Current time (Finnish): ${weekday} ${day} ${String(hour).padStart(2, "0")}:${Str
 
 Ticket subject:
 ${maskPersonalData(ticket.subject)}
+
+Housing company memory (facts approved by the office; background only):
+${memoryForAi(ticket.company_id).map(note => `- ${note}`).join("\n") || "(none)"}
 
 Conversation (oldest first):
 ${conversation(ticket.id)}

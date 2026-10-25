@@ -4,7 +4,9 @@ import { channelLabel, priorityLabel, statusLabel, ticketPriorities, ticketStatu
 import { locale, t } from "../i18n";
 import { api, errorMessage, session } from "../session";
 import type { Company, Ticket } from "../types";
+import { CompanyMemory } from "./Memory";
 import { Reports } from "./Reports";
+import { Trends } from "./Trends";
 
 // ---------------------------------------------------------------------------------------------
 // Raporttien pääsivu: mittarit kaikista taloyhtiöistä, omat (tallennettavat) raportit ja
@@ -502,7 +504,7 @@ function CustomReports({ companies }: { companies: Company[] }) {
   );
 }
 
-export type ReportsTab = "metrics" | "custom" | "company";
+export type ReportsTab = "metrics" | "custom" | "company" | "trends" | "memory";
 
 export function ReportsHub({
   tab,
@@ -527,6 +529,8 @@ export function ReportsHub({
       {tab === "company" && (
         <Reports tickets={tickets} loading={loading} companyId={companyId} companies={companies} onCompanyChange={onCompanyChange} />
       )}
+      {tab === "trends" && <Trends companies={companies} companyId={companyId} />}
+      {tab === "memory" && <CompanyMemory companies={companies} companyId={companyId} />}
     </section>
   );
 }

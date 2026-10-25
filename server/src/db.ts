@@ -813,6 +813,42 @@ if (!officeColumns.some(existing => existing.name === "incident_detection")) {
 if (!officeColumns.some(existing => existing.name === "incident_rules")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_rules TEXT NOT NULL DEFAULT '{}'");
 }
+// Mikä ratkaisi asian: käsittelijän lyhyt kuvaus, kun tehtävä suljetaan (taloyhtiön vikahistoriaa ja muistia varten).
+{
+  const columns = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
+  if (!columns.includes("resolution")) db.exec("ALTER TABLE tickets ADD COLUMN resolution TEXT");
+  if (!columns.includes("resolution_by")) db.exec("ALTER TABLE tickets ADD COLUMN resolution_by TEXT");
+  if (!columns.includes("resolution_at")) db.exec("ALTER TABLE tickets ADD COLUMN resolution_at TEXT");
+}
+// Taloyhtiön muisti: tehtävähistoriasta opitut asiat, joita AI käyttää ehdotuksissa. AI ehdottaa (proposed),
+// isännöitsijä hyväksyy (approved) tai hylkää (rejected). stairwell = '' koskee koko taloyhtiötä, topic NULL kaikkia aiheita.
+// sources: JSON-lista tehtävistä, joista tieto on peräisin.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS company_memory (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    topic TEXT,
+    stairwell TEXT NOT NULL DEFAULT '',
+    text TEXT NOT NULL,
+    sources TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL DEFAULT 'proposed',
+    valid_until TEXT,
+    origin TEXT NOT NULL DEFAULT 'ai',
+    created_at TEXT NOT NULL,
+    decided_by TEXT,
+    decided_at TEXT,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS company_memory_company ON company_memory (company_id, status);
+`);
+{
+  const companyColumns = (db.prepare("PRAGMA table_info(companies)").all() as { name: string }[]).map(column => column.name);
+  // Milloin muistiehdotukset haettiin viimeksi: seuraava haku käy läpi vain tämän jälkeen ratkaistut tehtävät.
+  if (!companyColumns.includes("memory_scanned_at")) db.exec("ALTER TABLE companies ADD COLUMN memory_scanned_at TEXT");
+}
+if (!officeColumns.some(existing => existing.name === "memory_auto")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN memory_auto INTEGER NOT NULL DEFAULT 0");
+}
 // Mahdollinen yhteinen vika: usea asunto on ilmoittanut samasta aiheesta lyhyessä ajassa.
 // stairwell = '' koskee koko taloyhtiötä. status: open, ordered (työtilaus tehty), resolved, dismissed.
 // auto_reply = 1: uusiin samanaiheisiin ilmoituksiin vastataan heti reply_message-viestillä.
@@ -834,7 +870,8 @@ db.exec(`
     announced_at TEXT,
     ordered_at TEXT,
     handled_by TEXT,
-    handled_at TEXT
+    handled_at TEXT,
+    resolution TEXT
   );
   CREATE TABLE IF NOT EXISTS incident_tickets (
     ticket_id TEXT PRIMARY KEY,
@@ -843,6 +880,9 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS incident_tickets_incident ON incident_tickets (incident_id);
 `);
+if (!(db.prepare("PRAGMA table_info(incidents)").all() as { name: string }[]).some(column => column.name === "resolution")) {
+  db.exec("ALTER TABLE incidents ADD COLUMN resolution TEXT");
+}
 
 // Toistuvien aiheiden raportti: aiheet, jotka jätettiin pois, koska niistä on jo dokumentaatio.
 if (!(db.prepare("PRAGMA table_info(topic_reports)").all() as { name: string }[]).some(column => column.name === "covered")) {

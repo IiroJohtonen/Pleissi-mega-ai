@@ -221,6 +221,43 @@ describe("sovellus", () => {
     }
   });
 
+  it("sulkeminen kysyy, mikä ratkaisi asian, ja lähettää ratkaisun", async () => {
+    const calls = mockApi();
+    await renderApp(staff("Isännöitsijä"), "#/queue");
+    fireEvent.click((await screen.findAllByRole("button", { name: "Sulje" }))[0]);
+    fireEvent.click(await screen.findByText("Jo hoidettu"));
+    fireEvent.change(screen.getByLabelText("Mikä ratkaisi asian? (valinnainen)"), { target: { value: "Termostaatti avattiin." } });
+    fireEvent.click(screen.getByRole("button", { name: "Sulje tehtävä" }));
+    await vi.waitFor(() => expect(calls.some(request => request.url.endsWith("/decision"))).toBe(true));
+    const body = JSON.parse(calls.find(request => request.url.endsWith("/decision"))!.body);
+    expect(body).toMatchObject({ decision: "skip", reason: "already_handled", resolution: "Termostaatti avattiin." });
+  });
+
+  it("näyttää trendit ja taloyhtiön muistin raporttien alla", async () => {
+    responses["/reports/trends?companyId=demo-company&months=12"] = {
+      months: ["2026-09", "2026-10"], topics: [{ topic: "heating", series: [0, 4], total: 4, lastMonth: 4, average: 0 }],
+      repeats: [{ kind: "stairwell", companyName: "As Oy Koivikko", place: "B", topic: "heating", count: 4, firstAt: "2026-10-01T08:00:00.000Z", lastAt: "2026-10-20T08:00:00.000Z" }],
+      resolution: [], contractors: [], incidents: []
+    };
+    responses["/companies/demo-company/memory"] = {
+      notes: [{ id: "memory-1", companyId: "demo-company", topic: "heating", stairwell: "B", text: "B-portaan pumppu vaihdettiin.", sources: [],
+        status: "proposed", validUntil: null, origin: "ai", createdAt: "2026-10-20T08:00:00.000Z", decidedBy: null, decidedAt: null, updatedAt: "2026-10-20T08:00:00.000Z" }],
+      scannedAt: null, newCases: 2
+    };
+    try {
+      await renderApp(staff("Isännöitsijä"), "#/reports/trends");
+      expect(await screen.findByRole("heading", { name: "Aiheet kuukausittain" })).toBeTruthy();
+      expect(screen.getByText("Lämmitys, B-porras")).toBeTruthy();
+      window.location.hash = "#/reports/memory";
+      expect(await screen.findByRole("heading", { name: "Hyväksyttävänä (1)" })).toBeTruthy();
+      expect(screen.getByDisplayValue("B-portaan pumppu vaihdettiin.")).toBeTruthy();
+      expect(screen.getByText("2 uutta ratkaisua edellisen haun jälkeen.")).toBeTruthy();
+    } finally {
+      delete responses["/reports/trends?companyId=demo-company&months=12"];
+      delete responses["/companies/demo-company/memory"];
+    }
+  });
+
   it("näyttää päätösjonon alla omat käsittelyssä olevat tehtävät", async () => {
     const inProgress = { ...overdueTicket, id: "ticket-6", ticket_number: 6, subject: "Oma käsittelyssä", status: "waiting_manager" };
     const othersInProgress = { ...inProgress, id: "ticket-7", ticket_number: 7, subject: "Toisen käsittelyssä", assignee_id: "user-2" };

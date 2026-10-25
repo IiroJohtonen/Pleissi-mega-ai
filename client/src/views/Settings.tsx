@@ -474,6 +474,8 @@ export type OfficeInfo = {
   incidentDetection?: number;
   // Tunnistuksen rajat aiheittain: seurataanko, montako asuntoa ja minkä ajan (tuntia) sisällä.
   incidentRules?: IncidentRule[];
+  // memoryAuto: 1 = AI ehdottaa taloyhtiön muistiin tietoja kerran viikossa.
+  memoryAuto?: number;
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
   // twoFactor: kirjautumiskoodi sähköpostiin; twoFactorOverridden: palvelin on kytkenyt sen pois.
@@ -749,6 +751,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
   const [aiAgent, setAiAgent] = useState(false);
   const [incidentDetection, setIncidentDetection] = useState(true);
   const [incidentRules, setIncidentRules] = useState<IncidentRule[]>([]);
+  const [memoryAuto, setMemoryAuto] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
   const [twoFactor, setTwoFactor] = useState(false);
@@ -784,6 +787,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         setAiAgent(Boolean(office.aiAgent));
         setIncidentDetection(office.incidentDetection !== 0);
         setIncidentRules(office.incidentRules ?? []);
+        setMemoryAuto(Boolean(office.memoryAuto));
         setAiAvailable(office.aiAvailable !== false);
         setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
         setTwoFactor(Boolean(office.twoFactor));
@@ -820,7 +824,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
         body: JSON.stringify({
-          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection,
+          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection, memoryAuto,
           incidentRules: incidentRules.map(({ topic, tracked, threshold, windowHours }) => ({ topic, tracked, threshold, windowHours })),
           aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates, aiPrompt,
           unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
@@ -1161,6 +1165,26 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         </p>
         {incidentDetection && incidentRules.length > 0 && (
           <IncidentRulesTable rules={incidentRules} onChange={rules => { setIncidentRules(rules); setSaved(false); }} />
+        )}
+
+        <label className="switch-row">
+          <span>
+            <strong>{t("Ehdota taloyhtiön muistiin tietoja kerran viikossa")}</strong>
+            <small>{t("AI käy läpi viikon aikana ratkaistut tehtävät ja ehdottaa niistä tietoja hyväksyttäväksi.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={memoryAuto}
+            onChange={event => { setMemoryAuto(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("Ehdotukset näkyvät kohdassa Raportit › Taloyhtiön muisti. AI:ta kutsutaan vain, jos taloyhtiössä on uusia ratkaistuja tehtäviä. Ehdotukset voi hakea myös käsin samasta paikasta.")}
+        </p>
+        {memoryAuto && !aiAvailable && (
+          <p className="send-error">{t("AI ei ole käytössä palvelimella, joten ehdotuksia ei toistaiseksi haeta.")}</p>
         )}
 
         </CollapseSection>

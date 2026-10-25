@@ -238,6 +238,7 @@ export type Incident = {
   first_report_at: string; last_report_at: string; created_at: string; updated_at: string;
   ai_summary: string | null; ai_summary_at: string | null; auto_reply: number; reply_message: string;
   announced_at: string | null; ordered_at: string | null; handled_by: string | null; handled_at: string | null;
+  resolution: string | null;
 };
 
 const ACTIVE = "('open', 'ordered')";
