@@ -2425,4 +2425,6 @@ export const en: Record<string, string> = {
   "Aikavälillä ei ole tunnistettu yhteisiä vikoja.": "No shared faults detected in this period.",
   "{0}, {1} asuntoa": "{0}, {1} apartments",
   "Trendit": "Trends",
+  "taloyhtiön muistin ehdotukset": "housing company memory suggestions",
+  "Taloyhtiön muistin ehdotukset": "Housing company memory suggestions",
 };

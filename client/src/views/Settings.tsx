@@ -1260,7 +1260,8 @@ const aiFeatureLabels: Record<string, string> = {
   topics: t("Toistuvien aiheiden raportit"),
   chunking: t("Dokumenttien pilkonta"),
   agent: t("AI-agentti"),
-  incident: t("Yhteisten vikojen tulkinnat")
+  incident: t("Yhteisten vikojen tulkinnat"),
+  memory: t("Taloyhtiön muistin ehdotukset")
 };
 
 export const formatUsd = (value: number) => `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
