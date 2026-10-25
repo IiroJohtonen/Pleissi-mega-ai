@@ -14,7 +14,7 @@ export type Incident = {
   status: "open" | "ordered" | "resolved" | "dismissed";
   firstReportAt: string; lastReportAt: string; createdAt: string; summary: string;
   ai: IncidentInterpretation | null; aiAt: string | null; autoReply: boolean; replyMessage: string;
-  announcedAt: string | null; orderedAt: string | null; handledBy: string | null; handledAt: string | null;
+  announcedAt: string | null; orderedAt: string | null; handledBy: string | null; handledAt: string | null; resolution?: string | null;
   drafts: { workOrder: string; announcementTitle: string; announcementBody: string; reply: string };
   reporters: number;
   tickets: { id: string; ticketNumber: number | null; subject: string; status: string; createdAt: string;
@@ -103,6 +103,7 @@ export function IncidentDrawer({
   const [reply, setReply] = useState("");
   const [autoReply, setAutoReply] = useState(false);
   const [resolution, setResolution] = useState(t("Vika on korjattu. Kiitos ilmoituksestasi."));
+  const [cause, setCause] = useState("");
 
   // Luonnokset: AI-tulkinnan teksti, jos se on pyydetty, muuten valmis pohja.
   function fill(next: Incident) {
@@ -317,6 +318,16 @@ export function IncidentDrawer({
             <section className="incident-section ticket-form">
               <h3>{t("Vika korjattu")}</h3>
               <label>
+                <span>{t("Mikä ratkaisi vian?")}</span>
+                <input
+                  value={cause}
+                  onChange={event => setCause(event.target.value)}
+                  maxLength={500}
+                  placeholder={t("Esim. lämmönjakokeskuksen pumppu vaihdettu.")}
+                />
+              </label>
+              <p className="reply-hint">{t("Ratkaisu kirjataan kaikille ilmoituksille ja taloyhtiön vikahistoriaan. Asukkaat eivät näe sitä.")}</p>
+              <label>
                 <span>{t("Viesti ilmoittajille (valinnainen)")}</span>
                 <textarea value={resolution} onChange={event => setResolution(event.target.value)} rows={3} maxLength={4000} />
               </label>
@@ -329,7 +340,7 @@ export function IncidentDrawer({
                   onClick={() => {
                     if (!window.confirm(t("Suljetaanko kaikki tämän vian {0} ilmoitusta?", incident.tickets.filter(ticket => ticket.status !== "closed").length))) return;
                     void run("resolve", async () => {
-                      const result = await post<{ incident: Incident; closed: number; failed: string[] }>(`${path}/resolve`, { message: resolution.trim() });
+                      const result = await post<{ incident: Incident; closed: number; failed: string[] }>(`${path}/resolve`, { message: resolution.trim(), resolution: cause.trim() });
                       setNotice([t("Suljettu {0} ilmoitusta.", result.closed), ...result.failed].join(" "));
                       return result.incident;
                     });
@@ -352,6 +363,7 @@ export function IncidentDrawer({
         ) : (
           <p className="muted">
             {`${incidentStatusLabels[incident.status]}: ${incident.handledBy ?? "-"}, ${formatDate(incident.handledAt ?? undefined)}.`}
+            {incident.resolution && <><br />{t("Ratkaisu: {0}", incident.resolution)}</>}
           </p>
         )}
 

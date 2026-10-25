@@ -8,6 +8,8 @@ import { withAiLog } from "../ai-log.js";
 import { selectKnowledgeChunks } from "../knowledge-chunks.js";
 import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
 import { attachmentsDir, db, knowledgeFilesDir } from "../db.js";
+import { RESOLUTION_MAX, setResolution, ticketStairwell } from "../history.js";
+import { memoryForAi } from "../memory.js";
 import { type OutgoingAttachment, replyAccountsFor } from "../mail.js";
 import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
@@ -24,6 +26,8 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
       reason: z.enum(["already_handled", "no_action_required", "spam"]),
       // Vapaa kommentti sulkemisesta; tallentuu tehtävän sisäiseksi muistiinpanoksi.
       comment: z.string().trim().max(2000).default(""),
+      // Mikä ratkaisi asian (valinnainen); kerryttää taloyhtiön vikahistoriaa ja muistia.
+      resolution: z.string().trim().max(RESOLUTION_MAX).default(""),
       actor: z.string().default("isannoitsija")
     }),
     z.object({
@@ -68,6 +72,10 @@ ticketActionsRouter.post("/tickets/:id/decision", (req, res) => {
     }),
     timestamp
   );
+
+  if (parsed.data.decision === "skip" && parsed.data.resolution) {
+    setResolution(req.params.id, parsed.data.resolution, res.locals.user?.name ?? parsed.data.actor);
+  }
 
   // Sulkemisen kommentti näkyy aikajanalla sisäisenä muistiinpanona; asukas ei näe sitä.
   if (parsed.data.decision === "skip" && parsed.data.comment) {
@@ -128,7 +136,9 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
   // Arkaluonteinen tehtävä ei mene AI:lle: ehdotus tehdään dokumentaatiohaulla.
   const sensitive = detectSensitivity(ticket.id, `${ticket.subject}\n${conversation}`);
   const { result: suggestion } = await withAiLog(ticket.id, () =>
-    suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", { allowAi: !sensitive, followUp }));
+    suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", {
+      allowAi: !sensitive, followUp, memory: sensitive ? [] : memoryForAi(ticket.company_id, { topic: ticket.topic, stairwell: ticketStairwell(ticket.id) })
+    }));
   const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
   const timestamp = now();
 

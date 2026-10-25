@@ -15,10 +15,11 @@ export function SkipTicketModal({
   onSubmit
 }: {
   onClose: () => void;
-  onSubmit: (reason: string, comment: string) => Promise<void>;
+  onSubmit: (reason: string, comment: string, resolution: string) => Promise<void>;
 }) {
   const [reason, setReason] = useState("");
   const [comment, setComment] = useState("");
+  const [resolution, setResolution] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,7 +29,7 @@ export function SkipTicketModal({
     setSubmitting(true);
     setError("");
     try {
-      await onSubmit(reason, comment.trim());
+      await onSubmit(reason, comment.trim(), reason === "spam" ? "" : resolution.trim());
     } catch {
       setError(t("Tehtävän sulkeminen epäonnistui. Yritä uudelleen."));
     } finally {
@@ -61,6 +62,21 @@ export function SkipTicketModal({
               </label>
             ))}
           </fieldset>
+
+          {reason && reason !== "spam" && (
+            <label>
+              <span>{t("Mikä ratkaisi asian? (valinnainen)")}</span>
+              <input
+                value={resolution}
+                onChange={event => setResolution(event.target.value)}
+                maxLength={500}
+                placeholder={t("Esim. huoltoyhtiö ilmasi patterit, termostaatti oli kiinni.")}
+              />
+            </label>
+          )}
+          {reason && reason !== "spam" && (
+            <p className="reply-hint">{t("Ratkaisu kerryttää taloyhtiön vikahistoriaa: se näkyy saman asunnon ja portaan seuraavissa tehtävissä.")}</p>
+          )}
 
           <label>
             <span>{t("Kommentti (valinnainen)")}</span>

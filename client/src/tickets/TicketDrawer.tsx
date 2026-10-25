@@ -2,6 +2,8 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DownloadLink, Dropdown, FactDropdown } from "../components/common";
 import { placeLabel, topicLabel, topicOptions } from "../topics";
 import { IncidentDrawer } from "../views/Incidents";
+import { TicketHistory, TicketResolution } from "./TicketHistory";
+import { navigate, paramIsTicket, parseRoute } from "../routing";
 import {
   actionLabel, actorLabel, channelLabel, fileToBase64, formatDate, formatDateOnly, formatFileSize, formatTicketNumber,
   MAX_REPLY_ATTACHMENT_BYTES, MAX_REPLY_ATTACHMENTS, manualTicketStatuses, priorityLabel, statusLabel, ticketPriorities, ticketTypeOptions
@@ -460,6 +462,11 @@ export function TicketDrawer({
   const [residents, setResidents] = useState<Resident[]>([]);
   const [linking, setLinking] = useState(false);
 
+  // Toinen tehtävä (historia, yhteinen vika) avataan samassa näkymässä.
+  const openOtherTicket = (ticketId: string) => {
+    const route = parseRoute();
+    navigate(paramIsTicket(route.tab) ? route.tab : "tickets", ticketId);
+  };
   // Mahdollinen yhteinen vika, johon tehtävä on liitetty.
   const [incident, setIncident] = useState<{ id: string; topic: string; stairwell: string; status: string; reporters: number } | null>(null);
   const [incidentOpen, setIncidentOpen] = useState(false);
@@ -836,7 +843,7 @@ export function TicketDrawer({
           </p>
         )}
         {incidentOpen && incident && (
-          <IncidentDrawer incidentId={incident.id} onClose={() => setIncidentOpen(false)} onChanged={onChanged} onOpenTicket={() => setIncidentOpen(false)} />
+          <IncidentDrawer incidentId={incident.id} onClose={() => setIncidentOpen(false)} onChanged={onChanged} onOpenTicket={ticketId => { setIncidentOpen(false); openOtherTicket(ticketId); }} />
         )}
         <h2>{ticket.subject}</h2>
 
@@ -1066,6 +1073,9 @@ export function TicketDrawer({
             </dd>
           </div>
         </dl>
+
+        <TicketResolution ticket={ticket} onSaved={onChanged} />
+        <TicketHistory ticket={ticket} onOpenTicket={openOtherTicket} />
 
         {aiPromptOpen && <AiSuggestModal onClose={() => setAiPromptOpen(false)} onSubmit={context => void requestSuggestion(context)} />}
 

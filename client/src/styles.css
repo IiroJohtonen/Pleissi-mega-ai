@@ -5345,3 +5345,54 @@ button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:dis
 .incident-rules tr.rule-off th { color: var(--ink-3); }
 .incident-rules table td > select { width: auto; min-width: 84px; height: 32px; min-height: 32px; padding: 0 8px; font-size: var(--text-sm); }
 .incident-rules table td > select:disabled { background: var(--surface-2); color: var(--ink-3); border-color: var(--line); }
+
+/* Tehtävän ratkaisu ja vikahistoria */
+.ticket-resolution, .ticket-history { margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ticket-resolution h3, .ticket-history h3 { margin: 0 0 8px; font-size: var(--text-md); font-weight: 600; }
+.ticket-resolution p { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0; }
+.ticket-resolution input { width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid var(--field-border); border-radius: var(--radius-md); font: inherit; }
+.ticket-history h4 { margin: 12px 0 4px; color: var(--ink-2); font-size: var(--text-sm); font-weight: 500; }
+.ticket-history h4:first-of-type { margin-top: 0; }
+.ticket-history ul { margin: 0; padding: 0; list-style: none; }
+.ticket-history li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: var(--text-sm); color: var(--ink-2); }
+.ticket-history li:first-child { border-top: 0; }
+.ticket-history .link-button { padding: 0; color: var(--primary); font-weight: 500; text-align: left; }
+.ticket-history .history-title { color: var(--ink); }
+.ticket-history .history-resolution { flex-basis: 100%; margin: 2px 0 0; color: var(--ink); }
+
+/* Trendit */
+.trends-table-wrap { overflow-x: auto; }
+.trends-table th, .trends-table td { white-space: nowrap; }
+.trends-table td.zero { color: var(--ink-3); }
+.trends-table td.total { font-weight: 600; }
+.trends-table td.metric-alert { background: var(--warning-tint); color: var(--warning); font-weight: 600; }
+.trends-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.trend-list { margin: 0; padding: 0; list-style: none; }
+.trend-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 8px 0; border-top: 1px solid var(--line); font-size: var(--text-sm); color: var(--ink-2); }
+.trend-list li:first-child { border-top: 0; }
+.trend-list strong { color: var(--ink); font-weight: 500; }
+.trend-list p { flex-basis: 100%; margin: 2px 0 0; color: var(--ink); }
+
+/* Taloyhtiön muisti */
+.memory-list { margin: 0; padding: 0; list-style: none; }
+.memory-list > li { padding: 12px 0; border-top: 1px solid var(--line); }
+.memory-list > li:first-child { border-top: 0; }
+.memory-list.rejected .memory-text p { color: var(--ink-3); text-decoration: line-through; }
+.memory-text { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.memory-text p { margin: 0; max-width: 75ch; }
+.memory-actions { display: flex; gap: 4px; flex: none; }
+.memory-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; margin: 6px 0 0; color: var(--ink-3); font-size: var(--text-xs); }
+.memory-meta .link-button { padding: 0; color: var(--primary); font-size: var(--text-xs); font-weight: 500; }
+.memory-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.memory-heading button { min-height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--text-sm); font-weight: 500; }
+.memory-heading button:hover { background: var(--surface-2); }
+.memory-editor { margin: 0; gap: 10px; }
+.memory-editor textarea { font-size: var(--text-md); font-weight: 400; }
+.memory-editor-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.memory-editor-row label { display: grid; gap: 4px; }
+.memory-editor-row input { min-height: 36px; padding: 0 10px; border: 1px solid var(--field-border); border-radius: var(--radius-md); font: inherit; font-weight: 400; }
+.memory-editor-row input[maxlength="3"] { width: 140px; }
+.company-memory .report-card > .draft-actions { flex-wrap: wrap; }
+.trends .data-table th, .trends .data-table td { border: 0; border-bottom: 1px solid var(--line); }
+.trends .data-table tbody tr:last-child th, .trends .data-table tbody tr:last-child td { border-bottom: 0; }
+.trends .data-table tbody th { font-weight: 500; color: var(--ink); }

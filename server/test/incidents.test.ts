@@ -137,13 +137,15 @@ describe("yhteiset viat", () => {
   });
 
   it("korjattu poikkeama sulkee ilmoitukset viestin kera", async () => {
-    const resolved = await call(server, admin, "POST", `/incidents/${incidentId}/resolve`, { message: "Lämmitys on korjattu." });
+    const resolved = await call(server, admin, "POST", `/incidents/${incidentId}/resolve`, { message: "Lämmitys on korjattu.", resolution: "Lämmönjakokeskuksen pumppu vaihdettu." });
     assert.equal(resolved.status, 200, JSON.stringify(resolved.data));
     assert.equal(resolved.data.incident.status, "resolved");
+    assert.equal(resolved.data.incident.resolution, "Lämmönjakokeskuksen pumppu vaihdettu.");
     for (const ticketId of ticketIds.filter((_, index) => index !== 1)) {
       const detail = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
       assert.equal(detail.ticket.status, "closed");
       assert.ok(detail.messages.some((item: any) => item.body.includes("Lämmitys on korjattu.")));
+      assert.equal(detail.ticket.resolution, "Lämmönjakokeskuksen pumppu vaihdettu.");
     }
     // Irrotettu ilmoitus jäi auki.
     assert.notEqual((await call(server, admin, "GET", `/tickets/${ticketIds[1]}`)).data.ticket.status, "closed");

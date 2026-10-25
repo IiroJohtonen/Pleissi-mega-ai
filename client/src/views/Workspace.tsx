@@ -39,8 +39,11 @@ import { t } from "../i18n";
 
 const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 // Raporttien alasivut sivupalkissa (#/reports/<alasivu>).
-const reportTabs: [ReportsTab, string][] = [["metrics", t("Mittarit")], ["custom", t("Omat raportit")], ["company", t("Taloyhtiön raportit")]];
-const reportTabIcons: Record<ReportsTab, TicketTab> = { metrics: "reports", custom: "my-tickets", company: "companies" };
+const reportTabs: [ReportsTab, string][] = [
+  ["metrics", t("Mittarit")], ["custom", t("Omat raportit")], ["company", t("Taloyhtiön raportit")],
+  ["trends", t("Trendit")], ["memory", t("Taloyhtiön muisti")]
+];
+const reportTabIcons: Record<ReportsTab, TicketTab> = { metrics: "reports", custom: "my-tickets", company: "companies", trends: "reports", memory: "knowledge" };
 // Ryhmän alasivun nimi, kun se poikkeaa näkymän otsikosta.
 const navItemTitles: Partial<Record<TicketTab, string>> = { knowledge: t("Kaikki dokumentit") };
 // Sivupalkissa valittu taloyhtiö, jonka tiedot, dokumentaatio, asukkaat, tilat ja ilmoitukset näytetään.
@@ -455,10 +458,10 @@ export function Workspace({ user }: { user: OfficeUser }) {
     navigate(tab, id);
   }
 
-  async function decide(id: string, decision: "ai" | "human" | "skip", reason?: string, comment?: string) {
+  async function decide(id: string, decision: "ai" | "human" | "skip", reason?: string, comment?: string, resolution?: string) {
     await api(`/tickets/${id}/decision`, {
       method: "POST",
-      body: JSON.stringify({ decision, actor: actorName(), reason, comment })
+      body: JSON.stringify({ decision, actor: actorName(), reason, comment, resolution })
     });
     // "Osoita minulle" ei vaihda näkymää: tehtävä poistuu päätösjonosta ja käyttäjä jatkaa siitä, missä oli.
     await load();
@@ -472,9 +475,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
     void decide(id, decision);
   }
 
-  async function confirmSkip(reason: string, comment: string) {
+  async function confirmSkip(reason: string, comment: string, resolution: string) {
     if (!skipTicketId) return;
-    await decide(skipTicketId, "skip", reason, comment);
+    await decide(skipTicketId, "skip", reason, comment, resolution);
     setSkipTicketId(null);
   }
 

@@ -3,6 +3,31 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 25.10.2026 · Vikahistoria, trendit ja taloyhtiön muisti
+
+**Mitä muutettiin**
+- Tehtävää suljettaessa voi kirjata lyhyesti, mikä ratkaisi asian. Ratkaisun voi kirjata ja muokata myös myöhemmin
+  tehtävällä. Yhteisen vian korjauksen yhteydessä ratkaisu kirjataan kaikille sen ilmoituksille.
+- Tehtävällä on Aiemmin-osio: saman asunnon tehtävät kahden vuoden ajalta, saman portaan samanaiheiset tehtävät
+  vuoden ajalta ja taloyhtiön aiemmat samanaiheiset yhteiset viat ratkaisuineen.
+- Raportit › Trendit: aiheet kuukausittain (tavallista vilkkaampi kuukausi korostettuna), toistuvat viat, hoitoajat
+  aiheittain, huoltoyhtiöiden työtilaukset ja yhteiset viat. Trendit ovat laskentaa eivätkä maksa AI-kuluja.
+- Raportit › Taloyhtiön muisti: AI käy läpi ratkaistut tehtävät ja ehdottaa niistä pysyviä tietoja rakennuksesta,
+  esimerkiksi toistuvan vian syyn tai tehdyn korjauksen. Isännöitsijä hyväksyy, muokkaa tai hylkää ehdotukset ja voi
+  lisätä tietoja itse. Asukkaista ei tallenneta mitään.
+- Vain hyväksytyt tiedot annetaan AI:lle: AI-ehdotus, AI-agentti ja yhteisen vian AI-tulkinta käyttävät niitä.
+  Yhteisen vian tulkinta saa lisäksi aiemmat samanaiheiset viat ja niiden ratkaisut.
+- Ehdotukset haetaan painikkeesta. Asetuksista voi kytkeä viikoittaisen haun; AI:ta kutsutaan vain, jos uusia
+  ratkaisuja on.
+
+**Miten**
+- Sulje tehtävä -ikkuna › Mikä ratkaisi asian?
+- Tehtävä › Mikä ratkaisi asian ja Aiemmin.
+- Raportit › Trendit ja Raportit › Taloyhtiön muisti.
+- Asetukset › Isännöitsijätoimiston tiedot › AI › Ehdota taloyhtiön muistiin tietoja kerran viikossa.
+
+**Testit:** T-187–T-192 · Pleissi Mega AI
+
 ## 24.10.2026 · Yhtenäiset painikkeet ja yhteisten vikojen rajat asetuksiin
 
 **Mitä muutettiin**

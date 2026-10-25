@@ -8,7 +8,9 @@ import { db } from "../db.js";
 import {
   drafts, type Incident, incidentTickets, localSummary, processIncidents, replyFromIncident, TOPIC_RULES, type TopicKey
 } from "../incidents.js";
+import { RESOLUTION_MAX, setResolution, topicHistoryForAi } from "../history.js";
 import { selectKnowledgeChunks } from "../knowledge-chunks.js";
+import { memoryForAi } from "../memory.js";
 import { ACTIVE_RESIDENT, helsinkiParts, id, now, stairwellOf } from "../util.js";
 
 export const incidentsRouter: Router = express.Router();
@@ -57,6 +59,7 @@ function view(incident: Incident) {
     orderedAt: incident.ordered_at,
     handledBy: incident.handled_by,
     handledAt: incident.handled_at,
+    resolution: incident.resolution,
     drafts: drafts(incident, tickets),
     reporters: new Set(tickets.map(ticket => ticket.apartment_number ?? ticket.resident_name ?? ticket.id)).size,
     // Arkaluonteisen tehtävän otsikkoa ei näytetä poikkeaman listassa.
@@ -179,7 +182,11 @@ incidentsRouter.put("/incidents/:id/reply", async (req, res) => {
 
 // Vika korjattu: kaikkiin avoimiin ilmoituksiin lähtee sama viesti ja ne suljetaan.
 incidentsRouter.post("/incidents/:id/resolve", async (req, res) => {
-  const parsed = z.object({ message: z.string().trim().max(4000).default("") }).safeParse(req.body);
+  const parsed = z.object({
+    message: z.string().trim().max(4000).default(""),
+    // Mikä ratkaisi vian; kirjataan myös ilmoituksille, joilla ei ole omaa ratkaisua.
+    resolution: z.string().trim().max(RESOLUTION_MAX).default("")
+  }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista viesti." });
   const incident = loadIncident(req.params.id);
   if (!incident) return res.status(404).json({ error: "Poikkeamaa ei löytynyt." });
@@ -204,6 +211,13 @@ incidentsRouter.post("/incidents/:id/resolve", async (req, res) => {
       id("audit"), ticket.id, actor, "incident_closed", JSON.stringify({ incident: incident.id, replied: Boolean(parsed.data.message) }), timestamp
     );
     closed++;
+  }
+  if (parsed.data.resolution) {
+    db.prepare("UPDATE incidents SET resolution = ? WHERE id = ?").run(parsed.data.resolution, incident.id);
+    for (const ticket of incidentTickets(incident.id)) {
+      const current = db.prepare("SELECT resolution FROM tickets WHERE id = ?").get(ticket.id) as { resolution: string | null };
+      if (!current.resolution) setResolution(ticket.id, parsed.data.resolution, actor);
+    }
   }
   setStatus(incident, "resolved", actor);
   res.json({ incident: view(loadIncident(incident.id)!), closed, failed });
@@ -270,7 +284,9 @@ incidentsRouter.post("/incidents/:id/interpret", async (req, res) => {
     const { result } = await withAiLog(undefined, () => interpretIncident({
       company: company.name, topic: topicLabel, stairwell: incident.stairwell, reports,
       stairwells: [...stairs.entries()].map(([stairwell, apartments]) => ({ stairwell, apartments })).sort((a, b) => a.stairwell.localeCompare(b.stairwell)),
-      workOrders, announcements
+      workOrders, announcements,
+      history: topicHistoryForAi(incident.company_id, incident.topic, incident.id),
+      memory: memoryForAi(incident.company_id, { topic: incident.topic, stairwell: incident.stairwell })
     }, chunks));
     db.prepare("UPDATE incidents SET ai_summary = ?, ai_summary_at = ?, updated_at = ? WHERE id = ?")
       .run(JSON.stringify(result), now(), now(), incident.id);

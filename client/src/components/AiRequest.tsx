@@ -10,7 +10,8 @@ const featureLabels: Record<string, string> = {
   compare: t("dokumenttiversioiden vertailu"),
   topics: t("toistuvien aiheiden raportti"),
   agent: t("AI-agentti"),
-  incident: t("yhteisen vian tulkinta")
+  incident: t("yhteisen vian tulkinta"),
+  memory: t("taloyhtiön muistin ehdotukset")
 };
 
 // Lokimerkinnän otsikko: mihin AI:ta käytettiin.
