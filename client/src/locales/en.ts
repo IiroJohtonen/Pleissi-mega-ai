@@ -34,6 +34,7 @@ export const en: Record<string, string> = {
   "Ohjattu hätätapauksena": "Routed as an emergency",
   "Hätätapauksesta lähetetty sähköposti vastuuisännöitsijälle": "Emergency email sent to the responsible manager",
   "Hätätapauksen sähköposti vastuuisännöitsijälle ei lähtenyt": "Emergency email to the responsible manager was not sent",
+  "Kirjaus toiminnanohjausjärjestelmään (ERP) epäonnistui": "Recording to the ERP system failed",
   "Päätös: AI hoitaa": "Decision: AI handles",
   "Päätös: Osoitettu minulle": "Decision: Assigned to me",
   "Tehtävä suljettu": "Ticket closed",

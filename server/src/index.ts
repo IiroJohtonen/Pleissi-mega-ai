@@ -8,6 +8,8 @@ import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 // Käynnistyksen tietokantakorjaukset ajetaan ennen kuin mikään muu moduuli lukee tietokantaa.
 import "./startup.js";
+// ERP-integraation jono ja sen triggerit ennen kuin mikään reitti tallentaa tehtäviä.
+import "./integration/outbox.js";
 import { requestUser } from "./access.js";
 import { raiseAlert } from "./alerts.js";
 import { authRouter, INTERNAL_TOKEN, requireAuth, type User } from "./auth.js";

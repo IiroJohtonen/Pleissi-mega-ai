@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { deleteAiRequests } from "./ai-log.js";
 import { attachmentsDir, db } from "./db.js";
+import { anonymizeOutboxForTicket } from "./integration/outbox.js";
 import { id, now } from "./util.js";
 
 // ---------------------------------------------------------------------------------------------
@@ -97,6 +98,8 @@ export function eraseResidentFromTicket(ticketId: string, resident: ErasedReside
     UPDATE audit_log SET details = '{}'
     WHERE ticket_id = ? AND action IN ('reporter_linked', 'reply_received', 'reply_received_reopened')
   `).run(ticketId);
+  // ERP-integraation jonon sanomat anonymisoidaan samalla tavalla.
+  anonymizeOutboxForTicket(ticketId, { text: ERASED_TEXT, name: ERASED_NAME });
   return removedFiles;
 }
 
