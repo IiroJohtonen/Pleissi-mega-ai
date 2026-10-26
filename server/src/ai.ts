@@ -558,7 +558,7 @@ summary: one sentence describing what residents ask or report.
 documentation: a draft knowledge-base entry for this topic, 2 to 5 sentences. The office saves it
 after review, and an AI assistant then uses it as fact when drafting replies to similar tickets, so
 it must read as the housing company's own instruction to residents: what to do, and whom to contact.
-Base it only on the tickets and on the replies the office has already sent (marked "Office reply").
+Base it only on the tickets and on the replies the office has already sent (marked "Office reply"; several replies to one ticket are separated by ---).
 Never invent facts such as phone numbers, names, schedules, prices or responsibilities. Where a
 needed fact is not in the tickets or replies, write a bracketed placeholder for the office to fill
 in, for example "[täydennä: huoltoyhtiön puhelinnumero]".
@@ -581,7 +581,7 @@ repeating it. If there is no existing documentation, covered is an empty list.
   const user = tickets
     .map((ticket, index) =>
       `${index + 1}: [${ticket.type}] ${maskPersonalData(ticket.subject)} — ${maskPersonalData(ticket.summary.slice(0, 300))}`
-      + (ticket.reply ? `\n   Office reply: ${ticket.reply.replace(/\s+/g, " ").slice(0, 400)}` : ""))
+      + (ticket.reply ? `\n   Office reply: ${maskPersonalData(ticket.reply).replace(/\s+/g, " ").slice(0, 1200)}` : ""))
     .join("\n");
 
   const response = await ai.client.beta.messages.parse(logAiRequestParams("topics", {

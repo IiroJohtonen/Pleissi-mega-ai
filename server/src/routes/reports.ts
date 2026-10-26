@@ -63,9 +63,14 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
 
   const tickets = (db.prepare(`
     SELECT t.id, t.ticket_number, t.type, t.subject, t.summary,
-           (SELECT m.body FROM messages m
-            WHERE m.ticket_id = t.id AND m.direction = 'outbound'
-            ORDER BY m.created_at LIMIT 1) AS reply
+           -- Kaikki toimiston vastaukset asukkaalle vanhimmasta alkaen; myöhempi vastaus sisältää usein
+           -- varsinaisen ratkaisun. Urakoitsijalle lähetetty työtilaus ei ole vastaus asukkaalle.
+           (SELECT group_concat(body, '
+---
+') FROM (
+              SELECT m.body FROM messages m
+              WHERE m.ticket_id = t.id AND m.direction = 'outbound' AND m.channel != 'contractor'
+              ORDER BY m.created_at LIMIT 5)) AS reply
     FROM tickets t
     WHERE t.company_id = ? AND t.created_at >= ? AND t.sensitive = 0 AND t.company_pending = 0
     ORDER BY created_at DESC

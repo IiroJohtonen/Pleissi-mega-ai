@@ -804,6 +804,9 @@ db.exec(`
   const columns = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
   if (!columns.includes("topic")) db.exec("ALTER TABLE tickets ADD COLUMN topic TEXT");
   if (!columns.includes("topic_source")) db.exec("ALTER TABLE tickets ADD COLUMN topic_source TEXT");
+  // Viimeisin AI:n vastausehdotus. Lähetettyä vastausta verrataan siihen, jotta nähdään, kuinka paljon
+  // käsittelijä muokkasi luonnosta (agentin kokeiluvaiheen mittari). Tyhjennetään, kun vastaus lähtee.
+  if (!columns.includes("ai_draft")) db.exec("ALTER TABLE tickets ADD COLUMN ai_draft TEXT");
 }
 if (!officeColumns.some(existing => existing.name === "incident_detection")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");

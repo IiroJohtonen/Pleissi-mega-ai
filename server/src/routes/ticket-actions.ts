@@ -4,6 +4,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
+import { classifyDraftEdit, draftSimilarity } from "../ai-draft-edits.js";
 import { withAiLog } from "../ai-log.js";
 import { selectKnowledgeChunks } from "../knowledge-chunks.js";
 import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
@@ -152,6 +153,8 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     source?.page ?? null, timestamp, req.params.id
   );
 
+  if (suggestion.usedAi) rememberAiDraft(req.params.id, suggestion.draft);
+
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
     req.params.id,
@@ -283,6 +286,22 @@ ticketActionsRouter.post("/tickets/:id/message", (req, res) => {
   res.json({ ok: true });
 });
 
+// AI:n vastausehdotus talteen tehtävälle. Vain AI:n tekemä luonnos; dokumentaatiohaun ehdotus ei kerro
+// AI:n laadusta.
+function rememberAiDraft(ticketId: string, draft: string) {
+  db.prepare("UPDATE tickets SET ai_draft = ? WHERE id = ?").run(draft.trim() || null, ticketId);
+}
+
+// Lähetetty vastaus verrattuna viimeisimpään AI-luonnokseen. Luonnos tyhjennetään, jotta seuraava vastaus
+// verrataan vain sitä varten tehtyyn ehdotukseen. Palauttaa null, jos tehtävällä ei ollut AI-luonnosta.
+function takeDraftEdit(ticketId: string, sentBody: string): { similarity: number; edit: ReturnType<typeof classifyDraftEdit> } | null {
+  const row = db.prepare("SELECT ai_draft FROM tickets WHERE id = ?").get(ticketId) as { ai_draft: string | null } | undefined;
+  if (!row?.ai_draft) return null;
+  db.prepare("UPDATE tickets SET ai_draft = NULL WHERE id = ?").run(ticketId);
+  const similarity = Math.round(draftSimilarity(row.ai_draft, sentBody) * 100) / 100;
+  return { similarity, edit: classifyDraftEdit(similarity) };
+}
+
 const MAX_REPLY_ATTACHMENTS = 10;
 const MAX_REPLY_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
@@ -375,6 +394,8 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   });
   if (!reply.ok) return res.status(reply.status).json({ error: reply.error });
   const { to: recipient, subject, timestamp } = reply;
+  // Kuinka paljon käsittelijä muokkasi AI:n luonnosta (ilman allekirjoitusta).
+  const draftEdit = takeDraftEdit(req.params.id, parsed.data.body);
 
   // Lähetetyt liitteet tallennetaan tehtävän liitteisiin samaan paikkaan kuin saapuneet.
   for (const attachment of outgoing.filter(item => !item.stored)) {
@@ -398,7 +419,10 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     req.params.id,
     res.locals.user?.name ?? parsed.data.actor,
     "reply_sent",
-    JSON.stringify({ to: recipient, ...(cc.length > 0 ? { cc: cc.join(", ") } : {}), subject }),
+    JSON.stringify({
+      to: recipient, ...(cc.length > 0 ? { cc: cc.join(", ") } : {}), subject,
+      ...(draftEdit ? { ai_draft_similarity: draftEdit.similarity, ai_draft_edit: draftEdit.edit } : {})
+    }),
     timestamp
   );
 

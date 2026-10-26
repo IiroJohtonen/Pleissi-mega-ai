@@ -11,6 +11,7 @@ type TrendResult = {
   topics: { topic: string; series: number[]; total: number; lastMonth: number; average: number }[];
   repeats: { kind: "apartment" | "stairwell"; companyName: string; place: string; topic: string; count: number; firstAt: string; lastAt: string }[];
   resolution: { topic: string; closed: number; medianHours: number }[];
+  aiDrafts?: { topic: string; sent: number; unchanged: number; light: number; heavy: number; rewritten: number }[];
   contractors: { name: string; orders: number; open: number; medianHours: number | null }[];
   incidents: { topic: string; stairwell: string; status: string; firstReportAt: string; resolution: string | null; companyName: string; reports: number }[];
 };
@@ -18,6 +19,7 @@ type TrendResult = {
 const monthLabel = (month: string) => `${Number(month.slice(5, 7))}/${month.slice(2, 4)}`;
 const hours = (value: number | null) => (value === null ? "–" : formatDuration(value * 3_600_000));
 // Viimeinen kuukausi on selvästi tavallista vilkkaampi.
+const share = (part: number, total: number) => (total ? `${Math.round((part / total) * 100)} %` : "–");
 const rising = (row: TrendResult["topics"][number]) => row.lastMonth >= 3 && row.lastMonth >= row.average * 1.5;
 
 // Trendit: mistä taloyhtiöissä ilmoitetaan, mikä toistuu ja kauanko asioiden hoito kestää. Pelkkää laskentaa.
@@ -141,6 +143,30 @@ export function Trends({ companies, companyId }: { companies: Company[]; company
                 </table>
               )}
             </div>
+          </div>
+
+          <div className="report-card">
+            <h2>{t("AI-luonnosten muokkaus")}</h2>
+            <p className="muted">{t("Lähetetyt vastaukset, joiden pohjana oli AI:n vastausehdotus, sen mukaan kuinka paljon luonnosta muokattiin ennen lähetystä. Aihe, jossa luonnokset lähtevät lähes sellaisinaan, sopii AI-agentin hoidettavaksi.")}</p>
+            {!result.aiDrafts?.length ? <p className="muted">{t("Aikavälillä ei ole lähetetty AI-luonnokseen perustuvia vastauksia.")}</p> : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>{t("Aihe")}</th><th className="num">{t("Vastauksia")}</th><th className="num">{t("Sellaisenaan")}</th>
+                    <th className="num">{t("Pieni muokkaus")}</th><th className="num">{t("Iso muokkaus")}</th><th className="num">{t("Kirjoitettu uudelleen")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.aiDrafts.map(row => (
+                    <tr key={row.topic}>
+                      <th scope="row">{topicLabel(row.topic)}</th><td className="num">{row.sent}</td>
+                      <td className="num">{share(row.unchanged, row.sent)}</td><td className="num">{share(row.light, row.sent)}</td>
+                      <td className="num">{share(row.heavy, row.sent)}</td><td className="num">{share(row.rewritten, row.sent)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           <div className="report-card">

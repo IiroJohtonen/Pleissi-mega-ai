@@ -3,6 +3,23 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 26.10.2026 · AI-luonnosten muokkausmittari ja toistuvien aiheiden raportin korjaus
+
+**Mitä muutettiin**
+- Kun käsittelijä lähettää vastauksen, jonka pohjana oli AI:n vastausehdotus, Pleissi vertaa lähetettyä
+  tekstiä luonnokseen ja kirjaa, lähtikö luonnos sellaisenaan, pienellä tai isolla muokkauksella vai kokonaan
+  uudelleen kirjoitettuna. Allekirjoitus ei vaikuta vertailuun.
+- Raportit › Trendit näyttää uuden osion AI-luonnosten muokkaus: aiheittain lähetetyt vastaukset ja kuinka
+  suuri osa luonnoksista lähti sellaisenaan. Tästä näkee, mitkä aiheet ovat valmiita AI-agentin hoidettavaksi.
+- Toistuvien aiheiden raportti käyttää nyt kaikkia toimiston vastauksia asukkaalle, ei vain ensimmäistä.
+  Huoltoyhtiölle lähetettyjä työtilauksia ei enää lueta vastaukseksi asukkaalle.
+- Toimiston vastauksista peitetään yhteystiedot ja tunnisteet ennen kuin ne lähtevät AI:lle raporttia varten,
+  samoin kuin asukkaan viesteistä.
+
+**Miten**
+- Tehtävä › AI-ehdotus › lähetä vastaus (muokattuna tai sellaisenaan) › Raportit › Trendit › AI-luonnosten muokkaus.
+- Raportit › Toistuvat aiheet › Luo raportti.
+
 ## 25.10.2026 · Vikahistoria, trendit ja taloyhtiön muisti
 
 **Mitä muutettiin**

@@ -143,7 +143,7 @@ const median = (values: number[]) => {
 const hoursBetween = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / 3_600_000;
 
 export function trends(companyIds: string[], months: number) {
-  if (!companyIds.length) return { months: [], topics: [], repeats: [], resolution: [], contractors: [], incidents: [] };
+  if (!companyIds.length) return { months: [], topics: [], aiDrafts: [], repeats: [], resolution: [], contractors: [], incidents: [] };
   const since = (() => {
     const date = new Date();
     date.setDate(1);
@@ -267,9 +267,36 @@ export function trends(companyIds: string[], months: number) {
   `).all(...companyIds, since) as { topic: string; stairwell: string; status: string; first_report_at: string; resolution: string | null;
     company_name: string; reports: number }[];
 
+  // AI-luonnosten muokkaus aiheittain: lähetetyt vastaukset, joiden pohjana oli AI:n vastausehdotus.
+  // Agentin kokeiluvaiheen mittari: aihe, jossa luonnokset lähtevät lähes muuttamattomina, on valmis agentille.
+  const topicOf = new Map(rows.map(row => [row.id, topicKey(row.topic)]));
+  const draftCounts = new Map<string, { sent: number; unchanged: number; light: number; heavy: number; rewritten: number }>();
+  for (const audit of db.prepare(`
+    SELECT al.ticket_id, al.details FROM audit_log al JOIN tickets t ON t.id = al.ticket_id
+    WHERE t.company_id IN (${placeholders}) AND al.action = 'reply_sent' AND al.created_at >= ? AND al.details LIKE '%ai_draft_edit%'
+  `).all(...companyIds, since) as { ticket_id: string; details: string }[]) {
+    const topic = topicOf.get(audit.ticket_id);
+    if (!topic) continue;
+    let edit: string | undefined;
+    try {
+      edit = (JSON.parse(audit.details) as { ai_draft_edit?: string }).ai_draft_edit;
+    } catch {
+      continue;
+    }
+    if (edit !== "unchanged" && edit !== "light" && edit !== "heavy" && edit !== "rewritten") continue;
+    const counts = draftCounts.get(topic) ?? { sent: 0, unchanged: 0, light: 0, heavy: 0, rewritten: 0 };
+    counts.sent++;
+    counts[edit]++;
+    draftCounts.set(topic, counts);
+  }
+  const aiDrafts = [...draftCounts.entries()]
+    .map(([topic, counts]) => ({ topic, label: TOPIC_RULES[topic as TopicKey]?.label ?? topic, ...counts }))
+    .sort((a, b) => b.sent - a.sent);
+
   return {
     months: monthList,
     topics,
+    aiDrafts,
     repeats,
     resolution,
     contractors: [...contractors.values()].map(item => ({
