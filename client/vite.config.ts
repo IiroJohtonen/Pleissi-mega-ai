@@ -8,6 +8,10 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.{ts,tsx}"]
+    include: ["src/**/*.test.{ts,tsx}"],
+    setupFiles: ["src/test-setup.ts"],
+    // Sovellustestit odottavat näkymän latautumista jopa 5 s (hidas CI-kone). Oletusraja 5 s katkaisi
+    // tällaisen testin kesken, ja sen keskeneräinen haku kaatoi seuraavan testin.
+    testTimeout: 20_000
   }
 });

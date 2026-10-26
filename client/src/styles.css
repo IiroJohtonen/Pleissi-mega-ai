@@ -2993,6 +2993,29 @@ h1 { margin: 0; font-size: var(--text-2xl); line-height: 32px; font-weight: 600;
 
 .log-table td { vertical-align: top; }
 .log-table td:first-child { white-space: nowrap; }
+
+/* Integraatioloki: sanomien tilat ja avattu sanoma. */
+.status-badge.integration-status-pending { background: var(--warning-tint); color: var(--warning); }
+.status-badge.integration-status-sent { background: var(--success-tint); color: var(--success); }
+.status-badge.integration-status-failed { background: var(--danger-tint); color: var(--danger); }
+.status-badge.integration-status-superseded { background: var(--line); color: var(--ink-3); }
+.integration-table tr.open td { background: var(--surface-2); }
+.integration-details-row > td { background: var(--surface-2); }
+.integration-details dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-3); font-size: var(--text-sm); }
+.integration-details dt { color: var(--ink-3); }
+.integration-details dd { margin: 0; overflow-wrap: anywhere; }
+.integration-json {
+  max-height: 420px;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-xs);
+  white-space: pre;
+}
 .log-table a { color: #28548f; text-decoration: none; }
 .log-table a:hover { text-decoration: underline; }
 .log-table .audit-email { margin: 6px 0 0; }

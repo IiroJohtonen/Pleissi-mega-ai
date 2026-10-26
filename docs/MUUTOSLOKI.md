@@ -3,6 +3,42 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 26.10.2026 · ERP-integraation ensimmäinen vaihe: tehtävät ja viestit jonoon
+
+**Mitä muutettiin**
+- Pleissi osaa kirjata tehtävät toiminnanohjausjärjestelmään (ERP) integraatiospesifikaation mukaisessa
+  muodossa (docs/integraatiospec.md). Oikeaa ERP:tä ei vielä ole, joten kirjaukset menevät ERP:tä
+  simuloivaan testiversioon.
+- Kun tehtävä luodaan tai sen tila, kiireellisyys, tyyppi, käsittelijä tai sisältö muuttuu, muutos kirjataan
+  heti jonoon samalla kertaa kuin itse muutos, joten mikään muutos ei katoa ERP:n katkon aikana.
+- Asukkaan viestit ja asukkaalle lähetetyt vastaukset kirjataan ERP:hen asukkaalle näkyvinä kommentteina ja
+  isännöitsijän muistiinpanot sisäisinä. Huoltoyhtiön työtilausviestit, AI:n luonnokset ja AI:n perustelut
+  eivät mene ERP:hen.
+- Kirjaukset lähtevät taustalla muutaman sekunnin viiveellä. Jos samaa tehtävää muutetaan useasti peräkkäin,
+  ERP:hen lähtee vain uusin tila.
+- Jos ERP ei vastaa, kirjausta yritetään uudelleen 1, 5 ja 30 minuutin kuluttua. Jos se ei silti onnistu,
+  tehtävän historiaan tulee merkintä "Kirjaus toiminnanohjausjärjestelmään (ERP) epäonnistui" ja
+  vastuuisännöitsijä saa sähköpostin. Jos ERP:n avain ei kelpaa, pääkäyttäjä saa hälytyksen, ja kirjaukset
+  odottavat, kunnes avain on korjattu.
+- Arkaluonteisesta tehtävästä ERP:hen menee vain tila otsikolla "Arkaluonteinen tehtävä". Tunnistamaton
+  tehtävä kirjataan vasta, kun taloyhtiö on valittu.
+- Kun asukkaan tiedot poistetaan, ne poistetaan myös ERP:hen lähteneistä ja lähtevistä kirjauksista.
+- Uusi Integraatioloki-näkymä pääkäyttäjälle: lista ERP:hen lähteneistä ja lähtevistä sanomista uusimmasta
+  alkaen. Jokaisesta näkyy aika, mitä sanoma koskee (tehtävä luotu, päivitetty tai kommentti lisätty), tila
+  (Odottaa, Lähetetty, Epäonnistui tai Korvattu uudemmalla), ERP:n vastaus ja yritysten määrä sekä tehtävä ja
+  taloyhtiö. Listan voi rajata tilan mukaan.
+- Sanoman nimeä klikkaamalla se aukeaa: näkyy sanoman tunniste, järjestysnumero, kirjaus- ja lähetysaika,
+  mahdollinen virhe ja koko sanoma sellaisena kuin se lähtee ERP:hen. Lataa sanoma tallentaa sen tiedostona.
+- Sanoman avaus kirjautuu toimintalokiin ja tehtävän historiaan, koska sanomissa on henkilötietoja.
+
+**Miten**
+- Integraatio otetaan käyttöön palvelimen asetuksella INTEGRATION_ADAPTER (testiversio: mock). Ilman asetusta
+  mikään ei muutu.
+- Asetukset › Isännöitsijätoimiston tiedot › Tietoturva › Integraatioloki (vain pääkäyttäjä).
+- Epäonnistunut kirjaus näkyy tehtävän historiassa (Tehtävä › Historia).
+
+**Testit:** lisätään testaussivulle
+
 ## 25.10.2026 · Vikahistoria, trendit ja taloyhtiön muisti
 
 **Mitä muutettiin**

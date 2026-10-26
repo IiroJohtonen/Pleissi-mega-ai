@@ -15,6 +15,7 @@ import { SkipTicketModal, TicketCreateModal } from "../tickets/TicketModals";
 import type { Company, Ticket, TicketDetail, TicketTab } from "../types";
 import { Announcements } from "./Announcements";
 import { AuditLog } from "./AuditLog";
+import { IntegrationLog } from "./IntegrationLog";
 import { BookingCalendar } from "./Bookings";
 import { Companies } from "./Companies";
 import { DataTable } from "./DataTable";
@@ -957,6 +958,9 @@ export function Workspace({ user }: { user: OfficeUser }) {
           )
           : tab === "log" ? (
             <AuditLog />
+          )
+          : tab === "integration" ? (
+            <IntegrationLog />
           )
           : tab === "parking" ? (
             <ParkingSpaces key={navCompanyKey} companies={companies} defaultCompanyId={navCompanyKey} />

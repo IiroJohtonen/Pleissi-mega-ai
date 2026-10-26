@@ -75,6 +75,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   "sensitive-data": "arkaluonteinen terveys sairaus avainsanat",
   "ai-masking": "maskaus puhelinnumero henkilötunnus tilinumero iban sähköposti peitto tietosuoja",
   log: "loki muutokset tapahtumat ai:lle lähetetty",
+  "integration-log": "erp toiminnanohjausjärjestelmä integraatio sanoma lähetys",
   "office-ai": "kulut kuukausiraja prioriteetti suodatus relevanssi budjetti",
   "ai-prompt": "lisätieto ikkuna vastausehdotus ehdotus",
   "ai-models": "malli opus sonnet haiku claude",
@@ -179,7 +180,8 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
       { id: "office-retention", label: t("Tietojen säilytys") },
       { id: "sensitive-data", label: t("Arkaluonteiset tiedot") },
       { id: "ai-masking", label: t("Maskaus ennen AI:ta") },
-      { id: "log", label: t("Loki") }
+      { id: "log", label: t("Loki") },
+      { id: "integration-log", label: t("Integraatioloki") }
     ]
   },
   {
@@ -1229,6 +1231,16 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
           <div>
             <h2>{t("Loki")}</h2>
             <p className="muted">{t("Kaikki tehtäviin tehdyt muutokset, päätökset ja lähetetyt sähköpostit.")}</p>
+          </div>
+          <span aria-hidden="true">→</span>
+        </a>
+      )}
+
+      {officeTab === "security" && (
+        <a className="settings-card settings-link" href="#/integration" id="section-integration-log">
+          <div>
+            <h2>{t("Integraatioloki")}</h2>
+            <p className="muted">{t("Toiminnanohjausjärjestelmään (ERP) lähtevät sanomat ja niiden tila. Vain pääkäyttäjälle.")}</p>
           </div>
           <span aria-hidden="true">→</span>
         </a>

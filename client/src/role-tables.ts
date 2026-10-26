@@ -21,8 +21,9 @@ export const roleTableGroups: { key: string; label: string; tabs: TicketTab[] }[
   ...navGroups
 ];
 
-// Näkymät, jotka jokainen käyttäjä näkee: asetukset, haku ja loki (loki on pääkäyttäjän asetuksissa).
-export const ALWAYS_VISIBLE: TicketTab[] = ["settings", "search", "log"];
+// Näkymät, jotka jokainen käyttäjä näkee: asetukset, haku ja lokit (lokit ovat asetuksissa; integraatioloki
+// on vain pääkäyttäjälle, ja palvelin rajaa sen).
+export const ALWAYS_VISIBLE: TicketTab[] = ["settings", "search", "log", "integration"];
 
 // Näkymät, jotka kuuluvat toisen taulun alle.
 const TAB_ALIASES: Partial<Record<TicketTab, TicketTab>> = { unassigned: "unidentified", "ai-handled": "tickets" };
