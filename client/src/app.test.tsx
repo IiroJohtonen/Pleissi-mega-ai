@@ -945,8 +945,13 @@ describe("sovellus", () => {
       const calls = mockApi();
       await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
       // Tehtävän sivu latautuu hitaalla CI-koneella yli sekunnin, joten odotetaan oletusta pidempään.
-      fireEvent.click(await screen.findByRole("button", { name: "Poista" }, { timeout: 5000 }));
-      expect(await screen.findByText("Poistetaanko tehtävä #T000001?", undefined, { timeout: 5000 })).toBeTruthy();
+      await screen.findByRole("button", { name: "Poista" }, { timeout: 5000 });
+      // Poista-painike on hetken pois käytöstä, kun tehtävän tietoja päivitetään latauksen jälkeen: klikataan
+      // ajantasaista painiketta, kunnes vahvistus aukeaa.
+      await vi.waitFor(() => {
+        fireEvent.click(screen.getByRole("button", { name: "Poista" }));
+        expect(screen.getByText("Poistetaanko tehtävä #T000001?")).toBeTruthy();
+      }, { timeout: 5000 });
       expect(screen.getByText(/Poistoa ei voi perua/)).toBeTruthy();
       expect(calls.some(request => request.method === "DELETE")).toBe(false);
 
