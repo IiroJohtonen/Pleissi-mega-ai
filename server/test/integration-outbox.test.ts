@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { after, before, describe, it } from "node:test";
-import { call, login, SERVICE_EMAIL, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, MANAGER_EMAIL, SERVICE_EMAIL, startServer, type TestServer } from "./helpers.js";
 
 // ERP-integraatio käynnissä olevassa palvelimessa: sovelluksen omat toiminnot kirjaavat jonoon, ja
 // taustatyö lähettää mock-ERP:hen. Ilman INTEGRATION_ADAPTER-asetusta jonoon ei kirjata mitään.
@@ -64,6 +64,37 @@ describe("ERP-integraatio palvelimessa", () => {
     const comment = rows.find(row => row.event_type === "task.comment.added")!;
     assert.equal(comment.status, "sent");
     assert.equal(JSON.parse(comment.payload).visibility, "internal");
+  });
+
+  it("integraatioloki näyttää sanomat tiloineen pääkäyttäjälle, ja sanoman avaus kirjautuu lokiin", async () => {
+    const admin = await login(server, ADMIN_EMAIL);
+    for (const email of [SERVICE_EMAIL, MANAGER_EMAIL]) {
+      assert.equal((await call(server, await login(server, email), "GET", "/integration/messages")).status, 403);
+    }
+    const list = await call(server, admin, "GET", "/integration/messages");
+    assert.equal(list.status, 200);
+    assert.equal(list.data.adapter, "mock");
+    assert.ok(list.data.counts.sent > 0);
+    const message = list.data.messages.find((row: any) => row.event_type === "task.created");
+    assert.ok(message.ticket_number);
+    assert.equal(message.payload, undefined, "lista ei sisällä sanomien sisältöä");
+
+    const sent = await call(server, admin, "GET", "/integration/messages?status=sent");
+    assert.ok(sent.data.messages.every((row: any) => row.status === "sent"));
+    assert.equal((await call(server, admin, "GET", "/integration/messages?status=foo")).status, 400);
+
+    const opened = await call(server, admin, "GET", `/integration/messages/${encodeURIComponent(message.event_id)}`);
+    assert.equal(opened.status, 200);
+    const envelope = opened.data.envelope;
+    assert.equal(envelope.eventId, message.event_id);
+    assert.equal(envelope.eventType, "task.created");
+    assert.equal(envelope.tenantId, "asiakas-001");
+    assert.match(envelope.data.externalRefs.erp, /^ERP-T-/);
+    assert.equal(envelope.data.id, message.task_id);
+
+    const audit = (await call(server, admin, "GET", "/audit")).data as { action: string; ticket_id: string }[];
+    assert.ok(audit.some(entry => entry.action === "integration_message_viewed" && entry.ticket_id === message.task_id));
+    assert.equal((await call(server, admin, "GET", "/integration/messages/evt-tuntematon")).status, 404);
   });
 });
 

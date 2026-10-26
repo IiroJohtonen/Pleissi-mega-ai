@@ -667,6 +667,9 @@ tehtävästä lähtee vain tila otsikolla "Arkaluonteinen tehtävä", ilman kuva
 **Kommentit:** asukkaan viestit ja asukkaalle lähetetyt vastaukset ovat `public`, isännöitsijän muistiinpanot
 `internal`. Huoltoyhtiölle lähetetyt työtilausviestit ja AI-agentin muistiinpanot (perustelut) eivät mene ERP:hen.
 
+**Integraatioloki:** Asetukset › Tietoturva › Integraatioloki listaa sanomat tiloineen (vain pääkäyttäjä). Sanoman
+voi avata ja ladata JSON-tiedostona siinä muodossa, jossa se lähtee ERP:hen. Avaus kirjataan toimintalokiin.
+
 **Tietosuoja:** asukastietojen poisto anonymisoi myös jonon sanomat, jo lähetetyt mukaan lukien, ja anonymisoitu
 tila lähtee ERP:hen tavallisena `task.updated`-sanomana. Tehtävän poisto Pleissistä poistaa sen sanomat jonosta.
 Liitteiden `url` on null, kunnes liitteille tehdään julkiset allekirjoitetut linkit.
@@ -676,6 +679,6 @@ Liitteiden `url` on null, kunnes liitteille tehdään julkiset allekirjoitetut l
 - [ ] Specissä ei ole `task.deleted`-tapahtumaa: viedäänkö tehtävän poisto Pleissistä ERP:hen?
 - [ ] Pleissin tila open kattaa uuden ja asukkaan vastauksen jälkeen uudelleen avautuneen tehtävän; `resolved`-tilaa
   ei vielä käytetä.
-- [ ] Integraatiolokin näkymä ja sen käyttöoikeus (*Pääsy lokiin*) sekä epäonnistuneiden kirjausten uudelleenlähetys
-  käsin.
+- [ ] Epäonnistuneiden kirjausten uudelleenlähetys käsin integraatiolokista.
+- [ ] Integraatiolokin oma käyttöoikeus (esim. rooli "Integraatioloki: luku"); nyt loki on vain pääkäyttäjälle.
 

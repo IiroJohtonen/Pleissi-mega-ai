@@ -59,7 +59,8 @@ function erpRef(entityType: string, entityId: string): string | null {
     .get(entityType, entityId) as { external_id: string } | undefined)?.external_id ?? null;
 }
 
-function envelope<T extends Task | Comment>(row: OutboxRow): Envelope<T> {
+// Lähetettävä sanoma jonorivistä: kuori ja olion tila, jossa ERP:n tunniste on ajantasainen.
+export function buildEnvelope<T extends Task | Comment>(row: OutboxRow): Envelope<T> {
   const data = JSON.parse(row.payload) as T;
   data.externalRefs = { erp: erpRef(row.entity_type, row.entity_id) };
   return {
@@ -90,10 +91,10 @@ async function call(work: () => Promise<AdapterResult>): Promise<AdapterResult> 
 }
 
 function send(target: ErpAdapter, row: OutboxRow, erpTaskId: string | null): Promise<AdapterResult> {
-  if (row.event_type === "task.created") return call(() => target.createTask(envelope<Task>(row)));
+  if (row.event_type === "task.created") return call(() => target.createTask(buildEnvelope<Task>(row)));
   if (!erpTaskId) return Promise.resolve({ ok: false, status: null, error: "Tehtävällä ei ole vielä ERP-tunnistetta" });
-  if (row.event_type === "task.updated") return call(() => target.updateTask(erpTaskId, envelope<Task>(row)));
-  return call(() => target.addComment(erpTaskId, envelope<Comment>(row)));
+  if (row.event_type === "task.updated") return call(() => target.updateTask(erpTaskId, buildEnvelope<Task>(row)));
+  return call(() => target.addComment(erpTaskId, buildEnvelope<Comment>(row)));
 }
 
 // Tallentaa kutsun tuloksen. Palauttaa true, jos rivi lähti.

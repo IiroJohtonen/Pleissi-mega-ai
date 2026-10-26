@@ -23,10 +23,18 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Arkaluonteisesta tehtävästä ERP:hen menee vain tila otsikolla "Arkaluonteinen tehtävä". Tunnistamaton
   tehtävä kirjataan vasta, kun taloyhtiö on valittu.
 - Kun asukkaan tiedot poistetaan, ne poistetaan myös ERP:hen lähteneistä ja lähtevistä kirjauksista.
+- Uusi Integraatioloki-näkymä pääkäyttäjälle: lista ERP:hen lähteneistä ja lähtevistä sanomista uusimmasta
+  alkaen. Jokaisesta näkyy aika, mitä sanoma koskee (tehtävä luotu, päivitetty tai kommentti lisätty), tila
+  (Odottaa, Lähetetty, Epäonnistui tai Korvattu uudemmalla), ERP:n vastaus ja yritysten määrä sekä tehtävä ja
+  taloyhtiö. Listan voi rajata tilan mukaan.
+- Sanoman nimeä klikkaamalla se aukeaa: näkyy sanoman tunniste, järjestysnumero, kirjaus- ja lähetysaika,
+  mahdollinen virhe ja koko sanoma sellaisena kuin se lähtee ERP:hen. Lataa sanoma tallentaa sen tiedostona.
+- Sanoman avaus kirjautuu toimintalokiin ja tehtävän historiaan, koska sanomissa on henkilötietoja.
 
 **Miten**
 - Integraatio otetaan käyttöön palvelimen asetuksella INTEGRATION_ADAPTER (testiversio: mock). Ilman asetusta
   mikään ei muutu.
+- Asetukset › Isännöitsijätoimiston tiedot › Tietoturva › Integraatioloki (vain pääkäyttäjä).
 - Epäonnistunut kirjaus näkyy tehtävän historiassa (Tehtävä › Historia).
 
 **Testit:** lisätään testaussivulle

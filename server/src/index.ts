@@ -30,6 +30,7 @@ import { dataRouter } from "./routes/data.js";
 import { gmailRouter } from "./routes/gmail.js";
 import { inboundRouter } from "./routes/inbound.js";
 import { incidentsRouter } from "./routes/incidents.js";
+import { integrationRouter } from "./routes/integration.js";
 import { memoryRouter } from "./routes/memory.js";
 import { keysRouter } from "./routes/keys.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
@@ -125,7 +126,8 @@ for (const router of [
   authRouter, loginCodesRouter, passwordResetRouter, officeRouter, rolesRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingQueueRouter, billingRouter, portalRouter, portalFormsRouter, heatingRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter, dataRouter, incidentsRouter, memoryRouter
+  metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter, dataRouter, incidentsRouter, memoryRouter,
+  integrationRouter
 ]) {
   app.use("/api", router);
 }
