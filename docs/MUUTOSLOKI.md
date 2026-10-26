@@ -20,6 +20,8 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Tehtävä › AI-ehdotus › lähetä vastaus (muokattuna tai sellaisenaan) › Raportit › Trendit › AI-luonnosten muokkaus.
 - Raportit › Toistuvat aiheet › Luo raportti.
 
+**Pull request:** #3 · testit lisättävä testaussivulle
+
 ## 25.10.2026 · Vikahistoria, trendit ja taloyhtiön muisti
 
 **Mitä muutettiin**
