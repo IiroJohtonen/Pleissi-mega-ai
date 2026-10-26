@@ -8,6 +8,8 @@ import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 // Käynnistyksen tietokantakorjaukset ajetaan ennen kuin mikään muu moduuli lukee tietokantaa.
 import "./startup.js";
+// ERP-integraation jono ja sen triggerit ennen kuin mikään reitti tallentaa tehtäviä.
+import "./integration/outbox.js";
 import { requestUser } from "./access.js";
 import { raiseAlert } from "./alerts.js";
 import { authRouter, INTERNAL_TOKEN, requireAuth, type User } from "./auth.js";
@@ -28,6 +30,7 @@ import { dataRouter } from "./routes/data.js";
 import { gmailRouter } from "./routes/gmail.js";
 import { inboundRouter } from "./routes/inbound.js";
 import { incidentsRouter } from "./routes/incidents.js";
+import { integrationRouter } from "./routes/integration.js";
 import { memoryRouter } from "./routes/memory.js";
 import { keysRouter } from "./routes/keys.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
@@ -123,7 +126,8 @@ for (const router of [
   authRouter, loginCodesRouter, passwordResetRouter, officeRouter, rolesRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingQueueRouter, billingRouter, portalRouter, portalFormsRouter, heatingRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter, dataRouter, incidentsRouter, memoryRouter
+  metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter, dataRouter, incidentsRouter, memoryRouter,
+  integrationRouter
 ]) {
   app.use("/api", router);
 }
