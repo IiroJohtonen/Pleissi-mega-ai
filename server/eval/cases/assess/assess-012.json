@@ -1,0 +1,22 @@
+{
+  "id": "assess-012",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "sähkö"
+  ],
+  "input": {
+    "subject": "Pistorasia kipinöi",
+    "body": "Keittiön pistorasiasta lähti kipinöitä, kun kytkin vedenkeittimen, ja nyt siitä tulee palaneen käryä. Sulake ei lauennut. Onko tämä vaarallista?\n\nRiikka Järvinen, B 11",
+    "sender": "riikka.jarvinen@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency"
+    ]
+  },
+  "critical": true,
+  "note": "Sähköpalon vaara."
+}

@@ -1,0 +1,23 @@
+{
+  "id": "assess-009",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "hissi",
+    "ihminen-jumissa"
+  ],
+  "input": {
+    "subject": "Hissi jumissa",
+    "body": "Hissi pysähtyi kerrosten väliin ja naapurin vanha rouva on sen sisällä. Hälytysnappi ei tunnu toimivan. Soitimme jo hätänumeroon, mutta ilmoitan myös teille.\n\nJuha Nieminen, B 2",
+    "sender": "juha.nieminen@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency"
+    ]
+  },
+  "critical": true,
+  "note": "Ihminen jumissa hississä."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "assess-018",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "sekaviesti",
+    "vesivahinko"
+  ],
+  "input": {
+    "subject": "Kiitos ja yksi juttu",
+    "body": "Kiitos kun vaihdoitte rapun lampun niin nopeasti!\n\nSamalla: keittiön tiskialtaan alla on alkanut tippua vettä kaapin pohjalle. Pohjalevy on jo märkä ja vettä tulee koko ajan lisää.\n\nHanna Peltonen, C 2",
+    "sender": "hanna.peltonen@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency",
+      "urgent"
+    ]
+  },
+  "critical": true,
+  "note": "Kiitoksen sekaan piilotettu etenevä vuoto."
+}

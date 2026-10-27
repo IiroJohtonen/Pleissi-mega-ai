@@ -13,6 +13,7 @@
     "typecheck": "tsc",
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "backup": "tsx src/backup-cli.ts",
+    "eval": "node --import tsx eval/run.ts",
     "lint": "eslint ."
   },
   "dependencies": {

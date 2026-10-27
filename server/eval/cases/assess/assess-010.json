@@ -1,0 +1,22 @@
+{
+  "id": "assess-010",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "savu"
+  ],
+  "input": {
+    "subject": "Savua kellarista",
+    "body": "Kellarikäytävästä tulee savua ja palaneen hajua. En uskaltanut mennä katsomaan, mistä se tulee.\n\nMaija Heikkinen",
+    "sender": "maija.heikkinen@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency"
+    ]
+  },
+  "critical": true,
+  "note": "Savu ja palaneen haju."
+}

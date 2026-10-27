@@ -1,0 +1,22 @@
+{
+  "id": "assess-011",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "viemäri"
+  ],
+  "input": {
+    "subject": "Lattiakaivosta nousee vettä",
+    "body": "Kylpyhuoneen lattiakaivosta nousee likaista vettä ja haisee pahalta. Vettä on jo koko lattialla, vaikka emme ole käyttäneet suihkua.\n\nAntti Laine, A 1",
+    "sender": "antti.laine@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency"
+    ]
+  },
+  "critical": true,
+  "note": "Viemäri tulvii: vahinko etenee."
+}

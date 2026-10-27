@@ -1,0 +1,23 @@
+{
+  "id": "assess-025",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "palautusviesti",
+    "ei-relevantti"
+  ],
+  "input": {
+    "subject": "Undelivered Mail Returned to Sender",
+    "body": "This is the mail system at host mx.example.net.\n\nI'm sorry to have to inform you that your message could not be delivered to one or more recipients.\n\n<vanha.osoite@example.org>: host mx.example.org said: 550 5.1.1 User unknown",
+    "sender": "MAILER-DAEMON@mx.example.net"
+  },
+  "expected": {
+    "relevant": false,
+    "priorityAcceptable": [
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Automaattinen palautusviesti."
+}

@@ -1,0 +1,23 @@
+{
+  "id": "assess-001",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "vesivahinko",
+    "rauhallinen-sävy"
+  ],
+  "input": {
+    "subject": "Kylpyhuoneen katto",
+    "body": "Hei,\n\nhuomasin tänä aamuna, että kylpyhuoneen katosta tippuu vettä lattialle. Tippuminen on tasaista, ja laatoille on kertynyt pieni lammikko. Laitoin ämpärin alle, joten ei mitään kiirettä, katsokaa kun ehditte.\n\nTerveisin\nSanna Lehtola, B 8",
+    "sender": "sanna.lehtola@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency"
+    ]
+  },
+  "critical": true,
+  "note": "Rauhallinen sävy, mutta vesi valuu nyt ja vahinko etenee tunneittain."
+}

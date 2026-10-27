@@ -1,0 +1,23 @@
+{
+  "id": "assess-002",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "lukko"
+  ],
+  "input": {
+    "subject": "Ulko-oven lukko jumittaa",
+    "body": "Moi, rappukäytävän ulko-oven lukko jumittaa vähän, avain pitää kääntää pari kertaa ennen kuin se aukeaa. Ovi kuitenkin lukittuu ja aukeaa. Voisiko huoltomies katsoa sitä jossain vaiheessa?\n\nMarkus Rinne, A 3",
+    "sender": "markus.rinne@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Sana lukko ei tee asiasta kiireellistä: ovi toimii."
+}

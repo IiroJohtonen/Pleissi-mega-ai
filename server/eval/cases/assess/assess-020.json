@@ -1,0 +1,23 @@
+{
+  "id": "assess-020",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "väärä-vastaanottaja",
+    "ei-relevantti"
+  ],
+  "input": {
+    "subject": "Sunnuntain kahvit",
+    "body": "Hei mummi!\n\nTullaan sunnuntaina kahville noin kahdelta. Otetaanko pullaa mukaan vai leivotko itse?\n\nHalauksin\nVeera",
+    "sender": "veera.k@example.com"
+  },
+  "expected": {
+    "relevant": false,
+    "priorityAcceptable": [
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Henkilökohtainen viesti väärälle vastaanottajalle."
+}

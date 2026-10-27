@@ -1,0 +1,23 @@
+{
+  "id": "assess-019",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "uutiskirje",
+    "ei-relevantti"
+  ],
+  "input": {
+    "subject": "Kiinteistöalan uutiskirje 10/2026",
+    "body": "Tässä numerossa: energiatukien haku avautuu, uusi rakennuslaki ja taloyhtiöiden digitalisaatio. Lue lisää verkkosivuiltamme.\n\nKiinteistömedia\nTilaus on maksuton, ja voit perua sen milloin tahansa.",
+    "sender": "uutiset@kiinteistomedia.example"
+  },
+  "expected": {
+    "relevant": false,
+    "priorityAcceptable": [
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Uutiskirje: ei toimenpidettä."
+}

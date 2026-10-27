@@ -1,0 +1,23 @@
+{
+  "id": "assess-006",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "ruotsi",
+    "vesivahinko"
+  ],
+  "input": {
+    "subject": "Vatten droppar från taket",
+    "body": "Hej,\n\ndet läcker vatten från taket i mitt badrum sedan i natt. Det droppar hela tiden och det har blivit en vattenpöl på golvet. Kan någon komma och titta?\n\nMvh\nErik Lindholm, C 14",
+    "sender": "erik.lindholm@example.se"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency"
+    ]
+  },
+  "critical": true,
+  "note": "Ruotsinkielinen vesivuoto, joka etenee."
+}

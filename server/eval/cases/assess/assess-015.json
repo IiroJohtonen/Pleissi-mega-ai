@@ -1,0 +1,24 @@
+{
+  "id": "assess-015",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "lukko",
+    "ovi-ei-lukitu"
+  ],
+  "input": {
+    "subject": "Ulko-ovi ei mene lukkoon",
+    "body": "Pääoven lukko on rikki: ovi ei lukitu ollenkaan, ja sen saa auki kuka tahansa kadulta. Huomasin asian tänä iltana.\n\nOlli Kettunen, A 9",
+    "sender": "olli.kettunen@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "urgent",
+      "emergency"
+    ]
+  },
+  "critical": false,
+  "note": "Ovi ei lukitu: kiireellinen turvallisuussyistä."
+}

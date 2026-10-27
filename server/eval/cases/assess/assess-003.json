@@ -1,0 +1,23 @@
+{
+  "id": "assess-003",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "mainos",
+    "ei-relevantti"
+  ],
+  "input": {
+    "subject": "Kevään ikkunanpesutarjous taloyhtiöille -20 %",
+    "body": "Hyvä vastaanottaja,\n\nKiiltoPro Oy tarjoaa taloyhtiöille ikkunanpesun nyt 20 % edullisemmin. Varaa ajankohta ennen 15.11. ja saat lisäksi parvekelasien pesun kaupan päälle.\n\nYstävällisin terveisin\nmyyntitiimi\nKiiltoPro Oy\nPeru tilaus: vastaa viestiin sanalla POISTA",
+    "sender": "myynti@kiiltopro.example"
+  },
+  "expected": {
+    "relevant": false,
+    "priorityAcceptable": [
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Myyntiviesti: ei toimenpidettä isännöitsijälle."
+}

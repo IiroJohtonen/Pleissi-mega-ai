@@ -1,0 +1,23 @@
+{
+  "id": "assess-004",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "poissaoloviesti",
+    "ei-relevantti"
+  ],
+  "input": {
+    "subject": "Automaattinen vastaus: Re: Yhtiökokouksen kutsu",
+    "body": "Olen lomalla 21.10.–1.11. enkä lue sähköpostiani. Kiireellisissä asioissa ota yhteyttä kollegaani Petri Saloon.\n\nTerveisin\nTiina Mäkelä",
+    "sender": "tiina.makela@example.com"
+  },
+  "expected": {
+    "relevant": false,
+    "priorityAcceptable": [
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Poissaoloviesti: ei sisältöä, johon toimiston pitäisi reagoida."
+}

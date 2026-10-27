@@ -1,0 +1,23 @@
+{
+  "id": "assess-022",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "hallitus"
+  ],
+  "input": {
+    "subject": "Hallituksen kokouksen materiaalit",
+    "body": "Hei, voisitko lähettää ensi viikon hallituksen kokouksen esityslistan ja talousraportin etukäteen? Haluaisin tutustua budjettiin ennen kokousta.\n\nHallituksen pj. Marko Aaltonen",
+    "sender": "marko.aaltonen@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Hallituksen tavallinen pyyntö."
+}

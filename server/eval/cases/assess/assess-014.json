@@ -1,0 +1,23 @@
+{
+  "id": "assess-014",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "hissi"
+  ],
+  "input": {
+    "subject": "Hissi ei toimi",
+    "body": "Hissi on ollut epäkunnossa koko päivän, näytössä lukee \"vika\". Kukaan ei ole sisällä. Asumme viidennessä kerroksessa, joten portaat ovat raskaat.\n\nPaula Väisänen",
+    "sender": "paula.vaisanen@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "urgent",
+      "normal"
+    ]
+  },
+  "critical": false,
+  "note": "Hissi pois käytöstä ilman ketään sisällä."
+}
