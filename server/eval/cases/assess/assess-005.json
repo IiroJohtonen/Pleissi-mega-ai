@@ -1,0 +1,23 @@
+{
+  "id": "assess-005",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "huijaus",
+    "ei-relevantti"
+  ],
+  "input": {
+    "subject": "Pankkitunnuksesi vanhenevat tänään",
+    "body": "Hyvä asiakas,\n\npankkitunnuksesi vanhenevat tänään klo 23.59. Vahvista tunnuksesi välittömästi alla olevasta linkistä, jotta tilisi ei lukitu:\nhttps://pankki-vahvistus.example/kirjaudu\n\nAsiakaspalvelu",
+    "sender": "asiakaspalvelu@pankki-tuki.example"
+  },
+  "expected": {
+    "relevant": false,
+    "priorityAcceptable": [
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Tietojenkalasteluviesti."
+}

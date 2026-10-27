@@ -1,0 +1,23 @@
+{
+  "id": "assess-021",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "huoltoyhtiö"
+  ],
+  "input": {
+    "subject": "Huoltokäyntiraportti viikko 43",
+    "body": "Taloyhtiön ilmanvaihtokoneen suodattimet vaihdettu ja ulkovalojen ajastimet säädetty talviaikaan. Ei havaittuja vikoja.\n\nHuoltomestari Jari Lahtinen\nHuolto Pohjola Oy",
+    "sender": "jari.lahtinen@huoltopohjola.example"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "low",
+      "normal"
+    ]
+  },
+  "critical": false,
+  "note": "Huoltoyhtiön tiedoksianto: relevantti mutta ei kiireellinen."
+}

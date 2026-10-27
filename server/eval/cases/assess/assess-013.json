@@ -1,0 +1,23 @@
+{
+  "id": "assess-013",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "lämmitys"
+  ],
+  "input": {
+    "subject": "Patterit kylmänä",
+    "body": "Hei, meillä kaikki patterit ovat olleet kylmänä eilisestä asti ja sisälämpö on laskenut 17 asteeseen. Termostaatit ovat täysillä.\n\nKari Salminen, C 5",
+    "sender": "kari.salminen@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "urgent",
+      "emergency"
+    ]
+  },
+  "critical": false,
+  "note": "Lämmitys poikki: kiireellinen."
+}

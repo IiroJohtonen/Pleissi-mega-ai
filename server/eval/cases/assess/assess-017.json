@@ -1,0 +1,22 @@
+{
+  "id": "assess-017",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "palaute"
+  ],
+  "input": {
+    "subject": "Kiitos lumitöistä",
+    "body": "Halusin vain kiittää, että piha on aurattu tänä talvena aina ajoissa. Hyvää työtä!\n\nSeppo Hakala",
+    "sender": "seppo.hakala@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Kiitos: relevantti mutta ei kiireellinen."
+}

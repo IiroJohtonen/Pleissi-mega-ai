@@ -1,0 +1,23 @@
+{
+  "id": "assess-016",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "kysymys"
+  ],
+  "input": {
+    "subject": "Saunavuoro",
+    "body": "Hei, miten taloyhtiön saunavuoron voi varata? Muutimme juuri ja haluaisimme oman vakiovuoron.\n\nEmmi Halonen, B 4",
+    "sender": "emmi.halonen@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Tavallinen kysymys."
+}

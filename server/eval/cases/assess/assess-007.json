@@ -1,0 +1,24 @@
+{
+  "id": "assess-007",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "englanti",
+    "lämmin-vesi"
+  ],
+  "input": {
+    "subject": "No hot water",
+    "body": "Hello,\n\nwe have had no hot water in our apartment since this morning. Cold water works fine. Is there a known problem in the building?\n\nBest regards,\nDaniel Moore, apartment A 6",
+    "sender": "daniel.moore@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "urgent",
+      "emergency"
+    ]
+  },
+  "critical": false,
+  "note": "Englanninkielinen, lämmin vesi poikki: kiireellinen mutta ei paheneva."
+}

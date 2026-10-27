@@ -1,0 +1,24 @@
+{
+  "id": "assess-023",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "englanti",
+    "muutto"
+  ],
+  "input": {
+    "subject": "Moving in next month",
+    "body": "Hi, I am moving into apartment B 7 on 1 December. How do I get the keys and is there anything I need to register with the housing company?\n\nThanks,\nSophie Turner",
+    "sender": "sophie.turner@example.com"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Englanninkielinen muuttokysymys."
+}

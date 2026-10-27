@@ -1,0 +1,24 @@
+{
+  "id": "assess-024",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "ruotsi",
+    "kysymys"
+  ],
+  "input": {
+    "subject": "Bastutur",
+    "body": "Hej! Jag skulle vilja boka en fast bastutur på torsdagar. Hur gör jag det?\n\nMvh Anna Holmberg, A 12",
+    "sender": "anna.holmberg@example.se"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "low"
+    ]
+  },
+  "critical": false,
+  "note": "Ruotsinkielinen tavallinen kysymys."
+}

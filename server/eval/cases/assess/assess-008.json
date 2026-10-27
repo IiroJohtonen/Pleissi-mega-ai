@@ -1,0 +1,22 @@
+{
+  "id": "assess-008",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "rajatapaus",
+    "kaasu"
+  ],
+  "input": {
+    "subject": "Kaasun haju rappukäytävässä",
+    "body": "Hei, C-rapussa haisee voimakkaasti kaasulta toisen kerroksen kohdalla. Haju on ollut ainakin puoli tuntia. Mitä pitäisi tehdä?\n\nLeena Koivisto",
+    "sender": "leena.koivisto@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "emergency"
+    ]
+  },
+  "critical": true,
+  "note": "Kaasun haju: välitön vaara."
+}
