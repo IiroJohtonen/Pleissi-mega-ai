@@ -105,6 +105,7 @@ Kaikki asetukset ovat ympäristömuuttujia; selitykset ovat tiedostossa [server/
 | `GMAIL_DISABLED` | `1` kytkee postin pois (kaikki palvelut) |
 | `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_REDIRECT_URI` | Microsoft 365 -yhteys |
 | `MAIL_SECRET_KEY` | Sähköpostisalasanojen salausavain |
+| `EMBEDDING_*` | Merkityshaku: malli ja sen versio, mallin kansio ja latauksen esto. Tuotannossa malli ladataan ensin komennolla `npm run embeddings:download` (kontissa `node dist/embedding-cli.js download`), ja sitten asetetaan `EMBEDDING_ALLOW_DOWNLOAD=false` |
 | `VITE_API_URL` (client) | Rajapinnan osoite, jos se ei ole oletus |
 
 ## Tietoturva

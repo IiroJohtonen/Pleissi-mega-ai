@@ -35,6 +35,22 @@ export function embeddingModel() {
   return (process.env.EMBEDDING_MODEL ?? "").trim() || DEFAULT_MODEL;
 }
 
+// Mallin versio lukitaan Hugging Facen commit-tunnisteeseen, jotta sama nimi tuottaa aina samat vektorit.
+// EMBEDDING_MODEL_REVISION ohittaa oletuksen; muun kuin oletusmallin versio on "main", ellei sitä anneta.
+const DEFAULT_MODEL_REVISION = "3acb1fa45c83e69002b1641b37f3cccc132cdd63";
+export function embeddingRevision() {
+  return (process.env.EMBEDDING_MODEL_REVISION ?? "").trim() || (embeddingModel() === DEFAULT_MODEL ? DEFAULT_MODEL_REVISION : "main");
+}
+
+// Malli ja versio, joilla vektori on laskettu (embeddings.model). Versiomuutos laskee vektorit uudelleen.
+export function embeddingModelKey() {
+  return embeddingModel() === HASH_MODEL ? HASH_MODEL : `${embeddingModel()}@${embeddingRevision()}`;
+}
+
+function modelDir() {
+  return (process.env.EMBEDDING_MODEL_DIR ?? "").trim() || path.join(dataDir, "models");
+}
+
 // Hätäkatkaisin ohittaa kaikki asetukset.
 export function embeddingKilled() {
   return (process.env.EMBEDDING_ENABLED ?? "").trim().toLowerCase() === "false";
@@ -111,26 +127,29 @@ type Extractor = (texts: string[], options: { pooling: "mean"; normalize: boolea
 let extractor: Promise<Extractor> | null = null;
 
 export type ModelStatus = { model: string; loaded: boolean; loadMs: number | null; memoryMb: number | null; error: string | null };
-const modelStatus: ModelStatus = { model: embeddingModel(), loaded: false, loadMs: null, memoryMb: null, error: null };
+const modelStatus: ModelStatus = { model: embeddingModelKey(), loaded: false, loadMs: null, memoryMb: null, error: null };
 
-// Ladataan ensimmäisellä käytöllä. Malli luetaan kansiosta EMBEDDING_MODEL_DIR (oletus DATA_DIR/models);
-// EMBEDDING_ALLOW_DOWNLOAD=false estää latauksen Hugging Facesta, jolloin mallin pitää olla kansiossa valmiina.
-function loadExtractor(): Promise<Extractor> {
+// Ladataan ensimmäisellä käytöllä tai käynnistyksessä (preloadModel). Malli luetaan kansiosta
+// EMBEDDING_MODEL_DIR (oletus DATA_DIR/models), johon se tallentuu version mukaan (<malli>/<versio>/).
+// EMBEDDING_ALLOW_DOWNLOAD=false estää latauksen Hugging Facesta: malli ladataan silloin ensin komennolla
+// embeddings:download. allowDownload ohittaa asetuksen (latauskomento).
+function loadExtractor(allowDownload?: boolean): Promise<Extractor> {
   extractor ??= (async () => {
     const started = Date.now();
     const rssBefore = process.memoryUsage().rss;
     try {
       const transformers = await import("@huggingface/transformers");
-      const modelDir = (process.env.EMBEDDING_MODEL_DIR ?? "").trim() || path.join(dataDir, "models");
-      transformers.env.cacheDir = modelDir;
-      transformers.env.localModelPath = modelDir;
-      transformers.env.allowRemoteModels = (process.env.EMBEDDING_ALLOW_DOWNLOAD ?? "").trim().toLowerCase() !== "false";
-      const pipeline = await transformers.pipeline("feature-extraction", embeddingModel(), { dtype: "q8" });
+      transformers.env.cacheDir = modelDir();
+      transformers.env.useFSCache = true;
+      // Vain versioitu välimuisti: kansioon käsin kopioitu versioimaton malli ohittaisi lukitun version.
+      transformers.env.allowLocalModels = false;
+      transformers.env.allowRemoteModels = allowDownload ?? (process.env.EMBEDDING_ALLOW_DOWNLOAD ?? "").trim().toLowerCase() !== "false";
+      const pipeline = await transformers.pipeline("feature-extraction", embeddingModel(), { dtype: "q8", revision: embeddingRevision() });
       Object.assign(modelStatus, {
         loaded: true, error: null, loadMs: Date.now() - started,
         memoryMb: Math.round((process.memoryUsage().rss - rssBefore) / 1024 / 1024)
       });
-      console.log(`Merkityshaku: malli ${embeddingModel()} ladattu (${modelStatus.loadMs} ms, +${modelStatus.memoryMb} Mt muistia).`);
+      console.log(`Merkityshaku: malli ${embeddingModelKey()} ladattu (${modelStatus.loadMs} ms, +${modelStatus.memoryMb} Mt muistia).`);
       return pipeline as unknown as Extractor;
     } catch (error: any) {
       extractor = null;
@@ -151,7 +170,24 @@ export async function embed(texts: string[], kind: "query" | "passage"): Promise
 }
 
 export function getModelStatus(): ModelStatus {
-  return { ...modelStatus, model: embeddingModel() };
+  return { ...modelStatus, model: embeddingModelKey() };
+}
+
+// Lataa mallin kansioon EMBEDDING_MODEL_DIR Hugging Facesta (komento embeddings:download) ja tarkistaa,
+// että se tuottaa vektorin. Palauttaa kansion ja vektorin ulottuvuuden.
+export async function downloadModel() {
+  if (embeddingModel() === HASH_MODEL) throw new Error("Hash-mallia ei ladata.");
+  const pipeline = await loadExtractor(true);
+  const output = await pipeline([withPrefix("testi", "query")], { pooling: "mean", normalize: true });
+  return { dir: modelDir(), dimensions: output.tolist()[0].length };
+}
+
+// Lataa mallin taustalla käynnistyksessä, kun merkityshaku on käytössä jossain taloyhtiössä, jotta
+// ensimmäinen haku ei odota latausta. Virhe kirjataan; palvelin toimii sanahaulla.
+export function preloadModel() {
+  if (testEmbedder || embeddingModel() === HASH_MODEL) return;
+  if (!companiesWith("similarTickets").length && !companiesWith("hybridKnowledge").length) return;
+  loadExtractor().catch(error => console.error("Merkityshaun mallin lataus epäonnistui:", error?.message ?? error));
 }
 
 // --- Tallennus ja indeksi ------------------------------------------------------------------------------
@@ -225,7 +261,7 @@ function storeEmbedding(companyId: string, sourceType: SourceType, sourceId: str
     const result = db.prepare(`
       INSERT INTO embeddings (id, company_id, source_type, source_id, model, text_hash, dimensions, vector, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id("emb"), companyId, sourceType, sourceId, embeddingModel(), hash, vector.length, blob, now());
+    `).run(id("emb"), companyId, sourceType, sourceId, embeddingModelKey(), hash, vector.length, blob, now());
     if (vecAvailable) {
       db.prepare("INSERT INTO vec_embeddings (rowid, embedding, company_id, source_type) VALUES (?, ?, ?, ?)")
         .run(BigInt(result.lastInsertRowid), blob, companyId, sourceType);
@@ -235,7 +271,7 @@ function storeEmbedding(companyId: string, sourceType: SourceType, sourceId: str
 
 function upToDate(sourceType: SourceType, sourceId: string, hash: string) {
   return Boolean(db.prepare("SELECT 1 FROM embeddings WHERE source_type = ? AND source_id = ? AND model = ? AND text_hash = ?")
-    .get(sourceType, sourceId, embeddingModel(), hash));
+    .get(sourceType, sourceId, embeddingModelKey(), hash));
 }
 
 // Laskee ja tallentaa lähteen vektorin, ellei sama teksti ole jo vektoroitu samalla mallilla.
@@ -281,7 +317,7 @@ export async function searchSimilar(companyId: string, sourceType: SourceType, t
   return rows.flatMap(row => {
     const source = lookup.get(row.rowid) as { source_id: string; company_id: string; model: string } | undefined;
     // Toisen taloyhtiön tai vanhan mallin vektori ei koskaan päädy tulokseen.
-    if (!source || source.company_id !== companyId || source.model !== embeddingModel() || row.similarity < threshold) return [];
+    if (!source || source.company_id !== companyId || source.model !== embeddingModelKey() || row.similarity < threshold) return [];
     return [{ sourceId: source.source_id, similarity: row.similarity }];
   });
 }
@@ -453,6 +489,8 @@ export function scheduleEmbeddingIndex(): Promise<IndexResult> | null {
 
 export function startEmbeddingJob() {
   if (embeddingKilled()) return;
+  // Malli ladataan taustalla heti, kun merkityshaku on jossain käytössä; käynnistys ei odota sitä.
+  preloadModel();
   // Käynnistyksessä puuttuvat vektorit täydennetään; sen jälkeen uudet ja muuttuneet lähteet minuutin välein.
   void scheduleEmbeddingIndex();
   setInterval(() => void scheduleEmbeddingIndex(), 60 * 1000);

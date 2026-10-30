@@ -50,6 +50,25 @@ describe("Merkityshaun asetukset", () => {
     assert.equal((await call(server, admin, "PUT", "/embedding/companies/ei-ole", { hybridKnowledge: true })).status, 404);
   });
 
+  it("kun merkityshaku on päällä, malli ladataan taustalla käynnistyksessä, eikä lataushäiriö estä käynnistystä", async () => {
+    // Sama tietokanta, oikea malli ilman latausoikeutta: malli ei löydy kansiosta, joten taustalataus epäonnistuu.
+    await server.stop();
+    server = await startServer({ dataDir: server.dataDir, env: { EMBEDDING_ALLOW_DOWNLOAD: "false" } });
+    admin = await login(server, ADMIN_EMAIL);
+    let status: any;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      status = (await call(server, admin, "GET", "/embedding/status")).data;
+      if (status.model.error) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.match(status.model.model, /^Xenova\/multilingual-e5-small@/);
+    assert.equal(status.model.loaded, false);
+    assert.ok(status.model.error, "lataus yritettiin taustalla ilman pyyntöä");
+    // Haku toimii sanahaulla mallin puuttuessa.
+    const search = await call(server, admin, "POST", "/companies/demo-company/knowledge/test", { question: "saunavuoro" });
+    assert.equal(search.status, 200);
+  });
+
   it("toimiston yleinen asetus tallentuu perustietoihin ja kirjataan lokiin", async () => {
     const saved = await call(server, admin, "PUT", "/master-data", { embedding: { similarTickets: true, hybridKnowledge: false } });
     assert.equal(saved.status, 200);

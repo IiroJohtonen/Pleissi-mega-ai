@@ -171,6 +171,22 @@ export function embeddingSuite(name: string, env: Record<string, string>) {
       assert.equal((await embedding.indexEmbeddings()).embedded, 1);
     });
 
+    it("mallin versio tallentuu malliavaimeen, ja versiomuutos laskee vektorit uudelleen", async () => {
+      await embedding.indexEmbeddings();
+      const models = () => (db.prepare("SELECT DISTINCT model FROM embeddings").all() as { model: string }[]).map(row => row.model);
+      assert.deepEqual(models(), [`${embedding.embeddingModel()}@${embedding.embeddingRevision()}`]);
+      const count = (db.prepare("SELECT COUNT(*) AS count FROM embeddings").get() as { count: number }).count;
+      process.env.EMBEDDING_MODEL_REVISION = "uusi-versio";
+      try {
+        assert.equal((await embedding.indexEmbeddings()).embedded, count);
+        assert.deepEqual(models(), [`${embedding.embeddingModel()}@uusi-versio`]);
+        assert.ok((await chunks.searchKnowledgeChunks("company-a", "löylyhuone kylmä")).length > 0, "uuden version vektorit käytössä");
+      } finally {
+        delete process.env.EMBEDDING_MODEL_REVISION;
+      }
+      await embedding.indexEmbeddings();
+    });
+
     it("arkistoidun ja poistetun palan vektori poistuu samassa transaktiossa", async () => {
       const knowledgeId = addDocument("company-a", "Pyykkitupa", ["Pyykkituvan kone pitää puhdistaa käytön jälkeen."]);
       await embedding.indexEmbeddings();

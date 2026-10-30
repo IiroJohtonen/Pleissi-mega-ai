@@ -15,7 +15,8 @@
     "backup": "tsx src/backup-cli.ts",
     "eval": "node --import tsx eval/run.ts",
     "eval:retrieval": "node --import tsx eval/retrieval.ts",
-    "embeddings:rebuild": "tsx src/embedding-cli.ts",
+    "embeddings:download": "tsx src/embedding-cli.ts download",
+    "embeddings:rebuild": "tsx src/embedding-cli.ts rebuild",
     "lint": "eslint ."
   },
   "dependencies": {
