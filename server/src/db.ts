@@ -743,6 +743,13 @@ END;
 if (!(db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).some(column => column.name === "erased_at")) {
   db.exec("ALTER TABLE residents ADD COLUMN erased_at TEXT");
 }
+// Asukkaan puhelinnumero E.164-muodossa (+358401234567) ja muuttopäivä (VVVV-KK-PP).
+{
+  const residentColumns = (db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).map(column => column.name);
+  if (!residentColumns.includes("phone")) db.exec("ALTER TABLE residents ADD COLUMN phone TEXT");
+  if (!residentColumns.includes("moved_in_at")) db.exec("ALTER TABLE residents ADD COLUMN moved_in_at TEXT");
+  db.exec("CREATE INDEX IF NOT EXISTS residents_phone ON residents (company_id, phone)");
+}
 
 // Muistutussähköpostit käsittelijöille (0 = pois), suljettujen tehtävien ja lokin säilytysaika
 // kuukausina (0 = säilytetään toistaiseksi), saapuvan tehtävän prioriteetin arviointi AI:lla (0 = pois)

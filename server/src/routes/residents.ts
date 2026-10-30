@@ -5,7 +5,8 @@ import { isAdmin, isManagerRole, requireManager, setResidentPassword } from "../
 import { deleteBookingsAndRelease } from "../booking-queue.js";
 import { db } from "../db.js";
 import { syncParkingHolders } from "./parking.js";
-import { ACTIVE_RESIDENT, id, now, today } from "../util.js";
+import { eraseInboxForResident } from "../integration/inbox.js";
+import { ACTIVE_RESIDENT, id, normalizePhone, now, today } from "../util.js";
 import {
   deferTicketErasure, ERASED_NAME, eraseResidentFromTicket, openResidentTickets, removeAttachmentFiles, residentTicketIds,
   sentByResident
@@ -13,7 +14,8 @@ import {
 
 export const residentsRouter: Router = express.Router();
 
-export function findResident(companyId: string, senderEmail?: string, senderName?: string) {
+// Asukkaan tunnistus järjestyksessä sähköposti, puhelinnumero ja nimi.
+export function findResident(companyId: string, senderEmail?: string, senderName?: string, senderPhone?: string) {
   if (senderEmail) {
     const r = db.prepare(`
       SELECT r.*, a.apartment_number
@@ -22,6 +24,19 @@ export function findResident(companyId: string, senderEmail?: string, senderName
       WHERE r.company_id = ? AND lower(r.email) = lower(?)
     `).get(companyId, senderEmail);
     if (r) return r as any;
+  }
+
+  const phone = normalizePhone(senderPhone);
+  if (phone) {
+    // Sama numero voi olla usealla (esim. perheen yhteinen); silloin numero ei yksin tunnista asukasta.
+    const matches = db.prepare(`
+      SELECT r.*, a.apartment_number
+      FROM residents r
+      JOIN apartments a ON a.id = r.apartment_id
+      WHERE r.company_id = ? AND r.phone = ? AND ${ACTIVE_RESIDENT}
+      LIMIT 2
+    `).all(companyId, phone);
+    if (matches.length === 1) return matches[0] as any;
   }
 
   if (senderName) {
@@ -44,7 +59,7 @@ residentsRouter.get("/companies/:companyId/residents", (req, res) => {
   syncParkingHolders();
   res.json(
     db.prepare(`
-      SELECT r.id, r.name, r.email, r.roles, r.apartment_id, a.apartment_number, a.address, a.staircase,
+      SELECT r.id, r.name, r.email, r.phone, r.moved_in_at, r.roles, r.apartment_id, a.apartment_number, a.address, a.staircase,
              EXISTS(SELECT 1 FROM resident_credentials rc WHERE rc.resident_id = r.id) AS has_password,
              (SELECT json_group_array(json_object('id', p.id, 'label', p.label, 'type', p.type))
               FROM parking_spaces p WHERE p.resident_id = r.id) AS parking
@@ -67,6 +82,10 @@ export const RESIDENT_ROLES = ["osakas", "asukas"] as const;
 const residentSchema = z.object({
   name: z.string().trim().min(1),
   email: z.string().trim().pipe(z.union([z.literal(""), z.email()])).default(""),
+  // Puhelinnumero tallennetaan E.164-muodossa; tyhjä poistaa numeron, puuttuva jättää ennalleen.
+  phone: z.string().trim().max(40).optional(),
+  // Muuttopäivä VVVV-KK-PP; tyhjä poistaa, puuttuva jättää ennalleen.
+  movedInAt: z.union([z.literal(""), z.iso.date()]).optional(),
   apartmentId: z.string().min(1).optional(),
   address: z.string().trim().default(""),
   apartmentNumber: z.string().trim().default(""),
@@ -101,12 +120,23 @@ function resolveApartment(companyId: string, input: { apartmentId?: string; addr
 
 const rolesText = (roles: readonly string[]) => RESIDENT_ROLES.filter(role => roles.includes(role)).join(",");
 
+const PHONE_ERROR = "Tarkista puhelinnumero (esim. 040 123 4567 tai +358 40 123 4567).";
+
+// Puhelinnumero E.164-muotoon: undefined = ei muutosta, null = tyhjä, "invalid" = virheellinen.
+function parsePhone(value: string | undefined): string | null | undefined | "invalid" {
+  if (value === undefined) return undefined;
+  if (!value.trim()) return null;
+  return normalizePhone(value) ?? "invalid";
+}
+
 // Lisää asukkaan yhtiöön ja luo asunnon, jos sitä ei vielä ole. Palauttaa virheen tekstinä.
 export function addResident(companyId: string, input: unknown): { residentId: string } | { error: string; status: number } {
   const parsed = residentSchema.safeParse(input);
   if (!parsed.success) return { error: "Tarkista nimi, sähköposti, osoite ja asunto.", status: 400 };
 
   const { name, email, staircase, roles } = parsed.data;
+  const phone = parsePhone(parsed.data.phone);
+  if (phone === "invalid") return { error: PHONE_ERROR, status: 400 };
 
   if (email) {
     const existing = db.prepare(
@@ -120,8 +150,8 @@ export function addResident(companyId: string, input: unknown): { residentId: st
 
   setStaircase(apartment.id, staircase);
   const residentId = id("resident");
-  db.prepare("INSERT INTO residents (id, company_id, apartment_id, name, email, roles) VALUES (?, ?, ?, ?, ?, ?)").run(
-    residentId, companyId, apartment.id, name, email || null, rolesText(roles ?? ["asukas"])
+  db.prepare("INSERT INTO residents (id, company_id, apartment_id, name, email, roles, phone, moved_in_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
+    residentId, companyId, apartment.id, name, email || null, rolesText(roles ?? ["asukas"]), phone ?? null, parsed.data.movedInAt || null
   );
 
   return { residentId };
@@ -162,7 +192,9 @@ residentsRouter.post("/companies/:companyId/residents/import", (req, res) => {
       email: z.string().default(""),
       address: z.string().default(""),
       apartmentNumber: z.string().default(""),
-      staircase: z.string().optional()
+      staircase: z.string().optional(),
+      phone: z.string().optional(),
+      movedInAt: z.string().optional()
     })).min(1).max(2000)
   }).safeParse(req.body);
   if (!parsed.success) {
@@ -174,7 +206,8 @@ residentsRouter.post("/companies/:companyId/residents/import", (req, res) => {
 
   db.transaction(() => {
     for (const row of parsed.data.rows) {
-      const result = addResident(companyId, row);
+      // Tiedostossa päivämäärä voi olla suomalaisessa muodossa (1.6.2025).
+      const result = addResident(companyId, { ...row, movedInAt: importDate(row.movedInAt) });
       if ("error" in result) skipped.push({ line: row.line, name: row.name.trim(), reason: result.error });
       else added++;
     }
@@ -182,6 +215,13 @@ residentsRouter.post("/companies/:companyId/residents/import", (req, res) => {
 
   res.json({ added, skipped });
 });
+
+// Muuttopäivä tiedostosta: VVVV-KK-PP tai P.K.VVVV. Virheellinen jätetään sellaisenaan, jolloin rivi ohitetaan.
+function importDate(value: string | undefined) {
+  const trimmed = (value ?? "").trim();
+  const finnish = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(trimmed);
+  return finnish ? `${finnish[3]}-${finnish[2].padStart(2, "0")}-${finnish[1].padStart(2, "0")}` : trimmed;
+}
 
 residentsRouter.put("/residents/:residentId", (req, res) => {
   const resident = db.prepare(
@@ -196,6 +236,8 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
   }
 
   const { name, email, staircase, roles } = parsed.data;
+  const phone = parsePhone(parsed.data.phone);
+  if (phone === "invalid") return res.status(400).json({ error: PHONE_ERROR });
 
   // Sähköpostin vaihto on arkaluonteinen: sillä voi ohjata salasanan palautuksen itselleen ja kaapata
   // asukkaan tilin. Siksi osoitteen muutos vaatii isännöitsijän oikeudet (asiakaspalvelu ei riitä).
@@ -229,6 +271,8 @@ residentsRouter.put("/residents/:residentId", (req, res) => {
   );
   setStaircase(apartment.id, staircase);
   if (roles) db.prepare("UPDATE residents SET roles = ? WHERE id = ?").run(rolesText(roles), resident.id);
+  if (phone !== undefined) db.prepare("UPDATE residents SET phone = ? WHERE id = ?").run(phone, resident.id);
+  if (parsed.data.movedInAt !== undefined) db.prepare("UPDATE residents SET moved_in_at = ? WHERE id = ?").run(parsed.data.movedInAt || null, resident.id);
 
   // Asukkaan tehtävät seuraavat asukasta uuteen asuntoon.
   db.prepare("UPDATE tickets SET apartment_id = ? WHERE resident_id = ? AND apartment_id = ?").run(
@@ -288,7 +332,7 @@ residentsRouter.get("/residents/:residentId/export", requireManager, (req, res) 
     exported_at: now(),
     resident: {
       ...(db.prepare(`
-        SELECT r.name, r.email, r.moved_out_at, c.name AS company, a.apartment_number, a.address
+        SELECT r.name, r.email, r.phone, r.moved_in_at, r.moved_out_at, c.name AS company, a.apartment_number, a.address
         FROM residents r
         JOIN companies c ON c.id = r.company_id
         JOIN apartments a ON a.id = r.apartment_id
@@ -393,7 +437,9 @@ residentsRouter.delete("/residents/:residentId", requireManager, async (req, res
     db.prepare("DELETE FROM parking_assignments WHERE resident_id = ? AND end_date <= start_date").run(resident.id);
     db.prepare("UPDATE parking_spaces SET resident_id = NULL WHERE resident_id = ?").run(resident.id);
 
-    db.prepare("UPDATE residents SET name = ?, email = NULL, moved_out_at = ?, erased_at = ? WHERE id = ?").run(
+    // ERP:ltä vastaanotetut asukasta koskevat sanomat tyhjennetään vastaanottolokista.
+    eraseInboxForResident(resident.id);
+    db.prepare("UPDATE residents SET name = ?, email = NULL, phone = NULL, moved_out_at = ?, erased_at = ? WHERE id = ?").run(
       ERASED_NAME,
       resident.moved_out_at && resident.moved_out_at < date ? resident.moved_out_at : date,
       now(),

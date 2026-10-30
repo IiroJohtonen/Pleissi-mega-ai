@@ -137,7 +137,7 @@ describe("ERP-integraation jono", () => {
     assert.deepEqual(queued.map(row => row.event_type), ["task.created", "task.comment.added"]);
   });
 
-  it("viestit ja muistiinpanot kirjautuvat kommentteina; työtilaukset ja AI:n muistiinpanot eivät", () => {
+  it("viestit kirjautuvat kommentteina; työtilaukset ja sisäiset muistiinpanot eivät mene jonoon", () => {
     const ticketId = createTicket();
     addMessage(ticketId, "inbound", "Liisa Mattila <liisa@example.com>", "Hanasta tippuu vettä.");
     addMessage(ticketId, "outbound", "Hanna Isännöitsijä", "Tilasimme huollon.");
@@ -149,20 +149,39 @@ describe("ERP-integraation jono", () => {
     assert.deepEqual(comments.map(comment => [comment.author.type, comment.author.name, comment.visibility, comment.text]), [
       ["resident", "Liisa Mattila", "public", "Hanasta tippuu vettä."],
       ["propertyManager", "Hanna Isännöitsijä", "public", "Tilasimme huollon."],
-      ["ai", "Pleissi AI-agentti", "public", "Varasin vuoron."],
-      ["propertyManager", "Hanna Isännöitsijä", "internal", "Soitin asukkaalle."]
+      ["ai", "Pleissi AI-agentti", "public", "Varasin vuoron."]
     ]);
     assert.ok(comments.every(comment => comment.taskId === ticketId));
+    assert.ok(!rows(ticketId).some(row => row.entity_id.startsWith("note-int")), "muistiinpanot eivät ole jonossa");
+    // Muistiinpano ei myöskään kasvata kommenttien määrää eikä synnytä päivitystä.
+    update(ticketId, "status = ?", "waiting_manager");
+    assert.equal(JSON.parse(rows(ticketId).at(-1)!.payload).commentCount, 3);
   });
 
-  it("arkaluonteisesta tehtävästä lähtee vain tila ilman otsikkoa, kuvausta ja kommentteja", () => {
-    const ticketId = createTicket({ sensitive: 1, subject: "Terveystieto", summary: "Asukkaan sairaus" });
+  it("arkaluonteisesta tehtävästä lähtee vain tunnisteet, otsikko, tila ja sensitive: true", () => {
+    const ticketId = createTicket({ sensitive: 1, subject: "Avainasia", summary: "Asukkaan sairaus", ticket_number: 9001 });
     addMessage(ticketId, "inbound", "Liisa Mattila", "Arkaluonteinen viesti");
+    update(ticketId, "priority = ?, summary = ?", "urgent", "Lisää terveystietoa");
     const queued = rows(ticketId);
-    assert.deepEqual(queued.map(row => row.event_type), ["task.created"]);
-    const task = JSON.parse(queued[0].payload);
-    assert.equal(task.title, "Arkaluonteinen tehtävä");
-    assert.equal(task.description, null);
+    assert.deepEqual(queued.map(row => row.event_type), ["task.created"], "kommentit ja piilotettujen kenttien muutokset eivät mene jonoon");
+    assert.deepEqual(JSON.parse(queued[0].payload), {
+      id: ticketId, externalRefs: { erp: null }, ticketNumber: 9001, title: "Avainasia", status: "open", sensitive: true
+    });
+    // Merkinnän poisto julkaisee koko tilan ja aiemmat viestit.
+    update(ticketId, "sensitive = 0");
+    const after = rows(ticketId);
+    assert.deepEqual(after.map(row => row.event_type), ["task.created", "task.updated", "task.comment.added"]);
+    const full = JSON.parse(after[1].payload);
+    assert.equal(full.sensitive, false);
+    assert.equal(full.description, "Lisää terveystietoa");
+    assert.ok(JSON.parse(after[1].changed_fields!).includes("sensitive"));
+  });
+
+  it("tavallisessa tehtävässä on tehtävänumero ja sensitive: false", () => {
+    const ticketId = createTicket();
+    const task = JSON.parse(rows(ticketId)[0].payload);
+    assert.equal(typeof task.ticketNumber, "number");
+    assert.equal(task.sensitive, false);
   });
 
   it("lähetys odottaa viiveen, tallentaa ERP:n tunnisteen ja lähettää odottavista päivityksistä vain uusimman", async () => {

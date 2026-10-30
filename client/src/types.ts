@@ -182,6 +182,9 @@ export type Resident = {
   id: string;
   name: string;
   email?: string;
+  // Puhelinnumero E.164-muodossa (+358401234567) ja muuttopäivä (VVVV-KK-PP).
+  phone?: string | null;
+  moved_in_at?: string | null;
   // Asunto, johon asukas kuuluu.
   apartment_id?: string;
   // Roolit asunnossa pilkuilla eroteltuina: osakas, asukas tai molemmat.

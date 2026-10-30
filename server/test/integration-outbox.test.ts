@@ -43,7 +43,7 @@ describe("ERP-integraatio palvelimessa", () => {
     await server.stop();
   });
 
-  it("tehtävän luonti, muutokset ja muistiinpano lähtevät ERP:hen; nopeista muutoksista vain uusin", async () => {
+  it("tehtävän luonti ja muutokset lähtevät ERP:hen, muistiinpano ei; nopeista muutoksista vain uusin", async () => {
     const created = await call(server, service, "POST", "/tickets", {
       companyId: "demo-company", subject: "Porraskäytävän valo ei pala", summary: "B-portaan valo on rikki.", type: "Vikailmoitus"
     });
@@ -61,9 +61,7 @@ describe("ERP-integraatio palvelimessa", () => {
     const sent = updates.find(row => row.status === "sent")!;
     assert.equal(JSON.parse(sent.payload).priority, "high");
     assert.ok(JSON.parse(sent.changed_fields!).includes("priority"));
-    const comment = rows.find(row => row.event_type === "task.comment.added")!;
-    assert.equal(comment.status, "sent");
-    assert.equal(JSON.parse(comment.payload).visibility, "internal");
+    assert.ok(!rows.some(row => row.event_type === "task.comment.added"), "sisäinen muistiinpano ei mene jonoon");
   });
 
   it("integraatioloki näyttää sanomat tiloineen pääkäyttäjälle, ja sanoman avaus kirjautuu lokiin", async () => {

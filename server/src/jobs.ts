@@ -8,6 +8,8 @@ import { db } from "./db.js";
 import { startIncidentJob } from "./incidents.js";
 import { startEmbeddingJob } from "./embedding.js";
 import { startIntegrationJob } from "./integration/dispatcher.js";
+import { processPendingInbox, purgeInboxPayloads } from "./integration/inbox.js";
+import { startPullJob } from "./integration/pull.js";
 import { weeklyMemoryProposals } from "./memory.js";
 import { sendEmail } from "./mail.js";
 import { deleteTicket } from "./routes/tickets.js";
@@ -138,6 +140,8 @@ export function startMaintenanceJobs() {
     purgeExpiredData().catch(error => console.error("Säilytysajan poistot epäonnistuivat:", error?.message ?? error));
     backupDaily().catch(error => console.error("Varmuuskopiointi epäonnistui:", error?.message ?? error));
     refreshBudgetAlerts();
+    // ERP:ltä vastaanotettujen sanomien sisältö poistetaan 30 päivän jälkeen.
+    purgeInboxPayloads();
     // Taloyhtiön muistin ehdotukset kerran viikossa, jos toimisto on kytkenyt ne päälle.
     weeklyMemoryProposals().catch(error => console.error("Muistiehdotukset epäonnistuivat:", error?.message ?? error));
   };
@@ -154,6 +158,16 @@ export function startMaintenanceJobs() {
   // Tehtävien aiheet ja yhteisten vikojen tunnistus.
   startIncidentJob();
   startIntegrationJob();
+  // Hakutila: jonon rivit julkaistaan haettaviksi viiveen jälkeen (myös ilman ERP:n hakua).
+  startPullJob(Number(process.env.INTEGRATION_POLL_MS) || 2_000);
+  // Vastaanotetut sanomat, joiden viittaus puuttui: uusi yritys ja 24 tunnin raja.
+  setInterval(() => {
+    try {
+      processPendingInbox();
+    } catch (error: any) {
+      console.error("Odottavien ERP-sanomien käsittely epäonnistui:", error?.message ?? error);
+    }
+  }, 60_000);
   // Merkityshaun vektorit: puuttuvat täydennetään käynnistyksessä ja sen jälkeen minuutin välein.
   startEmbeddingJob();
 }

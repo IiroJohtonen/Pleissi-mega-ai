@@ -57,6 +57,7 @@ const VALUE_NAMES: Record<string, string> = { uusi_kylla: "Kyllä", uusi_ei: "Ei
 // Kentät, joista ilmoittaja, yhteystiedot ja kohde luetaan.
 const NAME_LABELS = ["Etu- ja Sukunimi", "Hakijan nimi", "Ilmoittajan nimi", "Vuokralaisen nimi"];
 const EMAIL_LABELS = ["Sähköposti"];
+const PHONE_LABELS = ["Puhelinnumero", "Puhelin"];
 const ADDRESS_LABELS = ["Osoite", "Irtisanottavan asunnon katuosoite", "Nykyisen asunnon katuosoite"];
 const APARTMENT_LABELS = ["Huoneistonumero", "Nykyisen asunnon numero"];
 
@@ -126,7 +127,7 @@ export const first = (fields: FormField[], labels: string[]) => fields.find(fiel
 
 // Ilmoittajan nimi ja sähköposti lomakkeen kentistä; lähettäjä on usein verkkosivun oma osoite.
 export function formContact(fields: FormField[]) {
-  return { name: first(fields, NAME_LABELS), email: first(fields, EMAIL_LABELS) };
+  return { name: first(fields, NAME_LABELS), email: first(fields, EMAIL_LABELS), phone: first(fields, PHONE_LABELS) };
 }
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9åäö]/g, "");

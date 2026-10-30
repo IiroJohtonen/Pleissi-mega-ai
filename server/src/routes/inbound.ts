@@ -209,7 +209,7 @@ if (input.sourceMessageId) {
     .get(companyId) as any;
   if (!company) return res.status(404).json({ error: "Company not found" });
 
-  const resident = (contact && findResident(companyId, contact.email || undefined, contact.name || undefined))
+  const resident = (contact && findResident(companyId, contact.email || undefined, contact.name || undefined, contact.phone || undefined))
     ?? findResident(
       companyId,
       input.senderEmail,

@@ -24,21 +24,21 @@ Tämä osio seuraa, mitä specistä on toteutettu ja mitä tehdään seuraavaksi
 | # | Tehtävä | Tila | Kuka | Huom |
 | --- | --- | --- | --- | --- |
 | 0 | Integraation 1. vaihe aiemmalla mallilla: jono, sanomamalli, adapteri ja simuloitu ERP, uudelleenyritykset, Integraatioloki | Valmis | Pleissi | Valmistui 26.10.2026; pohja kaikelle alla olevalle |
-| 1 | Asukkaan puhelinkenttä ja tunnistus puhelinnumerolla | Ei aloitettu | Pleissi | Asukkaan tiedot, CSV-tuonti, tunnistus |
+| 1 | Asukkaan puhelinkenttä ja tunnistus puhelinnumerolla | Valmis | Pleissi | 30.10.2026: `residents.phone` (E.164) ja `moved_in_at`; asukkaan tiedot, CSV/Excel-tuonti, tunnistus sähköposti → puhelin → nimi |
 | 2 | Integraatiokysely Avaalle (REST, testiympäristö, kustannukset) | Odottaa muita | Avaa | Odotetaan vastausta; seuraavaksi ehdotetaan Pleissin rajapintamallia |
-| 3 | ERP-tunnisteet: `integration_refs` laajennus taloyhtiöihin, asuntoihin, asukkaisiin ja varauksiin | Työn alla | Pleissi | Tehtäville ja kommenteille valmis |
-| 4 | API-avaimet: taulu, oikeudet ja hallinta asetuksissa | Ei aloitettu | Pleissi |  |
-| 5 | Vastaanotto `POST /api/v1/events` + vastaanottoloki (idempotenssi) | Ei aloitettu | Pleissi | Ensin taloyhtiöt ja asukkaat |
-| 6 | Ensilataus `POST /api/v1/sync/housing-companies` | Ei aloitettu | Pleissi | Käyttää nykyistä tuontilogiikkaa |
-| 7 | Jonoon kursori ja haku `GET /api/v1/events` | Työn alla | Pleissi | Jono on valmis, haku puuttuu |
+| 3 | ERP-tunnisteet: `integration_refs` laajennus taloyhtiöihin, asuntoihin, asukkaisiin ja varauksiin | Työn alla | Pleissi | 30.10.2026: taloyhtiöt, asunnot ja asukkaat valmiit (`companies.business_id` oli jo); varaukset puuttuvat |
+| 4 | API-avaimet: taulu, oikeudet ja hallinta asetuksissa | Valmis | Pleissi | 30.10.2026: `integration_api_keys` (vain tiiviste), Asetukset › Tietoturva › ERP-rajapinta; avainkohtainen pyyntöraja 120/min |
+| 5 | Vastaanotto `POST /api/v1/events` + vastaanottoloki (idempotenssi) | Työn alla | Pleissi | 30.10.2026: `housingCompany.upserted`, `resident.upserted`, `resident.moved_out` ja `integration_inbox` valmiit; varaukset ja huoltopyynnöt puuttuvat |
+| 6 | Ensilataus `POST /api/v1/sync/housing-companies` | Valmis | Pleissi | 30.10.2026: listasta puuttuvat asukkaat merkitään poismuuttaneiksi |
+| 7 | Jonoon kursori ja haku `GET /api/v1/events` | Valmis | Pleissi | 30.10.2026: hakutila `INTEGRATION_PULL` tai asetus; yhdistäminen ennen julkaisua |
 | 8 | Tehtävät: ERP:n huoltopyyntöjen vastaanotto (`erp_app`, `reporter`), sanomiin `ticketNumber`, `sensitive` ja ERP-viittaukset | Työn alla | Pleissi | Tehtävien ja kommenttien julkaisu on valmis |
-| 9 | Sisäiset muistiinpanot pois jonosta | Ei aloitettu | Pleissi | Nyt ne lähetetään sisäisinä kommentteina |
-| 10 | Arkaluonteiset: oikea otsikko ja `sensitive: true` | Työn alla | Pleissi | Karsinta on valmis, otsikko on nyt "Arkaluonteinen tehtävä" |
+| 9 | Sisäiset muistiinpanot pois jonosta | Valmis | Pleissi | 30.10.2026 |
+| 10 | Arkaluonteiset: oikea otsikko ja `sensitive: true` | Valmis | Pleissi | 30.10.2026: vain `id`, `externalRefs`, `ticketNumber`, `title`, `status`, `sensitive` |
 | 11 | Varaukset molempiin suuntiin + päällekkäisyystarkistus | Ei aloitettu | Pleissi |  |
-| 12 | Asukastietojen poisto myös vastaanottolokista | Työn alla | Pleissi | Jonon osalta valmis |
+| 12 | Asukastietojen poisto myös vastaanottolokista | Valmis | Pleissi | 30.10.2026 |
 | 13 | Integraatiolokin oma käyttöoikeus ja uudelleenkäsittely käsin | Työn alla | Pleissi | Näkymä on valmis pääkäyttäjälle |
-| 14 | Odotustila (`pending`) ja automaattinen uudelleenkäsittely puuttuvan viittauksen sanomille | Ei aloitettu | Pleissi | Liittyy kohtaan 5 |
-| 15 | ERP:n hakukursorin seuranta per API-avain | Ei aloitettu | Pleissi | Liittyy kohtaan 7 |
+| 14 | Odotustila (`pending`) ja automaattinen uudelleenkäsittely puuttuvan viittauksen sanomille | Valmis | Pleissi | 30.10.2026: perustiedot; varaukset kohdan 11 mukana |
+| 15 | ERP:n hakukursorin seuranta per API-avain | Valmis | Pleissi | 30.10.2026; näkyy avainlistassa |
 | 16 | Hälytykset: haku pysähtynyt, jono kasvaa, hiljaisuus, hylätyt sanomat | Ei aloitettu | Pleissi | Adapterimallin epäonnistuneet lähetykset hälyttävät jo |
 | 17 | Täsmäytys `POST /api/v1/reconcile` tehtäville ja varauksille | Ei aloitettu | Pleissi | Kohtien 8 ja 11 jälkeen |
 | 18 | OpenAPI-dokumentaatio ja testiympäristö ERP-toimittajalle | Ei aloitettu | Pleissi | Annetaan Avaalle kohtien 4–8 jälkeen |
@@ -49,6 +49,7 @@ Tämä osio seuraa, mitä specistä on toteutettu ja mitä tehdään seuraavaksi
 
 | Päivä | Päätös tai muutos |
 | --- | --- |
+| 30.10.2026 | Toteutettu kohdat 1, 4, 6, 7, 9, 10, 12, 14 ja 15 sekä osin 3 ja 5. Hakutila kytketään ympäristömuuttujalla `INTEGRATION_PULL=true` tai asetuksista; adapterin kanssa Pleissi lähettää itse, joten haku on käytössä vain ilman adapteria. Asukkaan nimi on sanomassa yksi kenttä (`name`). Odotustila koskee myös poismuuttoa, jonka asukasta ei vielä ole. Tehtävä kirjataan jonoon vasta, kun sillä on tehtävänumero. |
 | 30.10.2026 | Spec ja tehtävälista päivitetty vastaamaan Pleissi-mega-ai-repon koodia (integraation 1. vaihe valmis 26.10.). Sanomissa pysyvät yleiset arvot (esim. in\_progress, critical, maintenance) ja tapahtuma task.comment.added; sisäisiä muistiinpanoja ei lähetetä ERP:hen. ERP:n huoltopyynnöissä mukana ilmoittajan nimi, sähköposti ja puhelin varatunnistusta varten; huoltopyyntö luodaan aina heti eikä jää odotustilaan. Lisätty myös epäonnistuneiden sanomien käsittely ja valvonta: odotustila, uudelleenkäsittely, hälytykset ja täsmäytys tehtäville ja varauksille. |
 | 30.10.2026 | Varauksia voi tehdä molemmissa järjestelmissä (ERP:n asukasportaali sekä Pleissin sähköposti, puhelin ja portaali); molempien pitää tukea sitä. |
 | 30.10.2026 | Arkaluonteisista tehtävistä ERP:lle lähetetään vain otsikko, tila, arkaluonteisuusmerkintä ja tunnisteet. |
@@ -566,28 +567,27 @@ Integraation ensimmäinen vaihe on toteutettu 26.10.2026 aiemman mallin mukaan: 
 | Lähetys, yhdistäminen ja uudelleenyritykset | `dispatcher.ts` | 1, 5 ja 30 min; epäonnistuessa merkintä tehtävän historiaan ja sähköposti vastuuisännöitsijälle |
 | Integraatioloki-näkymä | Asetukset › Tietoturva › Integraatioloki | Vain pääkäyttäjä; sanoman avaus kirjataan toimintalokiin |
 | Asukastietojen poisto jonosta | `resident-erasure` | Myös jo lähetetyt sanomat anonymisoidaan |
+| Rajapinta `/api/v1` ja API-avaimet (30.10.) | `routes/api-v1.ts`, `api-keys.ts` | Avain `plk_live_…`, vain tiiviste; oikeudet `events:write`, `events:read`, `sync:write`; pyyntöraja 120/min per avain (`API_V1_RATE_LIMIT_PER_MINUTE`) |
+| Vastaanotto ja vastaanottoloki (30.10.) | `inbox.ts` | `housingCompany.upserted`, `resident.upserted`, `resident.moved_out`; `integration_inbox`; odotustila 24 h; sanoma poistetaan 30 pv jälkeen |
+| Ensilataus (30.10.) | `inbox.ts` | `POST /api/v1/sync/housing-companies`; puuttuvat asukkaat poismuuttaneiksi |
+| Haku jonosta (30.10.) | `pull.ts` | Kursori `c_000042`, `GET /api/v1/events?after=&limit=`; yhdistäminen ennen julkaisua; haettu = `sent`; avaimelle viimeisin kursori ja aika |
+| Asukkaan puhelin (30.10.) | `routes/residents.ts` | `residents.phone` (E.164), `moved_in_at`; tunnistus myös puhelinnumerolla |
 
 **Muutettava, jotta koodi vastaa tätä speciä**
 
 | Muutos | Miksi |
 | --- | --- |
-| Sisäiset muistiinpanot pois jonosta (nyt `task.comment.added`, `visibility: internal`) | Päätös 30.10.: muistiinpanoja ei lähetetä ERP:hen |
-| Arkaluonteisen tehtävän otsikko oikeana (nyt "Arkaluonteinen tehtävä") ja `sensitive: true` | Päätös 30.10. |
-| Jonoon juokseva kursori ja haku `GET /api/v1/events` | Uusi malli: ERP hakee. Hakutilassa tila `sent` tarkoittaa "haettu", ja yhdistäminen (`superseded`) tehdään ennen julkaisua |
-| Sanomiin `ticketNumber`, `sensitive` ja ERP-viittaukset (`housingCompanyRef` ym.) | ERP tarvitsee omat tunnisteensa |
+| Sanomiin ERP-viittaukset (`housingCompanyRef` ym.); `ticketNumber` ja `sensitive` ovat jo mukana | ERP tarvitsee omat tunnisteensa |
 
 **Puuttuu kokonaan**
 
 | Osa | Tarvittava muutos |
 | --- | --- |
-| Ulkoinen rajapinta ja API-avaimet | Reitit `/api/v1/events` (vastaanotto ja haku), `/api/v1/sync/housing-companies`, `/api/v1/tasks/{id}`; avaintaulu (tiiviste, oikeudet), hallinta pääkäyttäjän asetuksiin. Nykyinen `/api` vaatii kirjautumisen, joten `/api/v1` tunnistetaan avaimella. |
-| Vastaanottoloki ja idempotenssi | Taulu `integration_inbox` (eventId, tulos, syy, yritykset, sanoma 30 pv); odotustila `pending` |
+| Tehtävän haku | `GET /api/v1/tasks/{id}` |
+| Vastaanoton muut tapahtumat | `housingCompany.deleted`, varaukset ja huoltopyynnöt; vastaanottolokin näkymä ja uudelleenkäsittely käsin |
 | ERP:n huoltopyynnöt | Kanava `erp_app`, tunnistus `residentRef` → `reporter`, tehtävä aina heti |
-| Asukkaan puhelin | Sarake `phone` (+ `moved_in_at`), tunnistus puhelimella, CSV-tuonti |
-| Taloyhtiön Y-tunnus | Sarake `business_id` |
 | Varaukset integraatiossa | Varaukset ovat sovelluksessa valmiina (`series_id`, jonot, toiveet); puuttuu tapahtumat jonoon, vastaanotto ja päällekkäisyystarkistus |
-| Ensilataus | `sync`-reitti käyttää nykyistä CSV/Excel-tuonnin logiikkaa |
-| Valvonta | Hakukursorin seuranta, hälytykset, täsmäytys (ks. Epäonnistuneet sanomat ja valvonta) |
+| Valvonta | Hälytykset ja täsmäytys (ks. Epäonnistuneet sanomat ja valvonta); hakukursorin seuranta on valmis |
 | Integraatiolokin oma käyttöoikeus ja uudelleenkäsittely käsin | Nyt loki on vain pääkäyttäjälle |
 | OpenAPI-dokumentaatio | Generoidaan zod-skeemoista |
 

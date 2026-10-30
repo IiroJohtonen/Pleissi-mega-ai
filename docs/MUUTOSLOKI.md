@@ -3,6 +3,36 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 30.10.2026 · ERP-rajapinta: perustiedot ERP:stä, tehtävät ERP:n haettaviksi ja asukkaan puhelin
+
+**Mitä muutettiin**
+- Asukkaalle voi tallentaa puhelinnumeron ja muuttopäivän. Numero tallennetaan kansainväliseen muotoon
+  (040 123 4567 → +358401234567). Numeron voi tuoda myös CSV- tai Excel-tiedostosta (sarake puhelin, valinnainen
+  muuttopäivä). Pleissi tunnistaa yhteydenottajan nyt myös puhelinnumerosta, jos numero on vain yhdellä asukkaalla.
+- Toiminnanohjausjärjestelmä (ERP) voi lähettää Pleissiin taloyhtiöt asuntoineen, asukkaat ja poismuutot sekä
+  ladata kaikki taloyhtiöt ja asukkaat kerralla. Kerralla ladattaessa listasta puuttuvat asukkaat merkitään
+  poismuuttaneiksi.
+- Jos asukas tulee ennen taloyhtiötään tai asuntoaan, se jää odottamaan ja käsitellään automaattisesti, kun
+  taloyhtiö saapuu. Yli vuorokauden odottanut hylätään.
+- Samaa tapahtumaa ei käsitellä kahdesti. Jokainen vastaanotettu tapahtuma tallentuu tuloksineen; tapahtuman
+  sisältö poistetaan 30 päivän jälkeen, ja asukkaan tietojen poisto tyhjentää myös asukasta koskevat tapahtumat.
+- ERP voi hakea tehtävien muutokset ja asukkaille näkyvät viestit Pleissistä. Saman tehtävän nopeista muutoksista
+  julkaistaan vain uusin.
+- Sisäiset muistiinpanot eivät enää mene ERP:hen.
+- Arkaluonteisesta tehtävästä ERP saa oikean otsikon, tilan, tehtävänumeron ja tiedon arkaluonteisuudesta, mutta
+  ei kuvausta, käsittelijää, liitteitä eikä viestejä. Kaikissa tehtävissä on nyt tehtävänumero.
+- ERP tunnistautuu API-avaimella. Avaimelle valitaan oikeudet, ja sen voi mitätöidä. Avain näytetään vain kerran.
+
+**Miten**
+- Asukkaat › asukkaan tiedot: kentät Puhelin ja Muuttanut asuntoon. Asukkaiden tuonti lukee sarakkeet puhelin ja
+  muuttopäivä.
+- Asetukset › Isännöitsijätoimiston tiedot › Tietoturva › ERP-rajapinta: kytkin "ERP hakee muutokset jonosta",
+  API-avainten luonti, lista (viimeisin käyttö ja haku) ja mitätöinti. Muutokset kirjautuvat toimintalokiin.
+- ERP:n rajapinta: `POST /api/v1/events`, `GET /api/v1/events` ja `POST /api/v1/sync/housing-companies`
+  (docs/integraatiospec.md).
+
+**Testit:** lisätään testaussivulle
+
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**

@@ -32,6 +32,7 @@ import { inboundRouter } from "./routes/inbound.js";
 import { incidentsRouter } from "./routes/incidents.js";
 import { embeddingRouter } from "./routes/embedding.js";
 import { integrationRouter } from "./routes/integration.js";
+import { apiV1Router } from "./routes/api-v1.js";
 import { memoryRouter } from "./routes/memory.js";
 import { keysRouter } from "./routes/keys.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
@@ -113,6 +114,8 @@ app.post("/api/contact", rateLimit({
 
 // Raja kattaa vastauksen liitteet, jotka kulkevat pyynnössä base64-muodossa.
 app.use(express.json({ limit: "30mb" }));
+// ERP:n integraatiorajapinta tunnistetaan API-avaimella, ei kirjautumisella, joten se on ennen requireAuthia.
+app.use("/api/v1", apiV1Router);
 app.use("/api", requireAuth);
 app.use("/api", (_req, res, next) => requestUser.run(res.locals.user as User | undefined, next));
 

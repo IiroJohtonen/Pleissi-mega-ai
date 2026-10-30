@@ -146,7 +146,7 @@ export function importSiteForm(form: SiteForm, fields: FormField[], fallbackComp
     if (values.length === 0) return null;
     const place = findApartment(details.address ?? "", details.apartment ?? "", companies);
     const companyId = place?.companyId ?? fallbackCompanyId;
-    const resident = findResident(companyId, details.email || undefined, details.name || undefined);
+    const resident = findResident(companyId, details.email || undefined, details.name || undefined, details.phone || undefined);
     const apartmentId = place?.apartmentId ?? resident?.apartment_id ?? null;
     const ids = values.map(([meterType, number]) => {
       const readingId = id("reading");
@@ -172,7 +172,7 @@ export function importSiteForm(form: SiteForm, fields: FormField[], fallbackComp
       : findApartment(details.newAddress ?? "", details.newApartment ?? "", companies)
         ?? findApartment(details.currentAddress ?? "", details.currentApartment ?? "", companies);
     const companyId = target?.companyId ?? fallbackCompanyId;
-    const resident = findResident(companyId, details.email || undefined, details.name || undefined);
+    const resident = findResident(companyId, details.email || undefined, details.name || undefined, details.phone || undefined);
     const newResidents = movesOut ? [] : [
       ...(details.name ? [{ name: details.name, email: details.email ?? "" }] : []),
       ...[1, 2, 3].map(index => details[`with${index}Name`]).filter(Boolean).map(name => ({ name, email: "" }))
@@ -188,7 +188,7 @@ export function importSiteForm(form: SiteForm, fields: FormField[], fallbackComp
 
   const place = findApartment(details.address ?? "", "", companies);
   const companyId = place?.companyId ?? fallbackCompanyId;
-  const resident = findResident(companyId, details.email || undefined, details.name || undefined);
+  const resident = findResident(companyId, details.email || undefined, details.name || undefined, details.phone || undefined);
   const orderId = id("heating");
   db.prepare(`
     INSERT INTO heating_orders (id, company_id, apartment_id, resident_id, start_date, end_date, details, source, created_at, updated_at)
