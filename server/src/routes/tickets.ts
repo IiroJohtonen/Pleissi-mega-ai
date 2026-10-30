@@ -17,6 +17,7 @@ import { pendingErasure, processPendingErasures } from "../resident-erasure.js";
 import { moveTicketToCompany, suggestCompany } from "../ticket-company.js";
 import { ticketForm } from "../portal-form-data.js";
 import { deleteAiRequests } from "../ai-log.js";
+import { deleteEmbedding } from "../embedding.js";
 import { deleteOutboxForTicket } from "../integration/outbox.js";
 import { addResident } from "./residents.js";
 
@@ -45,6 +46,7 @@ export async function deleteTicket(ticketId: string) {
     db.prepare("DELETE FROM portal_forms WHERE ticket_id = ?").run(ticketId);
     deleteAiRequests(ticketId);
     deleteOutboxForTicket(ticketId);
+    deleteEmbedding("ticket", ticketId);
     db.prepare("DELETE FROM tickets WHERE id = ?").run(ticketId);
   })();
   for (const file of files) await fs.rm(path.join(attachmentsDir, file.id), { force: true });

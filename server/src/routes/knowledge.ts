@@ -10,7 +10,7 @@ import { extractFormatted, extractPages, isPdf, UnsupportedDocumentError } from 
 import { applyVersion, compareVersions, likelyPreviousVersion, previousVersion } from "../knowledge-versions.js";
 import {
   chunkSourceLabel, documentPages, findSimilarChunk, hasUnknownNumbers, insertChunk, listChunks, localChunks, pagesInNote,
-  processDocument, saveChunks, selectKnowledgeChunks, setChunksStatus
+  processDocument, saveChunks, searchKnowledgeChunks, setChunksStatus
 } from "../knowledge-chunks.js";
 import { markdownToPlain, plainToMarkdown } from "../rich-text.js";
 import { id, now, today, unsafeFileMessage } from "../util.js";
@@ -299,7 +299,7 @@ knowledgeRouter.post("/companies/:companyId/knowledge/test", async (req, res) =>
   if (!parsed.success) return res.status(400).json({ error: "Kirjoita kysymys." });
 
   // Samat palat, jotka vastausehdotus saisi tähän kysymykseen.
-  const selected = selectKnowledgeChunks(companyId, parsed.data.question);
+  const selected = await searchKnowledgeChunks(companyId, parsed.data.question);
   const chunks = selected.map(chunk => ({
     id: chunk.id, knowledgeId: chunk.knowledgeId, title: chunk.title, documentTitle: chunk.documentTitle,
     page: chunk.page, content: chunk.content, label: chunkSourceLabel(chunk)

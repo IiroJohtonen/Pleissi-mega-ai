@@ -44,6 +44,12 @@ export const masterDataSchema = z.object({
     assess: modelChoice,
     fast: modelChoice,
     reports: modelChoice
+  }),
+  // Merkityshaku (embedding.ts): aiemmat ratkaistut tehtävät esimerkkeinä vastausehdotukseen ja agentille,
+  // ja hybridihaku (sanat + merkitys) dokumentaatioon. Taloyhtiö voi ohittaa arvot omilla asetuksillaan.
+  embedding: z.object({
+    similarTickets: z.boolean(),
+    hybridKnowledge: z.boolean()
   })
 });
 
@@ -62,7 +68,8 @@ export const MASTER_DATA_DEFAULTS: MasterData = {
   ],
   masking: { phone: true, email: true, personalId: true, iban: true },
   priorityDays: { emergency: 0, urgent: 1, normal: 5, low: 14 },
-  aiModels: { reply: "", assess: "", fast: "", reports: "" }
+  aiModels: { reply: "", assess: "", fast: "", reports: "" },
+  embedding: { similarTickets: false, hybridKnowledge: false }
 };
 
 type Key = keyof MasterData;

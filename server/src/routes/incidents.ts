@@ -9,7 +9,7 @@ import {
   drafts, type Incident, incidentTickets, localSummary, processIncidents, replyFromIncident, TOPIC_RULES, type TopicKey
 } from "../incidents.js";
 import { RESOLUTION_MAX, setResolution, topicHistoryForAi } from "../history.js";
-import { selectKnowledgeChunks } from "../knowledge-chunks.js";
+import { searchKnowledgeChunks } from "../knowledge-chunks.js";
 import { memoryForAi } from "../memory.js";
 import { ACTIVE_RESIDENT, helsinkiParts, id, now, stairwellOf } from "../util.js";
 
@@ -278,7 +278,7 @@ incidentsRouter.post("/incidents/:id/interpret", async (req, res) => {
     SELECT title, body, stairwell, created_at FROM announcements WHERE company_id = ? AND created_at >= ? ORDER BY created_at DESC LIMIT 5
   `).all(incident.company_id, since) as { title: string; body: string; stairwell: string; created_at: string }[])
     .map(row => `${row.created_at.slice(0, 10)}${row.stairwell ? ` (staircase ${row.stairwell})` : ""}: ${row.title} – ${row.body}`);
-  const chunks = selectKnowledgeChunks(incident.company_id, `${topicLabel} ${reports.map(report => report.text).join(" ").slice(0, 2000)}`, 4);
+  const chunks = await searchKnowledgeChunks(incident.company_id, `${topicLabel} ${reports.map(report => report.text).join(" ").slice(0, 2000)}`, 4);
 
   try {
     const { result } = await withAiLog(undefined, () => interpretIncident({

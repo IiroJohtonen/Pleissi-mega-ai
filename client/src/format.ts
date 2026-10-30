@@ -60,6 +60,7 @@ export function actionLabel(action: string) {
     ai_filtered: t("AI suodatti viestin: ei koske taloyhtiön asioita"),
     emergency_alert_sent: t("Hätätapauksesta lähetetty sähköposti vastuuisännöitsijälle"),
     emergency_alert_failed: t("Hätätapauksen sähköposti vastuuisännöitsijälle ei lähtenyt"),
+    embedding_settings_updated: t("Merkityshaun taloyhtiökohtaista asetusta muutettu"),
     integration_failed: t("Kirjaus toiminnanohjausjärjestelmään (ERP) epäonnistui"),
     integration_message_viewed: t("Avasi ERP-integraation sanoman"),
     decision_ai: t("Päätös: AI hoitaa"),

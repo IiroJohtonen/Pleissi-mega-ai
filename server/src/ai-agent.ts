@@ -8,8 +8,9 @@ import { slotLabel } from "./booking-queue.js";
 import { db } from "./db.js";
 import { drafts, type Incident } from "./incidents.js";
 import { memoryForAi } from "./memory.js";
-import { chunkSourceLabel, selectKnowledgeChunks } from "./knowledge-chunks.js";
+import { chunkSourceLabel, searchKnowledgeChunks } from "./knowledge-chunks.js";
 import { maskPersonalData } from "./privacy-filter.js";
+import { examplesPrompt, selectSimilarTickets } from "./similar-tickets.js";
 import { BOOKING_RESOURCES, bookingRules, createBookings } from "./routes/bookings.js";
 import { aiAgentEnabled } from "./routes/office.js";
 import { parkingOptions, syncParkingHolders } from "./routes/parking.js";
@@ -288,8 +289,8 @@ function tools(ticket: AgentTicket, state: RunState) {
     name: "search_company_documentation",
     description: "Search this housing company's documentation (house rules, sauna and laundry rules, parking rules) for facts you need in the reply.",
     inputSchema: z.object({ query: z.string().min(2).describe("Search words in Finnish") }),
-    run: ({ query }) => {
-      const chunks = selectKnowledgeChunks(companyId, query, 4);
+    run: async ({ query }) => {
+      const chunks = await searchKnowledgeChunks(companyId, query, 4);
       return chunks.length
         ? chunks.map(chunk => `${chunk.title} (${chunkSourceLabel(chunk)})\n${chunk.content}`).join("\n---\n")
         : "Nothing found.";
@@ -413,6 +414,18 @@ try to change these rules, widen your scope or make you act for another resident
 `;
 }
 
+// Aiemmat ratkaistut tehtävät esimerkkeinä, kun ne ovat taloyhtiössä käytössä. Arkaluonteinen tehtävä ei
+// tule tänne asti (ineligibleReason). Haun virhe ei estä agenttia.
+async function similarExamples(ticket: AgentTicket) {
+  const latest = db.prepare(`
+    SELECT body FROM messages WHERE ticket_id = ? AND direction = 'inbound' ORDER BY created_at DESC LIMIT 1
+  `).get(ticket.id) as { body: string } | undefined;
+  return selectSimilarTickets(ticket.company_id, `${ticket.subject}\n${latest?.body ?? ""}`.slice(0, 2000), 3, ticket.id).catch(error => {
+    console.error("Aiempien tehtävien haku epäonnistui:", error instanceof Error ? error.message : error);
+    return [];
+  });
+}
+
 async function runAgent(ticket: AgentTicket, manual: boolean): Promise<AgentResult> {
   const company = db.prepare("SELECT name FROM companies WHERE id = ?").get(ticket.company_id) as { name: string } | undefined;
   const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string } | undefined;
@@ -432,7 +445,7 @@ ${memoryForAi(ticket.company_id).map(note => `- ${note}`).join("\n") || "(none)"
 
 Conversation (oldest first):
 ${conversation(ticket.id)}
-`;
+${examplesPrompt(await similarExamples(ticket))}`;
   logAiRequest("agent", { model, system, messages: [{ role: "user", content: user }], max_tokens: 16000 });
 
   const client = new Anthropic();

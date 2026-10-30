@@ -3,6 +3,7 @@ import { z } from "zod";
 import { companyIdFromContext, getAuthorizedTicket, visibleCompanyIds } from "../access.js";
 import { requireManager } from "../auth.js";
 import { db } from "../db.js";
+import { deleteEmbedding } from "../embedding.js";
 import { RESOLUTION_MAX, setResolution, ticketHistory, trends } from "../history.js";
 import { isTopic } from "../incidents.js";
 import { type MemoryNote, MemoryUnavailableError, proposeCompanyMemory } from "../memory.js";
@@ -111,10 +112,14 @@ memoryRouter.put("/memory/:id", requireManager, (req, res) => {
   const parsed = noteSchema.extend({ status: z.enum(["approved", "rejected"]) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Kirjoita tieto (5–500 merkkiä) ja tarkista porras." });
   const actor = res.locals.user?.name ?? "Isännöitsijä";
-  db.prepare(`
-    UPDATE company_memory SET text = ?, topic = ?, stairwell = ?, valid_until = ?, status = ?, decided_by = ?, decided_at = ?, updated_at = ?
-    WHERE id = ?
-  `).run(parsed.data.text, parsed.data.topic, parsed.data.stairwell, parsed.data.validUntil, parsed.data.status, actor, now(), now(), note.id);
+  db.transaction(() => {
+    db.prepare(`
+      UPDATE company_memory SET text = ?, topic = ?, stairwell = ?, valid_until = ?, status = ?, decided_by = ?, decided_at = ?, updated_at = ?
+      WHERE id = ?
+    `).run(parsed.data.text, parsed.data.topic, parsed.data.stairwell, parsed.data.validUntil, parsed.data.status, actor, now(), now(), note.id);
+    // Hylätyn tiedon vektori poistetaan; hyväksytyn muuttunut teksti lasketaan taustalla uudelleen.
+    if (parsed.data.status !== "approved") deleteEmbedding("memory", note.id);
+  })();
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), null, actor, `memory_${parsed.data.status}`, JSON.stringify({ memory: note.id, company: note.company_id }), now()
   );
@@ -124,6 +129,9 @@ memoryRouter.put("/memory/:id", requireManager, (req, res) => {
 memoryRouter.delete("/memory/:id", requireManager, (req, res) => {
   const note = loadNote(req.params.id);
   if (!note) return res.status(404).json({ error: "Tietoa ei löytynyt." });
-  db.prepare("DELETE FROM company_memory WHERE id = ?").run(note.id);
+  db.transaction(() => {
+    db.prepare("DELETE FROM company_memory WHERE id = ?").run(note.id);
+    deleteEmbedding("memory", note.id);
+  })();
   res.json({ ok: true });
 });

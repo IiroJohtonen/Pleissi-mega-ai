@@ -14,11 +14,14 @@
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "backup": "tsx src/backup-cli.ts",
     "eval": "node --import tsx eval/run.ts",
+    "eval:retrieval": "node --import tsx eval/retrieval.ts",
+    "embeddings:rebuild": "tsx src/embedding-cli.ts",
     "lint": "eslint ."
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
     "@google-cloud/local-auth": "^3.0.1",
+    "@huggingface/transformers": "^4.3.2",
     "better-sqlite3": "^12.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -30,6 +33,7 @@
     "mailparser": "^3.9.39",
     "mammoth": "^1.13.0",
     "nodemailer": "^10.1.1",
+    "sqlite-vec": "^0.1.9",
     "tesseract.js": "^7.0.0",
     "unpdf": "^1.8.1",
     "zod": "^4.0.0"

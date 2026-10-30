@@ -6,6 +6,7 @@ import { createBackup, hasBackupToday } from "./backup.js";
 import { processPendingErasures } from "./resident-erasure.js";
 import { db } from "./db.js";
 import { startIncidentJob } from "./incidents.js";
+import { startEmbeddingJob } from "./embedding.js";
 import { startIntegrationJob } from "./integration/dispatcher.js";
 import { weeklyMemoryProposals } from "./memory.js";
 import { sendEmail } from "./mail.js";
@@ -153,4 +154,6 @@ export function startMaintenanceJobs() {
   // Tehtävien aiheet ja yhteisten vikojen tunnistus.
   startIncidentJob();
   startIntegrationJob();
+  // Merkityshaun vektorit: puuttuvat täydennetään käynnistyksessä ja sen jälkeen minuutin välein.
+  startEmbeddingJob();
 }

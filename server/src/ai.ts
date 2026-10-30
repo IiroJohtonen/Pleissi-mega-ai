@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { KnowledgeChunk } from "./knowledge-chunks.js";
 import { getMasterData } from "./master-data.js";
 import { emergencyKeywordHit, maskPersonalData, senderForAi } from "./privacy-filter.js";
+import { examplesPrompt, type TicketExample } from "./similar-tickets.js";
 
 export type TriageResult = {
   type: string;
@@ -263,7 +264,8 @@ export async function suggestReply(
   // allowAi = false: arkaluonteinen tehtävä, ehdotus tehdään ilman AI:ta.
   // followUp = true: asukkaalle on jo vastattu, ja luonnos on seuraava vastaus samaan ketjuun.
   // memory = taloyhtiön muistin hyväksytyt tiedot (vikahistoria, korjaukset) taustaksi.
-  options: { allowAi?: boolean; followUp?: boolean; memory?: string[] } = {}
+  // examples = aiemmat ratkaistut tehtävät (similar-tickets.ts), vain sävyn ja käsittelytavan mallina.
+  options: { allowAi?: boolean; followUp?: boolean; memory?: string[]; examples?: TicketExample[] } = {}
 ): Promise<ReplySuggestion> {
   const ai = options.allowAi === false ? null : claudeClient();
   if (!ai) return localSuggestion(chunks);
@@ -288,7 +290,7 @@ ${options.followUp ? "Follow-up: the manager has already replied in this thread;
 
 Manager's notes:
 ${managerContext.trim() || "(none)"}
-`;
+${examplesPrompt(options.examples ?? [])}`;
 
   try {
     const response = await ai.client.beta.messages.parse(logAiRequestParams("suggest", {
