@@ -1,4 +1,5 @@
 import { db } from "./db.js";
+import { deleteEmbedding } from "./embedding.js";
 import { sensitiveMatches } from "./privacy-filter.js";
 import { id, now } from "./util.js";
 
@@ -22,13 +23,20 @@ export function detectSensitivity(ticketId: string, text: string): boolean {
   if (ticket.sensitive || ticket.sensitive_source === "cleared") return Boolean(ticket.sensitive);
   const words = sensitiveMatches(text);
   if (!words.length) return false;
-  db.prepare("UPDATE tickets SET sensitive = 1, sensitive_source = 'keywords' WHERE id = ?").run(ticketId);
+  db.transaction(() => {
+    db.prepare("UPDATE tickets SET sensitive = 1, sensitive_source = 'keywords' WHERE id = ?").run(ticketId);
+    // Arkaluonteisen tehtävän vektori poistetaan heti; sitä ei käytetä esimerkkinä.
+    deleteEmbedding("ticket", ticketId);
+  })();
   audit(ticketId, "system", "sensitive_marked", { by: "keywords", words });
   return true;
 }
 
 export function setSensitivity(ticketId: string, sensitive: boolean, actor: string) {
-  db.prepare("UPDATE tickets SET sensitive = ?, sensitive_source = ? WHERE id = ?")
-    .run(sensitive ? 1 : 0, sensitive ? "manual" : "cleared", ticketId);
+  db.transaction(() => {
+    db.prepare("UPDATE tickets SET sensitive = ?, sensitive_source = ? WHERE id = ?")
+      .run(sensitive ? 1 : 0, sensitive ? "manual" : "cleared", ticketId);
+    if (sensitive) deleteEmbedding("ticket", ticketId);
+  })();
   audit(ticketId, actor, sensitive ? "sensitive_marked" : "sensitive_cleared", { by: "manual" });
 }

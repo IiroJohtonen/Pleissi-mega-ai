@@ -9,6 +9,7 @@ import { db } from "../db.js";
 import { ADJUSTABLE_TOPICS, detectionRules, RULE_LIMITS, saveDetectionRules } from "../incidents.js";
 import { id, now } from "../util.js";
 import { AI_MODEL_CHOICES, getMasterData, MASTER_DATA_DEFAULTS, masterDataSchema, saveMasterData } from "../master-data.js";
+import { scheduleEmbeddingIndex } from "../embedding.js";
 import { loginCodeMailReady, loginCodeSetting } from "../login-codes.js";
 
 export const officeRouter: Router = express.Router();
@@ -236,10 +237,13 @@ officeRouter.get("/master-data", requireAdmin, (_req, res) => {
 officeRouter.put("/master-data", requireAdmin, (req, res) => {
   const parsed = masterDataSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista perustiedot." });
+  const before = getMasterData().embedding;
   saveMasterData(parsed.data);
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "master_data_updated",
-    JSON.stringify({ fields: Object.keys(parsed.data) }), now()
+    JSON.stringify({ fields: Object.keys(parsed.data), ...(parsed.data.embedding ? { embedding: parsed.data.embedding } : {}) }), now()
   );
+  // Merkityshaun kytkentä: puuttuvat vektorit lasketaan (tai poistetaan) taustalla heti.
+  if (parsed.data.embedding && JSON.stringify(parsed.data.embedding) !== JSON.stringify(before)) void scheduleEmbeddingIndex();
   res.json(getMasterData());
 });

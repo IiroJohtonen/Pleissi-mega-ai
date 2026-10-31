@@ -3,6 +3,29 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
+
+**Mitä muutettiin**
+- Pleissi osaa hakea tekstejä merkityksen perusteella eikä vain samoilla sanoilla: esimerkiksi "löylyhuone kylmä"
+  löytää ohjeen "sauna ei lämpene". Merkitystä kuvaavat vektorit lasketaan Pleissin omalla palvelimella, eikä
+  teksti lähde palvelimelta.
+- Aiemmat tehtävät esimerkkeinä: vastausehdotus ja AI-agentti saavat 2–3 saman taloyhtiön samankaltaista
+  ratkaistua tehtävää ja toimiston vastauksen niihin. Ne ovat vain sävyn ja käsittelytavan mallina; tosiasiat
+  tulevat aina dokumentaatiosta tai taloyhtiön muistista. Nimet ja yhteystiedot peitetään.
+- Hybridihaku dokumentaatioon: vastausehdotuksen, AI-agentin, yhteisen vian tulkinnan ja dokumentaation
+  testikysymyksen haku yhdistää sanahaun ja merkityshaun tulokset.
+- Molemmat ovat oletuksena pois. Ne kytketään erikseen, ja ne voi kokeilla ensin yhdessä taloyhtiössä.
+- Arkaluonteisia tehtäviä ei käytetä. Kun tehtävä merkitään arkaluonteiseksi, asukkaan tiedot poistetaan tai
+  dokumentin pala arkistoidaan, sen vektori poistetaan heti. Toisen taloyhtiön tehtäviä ei koskaan käytetä.
+- Asetusmuutokset kirjataan toimintalokiin.
+
+**Miten**
+- Asetukset › Isännöitsijätoimiston tiedot › AI › Merkityshaku: Aiemmat tehtävät esimerkkeinä ja Hybridihaku
+  dokumentaatioon sekä taloyhtiökohtaiset poikkeukset (Yleinen asetus, Päällä, Pois).
+- Kun asetus kytketään päälle, vektorit lasketaan taustalla; siihen asti haku toimii kuten ennen.
+
+**Testit:** lisätään testaussivulle
+
 ## 26.10.2026 · ERP-integraation ensimmäinen vaihe: tehtävät ja viestit jonoon
 
 **Mitä muutettiin**

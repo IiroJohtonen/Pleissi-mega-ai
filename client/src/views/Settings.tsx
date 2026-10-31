@@ -79,6 +79,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   "office-ai": "kulut kuukausiraja prioriteetti suodatus relevanssi budjetti",
   "ai-prompt": "lisätieto ikkuna vastausehdotus ehdotus",
   "ai-models": "malli opus sonnet haiku claude",
+  embedding: "merkityshaku embedding vektori hybridihaku esimerkit aiemmat tehtävät",
   "master-data": "hätäsanat hätä määräajat prioriteetti päivät",
   users: "käyttäjät roolit lisää käyttäjä",
   roles: "roolit oikeudet pääsy taulut näkymät käyttöoikeudet",
@@ -188,7 +189,8 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
     tab: "ai", label: t("AI"), sections: [
       { id: "office-ai", label: t("AI-käyttö ja -asetukset") },
       { id: "ai-prompt", label: t("AI-ehdotukset") },
-      { id: "ai-models", label: t("AI-mallit") }
+      { id: "ai-models", label: t("AI-mallit") },
+      { id: "embedding", label: t("Merkityshaku") }
     ]
   },
   {

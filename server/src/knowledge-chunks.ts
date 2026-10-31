@@ -1,10 +1,12 @@
 import { aiAvailable, chunkDocumentWithAi, chunks, overlap, stems } from "./ai.js";
 import { db } from "./db.js";
+import { deleteInactiveChunkEmbeddings, embeddingEnabled, reciprocalRankFusion, searchSimilar } from "./embedding.js";
 import { id, now, today } from "./util.js";
 
 // ---------------------------------------------------------------------------------------------
 // Tietopalat. Jokainen tietopankin tietue pilkotaan aiheittaisiksi paloiksi, ja vastausehdotukseen
-// valitaan vain kysymykseen osuvat palat. Haku on paikallinen sanavartalohaku (ei vektorikantaa).
+// valitaan vain kysymykseen osuvat palat. Haku on paikallinen sanavartalohaku; kun hybridihaku on
+// käytössä, sen tulos yhdistetään merkityshakuun (embedding.ts, searchKnowledgeChunks).
 // ---------------------------------------------------------------------------------------------
 
 // Yhden palan enimmäispituus AI:lle lähetettäessä.
@@ -161,13 +163,19 @@ export function saveChunks(knowledge: Pick<KnowledgeSource, "id" | "company_id" 
       item.page ?? null, item.tags ?? "", item.origin, item.verified ? 1 : 0, item.needsReview ? 1 : 0,
       status, position, timestamp, timestamp, item.suggestedValidUntil ?? null
     ));
+    // Arkistoitujen palojen vektorit poistetaan samassa transaktiossa.
+    deleteInactiveChunkEmbeddings(knowledge.id);
   })();
 }
 
 // Merkitsee tietueen palat tietueen tilan mukaisiksi (korvattu → arkistoitu, poistettu → poistettu).
+// Arkistoitujen ja poistettujen palojen vektorit poistetaan samassa transaktiossa.
 export function setChunksStatus(knowledgeId: string, status: "active" | "archived" | "deleted") {
-  db.prepare("UPDATE knowledge_chunks SET status = ?, updated_at = ? WHERE knowledge_id = ? AND status != 'deleted'")
-    .run(status, now(), knowledgeId);
+  db.transaction(() => {
+    db.prepare("UPDATE knowledge_chunks SET status = ?, updated_at = ? WHERE knowledge_id = ? AND status != 'deleted'")
+      .run(status, now(), knowledgeId);
+    deleteInactiveChunkEmbeddings(knowledgeId);
+  })();
 }
 
 // Kertaluonteinen siirto: tietueet, joilla ei vielä ole paloja, pilkotaan paikallisesti.
@@ -226,6 +234,41 @@ function scoreChunk(query: Set<string>, chunk: KnowledgeChunk): number | null {
 export function selectKnowledgeChunks(companyId: string, question: string, limit = 5): KnowledgeChunk[] {
   const query = stems(question);
   if (query.size === 0 || limit <= 0) return [];
+  return eligibleChunks(companyId)
+    .map(chunk => ({ chunk, score: scoreChunk(query, chunk) }))
+    .filter((entry): entry is { chunk: KnowledgeChunk; score: number } => entry.score !== null)
+    // Vakaa järjestys: tasapisteissä tietopankin järjestys.
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(entry => entry.chunk);
+}
+
+// Hybridihaku: sanahaun ja merkityshaun järjestykset yhdistetään Reciprocal Rank Fusionilla (k = 60).
+// Sama rajaus ja tulos kuin selectKnowledgeChunks; kun hybridihaku ei ole taloyhtiössä käytössä tai
+// merkityshaku epäonnistuu, tulos on sanahaun tulos.
+export async function searchKnowledgeChunks(companyId: string, question: string, limit = 5): Promise<KnowledgeChunk[]> {
+  if (limit <= 0) return [];
+  if (!embeddingEnabled(companyId, "hybridKnowledge")) return selectKnowledgeChunks(companyId, question, limit);
+  const pool = limit * 4;
+  const byWords = selectKnowledgeChunks(companyId, question, pool);
+  let similar: string[];
+  try {
+    similar = (await searchSimilar(companyId, "chunk", question, pool)).map(item => item.sourceId);
+  } catch (error) {
+    console.error("Merkityshaku epäonnistui, käytetään sanahakua:", error instanceof Error ? error.message : error);
+    return byWords.slice(0, limit);
+  }
+  // Vektorihaun osuma kelpaa vain, jos pala on yhä aktiivinen, voimassa ja AI:n dokumentaatiota.
+  const eligible = new Map(eligibleChunks(companyId).map(chunk => [chunk.id, chunk]));
+  const byMeaning = similar.filter(chunkId => eligible.has(chunkId));
+  for (const chunk of byWords) eligible.set(chunk.id, chunk);
+  return reciprocalRankFusion([byWords.map(chunk => chunk.id), byMeaning])
+    .slice(0, limit)
+    .map(chunkId => eligible.get(chunkId)!);
+}
+
+// Yhtiön AI:n käytössä olevan dokumentaation palat: aktiiviset, voimassa olevat ja luettavat.
+function eligibleChunks(companyId: string): KnowledgeChunk[] {
   const date = today();
   const rows = db.prepare(`
     SELECT c.id, c.knowledge_id, c.title, c.content, c.page, c.tags, c.origin, c.verified, c.needs_review,
@@ -241,15 +284,7 @@ export function selectKnowledgeChunks(companyId: string, question: string, limit
       AND (k.valid_until IS NULL OR k.valid_until >= ?)
     ORDER BY k.title, c.position
   `).all(companyId, companyId, date, date) as ChunkRow[];
-
-  return rows
-    .map(toChunk)
-    .map(chunk => ({ chunk, score: scoreChunk(query, chunk) }))
-    .filter((entry): entry is { chunk: KnowledgeChunk; score: number } => entry.score !== null)
-    // Vakaa järjestys: tasapisteissä tietopankin järjestys.
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(entry => entry.chunk);
+  return rows.map(toChunk);
 }
 
 // Palan lähde käyttäjälle ja AI:lle: "Järjestyssäännöt, s. 3".

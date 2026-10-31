@@ -9,6 +9,7 @@ type MasterData = {
   masking: { phone: boolean; email: boolean; personalId: boolean; iban: boolean };
   priorityDays: { emergency: number; urgent: number; normal: number; low: number };
   aiModels: { reply: string; assess: string; fast: string; reports: string };
+  embedding: { similarTickets: boolean; hybridKnowledge: boolean };
 };
 
 type MasterDataResponse = { values: MasterData; defaults: MasterData; modelChoices: string[] };
@@ -37,6 +38,109 @@ const modelLabels: { key: keyof MasterData["aiModels"]; label: string }[] = [
   { key: "reports", label: t("Toistuvien aiheiden raportit") }
 ];
 
+const embeddingLabels: { key: keyof MasterData["embedding"]; label: string; hint: string }[] = [
+  {
+    key: "similarTickets",
+    label: t("Aiemmat tehtävät esimerkkeinä"),
+    hint: t("Vastausehdotus ja AI-agentti saavat 2–3 samankaltaista ratkaistua tehtävää sävyn ja käsittelytavan malliksi. Tosiasiat tulevat aina dokumentaatiosta.")
+  },
+  {
+    key: "hybridKnowledge",
+    label: t("Hybridihaku dokumentaatioon"),
+    hint: t("Dokumentaatiosta haetaan sanojen lisäksi merkityksen perusteella, esim. \"löylyhuone kylmä\" löytää ohjeen \"sauna ei lämpene\".")
+  }
+];
+
+type EmbeddingCompany = {
+  id: string; name: string; similarTickets: boolean | null; hybridKnowledge: boolean | null;
+  vectors: { ticket: number; chunk: number; memory: number };
+};
+type EmbeddingStatus = {
+  killed: boolean;
+  backend: string;
+  model: { model: string; loaded: boolean; memoryMb: number | null; error: string | null };
+  index: { running: boolean; lastRunAt: string | null; lastError: string | null };
+  companies: EmbeddingCompany[];
+};
+
+const overrideValue = (value: boolean | null) => (value === null ? "" : value ? "on" : "off");
+const overrideFromValue = (value: string) => (value === "" ? null : value === "on");
+
+// Merkityshaun tila ja taloyhtiökohtaiset poikkeukset: pilottitaloyhtiössä voi kokeilla ennen kuin
+// toiminto kytketään kaikille. Muutos tallentuu heti.
+function EmbeddingCompanies() {
+  const [status, setStatus] = useState<EmbeddingStatus | null>(null);
+  const [error, setError] = useState("");
+
+  const load = () => api<EmbeddingStatus>("/embedding/status")
+    .then(setStatus)
+    .catch(() => setError(t("Merkityshaun tilan lataus epäonnistui.")));
+  useEffect(() => { void load(); }, []);
+
+  async function change(company: EmbeddingCompany, key: keyof MasterData["embedding"], value: string) {
+    setError("");
+    try {
+      await api(`/embedding/companies/${encodeURIComponent(company.id)}`, { method: "PUT", body: JSON.stringify({ [key]: overrideFromValue(value) }) });
+      await load();
+    } catch (problem) {
+      setError(errorMessage(problem, t("Tallennus epäonnistui.")));
+    }
+  }
+
+  if (!status) return error ? <p className="send-error">{error}</p> : <p className="muted">{t("Ladataan…")}</p>;
+  const option = (value: string, label: string) => <option value={value}>{label}</option>;
+  return (
+    <>
+      {status.killed && <p className="send-error">{t("Merkityshaku on kytketty pois palvelimen asetuksella (EMBEDDING_ENABLED=false).")}</p>}
+      <p className="reply-hint">
+        {t("Malli: {0}", status.model.model)}
+        {" · "}
+        {status.model.loaded ? t("ladattu ({0} Mt muistia)", status.model.memoryMb ?? "?") : t("ei vielä ladattu")}
+        {" · "}
+        {status.backend === "sqlite-vec" ? t("hakuindeksi sqlite-vec") : t("vertailu muistissa")}
+        {status.index.running ? ` · ${t("vektoreita lasketaan…")}` : ""}
+      </p>
+      {(status.model.error || status.index.lastError) && (
+        <p className="send-error">{t("Virhe: {0}", status.model.error || status.index.lastError || "")}</p>
+      )}
+      <div className="table-card">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>{t("Taloyhtiö")}</th>
+              <th>{t("Aiemmat tehtävät esimerkkeinä")}</th>
+              <th>{t("Hybridihaku dokumentaatioon")}</th>
+              <th>{t("Vektorit")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {status.companies.map(company => (
+              <tr key={company.id}>
+                <td>{company.name}</td>
+                {embeddingLabels.map(item => (
+                  <td key={item.key}>
+                    <select
+                      aria-label={`${company.name}: ${item.label}`}
+                      value={overrideValue(company[item.key])}
+                      onChange={event => void change(company, item.key, event.target.value)}
+                    >
+                      {option("", t("Yleinen asetus"))}
+                      {option("on", t("Päällä"))}
+                      {option("off", t("Pois"))}
+                    </select>
+                  </td>
+                ))}
+                <td>{t("{0} tehtävää, {1} palaa, {2} muistitietoa", company.vectors.ticket, company.vectors.chunk, company.vectors.memory)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {error && <p className="send-error">{error}</p>}
+    </>
+  );
+}
+
 const modelNames: Record<string, string> = {
   "claude-opus-5-5": "Claude Opus 5.5",
   "claude-sonnet-5-5": "Claude Sonnet 5.5",
@@ -55,6 +159,7 @@ export function MasterDataSettings({ part }: { part: MasterDataPart }) {
   const [masking, setMasking] = useState<MasterData["masking"] | null>(null);
   const [days, setDays] = useState<MasterData["priorityDays"] | null>(null);
   const [models, setModels] = useState<MasterData["aiModels"] | null>(null);
+  const [embedding, setEmbedding] = useState<MasterData["embedding"] | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -65,6 +170,8 @@ export function MasterDataSettings({ part }: { part: MasterDataPart }) {
     setMasking(values.masking);
     setDays(values.priorityDays);
     setModels(values.aiModels);
+    // Vanhempi palvelin ei palauta merkityshaun asetuksia: ne ovat silloin pois.
+    setEmbedding(values.embedding ?? { similarTickets: false, hybridKnowledge: false });
   }
 
   useEffect(() => {
@@ -75,7 +182,7 @@ export function MasterDataSettings({ part }: { part: MasterDataPart }) {
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!masking || !days || !models) return;
+    if (!masking || !days || !models || !embedding) return;
     setSaving(true);
     setSaved(false);
     setError("");
@@ -87,7 +194,8 @@ export function MasterDataSettings({ part }: { part: MasterDataPart }) {
           sensitiveKeywords: toList(sensitive),
           masking,
           priorityDays: days,
-          aiModels: models
+          aiModels: models,
+          embedding
         })
       });
       apply(values);
@@ -101,7 +209,7 @@ export function MasterDataSettings({ part }: { part: MasterDataPart }) {
 
   const changed = () => setSaved(false);
 
-  const ready = data && masking && days && models;
+  const ready = data && masking && days && models && embedding;
   const footer = (
     <>
       {error && ready && <p className="send-error">{error}</p>}
@@ -179,6 +287,32 @@ export function MasterDataSettings({ part }: { part: MasterDataPart }) {
             </>
           )}
           {footer}
+        </CollapseSection>
+        <CollapseSection id="embedding" title={t("Merkityshaku")}>
+          {ready && (
+            <>
+              <p className="reply-hint">{t("Pleissi laskee tehtävistä ja dokumentaatiosta merkitystä kuvaavat vektorit omalla palvelimellaan. Teksti ei lähde palvelimelta. Kun asetus kytketään päälle, vektorit lasketaan taustalla; siihen asti haku toimii kuten ennen.")}</p>
+              {embeddingLabels.map(item => (
+                <label className="switch-row" key={item.key}>
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.hint}</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    checked={embedding[item.key]}
+                    onChange={event => { setEmbedding({ ...embedding, [item.key]: event.target.checked }); changed(); }}
+                  />
+                  <i aria-hidden="true" />
+                </label>
+              ))}
+              {footer}
+              <h3>{t("Taloyhtiökohtaiset poikkeukset")}</h3>
+              <p className="reply-hint">{t("Kokeile ensin yhdessä pilottitaloyhtiössä: valitse sille Päällä ja jätä yleinen asetus pois.")}</p>
+              <EmbeddingCompanies />
+            </>
+          )}
         </CollapseSection>
       </form>
     );

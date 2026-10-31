@@ -125,6 +125,21 @@ Lisää kehitysversion tiedostoon `server\.env` rivi `GMAIL_DISABLED=1`. Muuten 
 
 Sama koskee Kotilon tuotantoversiota: yhdistä Pleissi Mega AI:hin eri postilaatikko kuin Kotiloon, muuten sama viesti tulee tehtäväksi molempiin.
 
+## Merkityshaku
+
+Merkityshaun malli (`Xenova/multilingual-e5-small`, versio lukittu) ajetaan palvelimella itsellään. Lataa malli
+kerran data-levylle ennen kuin merkityshaku kytketään asetuksista päälle, ja estä sen jälkeen lataukset ajon aikana:
+
+```bash
+cd /opt/pleissi-ai/app/deploy/server
+docker compose -p pleissi-ai exec pleissi-ai node dist/embedding-cli.js download
+```
+
+Lisää sitten tiedostoon `/opt/pleissi-ai/.env` rivi `EMBEDDING_ALLOW_DOWNLOAD=false` ja aja kohdan 4 julkaisukomento
+uudelleen. Malli on data-levyllä kansiossa `/data/models`, joten se säilyy päivityksissä. Kun mallin versio vaihtuu
+(`EMBEDDING_MODEL_REVISION`), lataa uusi versio samalla komennolla ennen julkaisua; vektorit lasketaan uudelleen
+taustalla. Kun merkityshaku on päällä, malli ladataan muistiin taustalla palvelimen käynnistyessä.
+
 ## Päivittäminen
 
 Kun uusi versio on commitoitu kehitysrepoon, aja sama komento kuin asennuksessa:

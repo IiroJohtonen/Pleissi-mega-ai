@@ -1,0 +1,383 @@
+{
+  "description": "Hakutestijoukko merkityshaulle: keksityt kysymykset esittelyaineiston (demo-data.ts) AI-dokumentaatioon taloyhtiössä demo-company. expected = palat, joista jokin pitää löytyä (dokumentin nimi ja palan tekstin alku); tyhjä lista = dokumentaatiossa ei ole vastausta.",
+  "company": "demo-company",
+  "cases": [
+    {
+      "id": "retrieval-001",
+      "question": "Saako parvekkeella polttaa tupakkaa?",
+      "tags": [
+        "suora"
+      ],
+      "expected": [
+        {
+          "document": "Järjestyssäännöt",
+          "contains": "Tupakointi on kielletty"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-002",
+      "question": "Naapuri soittaa musiikkia yöllä, mihin aikaan pitää olla hiljaista?",
+      "tags": [
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Järjestyssäännöt",
+          "contains": "Hiljaisuus on arkisin"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-003",
+      "question": "Saako koiran päästää vapaaksi pihalla?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Järjestyssäännöt",
+          "contains": "Lemmikit pidetään"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-004",
+      "question": "Kenelle valitan meluavasta naapurista?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Järjestyssäännöt",
+          "contains": "Häiriöistä ilmoitetaan"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-005",
+      "question": "Paljonko maksaa oma vakiovuoro löylyhuoneeseen?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Sauna- ja pyykkitupavuorot",
+          "contains": "Saunavuoron voi varata"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-006",
+      "question": "Maksaako pesutuvan käyttö jotain?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Sauna- ja pyykkitupavuorot",
+          "contains": "Pyykkituvan vuorot ovat maksuttomia"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-007",
+      "question": "Kuinka monta tuntia pyykkivuoro kestää?",
+      "tags": [
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Sauna- ja pyykkitupavuorot",
+          "contains": "Pyykkituvan vuorot ovat maksuttomia"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-008",
+      "question": "En pääsekään saunaan, miten peruutan?",
+      "tags": [
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Sauna- ja pyykkitupavuorot",
+          "contains": "Peruuta vuoro portaalissa"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-009",
+      "question": "Kylppärin lattialla on vettä ja se leviää, kenelle soitan?",
+      "tags": [
+        "puhekieli",
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Huoltoyhtiö ja päivystys",
+          "contains": "Kiireellisissä asioissa"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-010",
+      "question": "Mikä firma hoitaa talon huollon?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Huoltoyhtiö ja päivystys",
+          "contains": "Huoltoyhtiö on"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-011",
+      "question": "Saako huoltomies mennä kämppään kun en ole kotona?",
+      "tags": [
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Huoltoyhtiö ja päivystys",
+          "contains": "Huolto saa mennä asuntoon"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-012",
+      "question": "Hissi jäi jumiin kerrosten väliin",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Huoltoyhtiö ja päivystys",
+          "contains": "Kiireellisissä asioissa"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-013",
+      "question": "Patterit kylmänä, onko päivystystä?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Huoltoyhtiö ja päivystys",
+          "contains": "Kiireellisissä asioissa"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-014",
+      "question": "Mihin pahvilaatikot laitetaan?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Jätehuolto ja kierrätys",
+          "contains": "Jätekatoksessa on astiat"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-015",
+      "question": "Mihin vanhan sohvan saa viedä?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Jätehuolto ja kierrätys",
+          "contains": "Isot esineet ja huonekalut"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-016",
+      "question": "Kuinka usein roskikset tyhjennetään?",
+      "tags": [
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Jätehuolto ja kierrätys",
+          "contains": "Jätekatoksessa on astiat"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-017",
+      "question": "Paljonko lämpötolppapaikka maksaa?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Autopaikat ja lämmityspaikat",
+          "contains": "Lämmityspaikan hinta"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-018",
+      "question": "Miten pääsen autopaikkajonoon?",
+      "tags": [
+        "suora"
+      ],
+      "expected": [
+        {
+          "document": "Autopaikat ja lämmityspaikat",
+          "contains": "Autopaikat vuokrataan"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-019",
+      "question": "Mitä autotalli maksaa kuukaudessa?",
+      "tags": [
+        "suora"
+      ],
+      "expected": [
+        {
+          "document": "Autopaikat ja lämmityspaikat",
+          "contains": "Lämmityspaikan hinta"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-020",
+      "question": "Kuinka pitkä irtisanomisaika parkkipaikalla on?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Autopaikat ja lämmityspaikat",
+          "contains": "Lämmityspaikan hinta"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-021",
+      "question": "Muutan ensi kuussa, pitääkö ilmoittaa jotain?",
+      "tags": [
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Muutto ja avaimet",
+          "contains": "Tee muuttoilmoitus"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-022",
+      "question": "Hukkasin avaimen, mistä saan uuden?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Muutto ja avaimet",
+          "contains": "Asunnon avaimet luovutetaan"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-023",
+      "question": "Asunnon A 12 lisäavain",
+      "tags": [
+        "numero"
+      ],
+      "expected": [
+        {
+          "document": "Muutto ja avaimet",
+          "contains": "Asunnon avaimet luovutetaan"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-024",
+      "question": "Aion uusia kylpyhuoneen laatoitukset, mitä pitää tehdä?",
+      "tags": [
+        "synonyymi"
+      ],
+      "expected": [
+        {
+          "document": "Remontti-ilmoitus ja muutostyöt",
+          "contains": "Osakkaan muutostöistä"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-025",
+      "question": "Mihin aikaan saa porata?",
+      "tags": [
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Remontti-ilmoitus ja muutostyöt",
+          "contains": "Meluavat työt tehdään"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-026",
+      "question": "Tarvitseeko sähkötöihin pätevän urakoitsijan?",
+      "tags": [
+        "suora"
+      ],
+      "expected": [
+        {
+          "document": "Remontti-ilmoitus ja muutostyöt",
+          "contains": "Osakkaan muutostöistä"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-027",
+      "question": "pesula 2 vuoro",
+      "tags": [
+        "numero",
+        "puhekieli"
+      ],
+      "expected": [
+        {
+          "document": "Sauna- ja pyykkitupavuorot",
+          "contains": "Pyykkituvan vuorot ovat maksuttomia"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-028",
+      "question": "Milloin vastike pitää maksaa?",
+      "tags": [
+        "ei-vastausta"
+      ],
+      "expected": []
+    },
+    {
+      "id": "retrieval-029",
+      "question": "Onko taloyhtiössä kuntosalia?",
+      "tags": [
+        "ei-vastausta"
+      ],
+      "expected": []
+    },
+    {
+      "id": "retrieval-030",
+      "question": "Onko pihalla grillipaikkaa, jota saa käyttää?",
+      "tags": [
+        "ei-vastausta"
+      ],
+      "expected": []
+    }
+  ]
+}

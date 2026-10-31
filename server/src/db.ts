@@ -849,6 +849,32 @@ db.exec(`
 if (!officeColumns.some(existing => existing.name === "memory_auto")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN memory_auto INTEGER NOT NULL DEFAULT 0");
 }
+// Merkityshaun vektorit (embedding.ts): yksi rivi lähdettä kohden. source_type: 'chunk' (dokumentaatiopala),
+// 'ticket' (ratkaistu tehtävä) tai 'memory' (hyväksytty muistitieto). model ja text_hash kertovat, mistä
+// tekstistä ja millä mallilla vektori on laskettu; muuttunut teksti tai malli lasketaan uudelleen. vector on
+// float32-taulukko: hakuindeksi (vec_embeddings, sqlite-vec) luodaan siitä, ja ilman sqlite-vec:iä sitä
+// verrataan muistissa.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS embeddings (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    model TEXT NOT NULL,
+    text_hash TEXT NOT NULL,
+    dimensions INTEGER NOT NULL,
+    vector BLOB NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS embeddings_source ON embeddings (source_type, source_id);
+  CREATE INDEX IF NOT EXISTS embeddings_company ON embeddings (company_id, source_type);
+`);
+{
+  const companyColumns = (db.prepare("PRAGMA table_info(companies)").all() as { name: string }[]).map(column => column.name);
+  // Taloyhtiökohtainen ohitus merkityshaun asetuksille: NULL = perustietojen arvo, 1 = päällä, 0 = pois.
+  if (!companyColumns.includes("embedding_similar_tickets")) db.exec("ALTER TABLE companies ADD COLUMN embedding_similar_tickets INTEGER");
+  if (!companyColumns.includes("embedding_hybrid_knowledge")) db.exec("ALTER TABLE companies ADD COLUMN embedding_hybrid_knowledge INTEGER");
+}
 // Mahdollinen yhteinen vika: usea asunto on ilmoittanut samasta aiheesta lyhyessä ajassa.
 // stairwell = '' koskee koko taloyhtiötä. status: open, ordered (työtilaus tehty), resolved, dismissed.
 // auto_reply = 1: uusiin samanaiheisiin ilmoituksiin vastataan heti reply_message-viestillä.

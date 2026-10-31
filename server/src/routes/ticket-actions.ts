@@ -5,7 +5,8 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
 import { withAiLog } from "../ai-log.js";
-import { selectKnowledgeChunks } from "../knowledge-chunks.js";
+import { searchKnowledgeChunks } from "../knowledge-chunks.js";
+import { selectSimilarTickets } from "../similar-tickets.js";
 import { detectSensitivity, setSensitivity } from "../ticket-sensitivity.js";
 import { attachmentsDir, db, knowledgeFilesDir } from "../db.js";
 import { RESOLUTION_MAX, setResolution, ticketStairwell } from "../history.js";
@@ -132,12 +133,19 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
   const conversation = messages.length ? conversationText(messages) : ticket.summary;
 
   // AI saa vain tehtävään osuvat palat: haku otsikon, viimeisimpien viestien ja lisätiedon perusteella.
-  const chunks = selectKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? ""].join("\n"));
+  const chunks = await searchKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? ""].join("\n"));
   // Arkaluonteinen tehtävä ei mene AI:lle: ehdotus tehdään dokumentaatiohaulla.
   const sensitive = detectSensitivity(ticket.id, `${ticket.subject}\n${conversation}`);
+  // Aiemmat ratkaistut tehtävät sävyn ja käsittelytavan mallina, kun ne ovat taloyhtiössä käytössä.
+  const examples = sensitive ? [] : await selectSimilarTickets(ticket.company_id, `${ticket.subject}\n${conversation}`.slice(0, 2000), 3, ticket.id)
+    .catch(error => {
+      console.error("Aiempien tehtävien haku epäonnistui:", error instanceof Error ? error.message : error);
+      return [];
+    });
   const { result: suggestion } = await withAiLog(ticket.id, () =>
     suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", {
-      allowAi: !sensitive, followUp, memory: sensitive ? [] : memoryForAi(ticket.company_id, { topic: ticket.topic, stairwell: ticketStairwell(ticket.id) })
+      allowAi: !sensitive, followUp, memory: sensitive ? [] : memoryForAi(ticket.company_id, { topic: ticket.topic, stairwell: ticketStairwell(ticket.id) }),
+      examples
     }));
   const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
   const timestamp = now();
