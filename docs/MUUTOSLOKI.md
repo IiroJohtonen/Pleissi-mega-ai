@@ -22,6 +22,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Arkaluonteisesta tehtävästä ERP saa oikean otsikon, tilan, tehtävänumeron ja tiedon arkaluonteisuudesta, mutta
   ei kuvausta, käsittelijää, liitteitä eikä viestejä. Kaikissa tehtävissä on nyt tehtävänumero.
 - ERP tunnistautuu API-avaimella. Avaimelle valitaan oikeudet, ja sen voi mitätöidä. Avain näytetään vain kerran.
+- Tehtävien tallennus on nopeampi, kun ERP-integraatio on päällä, ja suuri ensilataus ei hidasta muuta käyttöä.
 
 **Miten**
 - Asukkaat › asukkaan tiedot: kentät Puhelin ja Muuttanut asuntoon. Asukkaiden tuonti lukee sarakkeet puhelin ja

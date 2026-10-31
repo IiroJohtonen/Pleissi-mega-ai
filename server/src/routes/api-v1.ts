@@ -58,13 +58,13 @@ apiV1Router.get("/events", requireScope("events:read"), (req, res) => {
   res.json(fetchEvents(after, parsed.data.limit, apiKeyOf(res).id));
 });
 
-apiV1Router.post("/sync/housing-companies", requireScope("sync:write"), (req, res) => {
+apiV1Router.post("/sync/housing-companies", requireScope("sync:write"), async (req, res) => {
   const parsed = SyncSchema.safeParse(req.body);
   if (!parsed.success) {
     const fields = parsed.error.issues.slice(0, 5).map(issue => `${issue.path.join(".") || "body"}: ${issue.message}`).join("; ");
     return res.status(400).json({ error: "validation_error", message: fields });
   }
-  const result = syncHousingCompanies(parsed.data);
+  const result = await syncHousingCompanies(parsed.data);
   // Toimintalokiin vain määrät, ei henkilötietoja.
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), null, `API-avain ${apiKeyOf(res).name}`, "integration_sync",

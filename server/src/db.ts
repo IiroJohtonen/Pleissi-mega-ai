@@ -750,6 +750,16 @@ if (!(db.prepare("PRAGMA table_info(residents)").all() as { name: string }[]).so
   if (!residentColumns.includes("moved_in_at")) db.exec("ALTER TABLE residents ADD COLUMN moved_in_at TEXT");
   db.exec("CREATE INDEX IF NOT EXISTS residents_phone ON residents (company_id, phone)");
 }
+// Tehtävän viestit, liitteet ja työtilaukset sekä taloyhtiön asunnot ja asukkaat haetaan usein; ERP-jonon
+// triggeri lukee ne jokaisessa tehtävän muutoksessa, ja ensilataus jokaiselle asukkaalle.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS messages_ticket ON messages (ticket_id);
+  CREATE INDEX IF NOT EXISTS attachments_ticket ON attachments (ticket_id);
+  CREATE INDEX IF NOT EXISTS work_orders_ticket ON work_orders (ticket_id);
+  CREATE INDEX IF NOT EXISTS apartments_company ON apartments (company_id);
+  CREATE INDEX IF NOT EXISTS residents_company ON residents (company_id);
+  CREATE INDEX IF NOT EXISTS tickets_resident ON tickets (resident_id);
+`);
 
 // Muistutussähköpostit käsittelijöille (0 = pois), suljettujen tehtävien ja lokin säilytysaika
 // kuukausina (0 = säilytetään toistaiseksi), saapuvan tehtävän prioriteetin arviointi AI:lla (0 = pois)

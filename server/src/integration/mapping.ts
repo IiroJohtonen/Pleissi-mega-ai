@@ -47,12 +47,23 @@ const CATEGORY: Record<string, FullTask["category"]> = {
 const CHANNEL: Record<string, FullTask["channel"]> = { email: "email", portal: "web_form", phone: "phone", manual: "manual" };
 
 // UTC-aika Suomen ajan offsetilla: 2026-10-24T15:45:00.000Z → 2026-10-24T18:45:00+03:00.
+// Muotoilijan luonti on hidasta, ja muunnos tehdään jokaisessa tehtävän muutoksessa, joten muotoilija luodaan kerran.
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function formatter(timeZone: string) {
+  let format = formatters.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-GB", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hourCycle: "h23", timeZoneName: "longOffset"
+    });
+    formatters.set(timeZone, format);
+  }
+  return format;
+}
+
 export function withOffset(iso: string, timeZone = "Europe/Helsinki") {
   const date = new Date(iso);
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hourCycle: "h23", timeZoneName: "longOffset"
-  }).formatToParts(date).map(part => [part.type, part.value]));
+  const parts = Object.fromEntries(formatter(timeZone).formatToParts(date).map(part => [part.type, part.value]));
   const offset = parts.timeZoneName === "GMT" ? "+00:00" : parts.timeZoneName.replace("GMT", "");
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset}`;
 }

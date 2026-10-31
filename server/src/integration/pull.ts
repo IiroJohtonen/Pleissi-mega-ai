@@ -25,15 +25,16 @@ export function publishOutbox(at = Date.now()) {
   for (const row of unpublished) byTask.set(row.task_id, [...(byTask.get(row.task_id) ?? []), row]);
   const delay = SEND_DELAY_MS();
   let published = 0;
+  // Kursori jatkaa suurimmasta annetusta; palvelin on yksi prosessi, joten laskuri pysyy oikeana kierroksen ajan.
+  let cursor = (db.prepare("SELECT MAX(cursor) AS cursor FROM integration_outbox WHERE cursor IS NOT NULL").get() as { cursor: number | null }).cursor ?? 0;
+  const assign = db.prepare("UPDATE integration_outbox SET cursor = ? WHERE event_id = ?");
   for (const rows of byTask.values()) {
     if (Math.max(...rows.map(row => Date.parse(row.created_at))) + delay > at) continue;
     const updates = rows.filter(row => row.event_type === "task.updated");
     const newest = updates.length ? coalesce(updates) : null;
     const publish = rows.filter(row => row.event_type !== "task.updated" || row.event_id === newest?.event_id);
     db.transaction(() => {
-      const next = db.prepare("SELECT COALESCE(MAX(cursor), 0) + 1 AS cursor FROM integration_outbox");
-      const assign = db.prepare("UPDATE integration_outbox SET cursor = ? WHERE event_id = ?");
-      for (const row of publish) assign.run((next.get() as { cursor: number }).cursor, row.event_id);
+      for (const row of publish) assign.run(++cursor, row.event_id);
     })();
     published += publish.length;
   }

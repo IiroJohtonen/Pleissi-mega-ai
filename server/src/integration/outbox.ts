@@ -167,6 +167,10 @@ const TASK_ROW = `json_object(
   'source_channel', NEW.source_channel, 'ai_action', NEW.ai_action, 'kind', NEW.kind, 'company_pending', NEW.company_pending,
   'sensitive', NEW.sensitive, 'topic', NEW.topic, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at)`;
 
+// tickets-sarakkeet, joista sanoma muodostetaan (TASK_ROW ja TASK_CONTEXT).
+const TASK_COLUMNS = `ticket_number, company_id, apartment_id, resident_id, type, priority, status, subject, summary,
+  source_channel, ai_action, kind, company_pending, sensitive, topic, assignee_id, updated_at`;
+
 const TASK_CONTEXT = `json_object(
   'erpRef', (SELECT external_id FROM integration_refs WHERE entity_type = 'task' AND entity_id = NEW.id AND system = 'erp'),
   'assigneeName', (SELECT name FROM users WHERE id = NEW.assignee_id),
@@ -237,7 +241,9 @@ export function installOutbox() {
     CREATE TEMP TRIGGER IF NOT EXISTS integration_tickets_insert AFTER INSERT ON main.tickets
     WHEN NEW.ticket_number IS NOT NULL
     BEGIN ${TASK_TRIGGER_BODY} END;
-    CREATE TEMP TRIGGER IF NOT EXISTS integration_tickets_update AFTER UPDATE ON main.tickets
+    -- Vain sanomaan vaikuttavien sarakkeiden muutos (ja updated_at, jolla liitteiden muutos tulee mukaan);
+    -- esim. luonnoksen tallennus ei käynnistä muunnosta lainkaan.
+    CREATE TEMP TRIGGER IF NOT EXISTS integration_tickets_update AFTER UPDATE OF ${TASK_COLUMNS} ON main.tickets
     WHEN NEW.ticket_number IS NOT NULL
     BEGIN ${TASK_TRIGGER_BODY} END;
     ${MESSAGE_TRIGGER}

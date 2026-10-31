@@ -8,7 +8,7 @@ import { db } from "./db.js";
 import { startIncidentJob } from "./incidents.js";
 import { startEmbeddingJob } from "./embedding.js";
 import { startIntegrationJob } from "./integration/dispatcher.js";
-import { processPendingInbox, purgeInboxPayloads } from "./integration/inbox.js";
+import { expirePendingInbox, purgeInboxPayloads } from "./integration/inbox.js";
 import { startPullJob } from "./integration/pull.js";
 import { weeklyMemoryProposals } from "./memory.js";
 import { sendEmail } from "./mail.js";
@@ -160,10 +160,10 @@ export function startMaintenanceJobs() {
   startIntegrationJob();
   // Hakutila: jonon rivit julkaistaan haettaviksi viiveen jälkeen (myös ilman ERP:n hakua).
   startPullJob(Number(process.env.INTEGRATION_POLL_MS) || 2_000);
-  // Vastaanotetut sanomat, joiden viittaus puuttui: uusi yritys ja 24 tunnin raja.
+  // Vastaanotetut sanomat, joiden viittaus puuttui: 24 tunnin raja (uusi yritys tehdään, kun tieto saapuu).
   setInterval(() => {
     try {
-      processPendingInbox();
+      expirePendingInbox();
     } catch (error: any) {
       console.error("Odottavien ERP-sanomien käsittely epäonnistui:", error?.message ?? error);
     }

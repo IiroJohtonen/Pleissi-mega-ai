@@ -43,18 +43,35 @@ describe("ERP:n tapahtumien vastaanotto", () => {
     const inTime = envelope("resident.upserted", residentData("R-OK", "HC-OK"));
     assert.equal(inbox.receiveEvents([late, inTime], null, start)[0].status, "pending");
 
-    // 23 h: edelleen odottaa, ja uusi yritys kasvattaa yrityskertoja.
-    inbox.processPendingInbox(start + 23 * HOUR);
-    assert.deepEqual([row(late.eventId).status, row(late.eventId).attempts], ["pending", 2]);
+    // 23 h: edelleen odottaa. Muun tiedon saapuminen ei käsittele odottavaa uudelleen.
+    assert.equal(inbox.expirePendingInbox(start + 23 * HOUR), 0);
+    inbox.receiveEvents([envelope("housingCompany.upserted", companyData("HC-MUU"))], null, start + 23 * HOUR);
+    assert.deepEqual([row(late.eventId).status, row(late.eventId).attempts], ["pending", 1]);
     // Puuttuva taloyhtiö saapuu ajoissa toiselle sanomalle.
     assert.equal(inbox.receiveEvents([envelope("housingCompany.upserted", companyData("HC-OK"))], null, start + 23.5 * HOUR)[0].status, "accepted");
-    assert.equal(row(inTime.eventId).status, "accepted");
+    assert.deepEqual([row(inTime.eventId).status, row(inTime.eventId).attempts], ["accepted", 2]);
 
-    inbox.processPendingInbox(start + 24 * HOUR + 1);
-    assert.deepEqual([row(late.eventId).status, row(late.eventId).reason], ["rejected", "unknown_reference"]);
+    // Tieto saapuu vasta 24 tunnin jälkeen, ennen ajastettua tarkistusta: sanoma hylätään eikä sitä käsitellä.
     inbox.receiveEvents([envelope("housingCompany.upserted", companyData("HC-LATE"))], null, start + 25 * HOUR);
-    assert.equal(row(late.eventId).status, "rejected", "hylättyä ei käsitellä uudelleen automaattisesti");
+    assert.deepEqual([row(late.eventId).status, row(late.eventId).reason], ["rejected", "unknown_reference"]);
     assert.equal(db.prepare("SELECT 1 FROM residents WHERE name = 'Asukas R-LATE'").get(), undefined);
+  });
+
+  it("ajastettu tarkistus hylkää yli 24 tuntia odottaneet, ja ketju taloyhtiö → asukas → poismuutto purkautuu kerralla", () => {
+    const start = Date.parse("2026-10-30T12:00:00Z");
+    const old = envelope("resident.upserted", residentData("R-VANHA", "HC-VANHA"));
+    inbox.receiveEvents([old], null, start);
+    assert.equal(inbox.expirePendingInbox(start + 24 * HOUR + 1), 1);
+    assert.deepEqual([row(old.eventId).status, row(old.eventId).reason], ["rejected", "unknown_reference"]);
+
+    const movedOut = envelope("resident.moved_out", { externalRefs: { erp: "R-KETJU" }, movedOutAt: "2026-12-31" });
+    const resident = envelope("resident.upserted", residentData("R-KETJU", "HC-KETJU"));
+    assert.deepEqual(inbox.receiveEvents([movedOut, resident], null, start).map(result => result.status), ["pending", "pending"]);
+    inbox.receiveEvents([envelope("housingCompany.upserted", companyData("HC-KETJU"))], null, start + HOUR);
+    assert.equal(row(resident.eventId).status, "accepted");
+    assert.equal(row(movedOut.eventId).status, "accepted");
+    const saved = db.prepare("SELECT moved_out_at FROM residents WHERE name = 'Asukas R-KETJU'").get() as { moved_out_at: string };
+    assert.equal(saved.moved_out_at, "2026-12-31");
   });
 
   it("sanoman sisältö poistetaan 30 päivän jälkeen, tulosrivi jää", () => {

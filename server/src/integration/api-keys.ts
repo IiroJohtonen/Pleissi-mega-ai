@@ -77,7 +77,12 @@ export function authenticateApiKey(header: string | undefined): ApiKey | null {
   const row = db.prepare(`SELECT ${COLUMNS} FROM integration_api_keys WHERE key_hash = ? AND revoked_at IS NULL`)
     .get(hash(match[1])) as (Omit<ApiKey, "scopes"> & { scopes: string }) | undefined;
   if (!row || row.tenant_id !== tenantId()) return null;
-  db.prepare("UPDATE integration_api_keys SET last_used_at = ? WHERE id = ?").run(now(), row.id);
+  // Viimeisin käyttö päivitetään enintään minuutin välein, jottei jokainen kutsu kirjoita tietokantaan.
+  const timestamp = now();
+  if (!row.last_used_at || Date.parse(timestamp) - Date.parse(row.last_used_at) >= 60_000) {
+    db.prepare("UPDATE integration_api_keys SET last_used_at = ? WHERE id = ?").run(timestamp, row.id);
+    row.last_used_at = timestamp;
+  }
   return parse(row);
 }
 
