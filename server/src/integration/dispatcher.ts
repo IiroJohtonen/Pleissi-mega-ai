@@ -180,7 +180,7 @@ async function notifyFailure(row: OutboxRow, status: number | null, error: strin
 
 // Yhdistää saman tehtävän odottavat päivitykset uusimpaan: vanhemmat merkitään ohitetuiksi, ja uusin saa
 // kaikkien muuttuneet kentät sekä suurimman yrityskerran, jotta uudelleenyritysten porrastus ei ala alusta.
-function coalesce(updates: OutboxRow[]): OutboxRow {
+export function coalesce(updates: OutboxRow[]): OutboxRow {
   const newest = updates[updates.length - 1];
   if (updates.length === 1) return newest;
   const fields = [...new Set(updates.flatMap(row => (row.changed_fields ? JSON.parse(row.changed_fields) as string[] : [])))];

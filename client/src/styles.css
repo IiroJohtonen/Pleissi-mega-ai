@@ -5419,3 +5419,19 @@ button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:dis
 .trends .data-table th, .trends .data-table td { border: 0; border-bottom: 1px solid var(--line); }
 .trends .data-table tbody tr:last-child th, .trends .data-table tbody tr:last-child td { border-bottom: 0; }
 .trends .data-table tbody th { font-weight: 500; color: var(--ink); }
+
+/* ERP-rajapinta: luotu avain näytetään kerran kopioitavaksi. */
+.api-key-created {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.api-key-value {
+  display: block;
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+  user-select: all;
+}

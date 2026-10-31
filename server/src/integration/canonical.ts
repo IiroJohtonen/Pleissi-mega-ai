@@ -12,8 +12,6 @@ export const SCHEMA_VERSION = "1.0";
 // Aika offsetin kanssa, esim. 2026-10-24T20:00:00+03:00 (myös Z hyväksytään).
 const dateTime = z.iso.datetime({ offset: true });
 const date = z.iso.date();
-const email = z.string().email().refine(value => value === value.toLowerCase(), "Sähköposti pienillä kirjaimilla");
-const phone = z.string().regex(/^\+[1-9]\d{6,14}$/, "Puhelinnumero E.164-muodossa");
 
 export const ExternalRefsSchema = z.object({ erp: z.string().nullable() });
 
@@ -33,61 +31,82 @@ export const EnvelopeSchema = z.object({
   occurredAt: dateTime,
   // Kuka muutoksen teki; estää synkkasilmukat.
   source: z.enum(["pleissi", "erp"]),
-  tenantId: z.string().min(1),
+  // Vain Pleissin julkaisemissa; ERP:n lähettämissä asiakas päätellään API-avaimesta.
+  tenantId: z.string().min(1).optional(),
   // Juokseva numero per olio: vanhempi sanoma ei koskaan ylikirjoita uudempaa.
   sequence: z.number().int().positive().optional(),
   // task.updated: mitkä kentät muuttuivat edellisestä lähetetystä tilasta.
   changedFields: z.array(z.string()).optional(),
+  // Vain jonosta haetuissa: tapahtuman paikka jonossa (c_000042).
+  cursor: z.string().optional(),
   data: z.unknown()
 });
 export type Envelope<T = unknown> = Omit<z.infer<typeof EnvelopeSchema>, "data"> & { data: T };
 
 // --- Taloyhtiöt (ERP → Pleissi) ---------------------------------------------------------------
+// ERP lähettää omat tunnisteensa (externalRefs.erp, pakollinen); Pleissin id saa puuttua.
 
-export const ApartmentSchema = z.object({
-  id: z.string(),
-  externalRefs: ExternalRefsSchema,
-  label: z.string(),
-  staircase: z.string().nullable(),
-  number: z.string()
-});
+const erpRefs = z.object({ erp: z.string().trim().min(1).max(100) });
+// Puuttuva arvo on null; tyhjä merkkijono hyväksytään samana.
+const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 
-export const BookableResourceSchema = z.object({
-  id: z.string(),
-  externalRefs: ExternalRefsSchema,
-  type: z.enum(["sauna", "laundry", "other"]),
-  name: z.string()
+export const ErpApartmentSchema = z.object({
+  externalRefs: erpRefs,
+  apartmentNumber: z.string().trim().min(1).max(40),
+  staircase: optionalText(20),
+  address: z.string().trim().min(1).max(200)
 });
 
 export const HousingCompanySchema = z.object({
-  id: z.string(),
-  externalRefs: ExternalRefsSchema,
-  name: z.string().min(1),
-  businessId: z.string().nullable().optional(),
-  address: z.object({ street: z.string(), postalCode: z.string(), city: z.string() }).nullable().optional(),
-  apartments: z.array(ApartmentSchema),
-  bookableResources: z.array(BookableResourceSchema).nullable().optional(),
-  propertyManager: z.object({ name: z.string(), email: email.nullable() }).nullable().optional()
+  externalRefs: erpRefs,
+  name: z.string().trim().min(1).max(200),
+  businessId: optionalText(30),
+  // Yhtiön sähköposti, jolla Pleissi tunnistaa yhtiölle tulevat viestit.
+  email: z.string().trim().toLowerCase().pipe(z.email()),
+  phone: optionalText(40),
+  // Kohdistetaan Pleissin käyttäjään sähköpostilla.
+  propertyManager: z.object({ email: z.string().trim().toLowerCase().pipe(z.email()).nullable().optional() }).nullable().optional(),
+  maintenance: z.object({
+    name: optionalText(200), phone: optionalText(40), email: z.string().trim().toLowerCase().pipe(z.union([z.literal(""), z.email()])).nullable().optional(),
+    emergencyPhone: optionalText(40)
+  }).nullable().optional(),
+  apartments: z.array(ErpApartmentSchema).max(5000).default([])
 });
 export type HousingCompany = z.infer<typeof HousingCompanySchema>;
 
 // --- Asukkaat (ERP → Pleissi) -----------------------------------------------------------------
 
-export const ResidentSchema = z.object({
-  id: z.string(),
-  externalRefs: ExternalRefsSchema,
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: email.nullable(),
-  phone: phone.nullable(),
-  housingCompanyId: z.string(),
-  apartmentId: z.string(),
-  role: z.enum(["owner", "tenant", "other"]),
-  validFrom: date,
-  validUntil: date.nullable(),
-  language: z.string().nullable().optional()
-}).refine(resident => resident.email !== null || resident.phone !== null, "Vähintään sähköposti tai puhelin");
+export const RESIDENT_ROLE_VALUES = ["asukas", "osakas"] as const;
+
+const residentFields = {
+  externalRefs: erpRefs,
+  apartmentRef: z.string().trim().min(1).max(100),
+  // Yksi nimikenttä, kuten Pleississä.
+  name: z.string().trim().min(1).max(200),
+  // Tyhjä merkkijono tulkitaan puuttuvaksi.
+  email: z.string().trim().toLowerCase().pipe(z.union([z.literal(""), z.email()])).nullable().optional(),
+  // E.164; Pleissi normalisoi myös suomalaisen muodon (040 …).
+  phone: z.string().trim().max(40).nullable().optional(),
+  roles: z.array(z.enum(RESIDENT_ROLE_VALUES)).min(1).max(2),
+  movedInAt: date.nullable().optional(),
+  movedOutAt: date.nullable().optional()
+};
+const contactRequired = (resident: { email?: string | null; phone?: string | null }) => Boolean(resident.email || resident.phone);
+const CONTACT_MESSAGE = "Vähintään sähköposti tai puhelin";
+
+export const ResidentSchema = z.object({ ...residentFields, housingCompanyRef: z.string().trim().min(1).max(100) })
+  .refine(contactRequired, CONTACT_MESSAGE);
 export type Resident = z.infer<typeof ResidentSchema>;
+
+// Ensilatauksessa asukkaat ovat taloyhtiön sisällä, joten taloyhtiön viittausta ei tarvita.
+export const SyncResidentSchema = z.object(residentFields).refine(contactRequired, CONTACT_MESSAGE);
+export type SyncResident = z.infer<typeof SyncResidentSchema>;
+
+export const ResidentMovedOutSchema = z.object({
+  externalRefs: erpRefs,
+  // Puuttuessa tänään.
+  movedOutAt: date.nullable().optional()
+});
 
 // --- Varaukset (molemmat suunnat; lähetys toteutetaan myöhemmin) ------------------------------
 
@@ -142,26 +161,39 @@ export const AttachmentSchema = z.object({
   contentType: z.string()
 });
 
-export const TaskSchema = z.object({
+// Tehtävän tunnisteet ja tila; arkaluonteisesta tehtävästä lähetetään vain nämä.
+const taskIdentity = {
   id: z.string(),
   externalRefs: ExternalRefsSchema,
+  // Juokseva numero taloyhtiöittäin; näkyy asukkaalle viesteissä.
+  ticketNumber: z.number().int().nullable(),
   title: z.string(),
-  description: z.string().nullable(),
-  category: z.enum(TASK_CATEGORIES),
-  priority: z.enum(TASK_PRIORITIES),
-  status: z.enum(TASK_STATUSES),
-  channel: z.enum(TASK_CHANNELS),
-  housingCompanyId: z.string(),
-  apartmentId: z.string().nullable(),
-  residentId: z.string().nullable(),
-  assignee: AssigneeSchema.nullable(),
-  relatedBookingId: z.string().nullable(),
-  attachments: z.array(AttachmentSchema),
-  commentCount: z.number().int().nonnegative(),
-  createdAt: dateTime,
-  updatedAt: dateTime
-});
+  status: z.enum(TASK_STATUSES)
+};
+
+export const TaskSchema = z.discriminatedUnion("sensitive", [
+  z.object({
+    ...taskIdentity,
+    sensitive: z.literal(false),
+    description: z.string().nullable(),
+    category: z.enum(TASK_CATEGORIES),
+    priority: z.enum(TASK_PRIORITIES),
+    channel: z.enum(TASK_CHANNELS),
+    housingCompanyId: z.string(),
+    apartmentId: z.string().nullable(),
+    residentId: z.string().nullable(),
+    assignee: AssigneeSchema.nullable(),
+    relatedBookingId: z.string().nullable(),
+    attachments: z.array(AttachmentSchema),
+    commentCount: z.number().int().nonnegative(),
+    createdAt: dateTime,
+    updatedAt: dateTime
+  }),
+  // Arkaluonteinen: ei kuvausta, käsittelijää, liitteitä eikä kommentteja.
+  z.object({ ...taskIdentity, sensitive: z.literal(true) })
+]);
 export type Task = z.infer<typeof TaskSchema>;
+export type FullTask = Extract<Task, { sensitive: false }>;
 
 // --- Kommentit ---------------------------------------------------------------------------------
 
@@ -171,7 +203,7 @@ export const CommentSchema = z.object({
   taskId: z.string(),
   // AI:n kommentit aina type "ai", jotta niitä ei tulkita isännöitsijän omiksi.
   author: z.object({ type: z.enum(["ai", "propertyManager", "resident"]), name: z.string() }),
-  // public näkyy asukkaalle, internal vain toimistolle.
+  // public näkyy asukkaalle. Sisäisiä muistiinpanoja ei julkaista, joten Pleissin sanomissa arvo on aina public.
   visibility: z.enum(["public", "internal"]),
   text: z.string(),
   createdAt: dateTime
