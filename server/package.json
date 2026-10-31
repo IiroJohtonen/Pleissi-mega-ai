@@ -15,6 +15,7 @@
     "backup": "tsx src/backup-cli.ts",
     "eval": "node --import tsx eval/run.ts",
     "eval:retrieval": "node --import tsx eval/retrieval.ts",
+    "bench:integration": "node --import tsx eval/integration-bench.ts",
     "embeddings:download": "tsx src/embedding-cli.ts download",
     "embeddings:rebuild": "tsx src/embedding-cli.ts rebuild",
     "lint": "eslint ."
