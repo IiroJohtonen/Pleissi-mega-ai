@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { usePaged } from "../components/common";
 import { actionLabel, actorLabel, formatDate, formatTicketNumber } from "../format";
 import { api } from "../session";
-import { AiRequestDetails, aiRequestLabel } from "../components/AiRequest";
+import { AgentTraceDetails, AiRequestDetails, aiRequestLabel } from "../components/AiRequest";
 import { t } from "../i18n";
 
 type AuditEntry = {
@@ -110,6 +110,7 @@ export function AuditLog() {
                         </details>
                       )}
                       {entry.action === "ai_request" && entry.ticket_subject !== "Arkaluonteinen tehtävä" && <AiRequestDetails auditId={entry.id} />}
+                      {entry.action === "ai_agent_trace" && <AgentTraceDetails auditId={entry.id} />}
                     </td>
                     <td>{actorLabel(entry.actor)}</td>
                     <td>

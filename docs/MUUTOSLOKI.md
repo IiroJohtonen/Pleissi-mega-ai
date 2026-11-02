@@ -3,6 +3,27 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+
+## 2.11.2026 · AI-luonnosten muokkausmittari, AI:n vastaukset lokiin ja agentin jäljitys
+
+**Mitä muutettiin**
+- Kun käsittelijä lähettää vastauksen AI:n vastausehdotuksen pohjalta, Pleissi vertaa lähetettyä tekstiä
+  luonnokseen: lähtikö se sellaisenaan, pienellä tai isolla muokkauksella vai kirjoitettiinko se uudelleen.
+- Muokatuista luonnoksista AI arvioi, oliko muutos pelkkää sävyä (sanamuoto, kohteliaisuus) vai asiakorjaus
+  (päivä, lupaus, ohje tai vastuu muuttui). AI näkee vain muuttuneet kohdat, henkilötiedot peitettyinä.
+- Trendit-raporttiin tuli osio "AI-luonnosten muokkaus" aiheittain. Siinä näkyy myös, täyttyykö aiheelle
+  AI-agentin raja: vähintään 100 luonnosta, joista 99 % lähti sellaisenaan tai pelkällä sävymuokkauksella.
+  Agentin henkilökunnalle siirtämät tehtävät näkyvät omana sarakkeenaan.
+- Lokissa näkyy nyt AI:lle lähetetyn tiedon rinnalla myös se, mitä AI vastasi.
+- AI-agentin jokainen työkalukutsu (esimerkiksi vapaiden vuorojen haku ja varaus) tallentuu tehtävälle
+  syötteineen ja tuloksineen. Jäljitys aukeaa tehtävän tapahtumista.
+
+**Miten**
+- Raportit › Trendit › AI-luonnosten muokkaus.
+- Asetukset › Loki: "Näytä AI:lle lähetetty tieto ja vastaus".
+- Tehtävä: tapahtuma "AI-agentin ajon jäljitys" › "Näytä agentin työkalukutsut" (isännöitsijät ja pääkäyttäjät).
+
+**Testit:** PR:n kuvauksessa
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**

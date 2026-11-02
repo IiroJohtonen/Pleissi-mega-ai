@@ -164,6 +164,24 @@ describe("AI-agentti", () => {
     const bookings = (await call(server, matti, "GET", `/portal/bookings?resource=sauna&from=${encodeURIComponent(helsinkiIso(day, 0))}&to=${encodeURIComponent(helsinkiIso(addDays(day, 5), 0))}`)).data as any[];
     assert.deepEqual(bookings.filter(booking => booking.mine).map(booking => booking.starts_at), [offered[0]]);
     assert.ok(closed.audit.some((entry: any) => entry.action === "ai_agent_booked"));
+
+    // Jokainen ajo jättää jäljityksen: työkalukutsut syötteineen ja tuloksineen, myös lukutyökalut.
+    const traces = closed.audit.filter((entry: any) => entry.action === "ai_agent_trace")
+      .sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
+    assert.equal(traces.length, 2);
+    const first = JSON.parse((await call(server, admin, "GET", `/audit/${traces[0].id}/ai-request`)).data.payload);
+    assert.equal(first.outcome, "replied");
+    assert.deepEqual(first.steps.map((step: any) => step.tool), ["check_slot", "find_free_slots", "reply_to_resident"]);
+    assert.equal(first.steps[0].input.starts_at, requested);
+    const second = JSON.parse((await call(server, admin, "GET", `/audit/${traces[1].id}/ai-request`)).data.payload);
+    assert.deepEqual(second.steps.map((step: any) => step.tool), ["book_slot", "reply_to_resident"]);
+    assert.match(String(first.steps[0].output), /already booked/);
+    assert.ok(first.steps.every((step: any) => typeof step.ms === "number"));
+    // AI:n vastaukset tallentuvat pyynnön rinnalle.
+    const request = (await call(server, admin, "GET", "/audit")).data.find((entry: any) => entry.action === "ai_request" && entry.ticket_id === ticketId);
+    const stored = (await call(server, admin, "GET", `/audit/${request.id}/ai-request`)).data;
+    assert.ok(stored.response);
+    assert.match(stored.response, /tool_use/);
   });
 
   it("ei varaa vuoroa, jota asukkaalle ei ole tarjottu", async () => {

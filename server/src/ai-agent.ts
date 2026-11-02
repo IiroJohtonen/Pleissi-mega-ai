@@ -3,7 +3,7 @@ import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { aiAvailable } from "./ai.js";
 import { aiBudgetExhausted, recordAiUsage } from "./ai-budget.js";
-import { logAiRequest, withAiLog } from "./ai-log.js";
+import { type AgentTraceStep, logAgentTrace, logAiRequest, logAiResponse, withAiLog } from "./ai-log.js";
 import { slotLabel } from "./booking-queue.js";
 import { db } from "./db.js";
 import { drafts, type Incident } from "./incidents.js";
@@ -426,6 +426,28 @@ async function similarExamples(ticket: AgentTicket) {
   });
 }
 
+// Ajon jäljitys: jokainen työkalukutsu (myös lukutyökalut) syötteineen ja tuloksineen talteen.
+function traced<T extends { name: string; run: (...args: any[]) => unknown }>(tool: T, steps: AgentTraceStep[]): T {
+  const run = tool.run;
+  return {
+    ...tool,
+    run: async (...args: any[]) => {
+      const started = Date.now();
+      const step: AgentTraceStep = { tool: tool.name, input: args[0] ?? null, output: null, at: new Date(started).toISOString(), ms: 0 };
+      steps.push(step);
+      try {
+        step.output = await run(...args);
+        return step.output;
+      } catch (error) {
+        step.error = error instanceof Error ? error.message : String(error);
+        throw error;
+      } finally {
+        step.ms = Date.now() - started;
+      }
+    }
+  };
+}
+
 async function runAgent(ticket: AgentTicket, manual: boolean): Promise<AgentResult> {
   const company = db.prepare("SELECT name FROM companies WHERE id = ?").get(ticket.company_id) as { name: string } | undefined;
   const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string } | undefined;
@@ -446,7 +468,9 @@ ${memoryForAi(ticket.company_id).map(note => `- ${note}`).join("\n") || "(none)"
 Conversation (oldest first):
 ${conversation(ticket.id)}
 ${examplesPrompt(await similarExamples(ticket))}`;
-  logAiRequest("agent", { model, system, messages: [{ role: "user", content: user }], max_tokens: 16000 });
+  const requestId = logAiRequest("agent", { model, system, messages: [{ role: "user", content: user }], max_tokens: 16000 });
+  const steps: AgentTraceStep[] = [];
+  const responses: Anthropic.Beta.BetaMessage[] = [];
 
   const client = new Anthropic();
   const runner = client.beta.messages.toolRunner({
@@ -456,17 +480,23 @@ ${examplesPrompt(await similarExamples(ticket))}`;
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    tools: tools(ticket, state),
+    tools: tools(ticket, state).map(tool => traced(tool, steps)),
     messages: [{ role: "user", content: user }],
     output_config: { effort: "medium" }
   });
-  for await (const message of runner) {
-    recordAiUsage("agent", message.model || model, message.usage);
-    if (message.stop_reason === "refusal") break;
-    if (state.replied || state.handedOver) {
-      // Vastaus tai siirto on tehty; loppuosaa ei tarvita.
-      if (!message.content.some(block => block.type === "tool_use")) break;
+  try {
+    for await (const message of runner) {
+      responses.push(message);
+      recordAiUsage("agent", message.model || model, message.usage);
+      if (message.stop_reason === "refusal") break;
+      if (state.replied || state.handedOver) {
+        // Vastaus tai siirto on tehty; loppuosaa ei tarvita.
+        if (!message.content.some(block => block.type === "tool_use")) break;
+      }
     }
+  } finally {
+    logAiResponse(requestId, responses);
+    logAgentTrace(model, steps, state.replied ? "replied" : state.handedOver ? "handed_over" : "unfinished");
   }
 
   if (state.replied) {
