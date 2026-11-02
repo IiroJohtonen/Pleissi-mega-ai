@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import http from "node:http";
+import path from "node:path";
+import Database from "better-sqlite3";
 import type { AddressInfo } from "node:net";
 import { after, before, describe, it } from "node:test";
 import { ADMIN_EMAIL, call, login, SERVICE_EMAIL, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
@@ -228,6 +230,29 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
 
     const stored = (await call(server, admin, "GET", "/companies/demo-company/reports/topics?period=month")).data.report;
     assert.equal(stored.covered.length, 1);
+  });
+
+  it("raportti saa toimiston vastaukset asukkaalle peitettyinä, ei urakoitsijaviestejä", async () => {
+    const ticket = await inbound("Pyykkituvan kuivausrumpu", "Kuivausrumpu ei käynnisty.");
+    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
+    try {
+      const add = db.prepare("INSERT INTO messages (id, ticket_id, direction, sender, subject, body, created_at, channel) VALUES (?, ?, 'outbound', 'Hanna', 'Re', ?, ?, ?)");
+      add.run("reply-1", ticket.id, "Huolto tulee maanantaina. Soita tarvittaessa 040 765 4321 tai hanna@example.com.", "2026-10-01T10:00:00.000Z", "email");
+      add.run("order-1", ticket.id, "Työtilaus: vaihtakaa rummun hihna, ovikoodi 1234.", "2026-10-01T11:00:00.000Z", "contractor");
+      add.run("reply-2", ticket.id, "Rumpu on korjattu.", "2026-10-02T10:00:00.000Z", "email");
+    } finally {
+      db.close();
+    }
+    const created = await call(server, admin, "POST", "/companies/demo-company/reports/topics", {
+      period: "month", since: new Date(Date.now() - 30 * 86_400_000).toISOString()
+    });
+    assert.equal(created.status, 200);
+    const sent = requests.at(-1).body.messages[0].content as string;
+    const line = sent.slice(sent.indexOf("Pyykkituvan kuivausrumpu"));
+    assert.match(line, /Office reply 1: Huolto tulee maanantaina/);
+    assert.match(line, /Office reply 2: Rumpu on korjattu/);
+    assert.doesNotMatch(sent, /040 765 4321|hanna@example\.com/, "toimiston vastauksen yhteystiedot peitetään");
+    assert.doesNotMatch(sent, /Työtilaus|ovikoodi/, "urakoitsijalle lähetetty viesti ei ole vastaus asukkaalle");
   });
 
   it("AI:n virhe ei estä tehtävän syntymistä, vaan prioriteetti tulee avainsanoista", async () => {

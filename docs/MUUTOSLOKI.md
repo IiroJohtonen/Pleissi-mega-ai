@@ -3,6 +3,20 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+
+## 2.11.2026 · Toistuvien aiheiden raportti: kaikki vastaukset, henkilötiedot peitetty
+
+**Mitä muutettiin**
+- Raportti ottaa huomioon kaikki toimiston vastaukset asukkaalle (enintään viisi tehtävää kohden), ei vain
+  ensimmäistä, joten dokumentaatioehdotus perustuu siihen, miten asia lopulta ratkesi.
+- Huoltoyhtiölle lähetettyjä työtilauksia ei enää pidetä vastauksina asukkaalle.
+- Toimiston vastauksista peitetään puhelinnumerot, sähköpostiosoitteet ja muut henkilötiedot ennen AI:ta,
+  kuten asukkaan viesteistä.
+
+**Miten**
+- Raportit › Toistuvat aiheet › Luo raportti. Raportin ulkoasu ei muutu.
+
+**Testit:** PR:n kuvauksessa
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**

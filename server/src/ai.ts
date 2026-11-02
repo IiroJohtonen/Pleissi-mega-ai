@@ -498,8 +498,8 @@ export type TopicTicket = {
   type: string;
   subject: string;
   summary: string;
-  // Toimiston tehtävälle lähettämä vastaus, jos sellainen on.
-  reply?: string | null;
+  // Toimiston asukkaalle lähettämät vastaukset vanhimmasta alkaen (enintään 5); ei työtilausviestejä huoltoyhtiölle.
+  replies?: string[];
 };
 
 export type RecurringTopic = {
@@ -537,6 +537,8 @@ export function aiAvailable(): boolean {
 // Ryhmittelee tehtävät toistuviksi aiheiksi merkityksen perusteella. Aiheet, joihin AI:n käytössä oleva
 // dokumentaatio (knowledge) jo vastaa, palautetaan erikseen (covered) eikä niitä ehdoteta uudelleen
 // dokumentoitaviksi. Heittää virheen, jos AI ei vastaa.
+export const MAX_TOPIC_REPLIES = 5;
+
 export async function analyzeRecurringTopics(
   tickets: TopicTicket[],
   knowledge: KnowledgeItem[] = []
@@ -560,7 +562,9 @@ summary: one sentence describing what residents ask or report.
 documentation: a draft knowledge-base entry for this topic, 2 to 5 sentences. The office saves it
 after review, and an AI assistant then uses it as fact when drafting replies to similar tickets, so
 it must read as the housing company's own instruction to residents: what to do, and whom to contact.
-Base it only on the tickets and on the replies the office has already sent (marked "Office reply").
+Base it only on the tickets and on the replies the office has already sent to the resident. A ticket
+can have several replies; each is on its own line marked "Office reply 1:", "Office reply 2:" and so
+on, oldest first.
 Never invent facts such as phone numbers, names, schedules, prices or responsibilities. Where a
 needed fact is not in the tickets or replies, write a bracketed placeholder for the office to fill
 in, for example "[täydennä: huoltoyhtiön puhelinnumero]".
@@ -583,7 +587,10 @@ repeating it. If there is no existing documentation, covered is an empty list.
   const user = tickets
     .map((ticket, index) =>
       `${index + 1}: [${ticket.type}] ${maskPersonalData(ticket.subject)} — ${maskPersonalData(ticket.summary.slice(0, 300))}`
-      + (ticket.reply ? `\n   Office reply: ${ticket.reply.replace(/\s+/g, " ").slice(0, 400)}` : ""))
+      // Toimiston vastauksissa voi olla asukkaan yhteystietoja (lainaus, allekirjoitus), joten ne peitetään kuten asukkaan teksti.
+      + (ticket.replies ?? []).slice(0, MAX_TOPIC_REPLIES)
+        .map((reply, replyIndex) => `\n   Office reply ${replyIndex + 1}: ${maskPersonalData(reply.replace(/\s+/g, " ").slice(0, 800))}`)
+        .join(""))
     .join("\n");
 
   const response = await ai.client.beta.messages.parse(logAiRequestParams("topics", {

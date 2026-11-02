@@ -1,7 +1,7 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext, visibleCompanyIds } from "../access.js";
-import { aiAvailable, analyzeRecurringTopics, type CoveredTopic, type RecurringTopic, type TopicTicket } from "../ai.js";
+import { aiAvailable, analyzeRecurringTopics, type CoveredTopic, MAX_TOPIC_REPLIES, type RecurringTopic, type TopicTicket } from "../ai.js";
 import { aiBudgetExhausted } from "../ai-budget.js";
 import { db } from "../db.js";
 import { isAdmin, type User } from "../auth.js";
@@ -61,16 +61,20 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
     });
   }
 
+  // Toimiston vastaukset asukkaalle vanhimmasta alkaen; huoltoyhtiölle lähetetyt työtilausviestit eivät ole vastauksia.
   const tickets = (db.prepare(`
     SELECT t.id, t.ticket_number, t.type, t.subject, t.summary,
-           (SELECT m.body FROM messages m
-            WHERE m.ticket_id = t.id AND m.direction = 'outbound'
-            ORDER BY m.created_at LIMIT 1) AS reply
+           (SELECT json_group_array(body) FROM (
+              SELECT m.body FROM messages m
+              WHERE m.ticket_id = t.id AND m.direction = 'outbound' AND COALESCE(m.channel, '') != 'contractor'
+              ORDER BY m.created_at LIMIT ?
+            )) AS replies
     FROM tickets t
     WHERE t.company_id = ? AND t.created_at >= ? AND t.sensitive = 0 AND t.company_pending = 0
     ORDER BY created_at DESC
     LIMIT ?
-  `).all(companyId, parsed.data.since, MAX_TOPIC_TICKETS) as TopicTicket[])
+  `).all(MAX_TOPIC_REPLIES, companyId, parsed.data.since, MAX_TOPIC_TICKETS) as (Omit<TopicTicket, "replies"> & { replies: string })[])
+    .map(ticket => ({ ...ticket, replies: JSON.parse(ticket.replies) as string[] }))
     // Arkaluonteiset tehtävät eivät mene AI:lle, myöskään merkitsemättömät, joiden teksti osuu sanalistaan.
     .filter(ticket => sensitiveMatches(`${ticket.subject}\n${ticket.summary}`).length === 0);
 
