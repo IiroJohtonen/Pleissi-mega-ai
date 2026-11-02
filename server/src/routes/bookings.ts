@@ -142,7 +142,11 @@ export function createBookings(input: {
   residentId: string | null;
   note: string;
   createdBy: string;
-}): { created: number; skipped: string[] } {
+  // requested = odottaa ERP:n vahvistusta (AI-agentin varaus integraation ollessa päällä).
+  status?: "confirmed" | "requested";
+  // Tehtävä, jolta varaus tehtiin (AI-agentti).
+  ticketId?: string | null;
+}): { created: number; skipped: string[]; ids: string[] } {
   const seriesId = input.occurrences.length > 1 ? id("series") : null;
   const overlap = db.prepare(`
     SELECT 1 FROM bookings
@@ -150,12 +154,13 @@ export function createBookings(input: {
     LIMIT 1
   `);
   const insert = db.prepare(`
-    INSERT INTO bookings (id, company_id, resource, resident_id, note, starts_at, ends_at, created_by, created_at, series_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO bookings (id, company_id, resource, resident_id, note, starts_at, ends_at, created_by, created_at, series_id, status, ticket_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   let created = 0;
   const skipped: string[] = [];
+  const ids: string[] = [];
   db.transaction(() => {
     for (const { startsAt, endsAt } of input.occurrences) {
       const valid = endsAt > startsAt
@@ -165,12 +170,14 @@ export function createBookings(input: {
         skipped.push(startsAt);
         continue;
       }
-      insert.run(id("booking"), input.companyId, input.resource, input.residentId, input.note,
-        startsAt, endsAt, input.createdBy, now(), seriesId);
+      const bookingId = id("booking");
+      insert.run(bookingId, input.companyId, input.resource, input.residentId, input.note,
+        startsAt, endsAt, input.createdBy, now(), seriesId, input.status ?? "confirmed", input.ticketId ?? null);
+      ids.push(bookingId);
       created++;
     }
   })();
-  return { created, skipped };
+  return { created, skipped, ids };
 }
 
 // Poistaa varauksen. series=1 poistaa myös saman sarjan myöhemmät vuorot. Vapautuneet vuorot

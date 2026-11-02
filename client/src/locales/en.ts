@@ -2517,4 +2517,8 @@ export const en: Record<string, string> = {
   "ERP:n jonohaun asetusta muutettu": "ERP queue fetch setting changed",
   "ERP:n ensilataus: taloyhtiöt ja asukkaat päivitetty": "ERP initial load: housing companies and residents updated",
   "ERP hakee tehtävät ja kommentit jonosta. Lähetetty tarkoittaa, että ERP on hakenut sanoman.": "The ERP fetches tasks and comments from the queue. Sent means that the ERP has fetched the message.",
+  "Varaus tehty": "Booking created",
+  "Varaus peruttu": "Booking cancelled",
+  "ERP vahvisti AI-agentin varauksen; vahvistus lähti asukkaalle": "The ERP confirmed the AI agent booking; the confirmation was sent to the resident",
+  "ERP hylkäsi AI-agentin varauksen, koska vuoro oli jo varattu": "The ERP rejected the AI agent booking because the slot was already taken",
 };

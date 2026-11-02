@@ -26,7 +26,7 @@ Tämä osio seuraa, mitä specistä on toteutettu ja mitä tehdään seuraavaksi
 | 0 | Integraation 1. vaihe aiemmalla mallilla: jono, sanomamalli, adapteri ja simuloitu ERP, uudelleenyritykset, Integraatioloki | Valmis | Pleissi | Valmistui 26.10.2026; pohja kaikelle alla olevalle |
 | 1 | Asukkaan puhelinkenttä ja tunnistus puhelinnumerolla | Valmis | Pleissi | 30.10.2026: `residents.phone` (E.164) ja `moved_in_at`; asukkaan tiedot, CSV/Excel-tuonti, tunnistus sähköposti → puhelin → nimi |
 | 2 | Integraatiokysely Avaalle (REST, testiympäristö, kustannukset) | Odottaa muita | Avaa | Odotetaan vastausta; seuraavaksi ehdotetaan Pleissin rajapintamallia |
-| 3 | ERP-tunnisteet: `integration_refs` laajennus taloyhtiöihin, asuntoihin, asukkaisiin ja varauksiin | Työn alla | Pleissi | 30.10.2026: taloyhtiöt, asunnot ja asukkaat valmiit (`companies.business_id` oli jo); varaukset puuttuvat |
+| 3 | ERP-tunnisteet: `integration_refs` laajennus taloyhtiöihin, asuntoihin, asukkaisiin ja varauksiin | Valmis | Pleissi | 30.10.2026: taloyhtiöt, asunnot ja asukkaat; 2.11.2026: varaukset (ERP:n tunniste 201-vastauksesta) |
 | 4 | API-avaimet: taulu, oikeudet ja hallinta asetuksissa | Valmis | Pleissi | 30.10.2026: `integration_api_keys` (vain tiiviste), Asetukset › Tietoturva › ERP-rajapinta; avainkohtainen pyyntöraja 120/min |
 | 5 | Vastaanotto `POST /api/v1/events` + vastaanottoloki (idempotenssi) | Työn alla | Pleissi | 30.10.2026: `housingCompany.upserted`, `resident.upserted`, `resident.moved_out` ja `integration_inbox` valmiit; varaukset ja huoltopyynnöt puuttuvat |
 | 6 | Ensilataus `POST /api/v1/sync/housing-companies` | Valmis | Pleissi | 30.10.2026: listasta puuttuvat asukkaat merkitään poismuuttaneiksi |
@@ -34,7 +34,7 @@ Tämä osio seuraa, mitä specistä on toteutettu ja mitä tehdään seuraavaksi
 | 8 | Tehtävät: ERP:n huoltopyyntöjen vastaanotto (`erp_app`, `reporter`), sanomiin `ticketNumber`, `sensitive` ja ERP-viittaukset | Työn alla | Pleissi | Tehtävien ja kommenttien julkaisu on valmis |
 | 9 | Sisäiset muistiinpanot pois jonosta | Valmis | Pleissi | 30.10.2026 |
 | 10 | Arkaluonteiset: oikea otsikko ja `sensitive: true` | Valmis | Pleissi | 30.10.2026: vain `id`, `externalRefs`, `ticketNumber`, `title`, `status`, `sensitive` |
-| 11 | Varaukset molempiin suuntiin + päällekkäisyystarkistus | Ei aloitettu | Pleissi |  |
+| 11 | Varaukset molempiin suuntiin + päällekkäisyystarkistus | Työn alla | Pleissi | 2.11.2026: Pleissi → ERP valmis (`booking.created`, `booking.cancelled`, adapteri ja mock 201/409, agentin varaus odottaa vahvistusta); ERP → Pleissi ja hakutilan vahvistus puuttuvat |
 | 12 | Asukastietojen poisto myös vastaanottolokista | Valmis | Pleissi | 30.10.2026 |
 | 13 | Integraatiolokin oma käyttöoikeus ja uudelleenkäsittely käsin | Työn alla | Pleissi | Näkymä on valmis pääkäyttäjälle |
 | 14 | Odotustila (`pending`) ja automaattinen uudelleenkäsittely puuttuvan viittauksen sanomille | Valmis | Pleissi | 30.10.2026: perustiedot; varaukset kohdan 11 mukana |
@@ -49,6 +49,7 @@ Tämä osio seuraa, mitä specistä on toteutettu ja mitä tehdään seuraavaksi
 
 | Päivä | Päätös tai muutos |
 | --- | --- |
+| 2.11.2026 | Varaukset lähtevään jonoon (`booking.created`, `booking.cancelled`). Kun ERP-adapteri on käytössä, AI-agentin varaus on tilassa `requested` eikä agentti vahvista sitä asukkaalle: ERP:n 201 + tunniste → `confirmed` ja asukkaalle vakiovahvistus samaan ketjuun; 409 → varaus perutaan Pleississä ja agentti tarjoaa seuraavia vapaita vuoroja. Muun varauksen 409 ei poista varausta asukkaalta, vaan siitä tulee hälytys henkilökunnalle. Hakutilassa (ei adapteria) varaukset julkaistaan vahvistettuina, koska ERP:llä ei vielä ole vahvistusreittiä. |
 | 30.10.2026 | Toteutettu kohdat 1, 4, 6, 7, 9, 10, 12, 14 ja 15 sekä osin 3 ja 5. Hakutila kytketään ympäristömuuttujalla `INTEGRATION_PULL=true` tai asetuksista; adapterin kanssa Pleissi lähettää itse, joten haku on käytössä vain ilman adapteria. Asukkaan nimi on sanomassa yksi kenttä (`name`). Odotustila koskee myös poismuuttoa, jonka asukasta ei vielä ole. Tehtävä kirjataan jonoon vasta, kun sillä on tehtävänumero. |
 | 30.10.2026 | Spec ja tehtävälista päivitetty vastaamaan Pleissi-mega-ai-repon koodia (integraation 1. vaihe valmis 26.10.). Sanomissa pysyvät yleiset arvot (esim. in\_progress, critical, maintenance) ja tapahtuma task.comment.added; sisäisiä muistiinpanoja ei lähetetä ERP:hen. ERP:n huoltopyynnöissä mukana ilmoittajan nimi, sähköposti ja puhelin varatunnistusta varten; huoltopyyntö luodaan aina heti eikä jää odotustilaan. Lisätty myös epäonnistuneiden sanomien käsittely ja valvonta: odotustila, uudelleenkäsittely, hälytykset ja täsmäytys tehtäville ja varauksille. |
 | 30.10.2026 | Varauksia voi tehdä molemmissa järjestelmissä (ERP:n asukasportaali sekä Pleissin sähköposti, puhelin ja portaali); molempien pitää tukea sitä. |
@@ -297,7 +298,7 @@ Varauksia voi tehdä molemmissa järjestelmissä, ja molempien pitää tukea sit
 - **ERP → Pleissi:** ERP lähettää sovelluksessa tehdyt varaukset ja peruutukset heti (`booking.created`, `booking.cancelled`)
 - **Pleissi → ERP:** ERP hakee Pleississä tehdyt varaukset ja peruutukset jonosta
 - **Pleissin taulu:** `bookings`; tilat nykyisin `sauna` ja `laundry` (pesutupa)
-- **AI:n toiminta:** tarkistaa vapaan vuoron Pleissin kalenterista, johon ERP:n varaukset on jo tuotu, varaa ja vahvistaa asukkaalle heti
+- **AI:n toiminta:** tarkistaa vapaan vuoron Pleissin kalenterista, johon ERP:n varaukset on jo tuotu, ja varaa. Ilman ERP-adapteria (tai hakutilassa) vahvistaa asukkaalle heti. Kun ERP-adapteri on käytössä, varaus jää tilaan `requested`: agentti kertoo asukkaalle, että varausta käsitellään, ja vahvistus lähtee vasta ERP:n hyväksyttyä varauksen (ks. Toteutus alla)
 
 **Kertavaraus**
 
@@ -563,7 +564,8 @@ Integraation ensimmäinen vaihe on toteutettu 26.10.2026 aiemman mallin mukaan: 
 | Pleissin arvojen käännös yleisiin arvoihin | `mapping.ts` | Ks. arvotaulukko osiossa Tehtävät |
 | Lähtevä jono `integration_outbox` | `outbox.ts` | Kirjaus tietokantatriggerillä samassa transaktiossa kuin muutos; tilat pending, sent, failed, superseded |
 | ERP-tunnisteet `integration_refs` | `outbox.ts` | Erillinen taulu sarakkeiden sijaan; laajennetaan taloyhtiöihin, asuntoihin, asukkaisiin ja varauksiin |
-| ERP-adapterin rajapinta ja simuloitu ERP | `adapter.ts`, `mock-adapter.ts` | Asetus `INTEGRATION_ADAPTER` (tyhjä = pois, `mock` = simuloitu) |
+| ERP-adapterin rajapinta ja simuloitu ERP | `adapter.ts`, `mock-adapter.ts` | Asetus `INTEGRATION_ADAPTER` (tyhjä = pois, `mock` = simuloitu). Varaukset: `createBooking` (201 + tunniste tai 409) ja `cancelBooking`; mock simuloi ERP:n kalenteria |
+| Varaukset jonoon (2.11.) | `outbox.ts`, `dispatcher.ts`, `ai-agent.ts` | `booking.created` / `booking.cancelled` triggerillä; agentin varaus `requested` → 201 `confirmed` + vakiovahvistus asukkaalle, 409 → peruutus Pleississä ja agentti tarjoaa uudet vuorot; ennen lähetystä peruttu varaus ei mene ERP:hen |
 | Lähetys, yhdistäminen ja uudelleenyritykset | `dispatcher.ts` | 1, 5 ja 30 min; epäonnistuessa merkintä tehtävän historiaan ja sähköposti vastuuisännöitsijälle |
 | Integraatioloki-näkymä | Asetukset › Tietoturva › Integraatioloki | Vain pääkäyttäjä; sanoman avaus kirjataan toimintalokiin |
 | Asukastietojen poisto jonosta | `resident-erasure` | Myös jo lähetetyt sanomat anonymisoidaan |
@@ -586,7 +588,7 @@ Integraation ensimmäinen vaihe on toteutettu 26.10.2026 aiemman mallin mukaan: 
 | Tehtävän haku | `GET /api/v1/tasks/{id}` |
 | Vastaanoton muut tapahtumat | `housingCompany.deleted`, varaukset ja huoltopyynnöt; vastaanottolokin näkymä ja uudelleenkäsittely käsin |
 | ERP:n huoltopyynnöt | Kanava `erp_app`, tunnistus `residentRef` → `reporter`, tehtävä aina heti |
-| Varaukset integraatiossa | Varaukset ovat sovelluksessa valmiina (`series_id`, jonot, toiveet); puuttuu tapahtumat jonoon, vastaanotto ja päällekkäisyystarkistus |
+| Varaukset integraatiossa | Pleissi → ERP valmis (adapteri). Puuttuu: ERP:n varausten vastaanotto (`slot_taken`), vahvistus hakutilassa ja asukkaalle ilmoitus muun kuin agentin varauksen ristiriidasta |
 | Valvonta | Hälytykset ja täsmäytys (ks. Epäonnistuneet sanomat ja valvonta); hakukursorin seuranta on valmis |
 | Integraatiolokin oma käyttöoikeus ja uudelleenkäsittely käsin | Nyt loki on vain pääkäyttäjälle |
 | OpenAPI-dokumentaatio | Generoidaan zod-skeemoista |

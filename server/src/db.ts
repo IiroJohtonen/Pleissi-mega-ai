@@ -656,6 +656,14 @@ const bookingColumns = db.prepare("PRAGMA table_info(bookings)").all() as { name
 if (!bookingColumns.some(column => column.name === "series_id")) {
   db.exec("ALTER TABLE bookings ADD COLUMN series_id TEXT");
 }
+// Varauksen tila: confirmed tai requested (AI-agentin varaus odottaa ERP:n vahvistusta, integration/
+// dispatcher.ts). ticket_id = tehtävä, jolta AI-agentti varauksen teki; vahvistus lähtee sen ketjuun.
+if (!bookingColumns.some(column => column.name === "status")) {
+  db.exec("ALTER TABLE bookings ADD COLUMN status TEXT NOT NULL DEFAULT 'confirmed'");
+}
+if (!bookingColumns.some(column => column.name === "ticket_id")) {
+  db.exec("ALTER TABLE bookings ADD COLUMN ticket_id TEXT");
+}
 
 // Liitteen suunta: 'inbound' = asukkaalta saapunut, 'outbound' = vastauksen mukana lähetetty.
 const attachmentColumns = db.prepare("PRAGMA table_info(attachments)").all() as { name: string }[];

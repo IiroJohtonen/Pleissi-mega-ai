@@ -1,7 +1,10 @@
 import { db } from "../db.js";
 import { id, now } from "../util.js";
-import { SCHEMA_VERSION, type Comment, type Task } from "./canonical.js";
-import { changedFields, type MessageRow, type TaskContext, type TaskRow, taskEligible, toComment, toTask, withOffset } from "./mapping.js";
+import { SCHEMA_VERSION, type Booking, type Comment, type Task } from "./canonical.js";
+import {
+  type BookingContext, type BookingRow, changedFields, type MessageRow, type TaskContext, type TaskRow, taskEligible, toBooking, toComment, toTask,
+  withOffset
+} from "./mapping.js";
 
 // ---------------------------------------------------------------------------------------------
 // Integraation lähtevä jono (docs/integraatiospec.md, Tapahtumaloki). Jokainen tehtävän muutos ja uusi
@@ -99,7 +102,7 @@ db.exec(`
 export type OutboxStatus = "pending" | "sent" | "failed" | "superseded";
 
 export type OutboxRow = {
-  event_id: string; event_type: string; entity_type: "task" | "comment"; entity_id: string; task_id: string;
+  event_id: string; event_type: string; entity_type: "task" | "comment" | "booking"; entity_id: string; task_id: string;
   sequence: number; schema_version: string; source: string; tenant_id: string; occurred_at: string;
   changed_fields: string | null; payload: string; status: OutboxStatus; attempts: number; next_attempt_at: string;
   last_status_code: number | null; last_error: string | null; superseded_by: string | null; created_at: string; sent_at: string | null;
@@ -151,7 +154,13 @@ function commentEvent(rowJson: string, sensitive: number | null): string | null 
   return comment ? event("task.comment.added", comment, null) : null;
 }
 
-function event(eventType: string, data: Task | Comment, changed: string[] | null) {
+// Varauksen luonti (booking.created) ja peruutus (booking.cancelled, poistettu rivi).
+function bookingEvent(rowJson: string, contextJson: string, cancelled: number): string {
+  const booking = toBooking(JSON.parse(rowJson) as BookingRow, JSON.parse(contextJson) as BookingContext, Boolean(cancelled));
+  return event(cancelled ? "booking.cancelled" : "booking.created", booking, null);
+}
+
+function event(eventType: string, data: Task | Comment | Booking, changed: string[] | null) {
   const timestamp = now();
   return JSON.stringify({
     eventId: id("evt"), eventType, data, changedFields: changed,
@@ -222,7 +231,27 @@ BEGIN
     (SELECT sensitive FROM tickets WHERE id = NEW.ticket_id)) AS ev) WHERE ev IS NOT NULL;
 END;`;
 
-const TRIGGERS = ["integration_tickets_insert", "integration_tickets_update", "integration_messages_insert"];
+// Varaukset: jonon task_id on tehtävä, jolta AI-agentti varasi, muuten varaus itse.
+const bookingRow = (alias: string) => `json_object('id', ${alias}.id, 'company_id', ${alias}.company_id, 'resource', ${alias}.resource,
+  'resident_id', ${alias}.resident_id, 'note', ${alias}.note, 'starts_at', ${alias}.starts_at, 'ends_at', ${alias}.ends_at,
+  'created_by', ${alias}.created_by, 'series_id', ${alias}.series_id, 'status', ${alias}.status, 'ticket_id', ${alias}.ticket_id)`;
+const bookingContext = (alias: string) => `json_object(
+  'erpRef', (SELECT external_id FROM integration_refs WHERE entity_type = 'booking' AND entity_id = ${alias}.id AND system = 'erp'),
+  'apartmentId', (SELECT apartment_id FROM residents WHERE id = ${alias}.resident_id),
+  'byStaff', EXISTS (SELECT 1 FROM users WHERE name = ${alias}.created_by),
+  'ticketChannel', (SELECT source_channel FROM tickets WHERE id = ${alias}.ticket_id))`;
+const bookingTrigger = (kind: "insert" | "delete") => {
+  const alias = kind === "insert" ? "NEW" : "OLD";
+  return `
+CREATE TEMP TRIGGER IF NOT EXISTS integration_bookings_${kind} AFTER ${kind.toUpperCase()} ON main.bookings
+BEGIN
+  INSERT INTO integration_outbox ${OUTBOX_COLUMNS}
+  SELECT ${outboxValues("booking", `${alias}.id`, `COALESCE(${alias}.ticket_id, ${alias}.id)`)}
+  FROM (SELECT integration_booking_event(${bookingRow(alias)}, ${bookingContext(alias)}, ${kind === "delete" ? 1 : 0}) AS ev);
+END;`;
+};
+
+const TRIGGERS = ["integration_tickets_insert", "integration_tickets_update", "integration_messages_insert", "integration_bookings_insert", "integration_bookings_delete"];
 let installed = false;
 let functionsRegistered = false;
 
@@ -233,6 +262,7 @@ export function installOutbox() {
   if (!functionsRegistered) {
     db.function("integration_task_event", { deterministic: false }, taskEvent);
     db.function("integration_comment_event", { deterministic: false }, commentEvent);
+    db.function("integration_booking_event", { deterministic: false }, bookingEvent);
     functionsRegistered = true;
   }
   db.exec(`
@@ -247,6 +277,8 @@ export function installOutbox() {
     WHEN NEW.ticket_number IS NOT NULL
     BEGIN ${TASK_TRIGGER_BODY} END;
     ${MESSAGE_TRIGGER}
+    ${bookingTrigger("insert")}
+    ${bookingTrigger("delete")}
   `);
   installed = true;
 }

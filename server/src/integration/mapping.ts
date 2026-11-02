@@ -1,4 +1,4 @@
-import type { Comment, FullTask, Task } from "./canonical.js";
+import type { Booking, Comment, FullTask, Task } from "./canonical.js";
 
 // ---------------------------------------------------------------------------------------------
 // Pleissin tehtävä ja sen viestit kanoniseen muotoon. Muunnos tehdään kirjaushetkellä, joten sanoma
@@ -125,4 +125,33 @@ export function toComment(row: MessageRow, sensitive: boolean, erpRef: string | 
     ? { type: "resident", name }
     : { type: row.sender === AI_AUTHOR ? "ai" : "propertyManager", name };
   return { id: row.id, externalRefs: { erp: erpRef }, taskId: row.ticket_id, author, visibility: "public", text: row.body, createdAt: withOffset(row.created_at) };
+}
+
+// --- Varaukset ------------------------------------------------------------------------------------
+
+export type BookingRow = {
+  id: string; company_id: string; resource: string; resident_id: string | null; note: string; starts_at: string; ends_at: string;
+  created_by: string; series_id: string | null; status: string; ticket_id: string | null;
+};
+export type BookingContext = { erpRef: string | null; apartmentId: string | null; byStaff: number; ticketChannel: string | null };
+
+export function toBooking(row: BookingRow, context: BookingContext, cancelled = false): Booking {
+  const createdBy: Booking["createdBy"] = row.created_by === AI_AUTHOR ? "ai" : context.byStaff ? "staff" : "resident";
+  return {
+    id: row.id,
+    externalRefs: { erp: context.erpRef },
+    housingCompanyId: row.company_id,
+    residentId: row.resident_id,
+    apartmentId: context.apartmentId,
+    resource: row.resource,
+    startsAt: withOffset(row.starts_at),
+    endsAt: withOffset(row.ends_at),
+    seriesId: row.series_id,
+    note: row.note,
+    createdBy,
+    // AI-agentin varaus: kanava, josta asukkaan tehtävä tuli. Asukasportaali = web_form, henkilökunta = manual.
+    channel: createdBy === "ai" ? CHANNEL[context.ticketChannel ?? ""] ?? "manual" : createdBy === "resident" ? "web_form" : "manual",
+    status: cancelled ? "cancelled" : row.status === "requested" ? "requested" : "confirmed",
+    taskId: row.ticket_id
+  };
 }

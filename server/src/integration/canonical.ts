@@ -18,7 +18,7 @@ export const ExternalRefsSchema = z.object({ erp: z.string().nullable() });
 export const EVENT_TYPES = [
   "housingCompany.upserted", "housingCompany.deleted",
   "resident.upserted", "resident.moved_out",
-  "booking.created", "booking.cancelled", "booking.updated",
+  "booking.created", "booking.cancelled",
   "task.created", "task.updated",
   "task.comment.added"
 ] as const;
@@ -108,36 +108,31 @@ export const ResidentMovedOutSchema = z.object({
   movedOutAt: date.nullable().optional()
 });
 
-// --- Varaukset (molemmat suunnat; lähetys toteutetaan myöhemmin) ------------------------------
+// --- Varaukset (molemmat suunnat; Pleissi → ERP toteutettu) ------------------------------------
+// Viikkovuoro on erillisiä varauksia samalla seriesId:llä (docs/integraatiospec.md, Varaukset).
 
-const bookingBase = {
+export const BOOKING_STATUSES = ["requested", "confirmed", "cancelled"] as const;
+
+export const BookingSchema = z.object({
   id: z.string(),
   externalRefs: ExternalRefsSchema,
-  taskId: z.string().nullable(),
-  resourceId: z.string(),
-  residentId: z.string(),
-  apartmentId: z.string(),
+  housingCompanyId: z.string(),
+  residentId: z.string().nullable(),
+  apartmentId: z.string().nullable(),
+  // sauna tai laundry (pesutupa).
+  resource: z.string(),
+  startsAt: dateTime,
+  endsAt: dateTime,
+  seriesId: z.string().nullable(),
+  note: z.string(),
+  // Kuka varasi: ai (AI-agentti), resident (asukasportaali) tai staff (henkilökunta).
+  createdBy: z.enum(["ai", "resident", "staff"]),
   channel: z.enum(["email", "phone", "erp_app", "web_form", "manual"]),
-  status: z.enum(["requested", "confirmed", "cancelled"])
-};
-
-export const BookingSchema = z.discriminatedUnion("type", [
-  z.object({ ...bookingBase, type: z.literal("single"), start: dateTime, end: dateTime }),
-  z.object({
-    ...bookingBase,
-    type: z.literal("recurring"),
-    // Toistuvat ajat paikallisena kellonaikana, koska kesäaika muuttaa offsetin.
-    recurrence: z.object({
-      frequency: z.literal("weekly"),
-      dayOfWeek: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
-      startTime: z.string().regex(/^\d{2}:\d{2}$/),
-      endTime: z.string().regex(/^\d{2}:\d{2}$/),
-      timeZone: z.string()
-    }),
-    validFrom: date,
-    validUntil: date.nullable()
-  })
-]);
+  // requested = AI-agentin varaus odottaa ERP:n vahvistusta; confirmed = voimassa; cancelled = peruttu.
+  status: z.enum(BOOKING_STATUSES),
+  // Tehtävä, jolta varaus tehtiin (AI-agentti), muuten null.
+  taskId: z.string().nullable()
+});
 export type Booking = z.infer<typeof BookingSchema>;
 
 // --- Tehtävät ----------------------------------------------------------------------------------

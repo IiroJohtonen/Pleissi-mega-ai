@@ -1,4 +1,4 @@
-import type { Comment, Envelope, Task } from "./canonical.js";
+import type { Booking, Comment, Envelope, Task } from "./canonical.js";
 
 // ---------------------------------------------------------------------------------------------
 // ERP-adapterin rajapinta. Adapteri kääntää kanonisen sanoman ERP:n muotoon ja kutsuu ERP:n API:a.
@@ -17,4 +17,7 @@ export interface ErpAdapter {
   createTask(envelope: Envelope<Task>): Promise<AdapterResult>;
   updateTask(erpTaskId: string, envelope: Envelope<Task>): Promise<AdapterResult>;
   addComment(erpTaskId: string, envelope: Envelope<Comment>): Promise<AdapterResult>;
+  // Varaus ERP:hen: 201 + tunniste = vahvistettu, 409 = vuoro on jo varattu ERP:ssä.
+  createBooking(envelope: Envelope<Booking>): Promise<AdapterResult>;
+  cancelBooking(erpBookingId: string, envelope: Envelope<Booking>): Promise<AdapterResult>;
 }

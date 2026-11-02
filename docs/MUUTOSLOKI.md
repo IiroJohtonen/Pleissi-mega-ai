@@ -3,6 +3,25 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+
+## 2.11.2026 · Varaukset ERP:hen ja AI-agentin varauksen vahvistus
+
+**Mitä muutettiin**
+- Pleississä tehdyt sauna- ja pyykkitupavaraukset ja niiden peruutukset kirjataan ERP:hen.
+- Kun ERP-integraatio on päällä, AI-agentin tekemä varaus odottaa ERP:n vahvistusta. Agentti kertoo
+  asukkaalle, että varausta käsitellään. Kun ERP hyväksyy varauksen, asukkaalle lähtee samaan ketjuun
+  vahvistus, ja tehtävä suljetaan.
+- Jos vuoro on jo varattu ERP:ssä, agentin varaus perutaan, ja agentti tarjoaa asukkaalle seuraavia vapaita
+  vuoroja. Jos agentti ei voi tehdä sitä, tehtävä siirtyy henkilökunnalle.
+- Jos muu kuin agentin varaus osuu ERP:ssä varattuun vuoroon, varausta ei poisteta, vaan henkilökunta saa
+  hälytyksen.
+- Ilman ERP-integraatiota agentti toimii kuten ennen.
+
+**Miten**
+- Asetukset › Tietoturva › Integraatioloki: varaussanomat (Varaus tehty / Varaus peruttu) näkyvät listassa.
+- Tehtävän tapahtumissa: "ERP vahvisti AI-agentin varauksen" tai "ERP hylkäsi AI-agentin varauksen".
+
+**Testit:** PR:n kuvauksessa
 ## 30.10.2026 · ERP-rajapinta: perustiedot ERP:stä, tehtävät ERP:n haettaviksi ja asukkaan puhelin
 
 **Mitä muutettiin**

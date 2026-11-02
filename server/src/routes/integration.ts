@@ -28,7 +28,9 @@ integrationRouter.get("/integration/messages", requireAdmin, (req, res) => {
            t.ticket_number, t.sensitive, t.subject AS ticket_subject, c.name AS company_name
     FROM integration_outbox o
     LEFT JOIN tickets t ON t.id = o.task_id
-    LEFT JOIN companies c ON c.id = t.company_id
+    -- Varaussanoma: taloyhtiö varauksesta, kun varaus ei liity tehtävään (asukasportaali, henkilökunta).
+    LEFT JOIN bookings b ON o.entity_type = 'booking' AND b.id = o.entity_id
+    LEFT JOIN companies c ON c.id = COALESCE(t.company_id, b.company_id)
     ${status ? "WHERE o.status = ?" : ""}
     ORDER BY o.rowid DESC
     LIMIT ${LIST_LIMIT}

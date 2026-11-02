@@ -38,7 +38,9 @@ const statusLabels: Record<MessageStatus, string> = {
 const eventLabels: Record<string, string> = {
   "task.created": t("Tehtävä luotu"),
   "task.updated": t("Tehtävä päivitetty"),
-  "task.comment.added": t("Kommentti lisätty")
+  "task.comment.added": t("Kommentti lisätty"),
+  "booking.created": t("Varaus tehty"),
+  "booking.cancelled": t("Varaus peruttu")
 };
 
 // Sanoma tiedostona sellaisenaan (sama JSON kuin ERP:hen lähtevä).
