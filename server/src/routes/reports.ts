@@ -2,7 +2,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext, visibleCompanyIds } from "../access.js";
 import { aiAvailable, analyzeRecurringTopics, type CoveredTopic, type RecurringTopic, type TopicTicket } from "../ai.js";
-import { aiBudgetExhausted } from "../ai-budget.js";
+import { aiBudgetBlocked, BUDGET_REASONS } from "../ai-budget.js";
 import { db } from "../db.js";
 import { isAdmin, type User } from "../auth.js";
 import { id, now, TICKET_STATUSES, today } from "../util.js";
@@ -53,10 +53,11 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista jakso." });
 
-  if (!aiAvailable()) {
+  if (!aiAvailable("topics")) {
+    const blocked = aiBudgetBlocked("topics");
     return res.status(503).json({
-      error: aiBudgetExhausted()
-        ? "AI-kulujen kuukausiraja on täynnä. Pääkäyttäjä voi nostaa rajaa asetuksista."
+      error: blocked
+        ? `${BUDGET_REASONS[blocked]} Pääkäyttäjä voi muuttaa rajoja asetuksista.`
         : "AI ei ole käytössä. Lisää ANTHROPIC_API_KEY palvelimen .env-tiedostoon."
     });
   }

@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { aiAvailable } from "./ai.js";
-import { aiBudgetExhausted, recordAiUsage } from "./ai-budget.js";
+import { agentRunsToday, aiBudgetBlocked, aiLimits, BUDGET_REASONS, recordAiUsage } from "./ai-budget.js";
 import { logAiRequest, withAiLog } from "./ai-log.js";
 import { slotLabel } from "./booking-queue.js";
 import { db } from "./db.js";
@@ -509,7 +509,12 @@ export async function runAgentNow(ticketId: string): Promise<AgentResult> {
   // Tehtävä kuuluu avoimeen yhteiseen vikaan: asukkaalle kerrotaan, että vika on tiedossa. AI:ta ei tarvita.
   const incident = openIncidentOf(ticketId);
   if (incident) return replyForIncident(ticket, incident);
-  if (!aiAvailable() || aiBudgetExhausted()) throw new AgentUnavailableError("AI ei ole juuri nyt käytettävissä.", 503);
+  if (!aiAvailable("agent")) throw new AgentUnavailableError(aiBudgetBlocked("agent") ? `${BUDGET_REASONS[aiBudgetBlocked("agent")!]} AI-agentti ei ole juuri nyt käytettävissä.` : "AI ei ole juuri nyt käytettävissä.", 503);
+  const limited = runLimitReason(ticket);
+  if (limited) {
+    handOver(ticket, limited, true);
+    return { outcome: "handed_over", reason: limited, resolved: false, booked: false };
+  }
   running.add(ticketId);
   try {
     const { result } = await withAiLog(ticketId, () => runAgent(ticket, true));
@@ -520,6 +525,14 @@ export async function runAgentNow(ticketId: string): Promise<AgentResult> {
   } finally {
     running.delete(ticketId);
   }
+}
+
+// Agentin ajojen raja tehtävää kohden vuorokaudessa: sen jälkeen asia siirtyy henkilökunnalle, jottei
+// esimerkiksi viestisilmukka kuluta tokeneita loputtomiin.
+function runLimitReason(ticket: AgentTicket): string | null {
+  const limit = aiLimits().agentRunsPerDay;
+  if (limit <= 0 || agentRunsToday(ticket.id) < limit) return null;
+  return `AI-agentti on käsitellyt tehtävää jo ${limit} kertaa vuorokauden aikana, joten asia siirtyy henkilökunnalle.`;
 }
 
 function openIncidentOf(ticketId: string): Incident | undefined {
@@ -555,7 +568,14 @@ export function continueAgent(ticketId: string) {
       do {
         rerun.delete(ticketId);
         const current = loadTicket(ticketId);
-        if (!current || ineligibleReason(current) || aiBudgetExhausted()) break;
+        if (!current || ineligibleReason(current)) break;
+        // Raja täynnä: asukasta ei jätetä odottamaan, vaan asia siirtyy henkilökunnalle perustelun kanssa.
+        const blocked = aiBudgetBlocked("agent");
+        const limited = blocked ? `${BUDGET_REASONS[blocked]} Asia siirtyy henkilökunnalle.` : runLimitReason(current);
+        if (limited) {
+          handOver(current, limited, false);
+          break;
+        }
         await withAiLog(ticketId, () => runAgent(current, false));
       } while (rerun.has(ticketId));
     } catch (error) {

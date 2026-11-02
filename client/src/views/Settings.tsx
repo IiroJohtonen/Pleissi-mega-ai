@@ -14,6 +14,7 @@ import { setTheme, storedTheme } from "../theme";
 import { MasterDataSettings } from "./MasterData";
 import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 import { topicLabel, topicOptions } from "../topics";
+import { AiLimitsCard } from "./AiLimits";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -77,6 +78,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   log: "loki muutokset tapahtumat ai:lle lähetetty",
   "integration-log": "erp toiminnanohjausjärjestelmä integraatio sanoma lähetys",
   "office-ai": "kulut kuukausiraja prioriteetti suodatus relevanssi budjetti",
+  "ai-limits": "päiväraja osuus budjetti agentti ajot lähettäjä tuntiraja kulut",
   "ai-prompt": "lisätieto ikkuna vastausehdotus ehdotus",
   "ai-models": "malli opus sonnet haiku claude",
   embedding: "merkityshaku embedding vektori hybridihaku esimerkit aiemmat tehtävät",
@@ -188,6 +190,7 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
   {
     tab: "ai", label: t("AI"), sections: [
       { id: "office-ai", label: t("AI-käyttö ja -asetukset") },
+      { id: "ai-limits", label: t("AI-rajat") },
       { id: "ai-prompt", label: t("AI-ehdotukset") },
       { id: "ai-models", label: t("AI-mallit") },
       { id: "embedding", label: t("Merkityshaku") }
@@ -1226,6 +1229,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       {officeTab === "office" && <MailAccountCard target="office" />}
 
       {officeTab === "security" && <MasterDataSettings part="security" />}
+      {officeTab === "ai" && <AiLimitsCard />}
       {officeTab === "ai" && <MasterDataSettings part="ai" />}
 
       {officeTab === "security" && (
@@ -1266,6 +1270,12 @@ type AiUsage = {
   month: string; costUsd: number; limitUsd: number; warningPercent: number; exhausted: boolean; calls: number;
   byFeature: { feature: string; calls: number; cost: number }[];
   history: { month: string; calls: number; cost: number }[];
+  today?: { costUsd: number; limitUsd: number };
+  groups?: { group: string; costUsd: number; percent: number; limitUsd: number | null }[];
+};
+
+const aiGroupLabels: Record<string, string> = {
+  agent: t("AI-agentti"), assess: t("Arviointi"), suggest: t("Vastausehdotukset"), other: t("Muut")
 };
 
 const aiFeatureLabels: Record<string, string> = {
@@ -1304,6 +1314,13 @@ function AiUsageMeter({ refreshKey }: { refreshKey: number }) {
         <div className="ai-usage-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)} aria-label={t("AI-kulut kuukausirajasta")}>
           <i style={{ width: `${percent}%` }} />
         </div>
+      )}
+      {usage.today && (
+        <small>
+          {t("Tänään")}: {formatUsd(usage.today.costUsd)}{usage.today.limitUsd > 0 ? ` / ${formatUsd(usage.today.limitUsd)}` : ""}
+          {usage.groups?.some(group => group.limitUsd !== null) && ` · ${usage.groups.filter(group => group.limitUsd !== null)
+            .map(group => `${aiGroupLabels[group.group] ?? group.group} ${formatUsd(group.costUsd)} / ${formatUsd(group.limitUsd!)}`).join(" · ")}`}
+        </small>
       )}
       {usage.exhausted && <p className="send-error">{t("Kuukausiraja on täynnä, joten AI on pois käytöstä kuun loppuun asti. Nosta rajaa, jos haluat ottaa AI:n heti takaisin käyttöön.")}</p>}
       <small>
