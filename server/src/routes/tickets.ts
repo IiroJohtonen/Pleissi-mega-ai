@@ -39,7 +39,7 @@ export async function deleteTicket(ticketId: string) {
       INSERT OR IGNORE INTO deleted_mail_messages (message_id, deleted_at)
       SELECT gmail_message_id, ? FROM gmail_imports WHERE ticket_id = ?
     `).run(now(), ticketId);
-    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log", "incident_tickets"]) {
+    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log", "incident_tickets", "knowledge_gaps"]) {
       db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
     }
     db.prepare("DELETE FROM renovation_notices WHERE ticket_id = ?").run(ticketId);

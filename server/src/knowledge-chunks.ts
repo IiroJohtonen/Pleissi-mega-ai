@@ -267,7 +267,8 @@ export async function searchKnowledgeChunks(companyId: string, question: string,
     .map(chunkId => eligible.get(chunkId)!);
 }
 
-// Yhtiön AI:n käytössä olevan dokumentaation palat: aktiiviset, voimassa olevat ja luettavat.
+// Yhtiön AI:n käytössä olevan dokumentaation palat: aktiiviset, voimassa olevat ja luettavat. Mukana myös
+// toimistotason ohjeet (scope = 'office'), jotka koskevat kaikkia toimiston taloyhtiöitä.
 function eligibleChunks(companyId: string): KnowledgeChunk[] {
   const date = today();
   const rows = db.prepare(`
@@ -275,7 +276,7 @@ function eligibleChunks(companyId: string): KnowledgeChunk[] {
            k.title AS document_title, k.tags AS document_tags, k.kind
     FROM knowledge_chunks c
     JOIN knowledge k ON k.id = c.knowledge_id
-    WHERE c.company_id = ? AND k.company_id = ?
+    WHERE ((c.company_id = ? AND k.company_id = ?) OR k.scope = 'office')
       AND c.status = 'active'
       AND k.status = 'active'
       AND k.audience = 'ai'

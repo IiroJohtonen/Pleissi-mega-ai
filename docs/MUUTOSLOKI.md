@@ -3,6 +3,38 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+
+## 2.11.2026 · Oppiminen isännöitsijän vastauksista, Tietopohja ja viikkokooste
+
+**Mitä muutettiin**
+- **Muistin ehdotukset luokitellaan** kolmeen ryhmään:
+  - muistiin: rakennuksen tieto
+  - dokumentaatioon: ohje asukkaille
+  - ei tallenneta: kertaluonteinen päätös
+- **Dokumentaatioehdotus hyväksytään yhdellä klikkauksella** AI-dokumentaatioon. Samalla valitaan, koskeeko ohje
+  tätä taloyhtiötä vai kaikkia toimiston taloyhtiöitä (vain pääkäyttäjä).
+- **Osaamisaukot:** kun AI-agentti ei löydä vastausta, kysymys tallentuu yleisessä muodossa ilman henkilötietoja.
+  Kun toimisto vastaa, ratkaisu nousee muistin ehdotuksissa kärkeen.
+- **Uusi raportti Osaamisaukot:** kysymykset, joihin AI ei osannut vastata, aiheittain, sekä AI-agentin
+  siirtojen osuus viikoittain.
+- **"Vastaus dokumentaatioksi":** lähetetyn vastauksen vieressä on painike, josta AI tekee yleisen ohjeen
+  ilman henkilötietoja. Isännöitsijä tarkistaa ohjeen ennen tallennusta.
+- **Ristiriidat ja tarkistuspäivä:** uutta ohjetta tallennettaessa AI tarkistaa, onko se ristiriidassa
+  olemassa olevien ohjeiden kanssa. Jokaisella ohjeella on tarkistuspäivä.
+- **Uusi näkymä Tietopohja:** muisti ja dokumentaatio yhdessä, tyyppisuodatin ja yksi haku.
+- **Viikkoajo:** kun muistiehdotukset ovat päällä, ajo tekee kerran viikossa
+  - luokitellut ehdotukset
+  - toistuvien aiheiden raportin, jos uusia tehtäviä on tullut
+  - vastuuisännöitsijälle sähköpostikoosteen ("N ehdotusta dokumentaatioon, N muistiin, N aihetta, joihin AI
+    ei osannut vastata"), jossa on linkki hyväksyntään.
+- **Vienti evaluointiin:** hyväksytyn opitun tiedon voi viedä testitapaukseksi evaluointia varten.
+
+**Miten**
+- Raportit › Taloyhtiön muisti: luokitellut ehdotukset, dokumentaatioon hyväksyntä ja Vie testitapaukseksi.
+- Raportit › Tietopohja ja Raportit › Osaamisaukot.
+- Tehtävä › lähetetty vastaus › Vastaus dokumentaatioksi.
+
+**Testit:** PR:n kuvauksessa
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**
