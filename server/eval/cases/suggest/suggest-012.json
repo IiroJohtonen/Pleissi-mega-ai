@@ -1,0 +1,36 @@
+{
+  "id": "suggest-012",
+  "feature": "suggest",
+  "source": "synthetic",
+  "tags": [
+    "muisti"
+  ],
+  "input": {
+    "subject": "Hissi",
+    "conversation": "Asukas: Hissi pysähtyy taas kerrosten väliin.",
+    "knowledge": [
+      {
+        "id": "chunk-huolto",
+        "title": "Huoltoyhtiö",
+        "content": "Taloyhtiön huoltoyhtiö on Huolto Aalto Oy. Vikailmoitukset arkisin klo 8–16 puhelimella 020 123 4567. Päivystys muina aikoina 020 765 4321.",
+        "page": 3
+      }
+    ],
+    "memory": [
+      "Hissin ovianturi vaihdettiin syyskuussa 2026, ja vika toistui lokakuussa."
+    ],
+    "managerContext": "",
+    "followUp": false
+  },
+  "expected": {
+    "source": [
+      "chunk-huolto"
+    ],
+    "mustInclude": [],
+    "mustNotInclude": [],
+    "maxWords": 180,
+    "sourceOrNone": true
+  },
+  "critical": false,
+  "note": "Taloyhtiön muisti taustana: aiempi korjaus mainitaan ilman keksittyjä yksityiskohtia."
+}

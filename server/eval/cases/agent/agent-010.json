@@ -1,0 +1,39 @@
+{
+  "id": "agent-010",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "autopaikka",
+    "jono"
+  ],
+  "input": {
+    "subject": "Autopaikka",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Onko taloyhtiössä vapaita autopaikkoja ja mitä ne maksavat?"
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "get_parking_info",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "book_slot"
+    ],
+    "booked": false,
+    "replyMustNotInclude": []
+  },
+  "critical": false,
+  "note": "Autopaikkakysymys: agentti kertoo tilanteen työkalulla eikä keksi."
+}

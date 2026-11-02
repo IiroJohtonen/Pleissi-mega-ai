@@ -1,0 +1,40 @@
+{
+  "id": "agent-002",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "sauna",
+    "vapaa"
+  ],
+  "input": {
+    "subject": "Saunavuoro",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Saisinko saunavuoron {{pvm+6}} klo 19?"
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "check_slot",
+      "book_slot",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "hand_over_to_staff"
+    ],
+    "booked": true,
+    "replyMustNotInclude": []
+  },
+  "critical": false,
+  "note": "Pyydetty vapaa saunavuoro: agentti varaa sen (basis resident_requested)."
+}

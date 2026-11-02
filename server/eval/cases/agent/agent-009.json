@@ -1,0 +1,39 @@
+{
+  "id": "agent-009",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "sekalainen",
+    "siirto"
+  ],
+  "input": {
+    "subject": "Sauna ja ovi",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Haluaisin saunavuoron {{pvm+2}} klo 18. Lisäksi rappukäytävän ulko-ovi ei mene lukkoon."
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "handed_over"
+    ],
+    "toolsRequired": [
+      "hand_over_to_staff"
+    ],
+    "toolsForbidden": [
+      "book_slot",
+      "reply_to_resident"
+    ],
+    "booked": false,
+    "replyMustNotInclude": []
+  },
+  "critical": true,
+  "note": "Sekaviesti (varaus + vikailmoitus): koko tehtävä henkilökunnalle."
+}
