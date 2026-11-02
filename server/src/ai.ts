@@ -350,6 +350,95 @@ const ChunkingSchema = z.object({
 
 export type AiChunk = { title: string; content: string; tags: string[]; page: number | null; validUntil: string | null };
 
+// --- PDF sellaisenaan AI:lle -------------------------------------------------------------------------
+// Pilkonta saa PDF:n document-lohkona luetun tekstin sijaan, jolloin skannatut sivut, taulukot ja kuvat
+// tulevat mukaan. Pitkä PDF lähetetään erissä (PDF_PAGES_PER_BATCH sivua), ja jokainen pala saa sivunumeron
+// alkuperäisessä dokumentissa. Taulukko on yksi markdown-taulukko (iso taulukko riveittäin niin, että
+// otsikkorivi toistuu), ja kuvasta tulee tekstikuvaus omaksi palakseen. Taulukko- ja kuvapalat merkitään
+// tarkistettaviksi.
+
+export const PDF_PAGES_PER_BATCH = 10;
+
+const PDF_CHUNKING_SYSTEM = `${CHUNKING_SYSTEM.trim()}
+The document is attached as a PDF. Read everything on the pages, also scanned pages, tables, figures
+and images, not only the text layer.
+- kind: "text" for ordinary text, "table" for a table, "image" for an image, figure, map or diagram.
+- Tables: write the table as one Markdown table in content (header row, separator row, data rows),
+  with the values exactly as printed. If the table has more than 25 data rows, split it into several
+  chunks of at most 25 rows, and repeat the header row and separator row at the start of every chunk.
+- Images: write a short Finnish description of what the image shows and any text in it, as its own
+  chunk. Skip logos, decorations and photos that carry no information for residents.
+- page: the page number in the original document (the part you see may start later than page 1; the
+  first page of the attached PDF is the page number given in the message).`;
+
+const PdfChunkingSchema = z.object({
+  chunks: z.array(z.object({
+    title: z.string(),
+    content: z.string(),
+    tags: z.array(z.string()),
+    page: z.number().int().nullable(),
+    validUntil: z.string().nullable(),
+    kind: z.enum(["text", "table", "image"])
+  }))
+});
+
+export type PdfChunk = AiChunk & { kind: "text" | "table" | "image" };
+
+export async function chunkPdfWithAi(
+  title: string,
+  batches: { firstPage: number; lastPage: number; data: Buffer }[],
+  options: { note?: string; existing?: string[] } = {}
+): Promise<PdfChunk[]> {
+  const ai = claudeClient();
+  if (!ai) throw new Error("AI ei ole käytössä");
+  const model = fastModel();
+  const result: PdfChunk[] = [];
+
+  for (const batch of batches) {
+    const instructions = [
+      `Document title: ${title}`,
+      `The attached PDF contains pages ${batch.firstPage}–${batch.lastPage} of the document; its first page is page ${batch.firstPage}.`,
+      options.note ? `The property manager says something was missed (from the manager, follow it):\n${options.note}\nReturn only chunks for what is missing.` : "",
+      options.existing?.length ? `Already extracted, do not repeat:\n${options.existing.map(item => `- ${item}`).join("\n")}` : ""
+    ].filter(Boolean).join("\n\n");
+    const document = { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: batch.data.toString("base64") } };
+    const system = [{ type: "text" as const, text: PDF_CHUNKING_SYSTEM, cache_control: { type: "ephemeral" as const } }];
+    // Lokiin ei tallenneta PDF:n sisältöä (se on tallessa dokumenttina), vain merkintä siitä.
+    logAiRequest("chunking", {
+      model, max_tokens: 16000, system,
+      messages: [{ role: "user", content: [
+        { type: "document", note: `PDF, sivut ${batch.firstPage}–${batch.lastPage}, ${Math.round(batch.data.length / 1024)} kt` },
+        { type: "text", text: instructions }
+      ] }]
+    });
+    const response = await ai.client.beta.messages.parse({
+      model,
+      max_tokens: 16000,
+      system,
+      messages: [{ role: "user", content: [document, { type: "text", text: instructions }] }],
+      output_config: { effort: "low", format: betaZodOutputFormat(PdfChunkingSchema) }
+    }, { timeout: 180_000, maxRetries: 1 });
+    recordAiUsage("chunking", response.model || model, response.usage);
+    if (response.stop_reason === "refusal") throw new Error("Claude declined the request");
+    if (response.stop_reason === "max_tokens") throw new Error("Pilkonta katkesi tokenrajaan");
+    if (!response.parsed_output) throw new Error("AI:n vastausta ei voitu lukea");
+    for (const chunk of response.parsed_output.chunks) {
+      if (!chunk.content.trim()) continue;
+      const inBatch = chunk.page !== null && chunk.page >= batch.firstPage && chunk.page <= batch.lastPage;
+      result.push({
+        title: chunk.title.trim(),
+        content: chunk.content.trim(),
+        tags: chunk.tags.map(tag => tag.trim()).filter(Boolean).slice(0, 6),
+        page: inBatch ? chunk.page : batch.firstPage,
+        validUntil: chunk.validUntil && /^\d{4}-\d{2}-\d{2}$/.test(chunk.validUntil) ? chunk.validUntil : null,
+        kind: chunk.kind
+      });
+    }
+  }
+  if (!result.length) throw new Error("AI ei löytänyt dokumentista tietoja");
+  return result;
+}
+
 // Yhteen kutsuun menevän tekstin enimmäispituus merkkeinä.
 const CHUNKING_BATCH_CHARS = 20_000;
 

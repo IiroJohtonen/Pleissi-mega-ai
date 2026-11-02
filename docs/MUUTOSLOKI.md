@@ -3,6 +3,24 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+
+## 2.11.2026 · Dokumenttien luku: skannatut PDF:t, taulukot ja kuvat
+
+**Mitä muutettiin**
+- PDF-dokumentti luetaan AI:lla sellaisenaan eikä vain sen tekstikerroksesta. Siksi myös skannatut sivut,
+  taulukot ja kuvat tulevat mukaan. Pitkä PDF luetaan kymmenen sivun erissä, ja jokaisessa tiedossa säilyy
+  sivunumero.
+- Taulukko tallentuu yhtenä tietona taulukkomuodossa. Iso taulukko jaetaan riveittäin, ja otsikkorivi toistuu
+  jokaisessa osassa.
+- Kuvasta, kartasta tai kaaviosta tulee tekstikuvaus omaksi tiedokseen.
+- AI:n tulkitsemat taulukot ja kuvat merkitään tarkistettaviksi, samoin skannatun sivun luvut.
+- Skannattu PDF ei enää jää tyhjäksi, kun AI on käytössä. Ilman AI:ta dokumentit luetaan kuten ennen.
+
+**Miten**
+- Tietopankki › Lataa dokumentti (PDF). Tiedot näkyvät dokumentin tiedoissa sivunumeroineen;
+  tarkistettavat on merkitty.
+
+**Testit:** PR:n kuvauksessa
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**

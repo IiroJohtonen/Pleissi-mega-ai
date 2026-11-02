@@ -1,5 +1,8 @@
-import { aiAvailable, chunkDocumentWithAi, chunks, overlap, stems } from "./ai.js";
-import { db } from "./db.js";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { aiAvailable, chunkDocumentWithAi, chunkPdfWithAi, chunks, overlap, PDF_PAGES_PER_BATCH, stems } from "./ai.js";
+import { db, knowledgeFilesDir } from "./db.js";
+import { isPdf, pdfBatches } from "./extract.js";
 import { deleteInactiveChunkEmbeddings, embeddingEnabled, reciprocalRankFusion, searchSimilar } from "./embedding.js";
 import { id, now, today } from "./util.js";
 
@@ -73,7 +76,13 @@ export function hasUnknownNumbers(content: string, source: string) {
   return numbersIn(content).some(number => !known.has(number));
 }
 
-type DocumentRow = KnowledgeSource & { pages: string | null; extraction_ok: number };
+type DocumentRow = KnowledgeSource & { pages: string | null; extraction_ok: number; file_name: string | null; mime_type: string | null };
+
+// Dokumentin alkuperäinen PDF, jos sellainen on tallessa; muuten null.
+async function storedPdf(row: DocumentRow): Promise<Buffer | null> {
+  if (!isPdf(row.file_name ?? "", row.mime_type ?? "")) return null;
+  return fs.readFile(path.join(knowledgeFilesDir, row.id)).catch(() => null);
+}
 
 export function documentPages(row: Pick<DocumentRow, "pages">): string[] | null {
   if (!row.pages) return null;
@@ -91,12 +100,16 @@ const runningDocuments = new Set<string>();
 // AI:n pilkkomilla paloilla. Jos AI ei ole käytössä tai kutsu epäonnistuu, paikalliset palat jäävät.
 export async function processDocument(knowledgeId: string) {
   if (runningDocuments.has(knowledgeId)) return;
-  const row = db.prepare("SELECT id, company_id, title, content, kind, status, pages, extraction_ok FROM knowledge WHERE id = ?")
-    .get(knowledgeId) as DocumentRow | undefined;
+  const row = db.prepare(`
+    SELECT id, company_id, title, content, kind, status, pages, extraction_ok, file_name, mime_type FROM knowledge WHERE id = ?
+  `).get(knowledgeId) as DocumentRow | undefined;
   if (!row || row.kind !== "document") return;
   const setState = (state: "processing" | "ready" | "failed") =>
     db.prepare("UPDATE knowledge SET processing_state = ? WHERE id = ?").run(state, knowledgeId);
-  if (!row.extraction_ok || !row.content.trim()) {
+  const hasText = Boolean(row.extraction_ok && row.content.trim());
+  // PDF menee AI:lle sellaisenaan, joten skannattukin PDF (ei tekstiä) voidaan lukea, kun AI on käytössä.
+  const pdf = aiAvailable() ? await storedPdf(row) : null;
+  if (!hasText && !pdf) {
     setState("failed");
     return;
   }
@@ -108,6 +121,16 @@ export async function processDocument(knowledgeId: string) {
   runningDocuments.add(knowledgeId);
   setState("processing");
   try {
+    if (pdf) {
+      try {
+        await chunkStoredPdf(row, pdf, hasText);
+        return;
+      } catch (error) {
+        // PDF:n luku epäonnistui (esim. salattu tiedosto): luetusta tekstistä pilkotaan kuten ennen.
+        console.error("PDF:n pilkonta AI:lla epäonnistui:", error instanceof Error ? error.message : error);
+        if (!hasText) throw error;
+      }
+    }
     const pages = documentPages(row);
     const aiChunks = await chunkDocumentWithAi(row.title, (pages ?? [row.content]).map((text, index) => ({ page: index + 1, text })));
     // Tietue on voinut muuttua käsittelyn aikana (korvattu tai poistettu); palat saavat sen tilan.
@@ -129,6 +152,30 @@ export async function processDocument(knowledgeId: string) {
     runningDocuments.delete(knowledgeId);
     setState("ready");
   }
+}
+
+// PDF sellaisenaan AI:lle erissä. Taulukko- ja kuvapalat sekä palat, joiden lukuja ei löydy luetusta tekstistä
+// (myös skannatun sivun kaikki luvut), merkitään tarkistettaviksi. Skannatun PDF:n teksti täydennetään
+// paloista, jotta dokumentti ei jää tyhjäksi haussa ja näkymässä.
+async function chunkStoredPdf(row: DocumentRow, pdf: Buffer, hasText: boolean) {
+  const pdfChunks = await chunkPdfWithAi(row.title, await pdfBatches(pdf, PDF_PAGES_PER_BATCH));
+  const current = db.prepare("SELECT status FROM knowledge WHERE id = ?").get(row.id) as { status: string } | undefined;
+  if (!current) return;
+  db.transaction(() => {
+    saveChunks({ id: row.id, company_id: row.company_id, status: current.status }, pdfChunks.map(chunk => ({
+      title: chunk.title,
+      content: chunk.content,
+      page: chunk.page,
+      tags: chunk.tags.join(", "),
+      origin: "ai" as const,
+      needsReview: chunk.kind !== "text" || hasUnknownNumbers(chunk.content, hasText ? row.content : ""),
+      suggestedValidUntil: chunk.validUntil
+    })));
+    if (!hasText) {
+      const content = pdfChunks.map(chunk => `${chunk.title}\n${chunk.content}`).join("\n\n");
+      db.prepare("UPDATE knowledge SET content = ?, extraction_ok = 1 WHERE id = ?").run(content, row.id);
+    }
+  })();
 }
 
 // Käynnistyksessä kesken jääneet pilkonnat aloitetaan uudelleen.
