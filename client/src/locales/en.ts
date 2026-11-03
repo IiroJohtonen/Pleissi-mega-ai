@@ -2615,7 +2615,7 @@ export const en: Record<string, string> = {
   "Vastuuisännöitsijää muistutettu aikalupauksesta": "Responsible manager reminded of the time promise",
   "Aikalupauksen muistutus epäonnistui": "Time promise reminder failed",
   "Aikalupaukset": "Time promises",
-  "Kun AI-agentti siirtää tehtävän henkilökunnalle, asukkaalle kerrotaan päivä, johon mennessä asiaan palataan. Lupaus pitää, kun asukkaalle vastattiin tai tehtävä suljettiin viimeistään luvattuna päivänä.": "When the AI agent hands a ticket over to staff, the resident is told the date by which the matter will be followed up. The promise is kept when the resident was answered or the ticket closed by the promised date.",
+  "Kun AI-agentti ei osaa vastata, käsittelijä lähettää asukkaalle luonnoksesta päivän, johon mennessä asiaan palataan. Lupaus pitää, kun asukkaalle vastattiin tai tehtävä suljettiin viimeistään luvattuna päivänä.": "When the AI agent cannot answer, the handler sends the resident the date, from the draft, by which the matter will be followed up. The promise is kept when the resident was answered or the ticket closed by the promised date.",
   "Aikavälillä ei ole annettu aikalupauksia.": "No time promises were given in the period.",
   "Lupauksia": "Promises",
   "Pitivät": "Kept",
@@ -2630,4 +2630,9 @@ export const en: Record<string, string> = {
   "Viimeiset 3 kk": "Last 3 months",
   "Edelliset 3 kk": "Previous 3 months",
   "Havaittu": "Detected",
+  "Luonnokseen lisätty päivä, johon mennessä asiaan palataan": "Date by which the matter will be followed up added to the draft",
+  "Aikalupaus asukkaalle": "Time promise to the resident",
+  "Kun agentti ei osaa vastata, tehtävän luonnokseksi tulee viesti, jossa kerrotaan päivä, johon mennessä asiaan palataan. Käsittelijä lähettää sen. Vaatii automaattisen käynnistyksen.": "When the agent cannot answer, the ticket's draft gets a message telling the date by which the matter will be followed up. The handler sends it. Requires automatic start.",
+  "Varahenkilö: {0}": "Backup person: {0}",
+  "varahenkilö": "backup person",
 };

@@ -215,7 +215,7 @@ export function Trends({ companies, companyId }: { companies: Company[]; company
           <div className="report-card">
             <h2>{t("Aikalupaukset")}</h2>
             <p className="muted">
-              {t("Kun AI-agentti siirtää tehtävän henkilökunnalle, asukkaalle kerrotaan päivä, johon mennessä asiaan palataan. Lupaus pitää, kun asukkaalle vastattiin tai tehtävä suljettiin viimeistään luvattuna päivänä.")}
+              {t("Kun AI-agentti ei osaa vastata, käsittelijä lähettää asukkaalle luonnoksesta päivän, johon mennessä asiaan palataan. Lupaus pitää, kun asukkaalle vastattiin tai tehtävä suljettiin viimeistään luvattuna päivänä.")}
             </p>
             {!result.promises?.promises ? <p className="muted">{t("Aikavälillä ei ole annettu aikalupauksia.")}</p> : (
               <table className="data-table">

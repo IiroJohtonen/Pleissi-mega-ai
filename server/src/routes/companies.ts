@@ -15,15 +15,17 @@ companiesRouter.get("/companies", (_req, res) => {
       maintenance_name, maintenance_phone, maintenance_email, maintenance_emergency_phone,
       manager_id, (SELECT u.name FROM users u WHERE u.id = companies.manager_id) AS manager_name,
       (SELECT group_concat(cm.user_id) FROM company_managers cm WHERE cm.company_id = companies.id) AS manager_ids_csv,
+      (SELECT group_concat(cm.user_id) FROM company_managers cm WHERE cm.company_id = companies.id AND cm.backup = 1) AS backup_ids_csv,
       (SELECT COUNT(*) FROM residents r WHERE r.company_id = companies.id) AS resident_count
     FROM companies
     WHERE id IN (${placeholders})
     ORDER BY name
-  `).all(...companyIds) as ({ manager_ids_csv: string | null } & Record<string, unknown>)[];
-  // manager_ids = taloyhtiön muut isännöitsijät (ilman vastuuisännöitsijää).
-  res.json(companies.map(({ manager_ids_csv, ...company }) => ({
+  `).all(...companyIds) as ({ manager_ids_csv: string | null; backup_ids_csv: string | null } & Record<string, unknown>)[];
+  // manager_ids = taloyhtiön muut isännöitsijät (ilman vastuuisännöitsijää); backup_ids = niistä varahenkilöt.
+  res.json(companies.map(({ manager_ids_csv, backup_ids_csv, ...company }) => ({
     ...company,
-    manager_ids: manager_ids_csv ? manager_ids_csv.split(",") : []
+    manager_ids: manager_ids_csv ? manager_ids_csv.split(",") : [],
+    backup_ids: backup_ids_csv ? backup_ids_csv.split(",") : []
   })));
 });
 
@@ -37,6 +39,8 @@ const companySchema = z.object({
   managerId: z.string().nullable().optional(),
   // Taloyhtiön muut isännöitsijät. Puuttuessaan listaa ei muuteta.
   managerIds: z.array(z.string()).max(50).optional(),
+  // Muista isännöitsijöistä varahenkilöiksi merkityt (osajoukko managerIds:stä).
+  backupIds: z.array(z.string()).max(50).optional(),
   // Huoltoyhtiön tiedot päivitetään vain, kun ne ovat pyynnössä mukana.
   maintenance: z.object({
     name: z.string().trim().default(""),
@@ -135,7 +139,11 @@ companiesRouter.put("/companies/:companyId", requireManager, (req, res) => {
     }
     db.transaction(() => {
       db.prepare("DELETE FROM company_managers WHERE company_id = ?").run(companyId);
-      for (const userId of others) db.prepare("INSERT INTO company_managers (company_id, user_id) VALUES (?, ?)").run(companyId, userId);
+      // Varahenkilöksi kelpaa vain taloyhtiön muu isännöitsijä (saa mm. aikalupausten muistutukset).
+      const backups = new Set(parsed.data.backupIds ?? []);
+      for (const userId of others) {
+        db.prepare("INSERT INTO company_managers (company_id, user_id, backup) VALUES (?, ?, ?)").run(companyId, userId, backups.has(userId) ? 1 : 0);
+      }
     })();
   }
   if (managerId !== undefined) {

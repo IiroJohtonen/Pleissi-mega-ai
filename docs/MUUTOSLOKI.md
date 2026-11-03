@@ -23,18 +23,25 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 ## 3.11.2026 · Aikalupaus asukkaalle
 
 **Mitä muutettiin**
-- **Aikalupaus:** kun AI-agentti siirtää tehtävän henkilökunnalle ilman käsittelijää (automaattinen käynnistys tai
-  agentin hoitaman tehtävän jatko), asukas saa viestin, jossa kerrotaan päivä, johon mennessä asiaan palataan,
-  esim. "palaamme siihen viimeistään pe 7.11.". Päivä tulee tehtävän määräajasta (perustietojen määräajat:
-  kiireellinen 1 päivä, normaali 5 päivää). Kellonaikaa ei luvata. Lupaus annetaan kerran tehtävää kohden.
-- **Muistutus:** vastuuisännöitsijä saa sähköpostin päivää ennen lupauspäivää, jos asukkaalle ei ole vielä vastattu.
+- **Aikalupaus luonnoksena:** kun AI-agentti ei osaa vastata ja siirtää tehtävän henkilökunnalle, tehtävän
+  luonnokseksi tulee viesti, jossa kerrotaan päivä, johon mennessä asiaan palataan, esim. "palaamme siihen
+  viimeistään pe 7.11.". Käsittelijä tarkistaa ja lähettää sen. Päivä tulee tehtävän määräajasta (perustietojen
+  määräajat: kiireellinen 1 päivä, normaali 5 päivää). Kellonaikaa ei luvata.
+- **Asetus:** aikalupauksen voi kytkeä päälle kohdasta Asetukset › AI › AI-reseptionisti, ja vain kun AI-agentin
+  automaattinen käynnistys on päällä. Oletuksena pois.
+- **Uusi päivä:** kun käsittelijä siirtää luvatun tehtävän määräaikaa, luonnokseen tulee ilmoitus uudesta päivästä.
+- **Muistutus:** vastuuisännöitsijä ja taloyhtiön varahenkilöt saavat sähköpostin päivää ennen lupauspäivää, jos
+  asukkaalle ei ole vielä vastattu.
+- **Varahenkilöt:** taloyhtiön muista isännöitsijöistä voi merkitä varahenkilöitä (Taloyhtiöt › taloyhtiön tiedot ›
+  Muut isännöitsijät › varahenkilö).
 - **Mittari:** Raportit › Trendit › Aikalupaukset näyttää, kuinka moni lupaus piti (asukkaalle vastattiin tai tehtävä
-  suljettiin viimeistään luvattuna päivänä), myöhästyi tai on vielä avoinna.
-- Varahenkilöä ei vielä ole; muistutus menee vastuuisännöitsijälle.
+  suljettiin viimeistään luvattuna päivänä), myöhästyi tai on vielä avoinna. Lupaus lasketaan, kun käsittelijä on
+  lähettänyt sen.
 
 **Miten**
-- Asukkaan viesteissä (sähköposti tai portaali) näkyy lupausviesti, ja tehtävän tapahtumissa "Asukkaalle kerrottu
-  päivä, johon mennessä asiaan palataan".
+- Tehtävä: lupausviesti vastauskentässä, tapahtumissa "Luonnokseen lisätty päivä…" ja lähetyksen jälkeen
+  "Asukkaalle kerrottu päivä…".
+- Asetukset › AI › AI-reseptionisti › Aikalupaus asukkaalle; Taloyhtiöt › Muut isännöitsijät › varahenkilö.
 - Raportit › Trendit › Aikalupaukset.
 
 **Testit:** PR:n kuvauksessa

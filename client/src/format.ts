@@ -120,6 +120,7 @@ export function actionLabel(action: string) {
     ai_agent_trace: t("AI-agentin ajon jäljitys"),
     ai_agent_drafted: t("AI-agentti laati vastausluonnoksen"),
     time_promise_made: t("Asukkaalle kerrottu päivä, johon mennessä asiaan palataan"),
+    time_promise_drafted: t("Luonnokseen lisätty päivä, johon mennessä asiaan palataan"),
     time_promise_not_sent: t("Aikalupauksen lähetys asukkaalle epäonnistui"),
     time_promise_reminder_sent: t("Vastuuisännöitsijää muistutettu aikalupauksesta"),
     time_promise_reminder_failed: t("Aikalupauksen muistutus epäonnistui"),
