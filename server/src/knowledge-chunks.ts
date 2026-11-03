@@ -352,3 +352,21 @@ export function pagesInNote(note: string, pageCount: number) {
   }
   return [...pages].sort((a, b) => a - b);
 }
+
+// Taloyhtiön AI:lle sallittu pala tunnisteella (voimassa, aktiivinen); AI-agentin lainauksen tarkistukseen.
+export function eligibleChunk(companyId: string, chunkId: string): KnowledgeChunk | null {
+  return eligibleChunks(companyId).find(chunk => chunk.id === chunkId) ?? null;
+}
+
+// Lainauksen vertailu: kirjainkoko, välilyönnit, lainausmerkit ja viivat eivät ratkaise.
+const normalizeQuote = (text: string) => text.toLowerCase()
+  .replace(/[“”„"«»]/g, "\"").replace(/[‘’']/g, "'").replace(/[–—]/g, "-").replace(/\s+/g, " ").trim();
+
+export const MIN_QUOTE_CHARS = 20;
+
+// Löytyykö lainaus sanatarkasti palan tekstistä (tai otsikosta).
+export function quoteInChunk(chunk: KnowledgeChunk, quote: string): boolean {
+  const wanted = normalizeQuote(quote).replace(/^\.\.\.|\.\.\.$|…/g, "").trim();
+  if (wanted.length < MIN_QUOTE_CHARS) return false;
+  return normalizeQuote(`${chunk.title}\n${chunk.content}`).includes(wanted);
+}

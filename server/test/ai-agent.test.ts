@@ -25,10 +25,20 @@ function fakeAnthropic(script: (request: Request, lastResult: string, firstMessa
         .filter(block => block.type === "tool_result")
         .map(block => typeof block.content === "string" ? block.content : JSON.stringify(block.content))
         .join("\n");
-      const call = script(request, lastResult, firstMessage);
+      res.setHeader("Content-Type", "application/json");
       calls++;
       onCall();
-      res.setHeader("Content-Type", "application/json");
+      // Kiellettyjen aiheiden erillinen luokittelu ennen agenttia: korvausasia on kielletty, muu sallittu.
+      if (JSON.stringify((request as { system?: unknown }).system ?? "").includes("screen a Finnish housing-company ticket")) {
+        const category = /korvau/i.test(firstMessage) ? "compensation" : "none";
+        res.end(JSON.stringify({
+          id: `msg_${calls}`, type: "message", role: "assistant", model: "claude-haiku-5-5",
+          content: [{ type: "text", text: JSON.stringify({ category, reason: category === "none" ? "" : "Asukas vaatii korvausta." }) }],
+          stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 }
+        }));
+        return;
+      }
+      const call = script(request, lastResult, firstMessage);
       res.end(JSON.stringify({
         id: `msg_${calls}`, type: "message", role: "assistant", model: "claude-opus-5-5",
         content: call ? [{ type: "tool_use", id: `toolu_${calls}`, name: call.name, input: call.input }] : [{ type: "text", text: "Valmis." }],

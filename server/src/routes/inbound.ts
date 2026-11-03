@@ -18,7 +18,7 @@ import { detectSensitivity } from "../ticket-sensitivity.js";
 import { aiPriorityEnabled, aiRelevanceEnabled } from "./office.js";
 import { findResident } from "./residents.js";
 import { assignToCompanyManager } from "./tickets.js";
-import { continueAgent } from "../ai-agent.js";
+import { autoStartAgent, continueAgent } from "../ai-agent.js";
 
 export const inboundRouter: Router = express.Router();
 
@@ -334,7 +334,8 @@ if (input.sourceMessageId) {
   // Lähettäjätyyppi: toimiston domainlista, AI:n arvio tai asukasrekisteri. Viranomaisen tehtävä nostetaan kiireelliseksi.
   if (!filtered && !companyPending) applySenderType(ticketId, result, input.senderEmail);
   // Aihe ja yhteisten vikojen tunnistus taustalla.
-  void processIncidents(ticketId);
+  // AI-reseptionisti käynnistyy taustalla aiheen tunnistuksen jälkeen, kun automaattinen käynnistys on taloyhtiössä päällä.
+  void processIncidents(ticketId).then(() => { if (!filtered && !companyPending) autoStartAgent(ticketId); });
 
   res.status(201).json({
     ticketId,

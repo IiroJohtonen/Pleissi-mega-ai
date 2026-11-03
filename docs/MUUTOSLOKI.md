@@ -4,6 +4,32 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 3.11.2026 · AI-reseptionisti luonnostilassa
+
+**Mitä muutettiin**
+- **Automaattinen käynnistys:** AI-agentti voi käsitellä uudet tehtävät heti niiden saapuessa. Asetus on oletuksena
+  pois, ja sen voi kytkeä päälle kaikille taloyhtiöille tai taloyhtiökohtaisesti (esim. ensin yhdessä
+  pilottitaloyhtiössä).
+- **Luonnostila:** agentin vastaus jää tehtävälle luonnokseksi, jonka käsittelijä tarkistaa ja lähettää. Asukkaalle
+  ei lähde mitään ilman ihmistä. Luonnostilassa agentti ei tee varauksia eikä lisää autopaikkajonoon.
+- **Itsenäiset aiheet:** aiheeseen agentti voi vastata itse vasta, kun vähintään 100 sen luonnoksesta 99 % on
+  lähtenyt sellaisenaan tai pelkällä sävymuokkauksella ja pääkäyttäjä on hyväksynyt aiheen. Jos osuus putoaa,
+  aihe palaa luonnostilaan.
+- **Vastaukset dokumentaatiosta:** agentti vastaa yleisiin kysymyksiin vain, jos se lainaa sanatarkasti kohdan
+  taloyhtiön dokumentaatiosta. Ohjelma tarkistaa lainauksen; jos sitä ei löydy, tehtävä siirtyy henkilökunnalle.
+- **Täydennä:** kun vikailmoituksesta puuttuu tietoja (asunto, kuva, milloin alkoi, koskeeko naapureita),
+  agentti kysyy ne asukkaalta. Asukkaan vastaus tulee samaan tehtävään ja siirtää sen henkilökunnalle.
+- **Kielletyt aiheet:** korvaukset, korjausvastuut, poikkeusluvat, riidat, häiriöt ja hätätilanteet tunnistetaan
+  erillisellä tarkistuksella ennen kuin agentti kirjoittaa mitään. Ne menevät aina henkilökunnalle.
+- **Ilmoitus siirrosta:** kun automaattisesti käynnistynyt agentti siirtää tehtävän henkilökunnalle, vastuuisännöitsijä
+  saa sähköpostin: mitä kysyttiin ja miksi agentti ei vastannut.
+
+**Miten**
+- Asetukset › AI › AI-reseptionisti: automaattinen käynnistys, taloyhtiökohtaiset poikkeukset ja itsenäiset aiheet.
+- Tehtävä: agentin luonnos on vastauskentässä, ja tapahtumissa näkyy, mitä agentti teki.
+
+**Testit:** PR:n kuvauksessa
+
 ## 3.11.2026 · Puuttuva ohje muun kuin asukkaan pyyntöön näkyy osaamisaukkona
 
 **Mitä muutettiin**

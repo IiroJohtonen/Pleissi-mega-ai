@@ -1,0 +1,104 @@
+import { draftTopicStats, type DraftTopicStats } from "./ai-draft-edits.js";
+import { db } from "./db.js";
+import { aiAgentEnabled } from "./routes/office.js";
+import { id, now } from "./util.js";
+
+// ---------------------------------------------------------------------------------------------
+// AI-reseptionistin asetukset:
+// - automaattinen käynnistys uusiin tehtäviin: toimiston oletus ja taloyhtiökohtainen ohitus
+// - autonomia aiheittain: oletuksena agentti tekee luonnoksen, jonka ihminen hyväksyy. Aihe vastataan itse vasta,
+//   kun luonnosmittarin raja (99 % / 100 luonnosta, ai-draft-edits.ts) täyttyy JA pääkäyttäjä on hyväksynyt aiheen.
+//   Raja tarkistetaan jokaisella ajolla: jos osuus putoaa rajan alle, aihe palaa luonnostilaan.
+// ---------------------------------------------------------------------------------------------
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS agent_autonomy (
+    topic TEXT PRIMARY KEY,
+    approved_by TEXT NOT NULL,
+    approved_at TEXT NOT NULL
+  );
+`);
+{
+  const office = (db.prepare("PRAGMA table_info(office_settings)").all() as { name: string }[]).map(column => column.name);
+  if (!office.includes("ai_agent_auto")) db.exec("ALTER TABLE office_settings ADD COLUMN ai_agent_auto INTEGER NOT NULL DEFAULT 0");
+  const companies = (db.prepare("PRAGMA table_info(companies)").all() as { name: string }[]).map(column => column.name);
+  // null = toimiston oletus, 1 = päällä, 0 = pois.
+  if (!companies.includes("ai_agent_auto")) db.exec("ALTER TABLE companies ADD COLUMN ai_agent_auto INTEGER");
+  const tickets = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
+  // details_requested = agentti pyysi asukkaalta lisätietoja; asukkaan vastaus siirtää tehtävän henkilökunnalle.
+  if (!tickets.includes("agent_state")) db.exec("ALTER TABLE tickets ADD COLUMN agent_state TEXT");
+}
+
+export function agentAutoDefault(): boolean {
+  const row = db.prepare("SELECT ai_agent_auto FROM office_settings WHERE id = 1").get() as { ai_agent_auto: number } | undefined;
+  return Boolean(row?.ai_agent_auto);
+}
+
+export function setAgentAutoDefault(value: boolean) {
+  db.prepare("UPDATE office_settings SET ai_agent_auto = ? WHERE id = 1").run(value ? 1 : 0);
+}
+
+// Käynnistyykö agentti taloyhtiön uusiin tehtäviin: agentti päällä → taloyhtiön ohitus → toimiston oletus (pois).
+export function agentAutoStartEnabled(companyId: string): boolean {
+  if (!aiAgentEnabled()) return false;
+  const row = db.prepare("SELECT ai_agent_auto FROM companies WHERE id = ?").get(companyId) as { ai_agent_auto: number | null } | undefined;
+  if (row?.ai_agent_auto === 0 || row?.ai_agent_auto === 1) return row.ai_agent_auto === 1;
+  return agentAutoDefault();
+}
+
+export function setAgentAutoOverride(companyId: string, value: boolean | null) {
+  db.prepare("UPDATE companies SET ai_agent_auto = ? WHERE id = ?").run(value === null ? null : value ? 1 : 0, companyId);
+}
+
+export function agentAutoCompanies() {
+  return (db.prepare("SELECT id, name, ai_agent_auto FROM companies ORDER BY name COLLATE NOCASE").all() as
+    { id: string; name: string; ai_agent_auto: number | null }[])
+    .map(row => ({ id: row.id, name: row.name, autoStart: row.ai_agent_auto === null ? null : row.ai_agent_auto === 1 }));
+}
+
+const allCompanyIds = () => (db.prepare("SELECT id FROM companies").all() as { id: string }[]).map(row => row.id);
+
+export type TopicAutonomy = DraftTopicStats & { approved: boolean; approvedBy: string | null; approvedAt: string | null; autonomous: boolean };
+
+// Aiheiden luonnosmittari (koko toimisto) ja pääkäyttäjän hyväksynnät.
+export function topicAutonomy(): TopicAutonomy[] {
+  const approvals = new Map((db.prepare("SELECT topic, approved_by, approved_at FROM agent_autonomy").all() as
+    { topic: string; approved_by: string; approved_at: string }[]).map(row => [row.topic, row]));
+  const stats = draftTopicStats(allCompanyIds());
+  for (const topic of approvals.keys()) {
+    if (!stats.some(item => item.topic === topic)) {
+      stats.push({ topic, drafts: 0, unchanged: 0, light: 0, heavy: 0, rewritten: 0, tone: 0, fact: 0, unclassified: 0,
+        readyShare: null, ready: false, agentRuns: 0, handovers: 0, handoverShare: null });
+    }
+  }
+  return stats.map(item => {
+    const approval = approvals.get(item.topic);
+    return {
+      ...item, approved: Boolean(approval), approvedBy: approval?.approved_by ?? null, approvedAt: approval?.approved_at ?? null,
+      autonomous: Boolean(approval) && item.ready
+    };
+  });
+}
+
+// Vastaako agentti aiheeseen itse (muuten luonnos). Aiheeton tehtävä ei ole koskaan itsenäinen.
+export function topicAutonomous(topic: string | null): boolean {
+  if (!topic) return false;
+  if (!db.prepare("SELECT 1 FROM agent_autonomy WHERE topic = ?").get(topic)) return false;
+  return draftTopicStats(allCompanyIds()).some(item => item.topic === topic && item.ready);
+}
+
+export class AutonomyError extends Error {}
+
+// Pääkäyttäjä hyväksyy aiheen itsenäiseksi (vain kun raja täyttyy) tai palauttaa sen luonnostilaan.
+export function setTopicAutonomy(topic: string, autonomous: boolean, actor: string) {
+  if (autonomous) {
+    const stats = draftTopicStats(allCompanyIds()).find(item => item.topic === topic);
+    if (!stats?.ready) throw new AutonomyError("Aihetta ei voi hyväksyä: vähintään 100 luonnoksesta 99 % pitää lähteä sellaisenaan tai pelkällä sävymuokkauksella.");
+    db.prepare("INSERT OR REPLACE INTO agent_autonomy (topic, approved_by, approved_at) VALUES (?, ?, ?)").run(topic, actor, now());
+  } else {
+    db.prepare("DELETE FROM agent_autonomy WHERE topic = ?").run(topic);
+  }
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), null, actor, autonomous ? "agent_topic_autonomous" : "agent_topic_draft", JSON.stringify({ topic }), now()
+  );
+}

@@ -15,6 +15,7 @@ import { MasterDataSettings } from "./MasterData";
 import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 import { topicLabel, topicOptions } from "../topics";
 import { SenderDomainsCard } from "../tickets/SenderType";
+import { AgentSettingsCard } from "./AgentSettings";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -1229,6 +1230,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       {officeTab === "security" && <MasterDataSettings part="security" />}
       {officeTab === "ai" && <MasterDataSettings part="ai" />}
       {officeTab === "ai" && <SenderDomainsCard editable />}
+      {officeTab === "ai" && <AgentSettingsCard />}
 
       {officeTab === "security" && (
         <a className="settings-card settings-link" href="#/log" id="section-log">
@@ -1278,7 +1280,8 @@ const aiFeatureLabels: Record<string, string> = {
   agent: t("AI-agentti"),
   incident: t("Yhteisten vikojen tulkinnat"),
   memory: t("Taloyhtiön muistin ehdotukset"),
-  draft_change: t("Luonnosten muokkauksen luokittelu")
+  draft_change: t("Luonnosten muokkauksen luokittelu"),
+  agent_guard: t("AI-agentin aiheen tarkistus")
 };
 
 export const formatUsd = (value: number) => `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;

@@ -31,6 +31,7 @@ import { gmailRouter } from "./routes/gmail.js";
 import { inboundRouter } from "./routes/inbound.js";
 import { incidentsRouter } from "./routes/incidents.js";
 import { embeddingRouter } from "./routes/embedding.js";
+import { agentSettingsRouter } from "./routes/agent-settings.js";
 import { integrationRouter } from "./routes/integration.js";
 import { memoryRouter } from "./routes/memory.js";
 import { learningRouter } from "./routes/learning.js";
@@ -129,7 +130,7 @@ for (const router of [
   parkingRouter, bookingsRouter, bookingQueueRouter, billingRouter, portalRouter, portalFormsRouter, heatingRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
   metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter, dataRouter, incidentsRouter, memoryRouter, learningRouter,
-  integrationRouter, embeddingRouter
+  integrationRouter, embeddingRouter, agentSettingsRouter
 ]) {
   app.use("/api", router);
 }

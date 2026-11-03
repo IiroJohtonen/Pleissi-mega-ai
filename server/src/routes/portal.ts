@@ -21,7 +21,7 @@ import {
 } from "./bookings.js";
 import { aiPriorityEnabled } from "./office.js";
 import { assignToCompanyManager } from "./tickets.js";
-import { continueAgent } from "../ai-agent.js";
+import { autoStartAgent, continueAgent } from "../ai-agent.js";
 
 export const portalRouter: Router = express.Router();
 
@@ -131,7 +131,8 @@ export async function createPortalTicket(
     request: result.request
   }, undefined);
   // Aihe ja yhteisten vikojen tunnistus taustalla.
-  void processIncidents(ticketId);
+  // AI-reseptionisti käynnistyy taustalla aiheen tunnistuksen jälkeen, kun automaattinen käynnistys on taloyhtiössä päällä.
+  void processIncidents(ticketId).then(() => { autoStartAgent(ticketId); });
 
   const attachmentError = await savePortalAttachments(ticketId, input.attachments, timestamp, resident.id);
   return { ticketId, attachmentError };
