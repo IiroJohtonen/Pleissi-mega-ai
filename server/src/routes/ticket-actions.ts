@@ -4,7 +4,8 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { aiAvailable, classifyDraftChange, suggestReply } from "../ai.js";
-import { changedParts, rememberAiDraft, recordDraftChange, takeDraftComparison } from "../ai-draft-edits.js";
+import { changedParts, classifyDraftEdit, draftSimilarity, rememberAiDraft, recordDraftChange, takeDraftComparison } from "../ai-draft-edits.js";
+import { agentSignature } from "../agent-autonomy.js";
 import { SAFETY_ADVICE } from "../incidents.js";
 import { recordGuidanceGap, senderGuidance, senderLineForAi } from "../sender-types.js";
 import { recordSentPromise } from "../time-promise.js";
@@ -20,7 +21,7 @@ import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
 import { sendTicketReply } from "../ticket-reply.js";
 import { id, now, unsafeFileMessage } from "../util.js";
-import { activateDraftOffers, AgentUnavailableError, runAgentNow } from "../ai-agent.js";
+import { activateDraftOffers, AgentUnavailableError, releaseResponsibility, runAgentNow } from "../ai-agent.js";
 
 export const ticketActionsRouter: Router = express.Router();
 
@@ -387,7 +388,14 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   const cc = (parsed.data.cc ?? "").split(/[,;\s]+/).map(address => address.trim()).filter(Boolean);
   const invalidCc = cc.find(address => !/^[^\s<>,;@]+@[^\s<>,;@]+\.[^\s<>,;@]+$/.test(address));
   if (invalidCc) return res.status(400).json({ error: `Kopion osoite ${invalidCc} ei ole kelvollinen sähköpostiosoite.` });
-  const body = parsed.data.signature ? withSignature(parsed.data.body, renderSignature(res.locals.user?.id)) : parsed.data.body;
+  // AI-agentin hoitama tehtävä ja agentin luonnos (ei kirjoitettu uudelleen): AI-allekirjoitus, jossa näkyy tarkistaja,
+  // jotta asukas tietää vastauksen tulleen tekoälyltä. Muuten käsittelijän oma allekirjoitus.
+  const agentDraft = db.prepare("SELECT agent_owned, ai_draft FROM tickets WHERE id = ?").get(ticket.id) as { agent_owned: number; ai_draft: string | null };
+  const agentReply = Boolean(agentDraft.agent_owned && agentDraft.ai_draft)
+    && classifyDraftEdit(draftSimilarity(agentDraft.ai_draft ?? "", parsed.data.body)) !== "rewritten";
+  const body = agentReply
+    ? withSignature(parsed.data.body, agentSignature(res.locals.user?.name ?? "isännöitsijätoimisto"))
+    : parsed.data.signature ? withSignature(parsed.data.body, renderSignature(res.locals.user?.id)) : parsed.data.body;
 
   const accounts = replyAccountsFor(ticket, res.locals.user?.id);
   const fromAccount = parsed.data.fromAccountId
@@ -429,6 +437,8 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   `).run(timestamp, req.params.id);
   // AI-agentin luonnoksen tarjoamat vuorot tulevat voimaan, ja agentti jatkaa asukkaan vastauksesta.
   activateDraftOffers(req.params.id, !comparison || comparison.edit === "rewritten");
+  // Käsittelijä kirjoitti vastauksen itse (ei AI-luonnosta tai kirjoitti sen uudelleen): vastuu siirtyy hänelle.
+  if (!comparison || comparison.edit === "rewritten") releaseResponsibility(req.params.id);
   // Luonnoksen aikalupaus kirjataan, kun lähetetyssä viestissä on luvattu päivä.
   recordSentPromise(req.params.id, parsed.data.body, timestamp, res.locals.user?.name ?? parsed.data.actor);
 

@@ -194,7 +194,11 @@ describe("AI-agentti", () => {
     assert.ok(offered.every(startsAt => startsAt !== requested && startsAt >= helsinkiIso(day, 0)));
     const reply = proposed.messages.find((message: any) => message.direction === "outbound");
     assert.match(reply.body, /Vapaita vuoroja/);
-    assert.match(reply.body, /automaattinen vastaus/);
+    // Allekirjoituksesta asukas näkee, että vastauksen kirjoitti tekoäly.
+    assert.match(reply.body, /Aino, tekoälyavustaja/);
+    assert.match(reply.body, /Tämän vastauksen kirjoitti tekoäly\./);
+    // Agentilla on vastuu tehtävästä (vihreä painike).
+    assert.equal(proposed.ticket.agent_owned, 1);
     // Asukas näkee vastauksen portaalissa.
     const portal = (await call(server, matti, "GET", `/portal/tickets/${ticketId}`)).data;
     assert.ok(portal.messages.some((message: any) => message.direction === "outbound"));
@@ -283,6 +287,7 @@ describe("AI-agentti", () => {
     assert.equal(detail.ticket.status, "open");
     assert.equal(detail.ticket.ai_action, "pending_decision");
     assert.ok(!detail.messages.some((message: any) => message.direction === "outbound"));
+    assert.equal(detail.ticket.agent_owned, 0, "siirretty tehtävä on käsittelijän vastuulla");
     // Perustelu näkyy käsittelijälle tehtävän sisäisenä muistiinpanona.
     assert.ok(detail.notes.some((item: any) => item.body.includes("Vikailmoitus kuuluu huollolle.")));
   });

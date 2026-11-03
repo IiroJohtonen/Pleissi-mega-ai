@@ -2695,4 +2695,13 @@ export const en: Record<string, string> = {
   "Kun agentti ei osaa vastata, tehtävän luonnokseksi tulee viesti, jossa kerrotaan päivä, johon mennessä asiaan palataan. Käsittelijä lähettää sen. Vaatii automaattisen käynnistyksen.": "When the agent cannot answer, the ticket's draft gets a message telling the date by which the matter will be followed up. The handler sends it. Requires automatic start.",
   "Varahenkilö: {0}": "Backup person: {0}",
   "varahenkilö": "backup person",
+  "AI-agentti hoitaa tehtävää ja teki vastausluonnoksen.": "The AI agent is handling the ticket and wrote a draft reply.",
+  "Agentti varasi asukkaan hyväksymän vuoron. Tarkista ja lähetä vahvistus.": "The agent booked the slot the resident accepted. Review and send the confirmation.",
+  "Tarkista luonnos ja lähetä se asukkaalle.": "Review the draft and send it to the resident.",
+  "AI-agentilla on vastuu tämän tehtävän käsittelystä. Vastuu palaa sinulle, kun agentti siirtää tehtävän tai kun kirjoitat vastauksen itse.": "The AI agent is responsible for handling this ticket. Responsibility returns to you when the agent hands the ticket over or when you write the reply yourself.",
+  "AI-agentti hoitaa": "AI agent is handling",
+  "Agentin allekirjoitus": "Agent signature",
+  "AI-agentin vastauksissa on aina allekirjoitus, josta asukas näkee, että vastauksen kirjoitti tekoäly. Kun käsittelijä lähettää agentin luonnoksen, allekirjoituksessa kerrotaan myös, kuka vastauksen tarkisti.": "The AI agent's replies always have a signature showing the resident that the reply was written by AI. When a handler sends the agent's draft, the signature also tells who reviewed the reply.",
+  "Agentin nimi": "Agent name",
+  "Tallenna nimi": "Save name",
 };

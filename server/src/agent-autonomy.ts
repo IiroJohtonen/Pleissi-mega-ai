@@ -12,6 +12,8 @@ import { id, now } from "./util.js";
 //   Raja tarkistetaan jokaisella ajolla: jos osuus putoaa rajan alle, aihe palaa luonnostilaan.
 // ---------------------------------------------------------------------------------------------
 
+export const DEFAULT_AGENT_NAME = "Aino";
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS agent_autonomy (
     company_id TEXT NOT NULL,
@@ -24,12 +26,41 @@ db.exec(`
 {
   const office = (db.prepare("PRAGMA table_info(office_settings)").all() as { name: string }[]).map(column => column.name);
   if (!office.includes("ai_agent_auto")) db.exec("ALTER TABLE office_settings ADD COLUMN ai_agent_auto INTEGER NOT NULL DEFAULT 0");
+  // AI-agentin nimi allekirjoituksessa (asukas näkee, että vastauksen kirjoitti tekoäly).
+  if (!office.includes("agent_name")) db.exec(`ALTER TABLE office_settings ADD COLUMN agent_name TEXT NOT NULL DEFAULT '${DEFAULT_AGENT_NAME}'`);
   const companies = (db.prepare("PRAGMA table_info(companies)").all() as { name: string }[]).map(column => column.name);
   // null = toimiston oletus, 1 = päällä, 0 = pois.
   if (!companies.includes("ai_agent_auto")) db.exec("ALTER TABLE companies ADD COLUMN ai_agent_auto INTEGER");
   const tickets = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
   // details_requested = agentti pyysi asukkaalta lisätietoja; asukkaan vastaus siirtää tehtävän henkilökunnalle.
   if (!tickets.includes("agent_state")) db.exec("ALTER TABLE tickets ADD COLUMN agent_state TEXT");
+  // 1 = AI-agentilla on vastuu tehtävän käsittelystä (agentti vastasi tai teki luonnoksen eikä siirtänyt tehtävää).
+  // Palautuu 0:ksi, kun agentti siirtää tehtävän henkilökunnalle tai käsittelijä kirjoittaa vastauksen itse.
+  if (!tickets.includes("agent_owned")) db.exec("ALTER TABLE tickets ADD COLUMN agent_owned INTEGER NOT NULL DEFAULT 0");
+}
+
+export function agentName(): string {
+  const row = db.prepare("SELECT agent_name FROM office_settings WHERE id = 1").get() as { agent_name: string } | undefined;
+  return row?.agent_name?.trim() || DEFAULT_AGENT_NAME;
+}
+
+export function setAgentName(name: string) {
+  db.prepare("UPDATE office_settings SET agent_name = ? WHERE id = 1").run(name.trim() || DEFAULT_AGENT_NAME);
+}
+
+// Allekirjoitus AI-agentin vastauksiin: asukas näkee aina, että vastauksen kirjoitti tekoäly. Kun käsittelijä lähettää
+// agentin luonnoksen, allekirjoituksessa kerrotaan myös, kuka vastauksen tarkisti.
+export function agentSignature(reviewer?: string): string {
+  const office = (db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string } | undefined)?.name ?? "";
+  return [
+    "Ystävällisin terveisin",
+    `${agentName()}, tekoälyavustaja`,
+    ...(office ? [office] : []),
+    "",
+    reviewer
+      ? `Tämän vastauksen kirjoitti tekoäly, ja sen tarkisti ${reviewer}. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa asian käsittelyä.`
+      : "Tämän vastauksen kirjoitti tekoäly. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa asian käsittelyä."
+  ].join("\n");
 }
 
 export function agentAutoDefault(): boolean {

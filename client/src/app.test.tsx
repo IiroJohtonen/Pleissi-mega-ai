@@ -1042,6 +1042,19 @@ describe("sovellus", () => {
       await vi.waitFor(() => expect(calls.some(request => request.method === "POST" && request.url.endsWith("/tickets/ticket-1/agent"))).toBe(true));
       expect(await screen.findByText("AI-agentti vastasi asukkaalle ja odottaa hänen vastaustaan.")).toBeTruthy();
       confirm.mockRestore();
+      cleanup();
+
+      // Agentilla on vastuu: painike on vihreä, "AI-agentti hoitaa", eikä sitä voi painaa uudelleen.
+      responses["/tickets/ticket-1"] = {
+        ticket: { ...overdueTicket, company_name: "As Oy Koivikko", agent_owned: 1 }, messages: [], audit: [], reporters: [], apartments: [],
+        notes: [], workOrders: [], contractor: null, attachments: []
+      };
+      mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      const owned = await screen.findByRole("button", { name: /AI-agentti hoitaa/ }, { timeout: 5000 });
+      expect(owned.className).toContain("agent-owned");
+      expect(owned.getAttribute("aria-pressed")).toBe("true");
+      expect((owned as HTMLButtonElement).disabled).toBe(true);
     } finally {
       responses["/office"] = office;
       delete responses["/tickets/ticket-1"];

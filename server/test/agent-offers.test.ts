@@ -39,4 +39,11 @@ describe("luonnostilan tarjoukset", () => {
     assert.deepEqual([ticket.ai_action, ticket.agent_state], ["pending_decision", null]);
     assert.equal((db.prepare("SELECT COUNT(*) AS count FROM ai_agent_offers WHERE ticket_id = 'ticket-offer-rewritten'").get() as { count: number }).count, 0);
   });
+
+  it("AI-allekirjoitus kertoo, että vastauksen kirjoitti tekoäly, ja käsittelijän lähettämässä myös tarkistajan", async () => {
+    const { agentSignature } = await import("../src/agent-autonomy.js");
+    assert.match(agentSignature(), /^Ystävällisin terveisin\nAino, tekoälyavustaja/);
+    assert.match(agentSignature(), /Tämän vastauksen kirjoitti tekoäly\./);
+    assert.match(agentSignature("Hanna Lehtonen"), /kirjoitti tekoäly, ja sen tarkisti Hanna Lehtonen\./);
+  });
 });
