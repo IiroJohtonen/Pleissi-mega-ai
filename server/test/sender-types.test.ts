@@ -111,6 +111,11 @@ describe("lähettäjätyypit", () => {
   });
 
   it("toimiston tuntema domain ohittaa AI:n arvion; vain pääkäyttäjä muuttaa listaa", async () => {
+    // Viranomaisten domainit ovat listalla valmiiksi.
+    const defaults = (await call(server, service, "GET", "/office/sender-domains")).data as { domain: string; type: string }[];
+    for (const domain of ["vero.fi", "poliisi.fi"]) assert.ok(defaults.some(item => item.domain === domain && item.type === "authority"), domain);
+    const tax = await receive("kirjaamo@vero.fi", "Kaupunki tiedottaa verosta", "Kaupunki tiedottaa.");
+    assert.deepEqual([tax.ticket.sender_type, tax.ticket.sender_type_source], ["authority", "domain"]);
     assert.equal((await call(server, service, "PUT", "/office/sender-domains", [{ domain: "hel.fi", type: "authority" }])).status, 403);
     assert.equal((await call(server, admin, "PUT", "/office/sender-domains", [{ domain: "ei domain", type: "authority" }])).status, 400);
     const saved = await call(server, admin, "PUT", "/office/sender-domains", [{ domain: "@HEL.fi", type: "authority" }]);

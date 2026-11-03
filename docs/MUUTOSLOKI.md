@@ -13,7 +13,9 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
   taloyhtiön asukkaaksi, asukkaan ja osakkaan ero tulee asukasrekisterin rooleista (asukas, osakas tai molemmat),
   ei AI:n arviosta.
 - **Tunnetut lähettäjät:** pääkäyttäjä voi lisätä asetuksiin domaineja (esim. kaupungin tai huoltoyhtiön
-  osoitteet) ja niiden tyypin. Listalla oleva domain ratkaisee tyypin AI:n arvion sijaan.
+  osoitteet) ja niiden tyypin. Listalla oleva domain ratkaisee tyypin AI:n arvion sijaan. Listalla on valmiiksi
+  valtakunnallisten viranomaisten domaineja (esim. poliisi.fi, vero.fi, kela.fi, prh.fi, maanmittauslaitos.fi);
+  kunnan ja hyvinvointialueen osoitteet toimisto lisää itse.
 - **Viranomainen:** tehtävä on aina vähintään kiireellinen, viestissä mainittu määräaika tulee tehtävän
   määräajaksi, ja asia kuuluu aina henkilökunnalle.
 - **Vastausehdotus muille kuin asukkaille:** välittäjän yleiseen kysymykseen (esim. isännöitsijäntodistus) haetaan
