@@ -1044,17 +1044,21 @@ describe("sovellus", () => {
       confirm.mockRestore();
       cleanup();
 
-      // Agentilla on vastuu: painike on vihreä, "AI-agentti hoitaa", eikä sitä voi painaa uudelleen.
+      // Agentilla on vastuu: painike on vihreä, "AI-agentti hoitaa", ja uusi painallus lopettaa agentin käsittelyn.
       responses["/tickets/ticket-1"] = {
         ticket: { ...overdueTicket, company_name: "As Oy Koivikko", agent_owned: 1 }, messages: [], audit: [], reporters: [], apartments: [],
         notes: [], workOrders: [], contractor: null, attachments: []
       };
-      mockApi();
+      const stopCalls = mockApi();
       await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
       const owned = await screen.findByRole("button", { name: /AI-agentti hoitaa/ }, { timeout: 5000 });
       expect(owned.className).toContain("agent-owned");
       expect(owned.getAttribute("aria-pressed")).toBe("true");
-      expect((owned as HTMLButtonElement).disabled).toBe(true);
+      const stop = vi.spyOn(window, "confirm").mockReturnValue(true);
+      fireEvent.click(owned);
+      await vi.waitFor(() => expect(stopCalls.some(request => request.method === "DELETE" && request.url.endsWith("/tickets/ticket-1/agent"))).toBe(true));
+      expect(await screen.findByText("AI-agentti lopetti tehtävän käsittelyn.")).toBeTruthy();
+      stop.mockRestore();
     } finally {
       responses["/office"] = office;
       delete responses["/tickets/ticket-1"];

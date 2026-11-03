@@ -500,12 +500,37 @@ function draftTimePromise(ticket: AgentTicket) {
 // Automaattisesti käynnistyneestä siirrosta lähtee sähköposti vastuuisännöitsijälle.
 // AI-agentti ottaa tehtävän vastuulleen (tehtävällä näkyy vihreä "AI-agentti hoitaa").
 function takeResponsibility(ticketId: string) {
+  // Käsittelijä pysäytti agentin kesken ajon: vastuu ei palaa agentille ajon päättyessä.
+  if (stoppedDuringRun.delete(ticketId)) {
+    db.prepare("UPDATE tickets SET agent_owned = 0, ai_action = CASE WHEN ai_action = 'ai' THEN 'pending_decision' ELSE ai_action END WHERE id = ?").run(ticketId);
+    return;
+  }
   db.prepare("UPDATE tickets SET agent_owned = 1 WHERE id = ?").run(ticketId);
 }
+const stoppedDuringRun = new Set<string>();
 
 // Vastuu palaa henkilökunnalle: agentti siirsi tehtävän tai käsittelijä vastasi itse.
 export function releaseResponsibility(ticketId: string) {
   db.prepare("UPDATE tickets SET agent_owned = 0 WHERE id = ?").run(ticketId);
+}
+
+// Käsittelijä poisti tehtävän AI-agentilta (painoi vihreää "AI-agentti hoitaa" -painiketta): agentti lopettaa
+// käsittelyn. Agentti ei jatka asukkaan vastauksista, tarjotut vuorot raukeavat, ja tehtävä palaa päätösjonoon.
+// Jo tehty luonnos jää kenttään käsittelijän muokattavaksi.
+export function stopAgent(ticketId: string, actor: string) {
+  const ticket = loadTicket(ticketId);
+  if (!ticket) return false;
+  if (running.has(ticketId)) stoppedDuringRun.add(ticketId);
+  db.prepare(`
+    UPDATE tickets SET agent_owned = 0, agent_state = NULL, updated_at = ?,
+      ai_action = CASE WHEN ai_action = 'ai' THEN 'pending_decision' ELSE ai_action END,
+      status = CASE WHEN ai_action = 'ai' AND status != 'closed' THEN 'open' ELSE status END
+    WHERE id = ?
+  `).run(now(), ticketId);
+  db.prepare("DELETE FROM ai_agent_draft_offers WHERE ticket_id = ?").run(ticketId);
+  db.prepare("DELETE FROM ai_agent_offers WHERE ticket_id = ?").run(ticketId);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(id("audit"), ticketId, actor, "ai_agent_stopped", "{}", now());
+  return true;
 }
 
 function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; auto?: boolean }) {

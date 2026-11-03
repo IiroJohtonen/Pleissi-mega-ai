@@ -5515,14 +5515,12 @@ button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:dis
 .ticket-form .manager-picks label.backup-pick { font-size: var(--text-xs); padding: 4px 8px; }
 
 /* AI-agentilla on vastuu tehtävästä: vihreä painike. */
-.suggest-header .ai-button.agent-owned,
-.suggest-header .ai-button.agent-owned:disabled {
+.suggest-header .ai-button.agent-owned {
   border-color: #2e7d4f;
   background: #2e7d4f;
   color: #fff;
-  opacity: 1;
-  cursor: default;
 }
+.suggest-header .ai-button.agent-owned:hover:not(:disabled) { border-color: #24653f; background: #24653f; }
 
 /* AI-agentin nimi ja allekirjoituksen esikatselu asetuksissa. */
 .agent-name-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-bottom: 8px; }

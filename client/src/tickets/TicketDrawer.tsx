@@ -412,6 +412,22 @@ export function TicketDrawer({
     }
   }
 
+  // Vihreän "AI-agentti hoitaa" -painikkeen painallus: agentti lopettaa käsittelyn, ja vastuu palaa käsittelijälle.
+  async function stopAgent() {
+    if (!window.confirm(t("Lopetetaanko AI-agentin käsittely? Tehtävä palaa sinulle, eikä agentti jatka asukkaan vastauksista. Agentin luonnos jää vastauskenttään."))) return;
+    setAgentRunning(true);
+    setSuggestError("");
+    try {
+      await api(`/tickets/${ticket.id}/agent`, { method: "DELETE" });
+      setSuggestionToast({ title: t("AI-agentti lopetti tehtävän käsittelyn."), message: t("Tehtävä on nyt sinun vastuullasi.") });
+      await onChanged();
+    } catch (error) {
+      setSuggestError(errorMessage(error, t("AI-agentin pysäytys epäonnistui. Yritä uudelleen.")));
+    } finally {
+      setAgentRunning(false);
+    }
+  }
+
   const [sensitiveSaving, setSensitiveSaving] = useState(false);
   async function toggleSensitive() {
     const next = !ticket.sensitive;
@@ -1199,11 +1215,11 @@ export function TicketDrawer({
               // siirtää tehtävän tai käsittelijä kirjoittaa vastauksen itse.
               <button
                 className={`ai-button${ticket.agent_owned ? " agent-owned" : ""}`}
-                onClick={() => void runAgent()}
+                onClick={() => void (ticket.agent_owned ? stopAgent() : runAgent())}
                 aria-pressed={Boolean(ticket.agent_owned)}
-                disabled={agentRunning || suggesting || Boolean(ticket.sensitive) || Boolean(ticket.agent_owned)}
-                title={ticket.sensitive ? t("Arkaluonteista tehtävää ei lähetetä AI:lle.")
-                  : ticket.agent_owned ? t("AI-agentilla on vastuu tämän tehtävän käsittelystä. Vastuu palaa sinulle, kun agentti siirtää tehtävän tai kun kirjoitat vastauksen itse.")
+                disabled={agentRunning || suggesting || (Boolean(ticket.sensitive) && !ticket.agent_owned)}
+                title={ticket.sensitive && !ticket.agent_owned ? t("Arkaluonteista tehtävää ei lähetetä AI:lle.")
+                  : ticket.agent_owned ? t("AI-agentilla on vastuu tämän tehtävän käsittelystä. Paina, niin agentti lopettaa käsittelyn ja tehtävä palaa sinulle.")
                   : t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat ja vastaa asukkaalle")}
               >
                 {agentRunning ? t("AI-agentti käsittelee…") : ticket.agent_owned ? t("AI-agentti hoitaa") : t("Anna AI-agentin hoitaa")}

@@ -1139,7 +1139,9 @@
     background: #48312e;
     color: #ea9c95
 }
-:root[data-theme="dark"] .suggest-header .ai-button.agent-owned,
-:root[data-theme="dark"] .suggest-header .ai-button.agent-owned:disabled {
+:root[data-theme="dark"] .suggest-header .ai-button.agent-owned {
     color: #ffffff
+}
+:root[data-theme="dark"] .suggest-header .ai-button.agent-owned:hover:not(:disabled) {
+    background: #d5dae2
 }

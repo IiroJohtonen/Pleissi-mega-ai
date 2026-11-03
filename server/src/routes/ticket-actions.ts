@@ -21,7 +21,7 @@ import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
 import { sendTicketReply } from "../ticket-reply.js";
 import { id, now, unsafeFileMessage } from "../util.js";
-import { activateDraftOffers, AgentUnavailableError, releaseResponsibility, runAgentNow } from "../ai-agent.js";
+import { activateDraftOffers, AgentUnavailableError, releaseResponsibility, runAgentNow, stopAgent } from "../ai-agent.js";
 
 export const ticketActionsRouter: Router = express.Router();
 
@@ -111,6 +111,13 @@ ticketActionsRouter.post("/tickets/:id/agent", async (req, res) => {
     if (error instanceof AgentUnavailableError) return res.status(error.status).json({ error: error.message });
     throw error;
   }
+});
+
+// Käsittelijä poistaa tehtävän AI-agentilta: agentti lopettaa käsittelyn, ja vastuu palaa käsittelijälle.
+ticketActionsRouter.delete("/tickets/:id/agent", (req, res) => {
+  if (!getAuthorizedTicket(req.params.id)) return res.status(404).json({ error: "Ticket not found" });
+  stopAgent(req.params.id, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true });
 });
 
 // Pyytää AI:lta vastausehdotuksen yhtiön dokumentaation ja tehtävän sähköpostiketjun pohjalta. Ehdotuksen
