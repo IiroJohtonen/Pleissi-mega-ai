@@ -434,6 +434,7 @@ export function TicketDrawer({
         usedAi: boolean;
         sensitive?: boolean;
         followUp?: boolean;
+        guidanceGap?: boolean;
       }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
       setSuggestionToast({
@@ -444,7 +445,10 @@ export function TicketDrawer({
           : result.sensitive
           ? t("Tehtävä on arkaluonteinen, joten sitä ei lähetetty AI:lle. Ehdotus tehtiin avainsanahaulla dokumentaatiosta.")
           : t("AI ei ollut käytettävissä, joten ehdotus tehtiin avainsanahaulla dokumentaatiosta."),
-        message: result.reason
+        // Lähettäjän pyyntöön (esim. välittäjä) ei löytynyt ohjetta dokumentaatiosta: luonnos on yleinen.
+        message: result.guidanceGap
+          ? `${result.reason} ${t("Dokumentaatiosta ei löytynyt ohjetta tähän pyyntöön, joten luonnos on yleinen. Puuttuva ohje näkyy kohdassa Raportit › Osaamisaukot.")}`
+          : result.reason
       });
       setDraft(result.draft);
       setSaved(false);

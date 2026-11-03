@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
 import { SAFETY_ADVICE } from "../incidents.js";
-import { senderGuidance, senderLineForAi } from "../sender-types.js";
+import { recordGuidanceGap, senderGuidance, senderLineForAi } from "../sender-types.js";
 import { withAiLog } from "../ai-log.js";
 import { searchKnowledgeChunks } from "../knowledge-chunks.js";
 import { selectSimilarTickets } from "../similar-tickets.js";
@@ -162,6 +162,10 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
       sender: senderLineForAi(ticket.sender_type ?? null, residentIdentified)
     }));
   const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
+  // Muun kuin asukkaan pyynnön ohje puuttuu dokumentaatiosta, kun luonnos ei nojaa mihinkään palaan: aukko näkyy
+  // Raportit › Aukot -näkymässä, josta toimisto näkee, mitä ohjeita kannattaa lisätä.
+  const guidanceGap = Boolean(guidance && !source);
+  if (guidance && guidanceGap) recordGuidanceGap(ticket.id, guidance.gap);
   const timestamp = now();
 
   db.prepare(`
@@ -201,7 +205,9 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     source: source ? { id: source.knowledgeId, title: source.documentTitle, chunkId: source.id, page: source.page } : null,
     usedAi: suggestion.usedAi,
     sensitive,
-    followUp
+    followUp,
+    // Ohje puuttui dokumentaatiosta ja kirjattiin tietopohjan aukoksi.
+    guidanceGap: guidanceGap || undefined
   });
 });
 

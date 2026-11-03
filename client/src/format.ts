@@ -117,6 +117,7 @@ export function actionLabel(action: string) {
     topic_changed: t("Aihe vaihdettu"),
     sender_type_classified: t("Lähettäjän tyyppi tunnistettu"),
     sender_type_changed: t("Lähettäjän tyyppi vaihdettu"),
+    guidance_gap: t("Dokumentaatiosta puuttuu ohje (tietopohjan aukko)"),
     sender_domains_changed: t("Tunnetut lähettäjät päivitetty"),
     incident_linked: t("Liitetty mahdolliseen yhteiseen vikaan"),
     incident_unlinked: t("Irrotettu yhteisestä viasta"),

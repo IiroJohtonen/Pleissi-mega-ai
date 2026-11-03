@@ -133,6 +133,14 @@ describe("lähettäjätyypit", () => {
     assert.match(prompt, /kiinteistönvälittäjä/);
     // Tunnistamattomalle lähettäjälle ei anneta taloyhtiön muistia.
     assert.match(prompt, /Housing company memory[^]*?\(none\)/);
+    // Dokumentaatiossa ei ole ohjetta: luonnos on yleinen ja puute kirjataan tietopohjan aukoksi kerran tehtävää kohden.
+    assert.equal(suggested.data.guidanceGap, true);
+    await call(server, admin, "POST", `/tickets/${detail.ticket.id}/suggest`, {});
+    const audit = (await call(server, admin, "GET", `/tickets/${detail.ticket.id}`)).data.audit as any[];
+    assert.equal(audit.filter(entry => entry.action === "guidance_gap").length, 1);
+    const gaps = (await call(server, admin, "GET", "/reports/knowledge-gaps?companyId=demo-company")).data;
+    const questions = gaps.topics.flatMap((topic: any) => topic.questions.map((question: any) => question.question));
+    assert.ok(questions.some((question: string) => question.includes("isännöitsijäntodistuksen")), JSON.stringify(gaps));
   });
 
   it("välittäjän asuntoa koskeva pyyntö: luonnos pyytää osakkaan valtuutuksen", async () => {

@@ -2554,4 +2554,6 @@ export const en: Record<string, string> = {
   "Osaamisaukot": "Knowledge gaps",
   "AI-agentti ei löytänyt vastausta (osaamisaukko)": "The AI agent found no answer (knowledge gap)",
   "Ohje tallennettu dokumentaatioon": "Instruction saved to documentation",
+  "Dokumentaatiosta ei löytynyt ohjetta tähän pyyntöön, joten luonnos on yleinen. Puuttuva ohje näkyy kohdassa Raportit › Osaamisaukot.": "No instruction for this request was found in the documentation, so the draft is general. The missing instruction is shown under Reports › Knowledge gaps.",
+  "Dokumentaatiosta puuttuu ohje (tietopohjan aukko)": "Instruction missing from the documentation (knowledge gap)",
 };

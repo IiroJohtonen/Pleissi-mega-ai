@@ -127,23 +127,27 @@ export function setSenderType(ticketId: string, type: SenderType, actor: string)
 
 // Vastausluonnoksen ohje lähettäjän mukaan. query täydentää dokumentaatiohakua (ohjeteksti tulee dokumentaatiosta,
 // ei koodista) ja note kertoo AI:lle tilanteen. null = tavallinen asukkaan tehtävä.
-export function senderGuidance(type: string | null, request: string | null, residentIdentified: boolean): { query: string; note: string } | null {
+// gap = yleinen kysymys, joka kirjataan tietopohjan aukoksi, jos dokumentaatiosta ei löydy ohjetta (ei henkilötietoja).
+export function senderGuidance(type: string | null, request: string | null, residentIdentified: boolean): { query: string; note: string; gap: string } | null {
   const notResident = !residentIdentified || (type !== null && !AGENT_SENDER_TYPES.includes(type as SenderType));
   if (type === "broker" && request !== "apartment_specific") {
     return {
       query: "isännöitsijäntodistus kiinteistönvälittäjä tilaus toimitusaika hinta",
+      gap: "Miten kiinteistönvälittäjä tilaa isännöitsijäntodistuksen ja mitä se maksaa?",
       note: "Lähettäjä on kiinteistönvälittäjä ja kysyy yleistä asiaa. Vastaa vain dokumentaation ohjeen mukaan (esim. isännöitsijäntodistuksen tilaaminen). Älä kerro mitään yksittäisestä asunnosta tai asukkaasta."
     };
   }
   if (request === "apartment_specific" && notResident) {
     return {
       query: "osakkaan valtuutus valtakirja asunnon tietojen luovutus",
+      gap: "Millä valtuutuksella yksittäisen asunnon tietoja annetaan muulle kuin osakkaalle?",
       note: "Pyyntö koskee yksittäistä asuntoa, eikä lähettäjää ole tunnistettu asunnon osakkaaksi. Kerro dokumentaation ohjeen mukaan, että tietojen luovuttamiseen tarvitaan osakkaan valtuutus. Älä kerro asunnosta tai sen asukkaista mitään."
     };
   }
   if (request === "owner_matter" && type === "resident") {
     return {
       query: "osakkaan kunnossapitovastuu vuokralainen vuokranantaja",
+      gap: "Mitkä asiat kuuluvat osakkaalle eikä vuokralaiselle, ja miten vuokralainen toimii niissä?",
       note: "Lähettäjä on asukas (vuokralainen), ja asia kuuluu asunnon omistajalle. Kerro dokumentaation ohjeen mukaan, että asia kuuluu osakkaalle ja vuokralaisen kannattaa olla yhteydessä vuokranantajaansa."
     };
   }
@@ -156,4 +160,15 @@ export function senderLineForAi(type: string | null, residentIdentified: boolean
     return "Identified resident or shareholder of the housing company.";
   }
   return `NOT identified as a resident of the housing company (sender type: ${type ?? "unknown"}). Never reveal anything about any resident or apartment.`;
+}
+
+// Lähettäjän ohjetta ei löytynyt dokumentaatiosta: kirjataan tietopohjan aukoksi (Raportit › Aukot), kerran tehtävää
+// kohden. Kysymys on yleinen, joten aukkoon ei tallennu henkilötietoja.
+export function recordGuidanceGap(ticketId: string, question: string) {
+  const ticket = db.prepare("SELECT company_id, topic FROM tickets WHERE id = ?").get(ticketId) as { company_id: string; topic: string | null } | undefined;
+  if (!ticket || db.prepare("SELECT 1 FROM knowledge_gaps WHERE ticket_id = ? AND question = ?").get(ticketId, question)) return false;
+  db.prepare("INSERT INTO knowledge_gaps (id, company_id, ticket_id, topic, question, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(id("gap"), ticket.company_id, ticketId, ticket.topic, question, now());
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(id("audit"), ticketId, "ai", "guidance_gap", JSON.stringify({ question }), now());
+  return true;
 }

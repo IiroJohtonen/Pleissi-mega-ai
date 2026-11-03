@@ -4,6 +4,21 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 3.11.2026 · Puuttuva ohje muun kuin asukkaan pyyntöön näkyy osaamisaukkona
+
+**Mitä muutettiin**
+- Kun välittäjän yleiseen kysymykseen, yksittäistä asuntoa koskevaan pyyntöön tai osakkaalle kuuluvaan asiaan ei
+  löydy ohjetta dokumentaatiosta (esim. isännöitsijäntodistuksen tilaaminen tai osakkaan valtuutus), AI-ehdotus jää
+  yleiseksi ja puute kirjataan tietopohjan aukoksi. Sama tehtävä kirjataan vain kerran.
+- Aukkoon tallentuu yleinen kysymys, ei lähettäjän tai asunnon tietoja.
+- Kun ohje lisätään dokumentaatioon, seuraavat ehdotukset käyttävät sitä.
+
+**Miten**
+- Tehtävä › AI-ehdotus: ilmoituksessa kerrotaan, että ohje puuttui.
+- Raportit › Osaamisaukot: puuttuvat ohjeet kysymyksittäin.
+
+**Testit:** PR:n kuvauksessa
+
 ## 3.11.2026 · Muiden kuin asukkaiden yhteydenotot: lähettäjän tyyppi
 
 **Mitä muutettiin**
@@ -29,6 +44,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Asetukset › AI: Tunnetut lähettäjät.
 
 **Testit:** PR:n kuvauksessa
+
 ## 3.11.2026 · Ilmoitusten yhdistäminen, häiriöhistoria ja Turvallisuus-aihe
 
 **Mitä muutettiin**
@@ -80,6 +96,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Tehtävä › lähetetty vastaus › Vastaus dokumentaatioksi.
 
 **Testit:** PR:n kuvauksessa
+
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**
