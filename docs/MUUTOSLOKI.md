@@ -4,6 +4,25 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 3.11.2026 · Aikalupaus asukkaalle
+
+**Mitä muutettiin**
+- **Aikalupaus:** kun AI-agentti siirtää tehtävän henkilökunnalle ilman käsittelijää (automaattinen käynnistys tai
+  agentin hoitaman tehtävän jatko), asukas saa viestin, jossa kerrotaan päivä, johon mennessä asiaan palataan,
+  esim. "palaamme siihen viimeistään pe 7.11.". Päivä tulee tehtävän määräajasta (perustietojen määräajat:
+  kiireellinen 1 päivä, normaali 5 päivää). Kellonaikaa ei luvata. Lupaus annetaan kerran tehtävää kohden.
+- **Muistutus:** vastuuisännöitsijä saa sähköpostin päivää ennen lupauspäivää, jos asukkaalle ei ole vielä vastattu.
+- **Mittari:** Raportit › Trendit › Aikalupaukset näyttää, kuinka moni lupaus piti (asukkaalle vastattiin tai tehtävä
+  suljettiin viimeistään luvattuna päivänä), myöhästyi tai on vielä avoinna.
+- Varahenkilöä ei vielä ole; muistutus menee vastuuisännöitsijälle.
+
+**Miten**
+- Asukkaan viesteissä (sähköposti tai portaali) näkyy lupausviesti, ja tehtävän tapahtumissa "Asukkaalle kerrottu
+  päivä, johon mennessä asiaan palataan".
+- Raportit › Trendit › Aikalupaukset.
+
+**Testit:** PR:n kuvauksessa
+
 ## 3.11.2026 · AI-reseptionisti luonnostilassa
 
 **Mitä muutettiin**

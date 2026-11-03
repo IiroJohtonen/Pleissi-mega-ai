@@ -13,6 +13,7 @@ type TrendResult = {
   resolution: { topic: string; closed: number; medianHours: number }[];
   contractors: { name: string; orders: number; open: number; medianHours: number | null }[];
   incidents: { topic: string; stairwell: string; status: string; firstReportAt: string; resolution: string | null; companyName: string; reports: number }[];
+  promises?: { promises: number; kept: number; broken: number; open: number; keptShare: number | null };
   aiDrafts?: {
     topic: string; drafts: number; unchanged: number; light: number; heavy: number; rewritten: number; tone: number; fact: number;
     unclassified: number; readyShare: number | null; ready: boolean; agentRuns: number; handovers: number; handoverShare: number | null;
@@ -177,6 +178,32 @@ export function Trends({ companies, companyId }: { companies: Company[]; company
                       <td className="num">{row.agentRuns ? `${row.handovers}/${row.agentRuns} (${percent(row.handoverShare)})` : "–"}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="report-card">
+            <h2>{t("Aikalupaukset")}</h2>
+            <p className="muted">
+              {t("Kun AI-agentti siirtää tehtävän henkilökunnalle, asukkaalle kerrotaan päivä, johon mennessä asiaan palataan. Lupaus pitää, kun asukkaalle vastattiin tai tehtävä suljettiin viimeistään luvattuna päivänä.")}
+            </p>
+            {!result.promises?.promises ? <p className="muted">{t("Aikavälillä ei ole annettu aikalupauksia.")}</p> : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="num">{t("Lupauksia")}</th><th className="num">{t("Pitivät")}</th><th className="num">{t("Myöhästyivät")}</th>
+                    <th className="num">{t("Avoinna")}</th><th className="num">{t("Pitävyys")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="num">{result.promises.promises}</td>
+                    <td className="num">{result.promises.kept}</td>
+                    <td className="num">{result.promises.broken}</td>
+                    <td className="num">{result.promises.open}</td>
+                    <td className="num">{percent(result.promises.keptShare)}</td>
+                  </tr>
                 </tbody>
               </table>
             )}
