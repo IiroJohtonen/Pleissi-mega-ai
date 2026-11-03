@@ -3,6 +3,29 @@
 Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten. Testitapaukset ja niiden
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
+
+## 3.11.2026 · Ilmoitusten yhdistäminen, häiriöhistoria ja Turvallisuus-aihe
+
+**Mitä muutettiin**
+- **Yhdistämisehdotus:** jos sama asukas ilmoittaa samasta asiasta uudelleen 14 päivän sisällä, kun edellinen
+  tehtävä on vielä auki, tehtävällä näkyy ehdotus liittää se edelliseen. Yhdistäminen tehdään yhdellä
+  klikkauksella, ei koskaan automaattisesti. Kun merkityshaku on päällä, myös samaa tarkoittava ilmoitus
+  tunnistetaan.
+- **Aihe:** kun AI arvioi saapuvan viestin, se päättelee samalla myös aiheen. Ilman AI:ta aihe tulee kuten ennen
+  avainsanoista, ja meluun lisättiin puuttuvia sanoja (kiroilu, huutaminen, riehuminen, tappelu ym.).
+- **Kohdeasunto:** häiriöilmoituksessa AI ehdottaa viestistä asuntoa, jota ilmoitus koskee, ja käsittelijä
+  vahvistaa sen. Tehtävän Aiemmin-osiossa näkyvät vahvistetun kohdeasunnon aiemmat ilmoitukset kaikilta
+  ilmoittajilta. Tieto näkyy vain henkilökunnalle.
+- **Uusi aihe Turvallisuus:** epäilyttävä henkilö tai ajoneuvo, murto, varkaus ja ilkivalta. Kaksi ilmoittajaa 48
+  tunnin sisällä kootaan yhteiseksi viaksi. Vastauksissa muistutetaan, että käynnissä olevaan tilanteeseen
+  soitetaan 112.
+- **AI-agentti** ei käsittele häiriö- eikä turvallisuusilmoituksia; ne menevät aina henkilökunnalle.
+
+**Miten**
+- Tehtävä: yhdistämisehdotus ("Liitä edelliseen") ja häiriö- tai turvallisuustehtävällä Kohdeasunto-kenttä.
+- Tehtävä › Aiemmin: "Ilmoitukset asunnosta …".
+
+**Testit:** PR:n kuvauksessa
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**

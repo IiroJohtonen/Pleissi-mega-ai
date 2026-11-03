@@ -20,6 +20,12 @@ export type Ticket = {
   // Aihe yhteisten vikojen tunnistukseen (esim. heating); topic_source manual = käsittelijän valitsema.
   topic?: string | null;
   topic_source?: string | null;
+  // Häiriö- ja turvallisuusilmoituksen kohdeasunto: AI:n ehdotus (teksti) ja käsittelijän vahvistama asunto.
+  target_apartment_id?: string | null;
+  target_apartment_text?: string | null;
+  target_apartment_confirmed?: number;
+  // Tehtävä, johon tämä yhdistettiin.
+  merged_into?: string | null;
   // Mikä ratkaisi asian (käsittelijän kirjaama).
   resolution?: string | null;
   // renovation = remonttitehtävä, joka ei mene päätösjonoon; muut tehtävät ovat "ticket".

@@ -6,6 +6,7 @@ import { triage } from "../ai.js";
 import { attachAiLog, withAiLog } from "../ai-log.js";
 import { db } from "../db.js";
 import { processIncidents } from "../incidents.js";
+import { applyClassification } from "../ticket-links.js";
 import { apartmentForForm, detectEmailForm, formContact, formSubject, parseFormFields } from "../email-forms.js";
 import { FORM_TYPES } from "../portal-form-data.js";
 import { importSiteForm } from "../site-forms.js";
@@ -327,6 +328,8 @@ if (input.sourceMessageId) {
 }
 
   if (result.emergency && !filtered) void alertEmergency(ticketId);
+  // AI:n aihe ja häiriön kohdeasunto samasta arvioinnista; muuten aihe avainsanoista (processIncidents).
+  applyClassification(ticketId, result);
   // Aihe ja yhteisten vikojen tunnistus taustalla.
   void processIncidents(ticketId);
 

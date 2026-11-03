@@ -7,6 +7,7 @@ import { attachAiLog, withAiLog } from "../ai-log.js";
 import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { processIncidents } from "../incidents.js";
+import { applyClassification } from "../ticket-links.js";
 import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
 import { QUEUE_POSITION_SQL } from "../booking-queue.js";
@@ -121,6 +122,7 @@ export async function createPortalTicket(
   beforeAttachments?.(ticketId);
 
   if (result.emergency) void alertEmergency(ticketId);
+  applyClassification(ticketId, result);
   // Aihe ja yhteisten vikojen tunnistus taustalla.
   void processIncidents(ticketId);
 

@@ -804,6 +804,12 @@ db.exec(`
   const columns = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
   if (!columns.includes("topic")) db.exec("ALTER TABLE tickets ADD COLUMN topic TEXT");
   if (!columns.includes("topic_source")) db.exec("ALTER TABLE tickets ADD COLUMN topic_source TEXT");
+  // Häiriö- ja turvallisuusilmoituksen kohdeasunto (ticket-links.ts): AI ehdottaa viestistä, käsittelijä vahvistaa.
+  if (!columns.includes("target_apartment_id")) db.exec("ALTER TABLE tickets ADD COLUMN target_apartment_id TEXT");
+  if (!columns.includes("target_apartment_text")) db.exec("ALTER TABLE tickets ADD COLUMN target_apartment_text TEXT");
+  if (!columns.includes("target_apartment_confirmed")) db.exec("ALTER TABLE tickets ADD COLUMN target_apartment_confirmed INTEGER NOT NULL DEFAULT 0");
+  // Tehtävä yhdistettiin toiseen (ticket-links.ts mergeTickets); viestit ja liitteet ovat siellä.
+  if (!columns.includes("merged_into")) db.exec("ALTER TABLE tickets ADD COLUMN merged_into TEXT");
 }
 if (!officeColumns.some(existing => existing.name === "incident_detection")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");

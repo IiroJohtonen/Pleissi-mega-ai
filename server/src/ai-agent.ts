@@ -73,6 +73,11 @@ function ineligibleReason(ticket: AgentTicket): string | null {
   if (!ticket.resident_id) return "Tehtävän ilmoittajaa ei ole tunnistettu taloyhtiön asukkaaksi. Valitse ilmoittaja ensin.";
   if (ticket.ai_action === "emergency") return "Hätätilanne kuuluu aina henkilökunnalle.";
   if (ticket.ai_action === "filtered") return "AI suodatti viestin, koska se ei koske taloyhtiön asioita.";
+  // Häiriö- ja turvallisuusilmoitukset menevät aina henkilökunnalle; agentti ei vastaa niihin eikä paljasta
+  // ilmoittajaa tai kohdetta.
+  const topic = (db.prepare("SELECT topic FROM tickets WHERE id = ?").get(ticket.id) as { topic: string | null } | undefined)?.topic;
+  if (topic === "noise") return "Häiriöilmoitus kuuluu aina henkilökunnalle.";
+  if (topic === "safety") return "Turvallisuusilmoitus kuuluu aina henkilökunnalle.";
   if (db.prepare("SELECT 1 FROM portal_forms WHERE ticket_id = ?").get(ticket.id)) return "Lomakkeella tullut tehtävä kuuluu henkilökunnalle.";
   return null;
 }

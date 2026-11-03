@@ -4,6 +4,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
+import { SAFETY_ADVICE } from "../incidents.js";
 import { withAiLog } from "../ai-log.js";
 import { searchKnowledgeChunks } from "../knowledge-chunks.js";
 import { selectSimilarTickets } from "../similar-tickets.js";
@@ -143,7 +144,9 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
       return [];
     });
   const { result: suggestion } = await withAiLog(ticket.id, () =>
-    suggestReply(ticket.subject, conversation, chunks, options.data.context ?? "", {
+    suggestReply(ticket.subject, conversation, chunks,
+      // Turvallisuusilmoituksessa vastaus muistuttaa aina hätänumerosta (käynnissä oleva tilanne).
+      [options.data.context ?? "", ticket.topic === "safety" ? `Turvallisuusilmoitus: kerro vastauksessa: "${SAFETY_ADVICE}"` : ""].filter(Boolean).join("\n"), {
       allowAi: !sensitive, followUp, memory: sensitive ? [] : memoryForAi(ticket.company_id, { topic: ticket.topic, stairwell: ticketStairwell(ticket.id) }),
       examples
     }));

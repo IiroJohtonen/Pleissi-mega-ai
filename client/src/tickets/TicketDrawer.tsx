@@ -14,6 +14,7 @@ import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { MergeSuggestion, TargetApartmentField } from "./TicketLinks";
 import { UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
 import { Toast } from "../components/Toast";
@@ -834,6 +835,8 @@ export function TicketDrawer({
         {ticket.company_pending ? (
           <UnidentifiedCompanyPanel ticket={ticket} companies={companies} users={officeUsers} onChanged={onChanged} />
         ) : null}
+        <MergeSuggestion ticket={ticket} onMerged={ticketId => { void onChanged(); openOtherTicket(ticketId); }} />
+        <TargetApartmentField ticket={ticket} onChanged={onChanged} />
         {incident && (
           <p className="incident-notice">
             <span>
