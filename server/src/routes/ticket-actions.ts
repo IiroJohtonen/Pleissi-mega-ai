@@ -19,7 +19,7 @@ import { notifyTicketStatus } from "../notify.js";
 import { renderSignature, withSignature } from "../signature.js";
 import { sendTicketReply } from "../ticket-reply.js";
 import { id, now, unsafeFileMessage } from "../util.js";
-import { AgentUnavailableError, runAgentNow } from "../ai-agent.js";
+import { activateDraftOffers, AgentUnavailableError, runAgentNow } from "../ai-agent.js";
 
 export const ticketActionsRouter: Router = express.Router();
 
@@ -426,6 +426,8 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     SET draft = '', status = 'answered', updated_at = ?
     WHERE id = ?
   `).run(timestamp, req.params.id);
+  // AI-agentin luonnoksen tarjoamat vuorot tulevat voimaan, ja agentti jatkaa asukkaan vastauksesta.
+  activateDraftOffers(req.params.id, !comparison || comparison.edit === "rewritten");
 
   const replyAuditId = id("audit");
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(

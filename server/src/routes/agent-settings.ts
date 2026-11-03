@@ -15,8 +15,12 @@ import { id, now } from "../util.js";
 
 export const agentSettingsRouter = Router();
 
-agentSettingsRouter.get("/agent/settings", requireAdmin, (_req, res) => {
-  res.json({ autoStart: agentAutoDefault(), companies: agentAutoCompanies(), topics: topicAutonomy() });
+// topics = valitun taloyhtiön (companyId, oletuksena ensimmäinen) aiheet: luonnosmittari ja hyväksynnät.
+agentSettingsRouter.get("/agent/settings", requireAdmin, (req, res) => {
+  const companies = agentAutoCompanies();
+  const requested = typeof req.query.companyId === "string" ? req.query.companyId : "";
+  const companyId = companies.some(company => company.id === requested) ? requested : companies[0]?.id ?? "";
+  res.json({ autoStart: agentAutoDefault(), companies, companyId, topics: companyId ? topicAutonomy(companyId) : [] });
 });
 
 agentSettingsRouter.put("/agent/settings", requireAdmin, (req, res) => {
@@ -43,17 +47,18 @@ agentSettingsRouter.put("/agent/companies/:companyId", requireAdmin, (req, res) 
   res.json({ ok: true });
 });
 
-// Aihe itsenäiseksi (vain kun luonnosmittarin raja täyttyy) tai takaisin luonnostilaan.
+// Taloyhtiön aihe itsenäiseksi (vain kun taloyhtiön luonnosmittarin raja täyttyy) tai takaisin luonnostilaan.
 agentSettingsRouter.put("/agent/topics/:topic", requireAdmin, (req, res) => {
   const topic = String(req.params.topic);
   if (!isTopic(topic) && topic !== "other") return res.status(404).json({ error: "Aihetta ei löytynyt." });
-  const parsed = z.object({ autonomous: z.boolean() }).safeParse(req.body);
+  const parsed = z.object({ companyId: z.string().min(1), autonomous: z.boolean() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista asetus." });
+  if (!db.prepare("SELECT 1 FROM companies WHERE id = ?").get(parsed.data.companyId)) return res.status(404).json({ error: "Taloyhtiötä ei löytynyt." });
   try {
-    setTopicAutonomy(topic, parsed.data.autonomous, res.locals.user?.name ?? "Pääkäyttäjä");
+    setTopicAutonomy(parsed.data.companyId, topic, parsed.data.autonomous, res.locals.user?.name ?? "Pääkäyttäjä");
   } catch (error) {
     if (error instanceof AutonomyError) return res.status(409).json({ error: error.message });
     throw error;
   }
-  res.json({ topics: topicAutonomy() });
+  res.json({ topics: topicAutonomy(parsed.data.companyId) });
 });

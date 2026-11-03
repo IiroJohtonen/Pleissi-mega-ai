@@ -796,6 +796,8 @@ if (!officeColumns.some(existing => existing.name === "ai_agent")) {
 // AI-agentin asukkaalle tarjoamat vuorot. Agentti saa varata tarjotun vuoron vasta, kun asukas on vastannut
 // tarjoukseen, joten varaus ei synny pelkästä AI:n päätelmästä.
 db.exec(`
+  -- Agentin luonnoksessa tarjoamat vuorot; voimaan, kun käsittelijä lähettää luonnoksen (ai-agent.ts activateDraftOffers).
+  CREATE TABLE IF NOT EXISTS ai_agent_draft_offers (ticket_id TEXT NOT NULL, resource TEXT NOT NULL, starts_at TEXT NOT NULL, PRIMARY KEY (ticket_id, resource, starts_at));
   CREATE TABLE IF NOT EXISTS ai_agent_offers (
     ticket_id TEXT NOT NULL,
     resource TEXT NOT NULL,

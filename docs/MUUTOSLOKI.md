@@ -10,11 +10,15 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - **Automaattinen käynnistys:** AI-agentti voi käsitellä uudet tehtävät heti niiden saapuessa. Asetus on oletuksena
   pois, ja sen voi kytkeä päälle kaikille taloyhtiöille tai taloyhtiökohtaisesti (esim. ensin yhdessä
   pilottitaloyhtiössä).
-- **Luonnostila:** agentin vastaus jää tehtävälle luonnokseksi, jonka käsittelijä tarkistaa ja lähettää. Asukkaalle
-  ei lähde mitään ilman ihmistä. Luonnostilassa agentti ei tee varauksia eikä lisää autopaikkajonoon.
-- **Itsenäiset aiheet:** aiheeseen agentti voi vastata itse vasta, kun vähintään 100 sen luonnoksesta 99 % on
-  lähtenyt sellaisenaan tai pelkällä sävymuokkauksella ja pääkäyttäjä on hyväksynyt aiheen. Jos osuus putoaa,
-  aihe palaa luonnostilaan.
+- **Luonnostila:** agentin vastaus jää tehtävälle luonnokseksi, jonka käsittelijä tarkistaa ja lähettää. Tämä koskee
+  myös tehtävältä painikkeesta käynnistettyä agenttia. Agentin tekstiä ei lähde asukkaalle ilman ihmistä.
+- **Vuorovaraukset luonnostilassa:** agentti ehdottaa vapaita aikoja luonnoksessa. Kun käsittelijä on lähettänyt
+  luonnoksen ja asukas vastaa, agentti varaa asukkaan hyväksymän vuoron, ehdottaa uutta aikaa tai lopettaa asian
+  käsittelyn vastauksen mukaan. Vahvistusviesti on taas luonnos käsittelijälle. Autopaikkajonoon agentti ei
+  luonnostilassa lisää.
+- **Itsenäiset aiheet taloyhtiöittäin:** taloyhtiön aiheeseen agentti voi vastata itse vasta, kun taloyhtiön
+  vähintään 100 luonnoksesta 99 % on lähtenyt sellaisenaan tai pelkällä sävymuokkauksella ja pääkäyttäjä on
+  hyväksynyt aiheen taloyhtiölle. Jos osuus putoaa, aihe palaa luonnostilaan.
 - **Vastaukset dokumentaatiosta:** agentti vastaa yleisiin kysymyksiin vain, jos se lainaa sanatarkasti kohdan
   taloyhtiön dokumentaatiosta. Ohjelma tarkistaa lainauksen; jos sitä ei löydy, tehtävä siirtyy henkilökunnalle.
 - **Täydennä:** kun vikailmoituksesta puuttuu tietoja (asunto, kuva, milloin alkoi, koskeeko naapureita),
@@ -25,7 +29,8 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
   saa sähköpostin: mitä kysyttiin ja miksi agentti ei vastannut.
 
 **Miten**
-- Asetukset › AI › AI-reseptionisti: automaattinen käynnistys, taloyhtiökohtaiset poikkeukset ja itsenäiset aiheet.
+- Asetukset › AI › AI-reseptionisti: automaattinen käynnistys, taloyhtiökohtaiset poikkeukset ja taloyhtiön
+  itsenäiset aiheet.
 - Tehtävä: agentin luonnos on vastauskentässä, ja tapahtumissa näkyy, mitä agentti teki.
 
 **Testit:** PR:n kuvauksessa
