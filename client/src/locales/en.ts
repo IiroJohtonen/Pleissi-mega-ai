@@ -2621,4 +2621,13 @@ export const en: Record<string, string> = {
   "Pitivät": "Kept",
   "Myöhästyivät": "Late",
   "Pitävyys": "Kept share",
+  "Lähetä vastuuisännöitsijöille viikkoraportti": "Send a weekly report to responsible managers",
+  "Kerran viikossa sähköpostilla: kasvavat aiheet, viikon uudet ja suljetut tehtävät, myöhässä olevat tehtävät ja aikalupaukset.": "Once a week by email: growing topics, the week's new and closed tickets, overdue tickets and time promises.",
+  "Kasvava aihe: taloyhtiön viimeisen kolmen kuukauden ilmoituksia on vähintään kaksi kertaa niin paljon kuin edellisen kolmen kuukauden aikana. Laskenta ei käytä AI:ta. Jos muistiehdotukset ovat päällä, ne tulevat samaan viestiin.": "Growing topic: the housing company has at least twice as many reports in the last three months as in the three months before. The calculation does not use AI. If memory suggestions are on, they come in the same message.",
+  "Kasvavat aiheet": "Growing topics",
+  "Aihe, jonka ilmoituksia on viimeisen kolmen kuukauden aikana vähintään kaksi kertaa niin paljon kuin edellisen kolmen kuukauden aikana (vähintään 5 ilmoitusta). Laskenta ei käytä AI:ta.": "A topic with at least twice as many reports in the last three months as in the three months before (at least 5 reports). The calculation does not use AI.",
+  "Ei selvästi kasvavia aiheita.": "No clearly growing topics.",
+  "Viimeiset 3 kk": "Last 3 months",
+  "Edelliset 3 kk": "Previous 3 months",
+  "Havaittu": "Detected",
 };

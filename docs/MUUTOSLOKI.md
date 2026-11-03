@@ -4,6 +4,22 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 3.11.2026 · Trendihälytykset ja viikkoraportti
+
+**Mitä muutettiin**
+- **Kasvavat aiheet:** Pleissi tunnistaa aiheen, jonka ilmoituksia taloyhtiössä on viimeisen kolmen kuukauden aikana
+  vähintään kaksi kertaa niin paljon kuin edellisen kolmen kuukauden aikana (vähintään 5 ilmoitusta). Laskenta ei
+  käytä AI:ta.
+- **Viikkoraportti:** vastuuisännöitsijä voi saada kerran viikossa sähköpostin taloyhtiöistään: kasvavat aiheet (uudet
+  merkittynä), viikon uudet ja suljetut tehtävät, myöhässä olevat tehtävät ja asukkaille annetut aikalupaukset.
+  Raportti on samassa viestissä kuin taloyhtiön muistin viikkokooste. Asetus on oletuksena pois.
+
+**Miten**
+- Raportit › Trendit › Kasvavat aiheet.
+- Asetukset › AI: "Lähetä vastuuisännöitsijöille viikkoraportti".
+
+**Testit:** PR:n kuvauksessa
+
 ## 3.11.2026 · Aikalupaus asukkaalle
 
 **Mitä muutettiin**

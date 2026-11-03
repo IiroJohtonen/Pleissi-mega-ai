@@ -1,4 +1,5 @@
 import { promiseStats } from "./time-promise.js";
+import { topicTrendAlerts } from "./trend-alerts.js";
 import { db } from "./db.js";
 import { TOPIC_RULES, type TopicKey } from "./incidents.js";
 import { helsinkiParts, id, now, stairwellOf } from "./util.js";
@@ -145,7 +146,7 @@ const median = (values: number[]) => {
 const hoursBetween = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / 3_600_000;
 
 export function trends(companyIds: string[], months: number) {
-  if (!companyIds.length) return { months: [], topics: [], aiDrafts: [], repeats: [], resolution: [], contractors: [], incidents: [], promises: promiseStats([], "") };
+  if (!companyIds.length) return { months: [], topics: [], aiDrafts: [], repeats: [], resolution: [], contractors: [], incidents: [], promises: promiseStats([], ""), trendAlerts: [] };
   const since = (() => {
     const date = new Date();
     date.setDate(1);
@@ -276,6 +277,8 @@ export function trends(companyIds: string[], months: number) {
     aiDrafts: draftTopicStats(companyIds).map(item => ({ ...item, label: TOPIC_RULES[item.topic as TopicKey]?.label ?? item.topic })),
     // Asukkaalle annetut aikalupaukset jaksolla ja kuinka usein ne pitivät (time-promise.ts).
     promises: promiseStats(companyIds, since),
+    // Selvästi kasvavat aiheet (kaksinkertaistunut kolmessa kuukaudessa, trend-alerts.ts); ei riipu valitusta jaksosta.
+    trendAlerts: topicTrendAlerts(companyIds),
     repeats,
     resolution,
     contractors: [...contractors.values()].map(item => ({

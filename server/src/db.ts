@@ -833,6 +833,10 @@ if (!officeColumns.some(existing => existing.name === "known_sender_domains")) {
   // Viranomaisten domainit valmiiksi listalle (kerran; pääkäyttäjä voi muokata).
   db.prepare("UPDATE office_settings SET known_sender_domains = ?").run(JSON.stringify(DEFAULT_SENDER_DOMAINS));
 }
+// Viikkoraportti vastuuisännöitsijöille (trendihälytykset ja viikon luvut, memory.ts). Oletuksena pois.
+if (!officeColumns.some(existing => existing.name === "weekly_report")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN weekly_report INTEGER NOT NULL DEFAULT 0");
+}
 if (!officeColumns.some(existing => existing.name === "incident_detection")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");
 }
