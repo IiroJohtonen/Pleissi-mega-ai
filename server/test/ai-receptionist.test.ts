@@ -137,10 +137,10 @@ describe("AI-reseptionisti", () => {
     assert.equal(detail.ticket.knowledge_source_chunk_id, chunkId);
     assert.equal(detail.ticket.ai_action, "pending_decision");
     assert.equal((detail.messages as any[]).filter(message => message.direction === "outbound").length, 0, "asukkaalle ei lähtenyt mitään");
-    // Luonnostilassa varaustyökaluja ei ole.
+    // Luonnostilassa ei ole autopaikkajonoon lisäystä; varaus on rajattu asukkaan hyväksymään tarjoukseen (koodissa).
     const agentRequest = [...requests].reverse().find(request => Array.isArray(request.tools) && request.tools.length > 0)!;
     const names = (agentRequest.tools as { name: string }[]).map(tool => tool.name);
-    assert.ok(!names.includes("book_slot") && !names.includes("join_parking_queue"));
+    assert.ok(!names.includes("join_parking_queue"));
     assert.ok(names.includes("answer_from_documentation") && names.includes("ask_resident_for_details"));
   });
 
@@ -164,8 +164,8 @@ describe("AI-reseptionisti", () => {
   });
 
   it("itsenäinen aihe vaatii rajan ja pääkäyttäjän hyväksynnän; täydennä-kysymyksen vastaus siirtää henkilökunnalle", async () => {
-    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { autonomous: true })).status, 409);
-    assert.equal((await call(server, service, "PUT", "/agent/topics/drain", { autonomous: true })).status, 403);
+    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: true })).status, 409);
+    assert.equal((await call(server, service, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: true })).status, 403);
     // 100 viemäriaiheen luonnosta lähti sellaisenaan: raja täyttyy.
     const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
     try {
@@ -176,9 +176,14 @@ describe("AI-reseptionisti", () => {
     } finally {
       db.close();
     }
-    const approved = await call(server, admin, "PUT", "/agent/topics/drain", { autonomous: true });
+    const approved = await call(server, admin, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: true });
     assert.equal(approved.status, 200);
     assert.ok(approved.data.topics.some((topic: any) => topic.topic === "drain" && topic.autonomous));
+    // Hyväksyntä ja raja ovat taloyhtiökohtaisia: toisessa taloyhtiössä aihe on luonnostilassa.
+    const other = (await call(server, admin, "POST", "/companies", { name: "As Oy Toinen" })).data.companyId as string;
+    const otherTopics = (await call(server, admin, "GET", `/agent/settings?companyId=${other}`)).data.topics as any[];
+    assert.ok(!otherTopics.some(topic => topic.topic === "drain" && topic.approved));
+    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { companyId: other, autonomous: true })).status, 409);
 
     // Portaalin tehtävä: vastaus näkyy asukkaalle portaalissa.
     const matti = await login(server, "matti@example.com");
@@ -199,6 +204,6 @@ describe("AI-reseptionisti", () => {
     assert.equal(after.ticket.agent_state, null);
     assert.equal(requests.length, before, "siirto ilman uutta AI-kutsua");
 
-    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { autonomous: false })).status, 200);
+    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: false })).status, 200);
   });
 });
