@@ -67,7 +67,8 @@ function helsinkiDay(offsetDays = 0) {
 
 export type SenderClassification = { senderType?: string | null; request?: string | null; deadline?: string | null };
 
-// Tallentaa lähettäjätyypin ja ohjaa tehtävän sen mukaan. Järjestys: toimiston domainlista, AI, asukasrekisteri.
+// Tallentaa lähettäjätyypin ja ohjaa tehtävän sen mukaan. Järjestys: toimiston domainlista, asukasrekisteri (tunnistettu
+// asukas), AI.
 // Viranomaisen tehtävä on vähintään kiireellinen ja sen määräaika tulee viestistä.
 export function applySenderType(ticketId: string, result: SenderClassification, senderEmail: string | undefined, actor = "ai") {
   const ticket = db.prepare("SELECT resident_id, priority, due_date FROM tickets WHERE id = ?").get(ticketId) as
@@ -75,15 +76,31 @@ export function applySenderType(ticketId: string, result: SenderClassification, 
   if (!ticket) return;
   const byDomain = domainSenderType(senderEmail);
   const byAi = isSenderType(result.senderType) ? result.senderType : null;
-  const type = byDomain ?? byAi ?? (ticket.resident_id ? "resident" : null);
+  const byRegister = ticket.resident_id ? registerSenderType(ticket.resident_id, byAi) : null;
+  // Tunnistetun asukkaan tyyppi tulee asukasrekisterin rooleista; hallituksen jäsenyyttä rekisterissä ei ole, joten
+  // sen AI saa tarkentaa.
+  const type = byDomain ?? (byRegister && byAi !== "board" ? byRegister : byAi ?? byRegister);
   if (!type) return;
-  const source = byDomain ? "domain" : byAi ? "ai" : "register";
+  const source = byDomain ? "domain" : type === byRegister && byAi !== "board" ? "register" : "ai";
   const request = isSenderRequest(result.request) && result.request !== "none" ? result.request : null;
   db.prepare("UPDATE tickets SET sender_type = ?, sender_type_source = ?, sender_request = ? WHERE id = ?").run(type, source, request, ticketId);
   if (type === "authority") routeAuthority(ticketId, ticket, result.deadline ?? null);
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), ticketId, actor, "sender_type_classified", JSON.stringify({ sender_type: type, source, request }), now()
   );
+}
+
+// Asukasrekisterin roolit: vain osakas = osakas, vain asukas = asukas. Kun henkilö on molempia, AI:n arvio
+// (asukas tai osakas) ratkaisee, muuten osakas.
+function registerSenderType(residentId: string, byAi: SenderType | null): SenderType | null {
+  const row = db.prepare("SELECT roles FROM residents WHERE id = ?").get(residentId) as { roles: string | null } | undefined;
+  if (!row) return null;
+  const roles = (row.roles ?? "asukas").split(",").map(role => role.trim());
+  const owner = roles.includes("osakas");
+  const resident = roles.includes("asukas") || !owner;
+  if (owner && !resident) return "owner";
+  if (resident && !owner) return "resident";
+  return byAi === "resident" || byAi === "owner" ? byAi : "owner";
 }
 
 function routeAuthority(ticketId: string, ticket: { priority: string; due_date: string | null }, deadline: string | null) {

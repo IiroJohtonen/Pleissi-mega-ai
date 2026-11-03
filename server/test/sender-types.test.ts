@@ -79,9 +79,27 @@ describe("lähettäjätyypit", () => {
     assert.ok(requests.some(request => JSON.stringify(request.system).includes("senderType")));
   });
 
+  it("asukasrekisterin rooli ratkaisee asukkaan ja osakkaan, vaikka AI arvioisi toisin", async () => {
+    const roles = (value: string[]) => call(server, admin, "PUT", "/residents/resident-1", {
+      name: "Matti Meikäläinen", email: "matti@example.com", address: "Koivikkotie 10", apartmentNumber: "A 12", roles: value
+    });
+    try {
+      assert.equal((await roles(["osakas"])).status, 200);
+      // AI arvioi lähettäjän asukkaaksi, mutta rekisterissä hän on vain osakas.
+      const owner = await receive("matti@example.com", "Vuokralainen", "Miten ilmoitan uuden vuokralaisen?");
+      assert.deepEqual([owner.ticket.sender_type, owner.ticket.sender_type_source], ["owner", "register"]);
+      assert.equal((await roles(["osakas", "asukas"])).status, 200);
+      // Molempia: AI:n arvio asukkaan ja osakkaan välillä ratkaisee.
+      const both = await receive("matti@example.com", "Sauna", "Saunan lauteet ovat rikki.");
+      assert.equal(both.ticket.sender_type, "resident");
+    } finally {
+      await roles(["asukas"]);
+    }
+  });
+
   it("tunnistettu asukas saa tyypin asukas; korjaus viranomaiseksi estää agentin", async () => {
     const detail = await receive("matti@example.com", "Saunavuoro", "Voisinko varata saunavuoron perjantaille?");
-    assert.deepEqual([detail.ticket.sender_type, detail.ticket.sender_type_source], ["resident", "ai"]);
+    assert.deepEqual([detail.ticket.sender_type, detail.ticket.sender_type_source], ["resident", "register"]);
     assert.equal((await call(server, admin, "PUT", `/tickets/${detail.ticket.id}/sender-type`, { senderType: "nobody" })).status, 400);
     assert.equal((await call(server, admin, "PUT", `/tickets/${detail.ticket.id}/sender-type`, { senderType: "authority" })).status, 200);
     const after = (await call(server, admin, "GET", `/tickets/${detail.ticket.id}`)).data;

@@ -124,7 +124,8 @@ export async function createPortalTicket(
 
   if (result.emergency) void alertEmergency(ticketId);
   applyClassification(ticketId, result);
-  // Portaalin käyttäjä on tunnistettu asukas: AI voi tarkentaa osakkaaksi tai hallituksen jäseneksi, ei muuksi.
+  // Portaalin käyttäjä on tunnistettu asukas: tyyppi tulee asukasrekisterin rooleista, ja AI voi tarkentaa vain
+  // hallituksen jäseneksi (tai asukkaaksi tai osakkaaksi, kun henkilö on molempia).
   applySenderType(ticketId, {
     senderType: AGENT_SENDER_TYPES.includes(result.senderType as SenderType) ? result.senderType : null,
     request: result.request
