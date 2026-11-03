@@ -59,6 +59,13 @@ describe("asukkaiden tuonti", () => {
     ]);
   });
 
+  it("lukee valinnaiset puhelin- ja muuttopäiväsarakkeet", () => {
+    const { rows } = tableToResidents(parseCsv("Nimi;Osoite;Asunto;Puhelin;Muuttopäivä\nMatti;Koivikkotie 10;A 12;040 123 4567;1.6.2025"));
+    expect(rows).toEqual([
+      { line: 2, name: "Matti", email: "", address: "Koivikkotie 10", apartmentNumber: "A 12", phone: "040 123 4567", movedInAt: "1.6.2025" }
+    ]);
+  });
+
   it("kertoo puuttuvat pakolliset sarakkeet", () => {
     expect(tableToResidents(parseCsv("Nimi,Sähköposti\nMatti,m@example.com")).missing).toEqual(["osoite", "asunto"]);
   });

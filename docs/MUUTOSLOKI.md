@@ -53,6 +53,56 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - AI-kulujen mittarissa näkyy nyt myös tämän päivän kulut ja toimintojen osuudet.
 
 **Testit:** PR:n kuvauksessa
+
+## 2.11.2026 · Varaukset ERP:hen ja AI-agentin varauksen vahvistus
+
+**Mitä muutettiin**
+- Pleississä tehdyt sauna- ja pyykkitupavaraukset ja niiden peruutukset kirjataan ERP:hen.
+- Kun ERP-integraatio on päällä, AI-agentin tekemä varaus odottaa ERP:n vahvistusta. Agentti kertoo
+  asukkaalle, että varausta käsitellään. Kun ERP hyväksyy varauksen, asukkaalle lähtee samaan ketjuun
+  vahvistus, ja tehtävä suljetaan.
+- Jos vuoro on jo varattu ERP:ssä, agentin varaus perutaan, ja agentti tarjoaa asukkaalle seuraavia vapaita
+  vuoroja. Jos agentti ei voi tehdä sitä, tehtävä siirtyy henkilökunnalle.
+- Jos muu kuin agentin varaus osuu ERP:ssä varattuun vuoroon, varausta ei poisteta, vaan henkilökunta saa
+  hälytyksen.
+- Ilman ERP-integraatiota agentti toimii kuten ennen.
+
+**Miten**
+- Asetukset › Tietoturva › Integraatioloki: varaussanomat (Varaus tehty / Varaus peruttu) näkyvät listassa.
+- Tehtävän tapahtumissa: "ERP vahvisti AI-agentin varauksen" tai "ERP hylkäsi AI-agentin varauksen".
+
+**Testit:** PR:n kuvauksessa
+## 30.10.2026 · ERP-rajapinta: perustiedot ERP:stä, tehtävät ERP:n haettaviksi ja asukkaan puhelin
+
+**Mitä muutettiin**
+- Asukkaalle voi tallentaa puhelinnumeron ja muuttopäivän. Numero tallennetaan kansainväliseen muotoon
+  (040 123 4567 → +358401234567). Numeron voi tuoda myös CSV- tai Excel-tiedostosta (sarake puhelin, valinnainen
+  muuttopäivä). Pleissi tunnistaa yhteydenottajan nyt myös puhelinnumerosta, jos numero on vain yhdellä asukkaalla.
+- Toiminnanohjausjärjestelmä (ERP) voi lähettää Pleissiin taloyhtiöt asuntoineen, asukkaat ja poismuutot sekä
+  ladata kaikki taloyhtiöt ja asukkaat kerralla. Kerralla ladattaessa listasta puuttuvat asukkaat merkitään
+  poismuuttaneiksi.
+- Jos asukas tulee ennen taloyhtiötään tai asuntoaan, se jää odottamaan ja käsitellään automaattisesti, kun
+  taloyhtiö saapuu. Yli vuorokauden odottanut hylätään.
+- Samaa tapahtumaa ei käsitellä kahdesti. Jokainen vastaanotettu tapahtuma tallentuu tuloksineen; tapahtuman
+  sisältö poistetaan 30 päivän jälkeen, ja asukkaan tietojen poisto tyhjentää myös asukasta koskevat tapahtumat.
+- ERP voi hakea tehtävien muutokset ja asukkaille näkyvät viestit Pleissistä. Saman tehtävän nopeista muutoksista
+  julkaistaan vain uusin.
+- Sisäiset muistiinpanot eivät enää mene ERP:hen.
+- Arkaluonteisesta tehtävästä ERP saa oikean otsikon, tilan, tehtävänumeron ja tiedon arkaluonteisuudesta, mutta
+  ei kuvausta, käsittelijää, liitteitä eikä viestejä. Kaikissa tehtävissä on nyt tehtävänumero.
+- ERP tunnistautuu API-avaimella. Avaimelle valitaan oikeudet, ja sen voi mitätöidä. Avain näytetään vain kerran.
+- Tehtävien tallennus on nopeampi, kun ERP-integraatio on päällä, ja suuri ensilataus ei hidasta muuta käyttöä.
+
+**Miten**
+- Asukkaat › asukkaan tiedot: kentät Puhelin ja Muuttanut asuntoon. Asukkaiden tuonti lukee sarakkeet puhelin ja
+  muuttopäivä.
+- Asetukset › Isännöitsijätoimiston tiedot › Tietoturva › ERP-rajapinta: kytkin "ERP hakee muutokset jonosta",
+  API-avainten luonti, lista (viimeisin käyttö ja haku) ja mitätöinti. Muutokset kirjautuvat toimintalokiin.
+- ERP:n rajapinta: `POST /api/v1/events`, `GET /api/v1/events` ja `POST /api/v1/sync/housing-companies`
+  (docs/integraatiospec.md).
+
+**Testit:** lisätään testaussivulle
+
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**

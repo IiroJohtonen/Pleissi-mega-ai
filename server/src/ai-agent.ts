@@ -15,6 +15,8 @@ import { BOOKING_RESOURCES, bookingRules, createBookings } from "./routes/bookin
 import { aiAgentEnabled } from "./routes/office.js";
 import { parkingOptions, syncParkingHolders } from "./routes/parking.js";
 import { sendTicketReply } from "./ticket-reply.js";
+import { deleteBookingsAndRelease } from "./booking-queue.js";
+import { currentAdapter, onAgentBookingResult } from "./integration/dispatcher.js";
 import { addDays, helsinkiIso, helsinkiParts, id, now } from "./util.js";
 
 // ---------------------------------------------------------------------------------------------
@@ -116,6 +118,8 @@ const resourceSchema = z.enum(BOOKING_RESOURCES).describe("sauna = sauna, laundr
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Date in Finnish time, YYYY-MM-DD");
 
 type RunState = {
+  // requested = varaus odottaa ERP:n vahvistusta (integraatio päällä); asukkaalle ei vielä vahvisteta.
+  requested?: boolean;
   replied: boolean; handedOver: boolean; booked: boolean; outcome: "awaiting_resident" | "resolved" | null; reason: string;
   // Käsittelijä käynnisti agentin tehtävän painikkeesta: perustelu kirjataan aina tehtävälle.
   manual: boolean;
@@ -224,14 +228,23 @@ function tools(ticket: AgentTicket, state: RunState) {
         ).get(ticket.id, offer.created_at);
         if (!answered) return "Not booked: this slot was not offered to the resident, or the resident has not replied to the offer yet.";
       }
+      // ERP-integraation ollessa päällä varaus jää odottamaan ERP:n vahvistusta (integration/dispatcher.ts).
+      const requested = currentAdapter() !== null;
       const result = createBookings({
         companyId, resource, occurrences: [{ startsAt, endsAt: slotEnd(startsAt) }], residentId,
         note: ticket.ticket_number ? `AI-agentti, tehtävä #T${String(ticket.ticket_number).padStart(6, "0")}` : "AI-agentti",
-        createdBy: AGENT_ACTOR
+        createdBy: AGENT_ACTOR, status: requested ? "requested" : "confirmed", ticketId: ticket.id
       });
       if (result.created === 0) return `Not booked: ${slotLabel(startsAt, slotEnd(startsAt))} was just booked by someone else. Offer other times.`;
       state.booked = true;
-      audit(ticket.id, "ai_agent_booked", { resource, startsAt, endsAt: slotEnd(startsAt), basis });
+      audit(ticket.id, "ai_agent_booked", { resource, startsAt, endsAt: slotEnd(startsAt), basis, status: requested ? "requested" : "confirmed" });
+      if (requested) {
+        state.requested = true;
+        return `Booking requested: ${RESOURCE_NAMES[resource]} ${slotLabel(startsAt, slotEnd(startsAt))}. It is NOT confirmed yet: `
+          + "the property management system confirms it shortly, and the resident then gets a confirmation message automatically. "
+          + "In your reply, tell the resident that the booking has been requested and that a confirmation will follow; do not say that it is confirmed. "
+          + "Use outcome awaiting_resident.";
+      }
       return `Booked ${RESOURCE_NAMES[resource]} ${slotLabel(startsAt, slotEnd(startsAt))} for the resident.`;
     }
   });
@@ -448,7 +461,8 @@ function traced<T extends { name: string; run: (...args: any[]) => unknown }>(to
   };
 }
 
-async function runAgent(ticket: AgentTicket, manual: boolean): Promise<AgentResult> {
+// notice = järjestelmän ilmoitus agentille (esim. ERP hylkäsi varauksen), lisätään pyynnön loppuun.
+async function runAgent(ticket: AgentTicket, manual: boolean, notice = ""): Promise<AgentResult> {
   const company = db.prepare("SELECT name FROM companies WHERE id = ?").get(ticket.company_id) as { name: string } | undefined;
   const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string } | undefined;
   const { day, hour, minute } = helsinkiParts(now());
@@ -467,7 +481,7 @@ ${memoryForAi(ticket.company_id).map(note => `- ${note}`).join("\n") || "(none)"
 
 Conversation (oldest first):
 ${conversation(ticket.id)}
-${examplesPrompt(await similarExamples(ticket))}`;
+${examplesPrompt(await similarExamples(ticket))}${notice ? `\n\nSystem notice (from Pleissi, not from the resident):\n${notice}` : ""}`;
   const requestId = logAiRequest("agent", { model, system, messages: [{ role: "user", content: user }], max_tokens: 16000 });
   const steps: AgentTraceStep[] = [];
   const responses: Anthropic.Beta.BetaMessage[] = [];
@@ -500,7 +514,8 @@ ${examplesPrompt(await similarExamples(ticket))}`;
   }
 
   if (state.replied) {
-    const status = state.outcome === "resolved" ? "closed" : "waiting_third_party";
+    // Odottava varaus: tehtävä suljetaan vasta, kun ERP vahvistaa sen.
+    const status = state.outcome === "resolved" && !state.requested ? "closed" : "waiting_third_party";
     db.prepare(`
       UPDATE tickets SET ai_action = 'ai', status = ?, updated_at = ?,
         closed_at = CASE WHEN ? = 'closed' THEN ? ELSE closed_at END
@@ -617,3 +632,55 @@ export function continueAgent(ticketId: string) {
     }
   })();
 }
+
+// --- ERP:n vastaus agentin varaukseen ------------------------------------------------------------
+
+type AgentBooking = { id: string; resource: Resource; starts_at: string; ends_at: string; ticket_id: string | null };
+
+// ERP vahvisti varauksen: asukkaalle vakioteksti samaan ketjuun (ei AI-kutsua), ja tehtävä suljetaan.
+async function bookingConfirmed(bookingId: string) {
+  const booking = db.prepare("SELECT id, resource, starts_at, ends_at, ticket_id FROM bookings WHERE id = ?").get(bookingId) as AgentBooking | undefined;
+  const ticket = booking?.ticket_id ? loadTicket(booking.ticket_id) : undefined;
+  if (!booking || !ticket) return;
+  const label = slotLabel(booking.starts_at, booking.ends_at);
+  const sent = await deliverReply(ticket, `Hei,\n\nvarauksesi on nyt vahvistettu: ${RESOURCE_NAMES[booking.resource] ?? booking.resource} ${label}.`);
+  audit(ticket.id, "ai_agent_booking_confirmed", { bookingId, resource: booking.resource, startsAt: booking.starts_at, sent: sent.ok });
+  if (!sent.ok) {
+    note(ticket.id, `ERP vahvisti varauksen (${label}), mutta vahvistus ei lähtenyt asukkaalle: ${sent.error}`);
+    return;
+  }
+  if (ticket.ai_action === "ai") {
+    db.prepare("UPDATE tickets SET status = 'closed', closed_at = ?, updated_at = ? WHERE id = ?").run(now(), now(), ticket.id);
+  }
+}
+
+// ERP hylkäsi varauksen, koska vuoro oli jo varattu siellä: varaus perutaan Pleississä, ja agentti
+// käynnistetään uudelleen tarjoamaan seuraavia vapaita vuoroja. Jos se ei onnistu, asia siirtyy henkilökunnalle.
+async function bookingRejected(bookingId: string) {
+  const booking = db.prepare("SELECT id, resource, starts_at, ends_at, ticket_id FROM bookings WHERE id = ?").get(bookingId) as AgentBooking | undefined;
+  if (!booking) return;
+  deleteBookingsAndRelease("id = ?", [booking.id]);
+  const ticket = booking.ticket_id ? loadTicket(booking.ticket_id) : undefined;
+  if (!ticket) return;
+  const label = slotLabel(booking.starts_at, booking.ends_at);
+  audit(ticket.id, "ai_agent_booking_rejected", { bookingId, resource: booking.resource, startsAt: booking.starts_at });
+  const reason = `ERP hylkäsi AI-agentin varauksen (${RESOURCE_NAMES[booking.resource] ?? booking.resource} ${label}), koska vuoro oli jo varattu.`;
+  if (ineligibleReason(ticket) || !aiAgentEnabled() || !aiAvailable() || running.has(ticket.id)) {
+    handOver(ticket, `${reason} Asukkaalle pitää tarjota toinen vuoro.`, false);
+    return;
+  }
+  running.add(ticket.id);
+  try {
+    const notice = `The ${RESOURCE_NAMES[booking.resource] ?? booking.resource} booking you requested for the resident (${label}) was rejected by the `
+      + "property management system because the slot was already booked there. The booking has been cancelled. "
+      + "Tell the resident that this time was not available after all, offer the next free slots with find_free_slots, and do not book anything until the resident chooses.";
+    await withAiLog(ticket.id, () => runAgent(ticket, false, notice));
+  } catch (error) {
+    console.error("AI-agentti epäonnistui hylätyn varauksen jälkeen tehtävällä", ticket.id, error);
+    handOver(ticket, `${reason} AI-agentti ei voinut tarjota uutta vuoroa.`, false);
+  } finally {
+    running.delete(ticket.id);
+  }
+}
+
+onAgentBookingResult({ confirmed: bookingConfirmed, rejected: bookingRejected });

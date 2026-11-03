@@ -15,6 +15,7 @@ import { MasterDataSettings } from "./MasterData";
 import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 import { topicLabel, topicOptions } from "../topics";
 import { AiLimitsCard } from "./AiLimits";
+import { ErpApiSettings } from "./ErpApi";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -77,6 +78,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   "ai-masking": "maskaus puhelinnumero henkilötunnus tilinumero iban sähköposti peitto tietosuoja",
   log: "loki muutokset tapahtumat ai:lle lähetetty",
   "integration-log": "erp toiminnanohjausjärjestelmä integraatio sanoma lähetys",
+  "integration-api": "erp rajapinta api avain haku jono integraatio",
   "office-ai": "kulut kuukausiraja prioriteetti suodatus relevanssi budjetti",
   "ai-limits": "päiväraja osuus budjetti agentti ajot lähettäjä tuntiraja kulut",
   "ai-prompt": "lisätieto ikkuna vastausehdotus ehdotus",
@@ -184,7 +186,8 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
       { id: "sensitive-data", label: t("Arkaluonteiset tiedot") },
       { id: "ai-masking", label: t("Maskaus ennen AI:ta") },
       { id: "log", label: t("Loki") },
-      { id: "integration-log", label: t("Integraatioloki") }
+      { id: "integration-log", label: t("Integraatioloki") },
+      { id: "integration-api", label: t("ERP-rajapinta") }
     ]
   },
   {
@@ -1251,6 +1254,8 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
           <span aria-hidden="true">→</span>
         </a>
       )}
+
+      {officeTab === "security" && <ErpApiSettings />}
 
       {officeTab === "master" && (
         <>
