@@ -75,6 +75,8 @@ export function eraseResidentFromTicket(ticketId: string, resident: ErasedReside
     db.prepare("UPDATE tickets SET draft = '', subject = ?, summary = '', ai_reason = '' WHERE id = ?").run(ERASED_TEXT, ticketId);
     // AI:lle lähetetty sisältö sisälsi asukkaan viestin.
     deleteAiRequests(ticketId);
+    // Osaamisaukon kysymys on yleisessä muodossa, mutta se poistetaan asukkaan tehtävän mukana varmuuden vuoksi.
+    db.prepare("DELETE FROM knowledge_gaps WHERE ticket_id = ?").run(ticketId);
     const files = db.prepare(
       "SELECT id FROM attachments WHERE ticket_id = ? AND direction IN ('inbound', 'portal')"
     ).all(ticketId) as { id: string }[];

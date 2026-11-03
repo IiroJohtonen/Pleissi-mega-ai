@@ -42,9 +42,11 @@ const NAV_GROUPS_KEY = "kotilo.closedNavGroups";
 // Raporttien alasivut sivupalkissa (#/reports/<alasivu>).
 const reportTabs: [ReportsTab, string][] = [
   ["metrics", t("Mittarit")], ["custom", t("Omat raportit")], ["company", t("Taloyhtiön raportit")],
-  ["trends", t("Trendit")], ["memory", t("Taloyhtiön muisti")]
+  ["trends", t("Trendit")], ["memory", t("Taloyhtiön muisti")], ["base", t("Tietopohja")], ["gaps", t("Osaamisaukot")]
 ];
-const reportTabIcons: Record<ReportsTab, TicketTab> = { metrics: "reports", custom: "my-tickets", company: "companies", trends: "reports", memory: "knowledge" };
+const reportTabIcons: Record<ReportsTab, TicketTab> = {
+  metrics: "reports", custom: "my-tickets", company: "companies", trends: "reports", memory: "knowledge", base: "knowledge", gaps: "reports"
+};
 // Ryhmän alasivun nimi, kun se poikkeaa näkymän otsikosta.
 const navItemTitles: Partial<Record<TicketTab, string>> = { knowledge: t("Kaikki dokumentit") };
 // Sivupalkissa valittu taloyhtiö, jonka tiedot, dokumentaatio, asukkaat, tilat ja ilmoitukset näytetään.

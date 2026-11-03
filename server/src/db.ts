@@ -478,12 +478,18 @@ for (const [column, definition] of [
   // ilman muotoilua.
   ["formatted", "TEXT"],
   // Dokumenttinumero (näytetään muodossa #K000123). Kaikilla saman tietueen versioilla on sama numero.
-  ["doc_number", "INTEGER"]
+  ["doc_number", "INTEGER"],
+  // company = vain tämä taloyhtiö; office = toimistotason ohje, joka näkyy AI:n haussa kaikille taloyhtiöille.
+  ["scope", "TEXT NOT NULL DEFAULT 'company'"],
+  // Tarkistuspäivä: mihin mennessä ohje pitää tarkistaa (VVVV-KK-PP).
+  ["review_at", "TEXT"]
 ]) {
   if (!knowledgeColumns.some(existing => existing.name === column)) {
     db.exec(`ALTER TABLE knowledge ADD COLUMN ${column} ${definition}`);
   }
 }
+// Jokaisella ohjeella on tarkistuspäivä: vanhoille vuosi luonnista.
+db.exec("UPDATE knowledge SET review_at = date(created_at, '+12 months') WHERE review_at IS NULL");
 
 // Tietopalat: dokumentti tai vakiotieto pilkottuna aiheittain. AI saa vastausehdotukseen vain kysymykseen
 // osuvat palat, ei koko tietopankkia. Voimassaolo, kohde (AI/sisäinen) ja taloyhtiö tulevat tietueelta;
@@ -855,6 +861,32 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS company_memory_company ON company_memory (company_id, status);
+`);
+// Oppiminen (memory.ts): ehdotuksen luokka (memory = rakennustieto muistiin, documentation = asukasohje
+// dokumentaatioon, none = kertaluonteinen), dokumentaatioehdotuksen otsikko, osaamisaukosta syntynyt (gap)
+// ja hyväksyttäessä luotu dokumentaation tietue.
+{
+  const memoryColumns = (db.prepare("PRAGMA table_info(company_memory)").all() as { name: string }[]).map(column => column.name);
+  if (!memoryColumns.includes("target")) db.exec("ALTER TABLE company_memory ADD COLUMN target TEXT NOT NULL DEFAULT 'memory'");
+  if (!memoryColumns.includes("doc_title")) db.exec("ALTER TABLE company_memory ADD COLUMN doc_title TEXT");
+  if (!memoryColumns.includes("gap")) db.exec("ALTER TABLE company_memory ADD COLUMN gap INTEGER NOT NULL DEFAULT 0");
+  if (!memoryColumns.includes("knowledge_id")) db.exec("ALTER TABLE company_memory ADD COLUMN knowledge_id TEXT");
+}
+// Osaamisaukot: AI-agentti siirsi tehtävän, koska vastausta ei löytynyt. question on kysymys yleisessä
+// muodossa ilman henkilötietoja. proposed_at = ratkaisu on käytetty muistiehdotuksissa.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS knowledge_gaps (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    ticket_id TEXT NOT NULL,
+    topic TEXT,
+    question TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    proposed_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS knowledge_gaps_company ON knowledge_gaps (company_id, created_at);
+  -- Viikkokooste lähetetty käyttäjälle (viikko muodossa VVVV-Www).
+  CREATE TABLE IF NOT EXISTS weekly_digests (user_id TEXT NOT NULL, week TEXT NOT NULL, sent_at TEXT NOT NULL, PRIMARY KEY (user_id, week));
 `);
 {
   const companyColumns = (db.prepare("PRAGMA table_info(companies)").all() as { name: string }[]).map(column => column.name);

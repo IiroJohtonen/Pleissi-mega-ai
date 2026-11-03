@@ -5426,3 +5426,28 @@ button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:dis
 .sender-type-field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
 .sender-type-field label { display: flex; align-items: center; gap: 8px; }
 .sender-domain-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+/* Oppiminen: ehdotuksen luokka, osaamisaukko, ohjeeditori ja vastaus dokumentaatioksi. */
+.memory-target,
+.memory-gap {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: var(--text-xs);
+}
+
+.memory-gap {
+  border-color: var(--accent, #28548f);
+}
+
+.message-guide {
+  margin-top: var(--space-2);
+}
+
+.reply-guide {
+  margin: var(--space-2) 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}

@@ -15,7 +15,7 @@ function fakeAnthropic(requests: any[]) {
       requests.push(request);
       const prompt = JSON.stringify(request);
       const output = prompt.includes("long-term memory")
-        ? { notes: [{ text: "B-portaan lämmityslinjan pumppu vaihdettiin, kun portaassa oli kylmä.", topic: "heating", stairwell: "B", sources: [1, 2], validMonths: 12 }] }
+        ? { notes: [{ target: "memory", title: "", text: "B-portaan lämmityslinjan pumppu vaihdettiin, kun portaassa oli kylmä.", topic: "heating", stairwell: "B", sources: [1, 2], validMonths: 12 }] }
         : { draft: "Hei, katsomme asian.", reason: "Luonnos.", sourceId: null };
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({

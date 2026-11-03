@@ -112,6 +112,8 @@ export function actionLabel(action: string) {
     ticket_merged: t("Tehtävä yhdistetty toiseen tehtävään"),
     ticket_merged_from: t("Toinen tehtävä yhdistetty tähän"),
     target_apartment_confirmed: t("Kohdeasunto vahvistettu"),
+    knowledge_gap: t("AI-agentti ei löytänyt vastausta (osaamisaukko)"),
+    guide_saved: t("Ohje tallennettu dokumentaatioon"),
     topic_changed: t("Aihe vaihdettu"),
     sender_type_classified: t("Lähettäjän tyyppi tunnistettu"),
     sender_type_changed: t("Lähettäjän tyyppi vaihdettu"),
