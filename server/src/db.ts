@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
+import { DEFAULT_SENDER_DOMAINS } from "./default-sender-domains.js";
 
 // Tietokanta ja tiedostot ovat oletuksena käynnistyskansion data-kansiossa; DATA_DIR vaihtaa paikan.
 export const dataDir = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), "data"));
@@ -820,6 +821,8 @@ if (!officeColumns.some(existing => existing.name === "ai_agent")) {
 // AI-agentin asukkaalle tarjoamat vuorot. Agentti saa varata tarjotun vuoron vasta, kun asukas on vastannut
 // tarjoukseen, joten varaus ei synny pelkästä AI:n päätelmästä.
 db.exec(`
+  -- Agentin luonnoksessa tarjoamat vuorot; voimaan, kun käsittelijä lähettää luonnoksen (ai-agent.ts activateDraftOffers).
+  CREATE TABLE IF NOT EXISTS ai_agent_draft_offers (ticket_id TEXT NOT NULL, resource TEXT NOT NULL, starts_at TEXT NOT NULL, PRIMARY KEY (ticket_id, resource, starts_at));
   CREATE TABLE IF NOT EXISTS ai_agent_offers (
     ticket_id TEXT NOT NULL,
     resource TEXT NOT NULL,
@@ -835,8 +838,29 @@ db.exec(`
   const columns = (db.prepare("PRAGMA table_info(tickets)").all() as { name: string }[]).map(column => column.name);
   if (!columns.includes("topic")) db.exec("ALTER TABLE tickets ADD COLUMN topic TEXT");
   if (!columns.includes("topic_source")) db.exec("ALTER TABLE tickets ADD COLUMN topic_source TEXT");
+  // Häiriö- ja turvallisuusilmoituksen kohdeasunto (ticket-links.ts): AI ehdottaa viestistä, käsittelijä vahvistaa.
+  if (!columns.includes("target_apartment_id")) db.exec("ALTER TABLE tickets ADD COLUMN target_apartment_id TEXT");
+  if (!columns.includes("target_apartment_text")) db.exec("ALTER TABLE tickets ADD COLUMN target_apartment_text TEXT");
+  if (!columns.includes("target_apartment_confirmed")) db.exec("ALTER TABLE tickets ADD COLUMN target_apartment_confirmed INTEGER NOT NULL DEFAULT 0");
+  // Tehtävä yhdistettiin toiseen (ticket-links.ts mergeTickets); viestit ja liitteet ovat siellä.
+  if (!columns.includes("merged_into")) db.exec("ALTER TABLE tickets ADD COLUMN merged_into TEXT");
+  // Lähettäjätyyppi (sender-types.ts): resident/owner/board/contractor/broker/authority/other.
+  // sender_type_source: ai, domain (toimiston domainlista), register (asukasrekisteri) tai manual (käsittelijä).
+  if (!columns.includes("sender_type")) db.exec("ALTER TABLE tickets ADD COLUMN sender_type TEXT");
+  if (!columns.includes("sender_type_source")) db.exec("ALTER TABLE tickets ADD COLUMN sender_type_source TEXT");
+  if (!columns.includes("sender_request")) db.exec("ALTER TABLE tickets ADD COLUMN sender_request TEXT");
   // Viimeisin AI:n vastausehdotus (ai-draft-edits.ts). Lähetettyä vastausta verrataan siihen; tyhjennetään, kun vastaus lähtee.
   if (!columns.includes("ai_draft")) db.exec("ALTER TABLE tickets ADD COLUMN ai_draft TEXT");
+}
+// Toimiston tuntemat lähettäjädomainit: JSON [{domain, type}]. Ohittavat AI:n lähettäjätyypin.
+if (!officeColumns.some(existing => existing.name === "known_sender_domains")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN known_sender_domains TEXT NOT NULL DEFAULT '[]'");
+  // Viranomaisten domainit valmiiksi listalle (kerran; pääkäyttäjä voi muokata).
+  db.prepare("UPDATE office_settings SET known_sender_domains = ?").run(JSON.stringify(DEFAULT_SENDER_DOMAINS));
+}
+// Viikkoraportti vastuuisännöitsijöille (trendihälytykset ja viikon luvut, memory.ts). Oletuksena pois.
+if (!officeColumns.some(existing => existing.name === "weekly_report")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN weekly_report INTEGER NOT NULL DEFAULT 0");
 }
 if (!officeColumns.some(existing => existing.name === "incident_detection")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");

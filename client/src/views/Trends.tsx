@@ -13,6 +13,8 @@ type TrendResult = {
   resolution: { topic: string; closed: number; medianHours: number }[];
   contractors: { name: string; orders: number; open: number; medianHours: number | null }[];
   incidents: { topic: string; stairwell: string; status: string; firstReportAt: string; resolution: string | null; companyName: string; reports: number }[];
+  promises?: { promises: number; kept: number; broken: number; open: number; keptShare: number | null };
+  trendAlerts?: { companyId: string; companyName: string; topic: string; current: number; previous: number; firstSeenAt: string | null }[];
   aiDrafts?: {
     topic: string; drafts: number; unchanged: number; light: number; heavy: number; rewritten: number; tone: number; fact: number;
     unclassified: number; readyShare: number | null; ready: boolean; agentRuns: number; handovers: number; handoverShare: number | null;
@@ -177,6 +179,60 @@ export function Trends({ companies, companyId }: { companies: Company[]; company
                       <td className="num">{row.agentRuns ? `${row.handovers}/${row.agentRuns} (${percent(row.handoverShare)})` : "–"}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="report-card">
+            <h2>{t("Kasvavat aiheet")}</h2>
+            <p className="muted">
+              {t("Aihe, jonka ilmoituksia on viimeisen kolmen kuukauden aikana vähintään kaksi kertaa niin paljon kuin edellisen kolmen kuukauden aikana (vähintään 5 ilmoitusta). Laskenta ei käytä AI:ta.")}
+            </p>
+            {!result.trendAlerts?.length ? <p className="muted">{t("Ei selvästi kasvavia aiheita.")}</p> : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>{t("Aihe")}</th>{many && <th>{t("Taloyhtiö")}</th>}
+                    <th className="num">{t("Viimeiset 3 kk")}</th><th className="num">{t("Edelliset 3 kk")}</th><th>{t("Havaittu")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.trendAlerts.map(alert => (
+                    <tr key={`${alert.companyId}-${alert.topic}`}>
+                      <th scope="row">{topicLabel(alert.topic)}</th>
+                      {many && <td>{alert.companyName}</td>}
+                      <td className="num">{alert.current}</td>
+                      <td className="num">{alert.previous}</td>
+                      <td>{alert.firstSeenAt ? formatDateOnly(alert.firstSeenAt) : t("Uusi")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="report-card">
+            <h2>{t("Aikalupaukset")}</h2>
+            <p className="muted">
+              {t("Kun AI-agentti ei osaa vastata, käsittelijä lähettää asukkaalle luonnoksesta päivän, johon mennessä asiaan palataan. Lupaus pitää, kun asukkaalle vastattiin tai tehtävä suljettiin viimeistään luvattuna päivänä.")}
+            </p>
+            {!result.promises?.promises ? <p className="muted">{t("Aikavälillä ei ole annettu aikalupauksia.")}</p> : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="num">{t("Lupauksia")}</th><th className="num">{t("Pitivät")}</th><th className="num">{t("Myöhästyivät")}</th>
+                    <th className="num">{t("Avoinna")}</th><th className="num">{t("Pitävyys")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="num">{result.promises.promises}</td>
+                    <td className="num">{result.promises.kept}</td>
+                    <td className="num">{result.promises.broken}</td>
+                    <td className="num">{result.promises.open}</td>
+                    <td className="num">{percent(result.promises.keptShare)}</td>
+                  </tr>
                 </tbody>
               </table>
             )}

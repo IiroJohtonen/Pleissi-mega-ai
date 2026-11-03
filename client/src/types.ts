@@ -20,6 +20,17 @@ export type Ticket = {
   // Aihe yhteisten vikojen tunnistukseen (esim. heating); topic_source manual = käsittelijän valitsema.
   topic?: string | null;
   topic_source?: string | null;
+  // Häiriö- ja turvallisuusilmoituksen kohdeasunto: AI:n ehdotus (teksti) ja käsittelijän vahvistama asunto.
+  target_apartment_id?: string | null;
+  target_apartment_text?: string | null;
+  target_apartment_confirmed?: number;
+  // Lähettäjätyyppi (resident, owner, board, contractor, broker, authority, other), mistä se tuli
+  // (ai, domain, register, manual) ja pyynnön laji (general, apartment_specific, owner_matter).
+  sender_type?: string | null;
+  sender_type_source?: string | null;
+  sender_request?: string | null;
+  // Tehtävä, johon tämä yhdistettiin.
+  merged_into?: string | null;
   // Mikä ratkaisi asian (käsittelijän kirjaama).
   resolution?: string | null;
   // renovation = remonttitehtävä, joka ei mene päätösjonoon; muut tehtävät ovat "ticket".
@@ -69,6 +80,8 @@ export type Company = {
   manager_name?: string | null;
   // Taloyhtiön muut isännöitsijät (ilman vastuuisännöitsijää).
   manager_ids?: string[];
+  // Muista isännöitsijöistä varahenkilöiksi merkityt.
+  backup_ids?: string[];
   resident_count?: number;
 };
 

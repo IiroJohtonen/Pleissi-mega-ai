@@ -8,6 +8,8 @@ import { deleteEmbedding } from "../embedding.js";
 import { RESOLUTION_MAX, setResolution, ticketHistory, trends } from "../history.js";
 import { isTopic } from "../incidents.js";
 import { type MemoryNote, MemoryUnavailableError, proposeCompanyMemory } from "../memory.js";
+import { SENDER_TYPES, setSenderType } from "../sender-types.js";
+import { confirmTargetApartment, mergeSuggestion, mergeTickets, targetHistory } from "../ticket-links.js";
 import { id, now } from "../util.js";
 
 export const memoryRouter: Router = express.Router();
@@ -27,7 +29,53 @@ memoryRouter.put("/tickets/:id/resolution", (req, res) => {
 
 memoryRouter.get("/tickets/:id/history", (req, res) => {
   if (!getAuthorizedTicket(req.params.id)) return res.status(404).json({ error: "Ticket not found" });
-  res.json(ticketHistory(req.params.id));
+  // Kohdeasunnon häiriöhistoria kaikilta ilmoittajilta (vain henkilökunta; tämä reitti ei ole asukkaille).
+  res.json({ ...ticketHistory(req.params.id), target: targetHistory(req.params.id) });
+});
+
+// Yhdistämisehdotus: saman asukkaan avoin samanaiheinen tehtävä 14 päivän sisällä.
+memoryRouter.get("/tickets/:id/merge-suggestion", async (req, res) => {
+  if (!getAuthorizedTicket(req.params.id)) return res.status(404).json({ error: "Ticket not found" });
+  const candidate = await mergeSuggestion(req.params.id);
+  res.json({ candidate: candidate && getAuthorizedTicket(candidate.id)
+    ? { id: candidate.id, ticketNumber: candidate.ticket_number, subject: candidate.subject, createdAt: candidate.created_at }
+    : null });
+});
+
+// Liittää tehtävän aiempaan tehtävään (käsittelijän päätös, ei automaattinen).
+memoryRouter.post("/tickets/:id/merge", (req, res) => {
+  const parsed = z.object({ intoTicketId: z.string().min(1) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse tehtävä, johon yhdistetään." });
+  const source = getAuthorizedTicket(req.params.id) as { id: string; company_id: string; merged_into?: string | null } | null;
+  const target = getAuthorizedTicket(parsed.data.intoTicketId) as { id: string; company_id: string; merged_into?: string | null } | null;
+  if (!source || !target || source.id === target.id) return res.status(404).json({ error: "Tehtävää ei löytynyt." });
+  if (source.company_id !== target.company_id) return res.status(400).json({ error: "Tehtävät ovat eri taloyhtiöistä." });
+  if (source.merged_into || target.merged_into) return res.status(409).json({ error: "Tehtävä on jo yhdistetty." });
+  mergeTickets(source.id, target.id, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true, ticketId: target.id });
+});
+
+// Kohdeasunnon vahvistus (häiriö- ja turvallisuusilmoitukset).
+memoryRouter.put("/tickets/:id/target-apartment", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as { id: string; company_id: string } | null;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ apartmentId: z.string().nullable() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse asunto." });
+  if (parsed.data.apartmentId && !db.prepare("SELECT 1 FROM apartments WHERE id = ? AND company_id = ?").get(parsed.data.apartmentId, ticket.company_id)) {
+    return res.status(400).json({ error: "Asunto ei kuulu tehtävän taloyhtiöön." });
+  }
+  confirmTargetApartment(ticket.id, parsed.data.apartmentId, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true });
+});
+
+// Käsittelijä korjaa lähettäjätyypin (AI:n tai domainlistan arvio).
+memoryRouter.put("/tickets/:id/sender-type", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as { id: string } | null;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ senderType: z.enum(SENDER_TYPES) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse lähettäjän tyyppi." });
+  setSenderType(ticket.id, parsed.data.senderType, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true });
 });
 
 memoryRouter.get("/reports/trends", (req, res) => {

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import path from "node:path";
+import Database from "better-sqlite3";
 import { after, before, describe, it } from "node:test";
 import { addDays, helsinkiIso, helsinkiParts } from "../src/util.js";
 import { ADMIN_EMAIL, call, login, PASSWORD, startServer, type TestServer } from "./helpers.js";
@@ -22,7 +24,17 @@ describe("AI-agentin varaus ERP-integraatiossa", () => {
       let raw = "";
       req.on("data", chunk => { raw += chunk; });
       req.on("end", () => {
-        const body = JSON.parse(raw) as { model: string; messages: { content: string | { type: string; content?: unknown }[] }[] };
+        const body = JSON.parse(raw) as { model: string; system?: unknown; messages: { content: string | { type: string; content?: unknown }[] }[] };
+        // Kiellettyjen aiheiden tarkistus ennen agenttia: saunavuoro on sallittu.
+        if (JSON.stringify(body.system ?? "").includes("screen a Finnish housing-company ticket")) {
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({
+            id: "msg_guard", type: "message", role: "assistant", model: body.model,
+            content: [{ type: "text", text: JSON.stringify({ category: "none", reason: "" }) }],
+            stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 }
+          }));
+          return;
+        }
         const last = body.messages.at(-1)!;
         const result = typeof last.content === "string" ? "" : last.content.filter(block => block.type === "tool_result")
           .map(block => (typeof block.content === "string" ? block.content : JSON.stringify(block.content))).join("\n");
@@ -64,6 +76,22 @@ describe("AI-agentin varaus ERP-integraatiossa", () => {
       subject: "Sauna", description: `Saisinko saunavuoron ${day} klo 19?`, type: "Pyyntö", attachments: []
     });
     const ticketId = created.data.ticketId;
+    // Aihe on taloyhtiössä hyväksytty itsenäiseksi (raja täyttyy), joten agentti varaa ja vastaa itse.
+    let topic = "";
+    for (let attempt = 0; attempt < 50 && !topic; attempt++) {
+      topic = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data.ticket.topic ?? "";
+      if (!topic) await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
+    try {
+      db.prepare(`INSERT INTO tickets (id, company_id, type, priority, status, subject, summary, source_channel, ai_action, ai_reason, draft, created_at, updated_at, topic)
+        VALUES ('ticket-ready', 'demo-company', 'Kysymys', 'normal', 'closed', 'Raja', '', 'email', 'pending_decision', '', '', '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z', ?)`).run(topic);
+      const insert = db.prepare("INSERT INTO audit_log VALUES (?, 'ticket-ready', 'Testi', 'reply_sent', ?, '2020-01-01T00:00:00.000Z')");
+      for (let index = 0; index < 100; index++) insert.run(`audit-ready-${index}`, JSON.stringify({ ai_draft_edit: "unchanged" }));
+    } finally {
+      db.close();
+    }
+    assert.equal((await call(server, admin, "PUT", `/agent/topics/${topic}`, { companyId: "demo-company", autonomous: true })).status, 200);
     const run = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
     assert.equal(run.status, 200);
     assert.deepEqual([run.data.outcome, run.data.booked], ["replied", true]);

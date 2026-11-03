@@ -249,6 +249,7 @@ function CompanyCard({
     managerId: company.manager_id ?? "",
     // Muut isännöitsijät pilkuilla erotettuna, jotta muutoksen tunnistus toimii kuten muissa kentissä.
     managerIds: [...(company.manager_ids ?? [])].sort().join(","),
+    backupIds: [...(company.backup_ids ?? [])].sort().join(","),
     maintenanceName: company.maintenance_name ?? "",
     maintenancePhone: company.maintenance_phone ?? "",
     maintenanceEmail: company.maintenance_email ?? "",
@@ -301,6 +302,7 @@ function CompanyCard({
           emailAddress: values.emailAddress,
           managerId: values.managerId || null,
           managerIds: values.managerIds.split(",").filter(id => id && id !== values.managerId),
+          backupIds: values.backupIds.split(",").filter(id => id && id !== values.managerId && values.managerIds.split(",").includes(id)),
           maintenance: {
             name: values.maintenanceName,
             phone: values.maintenancePhone,
@@ -361,18 +363,37 @@ function CompanyCard({
             const selectedIds = values.managerIds.split(",").filter(Boolean);
             const checked = selectedIds.includes(user.id);
             return (
-              <label key={user.id} className={checked ? "checked" : ""}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => {
-                    const next = checked ? selectedIds.filter(id => id !== user.id) : [...selectedIds, user.id];
-                    setValues(prev => ({ ...prev, managerIds: next.sort().join(",") }));
-                    setSaved(false);
-                  }}
-                />
-                {user.name}
-              </label>
+              <span key={user.id} className="manager-pick">
+                <label className={checked ? "checked" : ""}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      const next = checked ? selectedIds.filter(id => id !== user.id) : [...selectedIds, user.id];
+                      setValues(prev => ({ ...prev, managerIds: next.sort().join(",") }));
+                      setSaved(false);
+                    }}
+                  />
+                  {user.name}
+                </label>
+                {/* Varahenkilö saa vastuuisännöitsijän lisäksi mm. asukkaalle annettujen aikalupausten muistutukset. */}
+                {checked && (
+                  <label className="backup-pick">
+                    <input
+                      type="checkbox"
+                      aria-label={t("Varahenkilö: {0}", user.name)}
+                      checked={values.backupIds.split(",").includes(user.id)}
+                      onChange={event => {
+                        const backups = values.backupIds.split(",").filter(Boolean).filter(id => id !== user.id);
+                        if (event.target.checked) backups.push(user.id);
+                        setValues(prev => ({ ...prev, backupIds: backups.sort().join(",") }));
+                        setSaved(false);
+                      }}
+                    />
+                    {t("varahenkilö")}
+                  </label>
+                )}
+              </span>
             );
           })}
           {managers.filter(user => user.id !== values.managerId).length === 0 && <span className="muted">{t("Ei muita isännöitsijöitä.")}</span>}

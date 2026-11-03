@@ -15,6 +15,7 @@ import { sendEmail } from "./mail.js";
 import { deleteTicket } from "./routes/tickets.js";
 import { id, now, today, WAITING_SINCE_SQL } from "./util.js";
 import { formatTicketNumber } from "./numbers.js";
+import { remindPromises } from "./time-promise.js";
 
 // ---------------------------------------------------------------------------------------------
 // Muistutukset: käsittelijä saa kerran päivässä koosteen tehtävistään, joiden määräaika on mennyt tai
@@ -142,6 +143,8 @@ export function startMaintenanceJobs() {
     refreshBudgetAlerts();
     // ERP:ltä vastaanotettujen sanomien sisältö poistetaan 30 päivän jälkeen.
     purgeInboxPayloads();
+    // Asukkaalle annetun aikalupauksen muistutus vastuuisännöitsijälle päivää ennen lupauspäivää.
+    remindPromises().catch(error => console.error("Lupausmuistutukset epäonnistuivat:", error?.message ?? error));
     // Taloyhtiön muistin ehdotukset kerran viikossa, jos toimisto on kytkenyt ne päälle.
     weeklyMemoryProposals().catch(error => console.error("Muistiehdotukset epäonnistuivat:", error?.message ?? error));
   };

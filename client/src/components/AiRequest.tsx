@@ -12,7 +12,8 @@ const featureLabels: Record<string, string> = {
   agent: t("AI-agentti"),
   incident: t("yhteisen vian tulkinta"),
   memory: t("taloyhtiön muistin ehdotukset"),
-  draft_change: t("luonnoksen muokkauksen luokittelu")
+  draft_change: t("luonnoksen muokkauksen luokittelu"),
+  agent_guard: t("AI-agentin aiheen tarkistus")
 };
 
 // Lokimerkinnän otsikko: mihin AI:ta käytettiin.

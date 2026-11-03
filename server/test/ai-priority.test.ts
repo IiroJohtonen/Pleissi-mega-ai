@@ -57,10 +57,15 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
           : message.includes("tippuu") ? { priority: "emergency", reason: "Katosta tuleva vesi vahingoittaa rakenteita." }
           : { priority: "low", reason: "Viesti on palautetta." };
         const advert = message.includes("Tarjous");
+        // Häiriöilmoitus: aihe ja kohdeasunto samasta kutsusta.
+        const disturbance = message.includes("meteliä");
         const answer = {
           relevant: !advert,
           relevanceReason: advert ? "Viesti on mainos." : "Viesti koskee taloyhtiön asioita.",
-          ...assessment
+          ...assessment,
+          topic: disturbance ? "noise" : "other",
+          targetApartment: disturbance ? "B34" : null,
+          senderType: "resident", request: "none", deadline: null
         };
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
@@ -279,6 +284,27 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     } finally {
       await call(server, admin, "PUT", "/office/ai-limits", { assessPerSenderHour: 10 });
     }
+  });
+
+  it("AI luokittelee aiheen ja ehdottaa häiriön kohdeasunnon, jonka käsittelijä vahvistaa; historia näkyy kaikilta ilmoittajilta", async () => {
+    const report = async (sender: string) => (await postInbound(server, admin, {
+      companyId: "demo-company", senderName: sender, senderEmail: `${sender}@example.com`, subject: "Yöllä", body: "Naapurista kuuluu meteliä joka yö.", channel: "email"
+    })).data.ticketId as string;
+    const first = await report("eka");
+    let detail = (await call(server, admin, "GET", `/tickets/${first}`)).data;
+    assert.deepEqual([detail.ticket.topic, detail.ticket.topic_source], ["noise", "ai"]);
+    assert.deepEqual([detail.ticket.target_apartment_id, detail.ticket.target_apartment_text, detail.ticket.target_apartment_confirmed], ["apt-34", "B34", 0]);
+    // Vahvistamaton ehdotus ei vielä kerrytä historiaa.
+    const second = await report("toka");
+    assert.equal((await call(server, admin, "GET", `/tickets/${second}/history`)).data.target, null);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${first}/target-apartment`, { apartmentId: "apt-34" })).status, 200);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${second}/target-apartment`, { apartmentId: "apt-34" })).status, 200);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${second}/target-apartment`, { apartmentId: "ei-ole" })).status, 400);
+    const history = (await call(server, admin, "GET", `/tickets/${second}/history`)).data.target;
+    assert.equal(history.apartmentNumber, "B 34");
+    assert.deepEqual(history.reports.map((item: any) => item.id), [first]);
+    detail = (await call(server, admin, "GET", `/tickets/${second}`)).data;
+    assert.ok(detail.audit.some((entry: any) => entry.action === "target_apartment_confirmed"));
   });
 
   it("AI:n virhe ei estä tehtävän syntymistä, vaan prioriteetti tulee avainsanoista", async () => {

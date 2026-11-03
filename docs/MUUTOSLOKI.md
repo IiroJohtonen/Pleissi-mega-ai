@@ -4,120 +4,157 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
-## 2.11.2026 · Toistuvien aiheiden raportti: kaikki vastaukset, henkilötiedot peitetty
+## 3.11.2026 · AI-roadmapin paketit yhdessä: yhteensopivuuskorjaukset
 
 **Mitä muutettiin**
-- Raportti ottaa huomioon kaikki toimiston vastaukset asukkaalle (enintään viisi tehtävää kohden), ei vain
-  ensimmäistä, joten dokumentaatioehdotus perustuu siihen, miten asia lopulta ratkesi.
-- Huoltoyhtiölle lähetettyjä työtilauksia ei enää pidetä vastauksina asukkaalle.
-- Toimiston vastauksista peitetään puhelinnumerot, sähköpostiosoitteet ja muut henkilötiedot ennen AI:ta,
-  kuten asukkaan viesteistä.
+- Paketit 1–12 yhdistettiin ja testattiin yhdessä.
+- AI:n kulurajat koskevat nyt myös myöhemmin tulleita AI-toimintoja: AI-agentin aiheen tarkistus kuuluu agentin
+  osuuteen, ja ohjeluonnos, ristiriitojen tarkistus, PDF:n luku ja luonnosmuokkausten luokittelu omiin ryhmiinsä.
+  Taloyhtiön muistin viikkoajo noudattaa muistin rajaa.
+- Automaattisesti käynnistyvä AI-agentti ei käynnisty, kun agentin kuluraja tai tehtävän päivittäinen ajoraja on
+  täynnä; tehtävä jää henkilökunnalle tavalliseen tapaan.
+- ERP:n hylkäämän varauksen jälkeen agentti tarjoaa uutta vuoroa luonnostilan sääntöjen mukaan.
+- Ladattu dokumentti näkyy käsittelyssä heti latauksen jälkeen (aiemmin se saattoi näkyä hetken valmiina ennen
+  AI-käsittelyn alkua).
 
 **Miten**
-- Raportit › Toistuvat aiheet › Luo raportti. Raportin ulkoasu ei muutu.
+- Ei uusia näkymiä. Asetukset › AI › AI:n rajat koskee kaikkia AI-toimintoja.
 
-## 2.11.2026 · AI-luonnosten muokkausmittari, AI:n vastaukset lokiin ja agentin jäljitys
+## 3.11.2026 · Trendihälytykset ja viikkoraportti
 
 **Mitä muutettiin**
-- Kun käsittelijä lähettää vastauksen AI:n vastausehdotuksen pohjalta, Pleissi vertaa lähetettyä tekstiä
-  luonnokseen: lähtikö se sellaisenaan, pienellä tai isolla muokkauksella vai kirjoitettiinko se uudelleen.
-- Muokatuista luonnoksista AI arvioi, oliko muutos pelkkää sävyä (sanamuoto, kohteliaisuus) vai asiakorjaus
-  (päivä, lupaus, ohje tai vastuu muuttui). AI näkee vain muuttuneet kohdat, henkilötiedot peitettyinä.
-- Trendit-raporttiin tuli osio "AI-luonnosten muokkaus" aiheittain. Siinä näkyy myös, täyttyykö aiheelle
-  AI-agentin raja: vähintään 100 luonnosta, joista 99 % lähti sellaisenaan tai pelkällä sävymuokkauksella.
-  Agentin henkilökunnalle siirtämät tehtävät näkyvät omana sarakkeenaan.
-- Lokissa näkyy nyt AI:lle lähetetyn tiedon rinnalla myös se, mitä AI vastasi.
-- AI-agentin jokainen työkalukutsu (esimerkiksi vapaiden vuorojen haku ja varaus) tallentuu tehtävälle
-  syötteineen ja tuloksineen. Jäljitys aukeaa tehtävän tapahtumista.
+- **Kasvavat aiheet:** Pleissi tunnistaa aiheen, jonka ilmoituksia taloyhtiössä on viimeisen kolmen kuukauden aikana
+  vähintään kaksi kertaa niin paljon kuin edellisen kolmen kuukauden aikana (vähintään 5 ilmoitusta). Laskenta ei
+  käytä AI:ta.
+- **Viikkoraportti:** vastuuisännöitsijä voi saada kerran viikossa sähköpostin taloyhtiöistään: kasvavat aiheet (uudet
+  merkittynä), viikon uudet ja suljetut tehtävät, myöhässä olevat tehtävät ja asukkaille annetut aikalupaukset.
+  Raportti on samassa viestissä kuin taloyhtiön muistin viikkokooste. Asetus on oletuksena pois.
 
 **Miten**
 - Raportit › Trendit › AI-luonnosten muokkaus.
 - Asetukset › Loki: "Näytä AI:lle lähetetty tieto ja vastaus".
 - Tehtävä: tapahtuma "AI-agentin ajon jäljitys" › "Näytä agentin työkalukutsut" (isännöitsijät ja pääkäyttäjät).
 
-## 2.11.2026 · AI:n rajat: päiväraja, toimintojen osuudet ja käyttörajat
+## 3.11.2026 · Aikalupaus asukkaalle
 
 **Mitä muutettiin**
-- Kuukausirajan rinnalle tuli päiväraja (oletus 10 $). Kun se täyttyy, AI on pois käytöstä vuorokauden loppuun.
-- Toiminnoille voi antaa oman osuuden kuukausirajasta. Oletuksena AI-agentti saa käyttää enintään 40 % ja
-  raportit, dokumentit ja muisti enintään 30 %, joten saapuvien viestien arvioinnille ja vastausehdotuksille
-  jää aina vähintään 30 %.
-- AI-agentti käsittelee samaa tehtävää enintään 5 kertaa vuorokaudessa. Sen jälkeen tehtävä siirtyy
-  henkilökunnalle, ja perustelu näkyy tehtävällä.
-- Saman lähettäjän viestejä arvioidaan AI:lla enintään 10 tunnissa. Sen jälkeen viestit luokitellaan
-  avainsanoilla, ja syy näkyy tehtävän lokissa.
-- Hätätilanteet tunnistetaan aina avainsanoilla, vaikka AI ei olisi käytettävissä.
+- **Aikalupaus luonnoksena:** kun AI-agentti ei osaa vastata ja siirtää tehtävän henkilökunnalle, tehtävän
+  luonnokseksi tulee viesti, jossa kerrotaan päivä, johon mennessä asiaan palataan, esim. "palaamme siihen
+  viimeistään pe 7.11.". Käsittelijä tarkistaa ja lähettää sen. Päivä tulee tehtävän määräajasta (perustietojen
+  määräajat: kiireellinen 1 päivä, normaali 5 päivää). Kellonaikaa ei luvata.
+- **Asetus:** aikalupauksen voi kytkeä päälle kohdasta Asetukset › AI › AI-reseptionisti, ja vain kun AI-agentin
+  automaattinen käynnistys on päällä. Oletuksena pois.
+- **Uusi päivä:** kun käsittelijä siirtää luvatun tehtävän määräaikaa, luonnokseen tulee ilmoitus uudesta päivästä.
+- **Muistutus:** vastuuisännöitsijä ja taloyhtiön varahenkilöt saavat sähköpostin päivää ennen lupauspäivää, jos
+  asukkaalle ei ole vielä vastattu.
+- **Varahenkilöt:** taloyhtiön muista isännöitsijöistä voi merkitä varahenkilöitä (Taloyhtiöt › taloyhtiön tiedot ›
+  Muut isännöitsijät › varahenkilö).
+- **Mittari:** Raportit › Trendit › Aikalupaukset näyttää, kuinka moni lupaus piti (asukkaalle vastattiin tai tehtävä
+  suljettiin viimeistään luvattuna päivänä), myöhästyi tai on vielä avoinna. Lupaus lasketaan, kun käsittelijä on
+  lähettänyt sen.
 
 **Miten**
-- Asetukset › Isännöitsijätoimiston tiedot › AI › AI-rajat (vain pääkäyttäjä). Muutokset kirjautuvat lokiin.
-- AI-kulujen mittarissa näkyy nyt myös tämän päivän kulut ja toimintojen osuudet.
+- Tehtävä: lupausviesti vastauskentässä, tapahtumissa "Luonnokseen lisätty päivä…" ja lähetyksen jälkeen
+  "Asukkaalle kerrottu päivä…".
+- Asetukset › AI › AI-reseptionisti › Aikalupaus asukkaalle; Taloyhtiöt › Muut isännöitsijät › varahenkilö.
+- Raportit › Trendit › Aikalupaukset.
 
 **Testit:** PR:n kuvauksessa
 
-## 2.11.2026 · Varaukset ERP:hen ja AI-agentin varauksen vahvistus
+## 3.11.2026 · AI-reseptionisti luonnostilassa
 
 **Mitä muutettiin**
-- Pleississä tehdyt sauna- ja pyykkitupavaraukset ja niiden peruutukset kirjataan ERP:hen.
-- Kun ERP-integraatio on päällä, AI-agentin tekemä varaus odottaa ERP:n vahvistusta. Agentti kertoo
-  asukkaalle, että varausta käsitellään. Kun ERP hyväksyy varauksen, asukkaalle lähtee samaan ketjuun
-  vahvistus, ja tehtävä suljetaan.
-- Jos vuoro on jo varattu ERP:ssä, agentin varaus perutaan, ja agentti tarjoaa asukkaalle seuraavia vapaita
-  vuoroja. Jos agentti ei voi tehdä sitä, tehtävä siirtyy henkilökunnalle.
-- Jos muu kuin agentin varaus osuu ERP:ssä varattuun vuoroon, varausta ei poisteta, vaan henkilökunta saa
-  hälytyksen.
-- Ilman ERP-integraatiota agentti toimii kuten ennen.
+- **Automaattinen käynnistys:** AI-agentti voi käsitellä uudet tehtävät heti niiden saapuessa. Asetus on oletuksena
+  pois, ja sen voi kytkeä päälle kaikille taloyhtiöille tai taloyhtiökohtaisesti (esim. ensin yhdessä
+  pilottitaloyhtiössä).
+- **Luonnostila:** agentin vastaus jää tehtävälle luonnokseksi, jonka käsittelijä tarkistaa ja lähettää. Tämä koskee
+  myös tehtävältä painikkeesta käynnistettyä agenttia. Agentin tekstiä ei lähde asukkaalle ilman ihmistä.
+- **Vuorovaraukset luonnostilassa:** agentti ehdottaa vapaita aikoja luonnoksessa. Kun käsittelijä on lähettänyt
+  luonnoksen ja asukas vastaa, agentti varaa asukkaan hyväksymän vuoron, ehdottaa uutta aikaa tai lopettaa asian
+  käsittelyn vastauksen mukaan. Vahvistusviesti on taas luonnos käsittelijälle. Autopaikkajonoon agentti ei
+  luonnostilassa lisää.
+- **Itsenäiset aiheet taloyhtiöittäin:** taloyhtiön aiheeseen agentti voi vastata itse vasta, kun taloyhtiön
+  vähintään 100 luonnoksesta 99 % on lähtenyt sellaisenaan tai pelkällä sävymuokkauksella ja pääkäyttäjä on
+  hyväksynyt aiheen taloyhtiölle. Jos osuus putoaa, aihe palaa luonnostilaan.
+- **Vastaukset dokumentaatiosta:** agentti vastaa yleisiin kysymyksiin vain, jos se lainaa sanatarkasti kohdan
+  taloyhtiön dokumentaatiosta. Ohjelma tarkistaa lainauksen; jos sitä ei löydy, tehtävä siirtyy henkilökunnalle.
+- **Täydennä:** kun vikailmoituksesta puuttuu tietoja (asunto, kuva, milloin alkoi, koskeeko naapureita),
+  agentti kysyy ne asukkaalta. Asukkaan vastaus tulee samaan tehtävään ja siirtää sen henkilökunnalle.
+- **Kielletyt aiheet:** korvaukset, korjausvastuut, poikkeusluvat, riidat, häiriöt ja hätätilanteet tunnistetaan
+  erillisellä tarkistuksella ennen kuin agentti kirjoittaa mitään. Ne menevät aina henkilökunnalle.
+- **Ilmoitus siirrosta:** kun automaattisesti käynnistynyt agentti siirtää tehtävän henkilökunnalle, vastuuisännöitsijä
+  saa sähköpostin: mitä kysyttiin ja miksi agentti ei vastannut.
 
 **Miten**
-- Asetukset › Tietoturva › Integraatioloki: varaussanomat (Varaus tehty / Varaus peruttu) näkyvät listassa.
-- Tehtävän tapahtumissa: "ERP vahvisti AI-agentin varauksen" tai "ERP hylkäsi AI-agentin varauksen".
+- Asetukset › AI › AI-reseptionisti: automaattinen käynnistys, taloyhtiökohtaiset poikkeukset ja taloyhtiön
+  itsenäiset aiheet.
+- Tehtävä: agentin luonnos on vastauskentässä, ja tapahtumissa näkyy, mitä agentti teki.
 
 **Testit:** PR:n kuvauksessa
-## 30.10.2026 · ERP-rajapinta: perustiedot ERP:stä, tehtävät ERP:n haettaviksi ja asukkaan puhelin
+
+## 3.11.2026 · Puuttuva ohje muun kuin asukkaan pyyntöön näkyy osaamisaukkona
 
 **Mitä muutettiin**
-- Asukkaalle voi tallentaa puhelinnumeron ja muuttopäivän. Numero tallennetaan kansainväliseen muotoon
-  (040 123 4567 → +358401234567). Numeron voi tuoda myös CSV- tai Excel-tiedostosta (sarake puhelin, valinnainen
-  muuttopäivä). Pleissi tunnistaa yhteydenottajan nyt myös puhelinnumerosta, jos numero on vain yhdellä asukkaalla.
-- Toiminnanohjausjärjestelmä (ERP) voi lähettää Pleissiin taloyhtiöt asuntoineen, asukkaat ja poismuutot sekä
-  ladata kaikki taloyhtiöt ja asukkaat kerralla. Kerralla ladattaessa listasta puuttuvat asukkaat merkitään
-  poismuuttaneiksi.
-- Jos asukas tulee ennen taloyhtiötään tai asuntoaan, se jää odottamaan ja käsitellään automaattisesti, kun
-  taloyhtiö saapuu. Yli vuorokauden odottanut hylätään.
-- Samaa tapahtumaa ei käsitellä kahdesti. Jokainen vastaanotettu tapahtuma tallentuu tuloksineen; tapahtuman
-  sisältö poistetaan 30 päivän jälkeen, ja asukkaan tietojen poisto tyhjentää myös asukasta koskevat tapahtumat.
-- ERP voi hakea tehtävien muutokset ja asukkaille näkyvät viestit Pleissistä. Saman tehtävän nopeista muutoksista
-  julkaistaan vain uusin.
-- Sisäiset muistiinpanot eivät enää mene ERP:hen.
-- Arkaluonteisesta tehtävästä ERP saa oikean otsikon, tilan, tehtävänumeron ja tiedon arkaluonteisuudesta, mutta
-  ei kuvausta, käsittelijää, liitteitä eikä viestejä. Kaikissa tehtävissä on nyt tehtävänumero.
-- ERP tunnistautuu API-avaimella. Avaimelle valitaan oikeudet, ja sen voi mitätöidä. Avain näytetään vain kerran.
-- Tehtävien tallennus on nopeampi, kun ERP-integraatio on päällä, ja suuri ensilataus ei hidasta muuta käyttöä.
+- Kun välittäjän yleiseen kysymykseen, yksittäistä asuntoa koskevaan pyyntöön tai osakkaalle kuuluvaan asiaan ei
+  löydy ohjetta dokumentaatiosta (esim. isännöitsijäntodistuksen tilaaminen tai osakkaan valtuutus), AI-ehdotus jää
+  yleiseksi ja puute kirjataan tietopohjan aukoksi. Sama tehtävä kirjataan vain kerran.
+- Aukkoon tallentuu yleinen kysymys, ei lähettäjän tai asunnon tietoja.
+- Kun ohje lisätään dokumentaatioon, seuraavat ehdotukset käyttävät sitä.
 
 **Miten**
-- Asukkaat › asukkaan tiedot: kentät Puhelin ja Muuttanut asuntoon. Asukkaiden tuonti lukee sarakkeet puhelin ja
-  muuttopäivä.
-- Asetukset › Isännöitsijätoimiston tiedot › Tietoturva › ERP-rajapinta: kytkin "ERP hakee muutokset jonosta",
-  API-avainten luonti, lista (viimeisin käyttö ja haku) ja mitätöinti. Muutokset kirjautuvat toimintalokiin.
-- ERP:n rajapinta: `POST /api/v1/events`, `GET /api/v1/events` ja `POST /api/v1/sync/housing-companies`
-  (docs/integraatiospec.md).
+- Tehtävä › AI-ehdotus: ilmoituksessa kerrotaan, että ohje puuttui.
+- Raportit › Osaamisaukot: puuttuvat ohjeet kysymyksittäin.
 
-**Testit:** lisätään testaussivulle
+**Testit:** PR:n kuvauksessa
 
-## 2.11.2026 · Dokumenttien luku: skannatut PDF:t, taulukot ja kuvat
+## 3.11.2026 · Muiden kuin asukkaiden yhteydenotot: lähettäjän tyyppi
 
 **Mitä muutettiin**
-- PDF-dokumentti luetaan AI:lla sellaisenaan eikä vain sen tekstikerroksesta. Siksi myös skannatut sivut,
-  taulukot ja kuvat tulevat mukaan. Pitkä PDF luetaan kymmenen sivun erissä, ja jokaisessa tiedossa säilyy
-  sivunumero.
-- Taulukko tallentuu yhtenä tietona taulukkomuodossa. Iso taulukko jaetaan riveittäin, ja otsikkorivi toistuu
-  jokaisessa osassa.
-- Kuvasta, kartasta tai kaaviosta tulee tekstikuvaus omaksi tiedokseen.
-- AI:n tulkitsemat taulukot ja kuvat merkitään tarkistettaviksi, samoin skannatun sivun luvut.
-- Skannattu PDF ei enää jää tyhjäksi, kun AI on käytössä. Ilman AI:ta dokumentit luetaan kuten ennen.
+- **Lähettäjän tyyppi:** kun AI arvioi saapuvan viestin, se päättelee samalla, kuka viestin lähetti: asukas,
+  osakas, hallitus, huolto tai urakoitsija, välittäjä, viranomainen tai muu. Tyyppi näkyy jonossa merkkinä (ei
+  tavallisille asukkaille) ja tehtävällä, jossa käsittelijä voi korjata sen. Kun lähettäjä tunnistetaan
+  taloyhtiön asukkaaksi, asukkaan ja osakkaan ero tulee asukasrekisterin rooleista (asukas, osakas tai molemmat),
+  ei AI:n arviosta.
+- **Tunnetut lähettäjät:** pääkäyttäjä voi lisätä asetuksiin domaineja (esim. kaupungin tai huoltoyhtiön
+  osoitteet) ja niiden tyypin. Listalla oleva domain ratkaisee tyypin AI:n arvion sijaan. Listalla on valmiiksi
+  valtakunnallisten viranomaisten domaineja (esim. poliisi.fi, vero.fi, kela.fi, prh.fi, maanmittauslaitos.fi);
+  kunnan ja hyvinvointialueen osoitteet toimisto lisää itse.
+- **Viranomainen:** tehtävä on aina vähintään kiireellinen, viestissä mainittu määräaika tulee tehtävän
+  määräajaksi, ja asia kuuluu aina henkilökunnalle.
+- **Vastausehdotus muille kuin asukkaille:** välittäjän yleiseen kysymykseen (esim. isännöitsijäntodistus) haetaan
+  ohje dokumentaatiosta. Yksittäistä asuntoa koskevaan pyyntöön luonnos kertoo, että tietoihin tarvitaan osakkaan
+  valtuutus, ja vuokralaiselle, että asia kuuluu osakkaalle. Ohjetekstit tulevat taloyhtiön dokumentaatiosta.
+- **Yksityisyys:** tuntemattomalle lähettäjälle ei kerrota mitään asukkaista tai asunnoista. AI ei saa näissä
+  tehtävissä taloyhtiön muistia eikä aiempia tehtäviä.
+- **AI-agentti** hoitaa vain tunnistettujen asukkaiden ja osakkaiden asioita.
 
 **Miten**
-- Tietopankki › Lataa dokumentti (PDF). Tiedot näkyvät dokumentin tiedoissa sivunumeroineen;
-  tarkistettavat on merkitty.
+- Jono: lähettäjän tyyppi otsikon vieressä (esim. "Viranomainen", "Välittäjä").
+- Tehtävä: Lähettäjän tyyppi -valinta.
+- Asetukset › AI: Tunnetut lähettäjät.
+
+**Testit:** PR:n kuvauksessa
+
+## 3.11.2026 · Ilmoitusten yhdistäminen, häiriöhistoria ja Turvallisuus-aihe
+
+**Mitä muutettiin**
+- **Yhdistämisehdotus:** jos sama asukas ilmoittaa samasta asiasta uudelleen 14 päivän sisällä, kun edellinen
+  tehtävä on vielä auki, tehtävällä näkyy ehdotus liittää se edelliseen. Yhdistäminen tehdään yhdellä
+  klikkauksella, ei koskaan automaattisesti. Kun merkityshaku on päällä, myös samaa tarkoittava ilmoitus
+  tunnistetaan.
+- **Aihe:** kun AI arvioi saapuvan viestin, se päättelee samalla myös aiheen. Ilman AI:ta aihe tulee kuten ennen
+  avainsanoista, ja meluun lisättiin puuttuvia sanoja (kiroilu, huutaminen, riehuminen, tappelu ym.).
+- **Kohdeasunto:** häiriöilmoituksessa AI ehdottaa viestistä asuntoa, jota ilmoitus koskee, ja käsittelijä
+  vahvistaa sen. Tehtävän Aiemmin-osiossa näkyvät vahvistetun kohdeasunnon aiemmat ilmoitukset kaikilta
+  ilmoittajilta. Tieto näkyy vain henkilökunnalle.
+- **Uusi aihe Turvallisuus:** epäilyttävä henkilö tai ajoneuvo, murto, varkaus ja ilkivalta. Kaksi ilmoittajaa 48
+  tunnin sisällä kootaan yhteiseksi viaksi. Vastauksissa muistutetaan, että käynnissä olevaan tilanteeseen
+  soitetaan 112.
+- **AI-agentti** ei käsittele häiriö- eikä turvallisuusilmoituksia; ne menevät aina henkilökunnalle.
+
+**Miten**
+- Tehtävä: yhdistämisehdotus ("Liitä edelliseen") ja häiriö- tai turvallisuustehtävällä Kohdeasunto-kenttä.
+- Tehtävä › Aiemmin: "Ilmoitukset asunnosta …".
 
 ## 2.11.2026 · Oppiminen isännöitsijän vastauksista, Tietopohja ja viikkokooste
 
@@ -149,7 +186,132 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Raportit › Tietopohja ja Raportit › Osaamisaukot.
 - Tehtävä › lähetetty vastaus › Vastaus dokumentaatioksi.
 
+
 **Testit:** PR:n kuvauksessa
+
+## 2.11.2026 · Dokumenttien luku: skannatut PDF:t, taulukot ja kuvat
+
+**Mitä muutettiin**
+- PDF-dokumentti luetaan AI:lla sellaisenaan eikä vain sen tekstikerroksesta. Siksi myös skannatut sivut,
+  taulukot ja kuvat tulevat mukaan. Pitkä PDF luetaan kymmenen sivun erissä, ja jokaisessa tiedossa säilyy
+  sivunumero.
+- Taulukko tallentuu yhtenä tietona taulukkomuodossa. Iso taulukko jaetaan riveittäin, ja otsikkorivi toistuu
+  jokaisessa osassa.
+- Kuvasta, kartasta tai kaaviosta tulee tekstikuvaus omaksi tiedokseen.
+- AI:n tulkitsemat taulukot ja kuvat merkitään tarkistettaviksi, samoin skannatun sivun luvut.
+- Skannattu PDF ei enää jää tyhjäksi, kun AI on käytössä. Ilman AI:ta dokumentit luetaan kuten ennen.
+
+**Miten**
+- Tietopankki › Lataa dokumentti (PDF). Tiedot näkyvät dokumentin tiedoissa sivunumeroineen;
+  tarkistettavat on merkitty.
+
+- Raportit › Trendit › Kasvavat aiheet.
+- Asetukset › AI: "Lähetä vastuuisännöitsijöille viikkoraportti".
+
+**Testit:** PR:n kuvauksessa
+
+## 2.11.2026 · Varaukset ERP:hen ja AI-agentin varauksen vahvistus
+
+**Mitä muutettiin**
+- Pleississä tehdyt sauna- ja pyykkitupavaraukset ja niiden peruutukset kirjataan ERP:hen.
+- Kun ERP-integraatio on päällä, AI-agentin tekemä varaus odottaa ERP:n vahvistusta. Agentti kertoo
+  asukkaalle, että varausta käsitellään. Kun ERP hyväksyy varauksen, asukkaalle lähtee samaan ketjuun
+  vahvistus, ja tehtävä suljetaan.
+- Jos vuoro on jo varattu ERP:ssä, agentin varaus perutaan, ja agentti tarjoaa asukkaalle seuraavia vapaita
+  vuoroja. Jos agentti ei voi tehdä sitä, tehtävä siirtyy henkilökunnalle.
+- Jos muu kuin agentin varaus osuu ERP:ssä varattuun vuoroon, varausta ei poisteta, vaan henkilökunta saa
+  hälytyksen.
+- Ilman ERP-integraatiota agentti toimii kuten ennen.
+
+**Miten**
+- Asetukset › Tietoturva › Integraatioloki: varaussanomat (Varaus tehty / Varaus peruttu) näkyvät listassa.
+- Tehtävän tapahtumissa: "ERP vahvisti AI-agentin varauksen" tai "ERP hylkäsi AI-agentin varauksen".
+
+**Testit:** PR:n kuvauksessa
+
+## 2.11.2026 · AI:n rajat: päiväraja, toimintojen osuudet ja käyttörajat
+
+**Mitä muutettiin**
+- Kuukausirajan rinnalle tuli päiväraja (oletus 10 $). Kun se täyttyy, AI on pois käytöstä vuorokauden loppuun.
+- Toiminnoille voi antaa oman osuuden kuukausirajasta. Oletuksena AI-agentti saa käyttää enintään 40 % ja
+  raportit, dokumentit ja muisti enintään 30 %, joten saapuvien viestien arvioinnille ja vastausehdotuksille
+  jää aina vähintään 30 %.
+- AI-agentti käsittelee samaa tehtävää enintään 5 kertaa vuorokaudessa. Sen jälkeen tehtävä siirtyy
+  henkilökunnalle, ja perustelu näkyy tehtävällä.
+- Saman lähettäjän viestejä arvioidaan AI:lla enintään 10 tunnissa. Sen jälkeen viestit luokitellaan
+  avainsanoilla, ja syy näkyy tehtävän lokissa.
+- Hätätilanteet tunnistetaan aina avainsanoilla, vaikka AI ei olisi käytettävissä.
+
+**Miten**
+- Asetukset › Isännöitsijätoimiston tiedot › AI › AI-rajat (vain pääkäyttäjä). Muutokset kirjautuvat lokiin.
+- AI-kulujen mittarissa näkyy nyt myös tämän päivän kulut ja toimintojen osuudet.
+
+**Testit:** PR:n kuvauksessa
+
+## 2.11.2026 · AI-luonnosten muokkausmittari, AI:n vastaukset lokiin ja agentin jäljitys
+
+**Mitä muutettiin**
+- Kun käsittelijä lähettää vastauksen AI:n vastausehdotuksen pohjalta, Pleissi vertaa lähetettyä tekstiä
+  luonnokseen: lähtikö se sellaisenaan, pienellä tai isolla muokkauksella vai kirjoitettiinko se uudelleen.
+- Muokatuista luonnoksista AI arvioi, oliko muutos pelkkää sävyä (sanamuoto, kohteliaisuus) vai asiakorjaus
+  (päivä, lupaus, ohje tai vastuu muuttui). AI näkee vain muuttuneet kohdat, henkilötiedot peitettyinä.
+- Trendit-raporttiin tuli osio "AI-luonnosten muokkaus" aiheittain. Siinä näkyy myös, täyttyykö aiheelle
+  AI-agentin raja: vähintään 100 luonnosta, joista 99 % lähti sellaisenaan tai pelkällä sävymuokkauksella.
+  Agentin henkilökunnalle siirtämät tehtävät näkyvät omana sarakkeenaan.
+- Lokissa näkyy nyt AI:lle lähetetyn tiedon rinnalla myös se, mitä AI vastasi.
+- AI-agentin jokainen työkalukutsu (esimerkiksi vapaiden vuorojen haku ja varaus) tallentuu tehtävälle
+  syötteineen ja tuloksineen. Jäljitys aukeaa tehtävän tapahtumista.
+
+**Miten**
+- Raportit › Trendit › AI-luonnosten muokkaus.
+- Asetukset › Loki: "Näytä AI:lle lähetetty tieto ja vastaus".
+- Tehtävä: tapahtuma "AI-agentin ajon jäljitys" › "Näytä agentin työkalukutsut" (isännöitsijät ja pääkäyttäjät).
+
+**Testit:** PR:n kuvauksessa
+
+## 2.11.2026 · Toistuvien aiheiden raportti: kaikki vastaukset, henkilötiedot peitetty
+
+**Mitä muutettiin**
+- Raportti ottaa huomioon kaikki toimiston vastaukset asukkaalle (enintään viisi tehtävää kohden), ei vain
+  ensimmäistä, joten dokumentaatioehdotus perustuu siihen, miten asia lopulta ratkesi.
+- Huoltoyhtiölle lähetettyjä työtilauksia ei enää pidetä vastauksina asukkaalle.
+- Toimiston vastauksista peitetään puhelinnumerot, sähköpostiosoitteet ja muut henkilötiedot ennen AI:ta,
+  kuten asukkaan viesteistä.
+
+**Miten**
+- Raportit › Toistuvat aiheet › Luo raportti. Raportin ulkoasu ei muutu.
+
+## 30.10.2026 · ERP-rajapinta: perustiedot ERP:stä, tehtävät ERP:n haettaviksi ja asukkaan puhelin
+
+**Mitä muutettiin**
+- Asukkaalle voi tallentaa puhelinnumeron ja muuttopäivän. Numero tallennetaan kansainväliseen muotoon
+  (040 123 4567 → +358401234567). Numeron voi tuoda myös CSV- tai Excel-tiedostosta (sarake puhelin, valinnainen
+  muuttopäivä). Pleissi tunnistaa yhteydenottajan nyt myös puhelinnumerosta, jos numero on vain yhdellä asukkaalla.
+- Toiminnanohjausjärjestelmä (ERP) voi lähettää Pleissiin taloyhtiöt asuntoineen, asukkaat ja poismuutot sekä
+  ladata kaikki taloyhtiöt ja asukkaat kerralla. Kerralla ladattaessa listasta puuttuvat asukkaat merkitään
+  poismuuttaneiksi.
+- Jos asukas tulee ennen taloyhtiötään tai asuntoaan, se jää odottamaan ja käsitellään automaattisesti, kun
+  taloyhtiö saapuu. Yli vuorokauden odottanut hylätään.
+- Samaa tapahtumaa ei käsitellä kahdesti. Jokainen vastaanotettu tapahtuma tallentuu tuloksineen; tapahtuman
+  sisältö poistetaan 30 päivän jälkeen, ja asukkaan tietojen poisto tyhjentää myös asukasta koskevat tapahtumat.
+- ERP voi hakea tehtävien muutokset ja asukkaille näkyvät viestit Pleissistä. Saman tehtävän nopeista muutoksista
+  julkaistaan vain uusin.
+- Sisäiset muistiinpanot eivät enää mene ERP:hen.
+- Arkaluonteisesta tehtävästä ERP saa oikean otsikon, tilan, tehtävänumeron ja tiedon arkaluonteisuudesta, mutta
+  ei kuvausta, käsittelijää, liitteitä eikä viestejä. Kaikissa tehtävissä on nyt tehtävänumero.
+- ERP tunnistautuu API-avaimella. Avaimelle valitaan oikeudet, ja sen voi mitätöidä. Avain näytetään vain kerran.
+- Tehtävien tallennus on nopeampi, kun ERP-integraatio on päällä, ja suuri ensilataus ei hidasta muuta käyttöä.
+
+**Miten**
+- Asukkaat › asukkaan tiedot: kentät Puhelin ja Muuttanut asuntoon. Asukkaiden tuonti lukee sarakkeet puhelin ja
+  muuttopäivä.
+- Asetukset › Isännöitsijätoimiston tiedot › Tietoturva › ERP-rajapinta: kytkin "ERP hakee muutokset jonosta",
+  API-avainten luonti, lista (viimeisin käyttö ja haku) ja mitätöinti. Muutokset kirjautuvat toimintalokiin.
+- ERP:n rajapinta: `POST /api/v1/events`, `GET /api/v1/events` ja `POST /api/v1/sync/housing-companies`
+  (docs/integraatiospec.md).
+
+**Testit:** lisätään testaussivulle
+
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 
 **Mitä muutettiin**
@@ -836,6 +998,7 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Sivupalkin yhtiövalikosta vaihdettu yhtiö vaihtaa Asukkaat-, Sauna- ja Dokumentaatio-näkymien yhtiön.
 - Kaikki taloyhtiöt… avaa yhtiölistan; listasta avattu yhtiö vaihtaa sivupalkin valinnan.
 - Dokumentin avaaminen leveällä näytöllä: poiminnat ja luettu teksti näkyvät vierekkäin täysleveänä.
+
 ## 17.10.2026 · Lomakkeet taloyhtiön tauluihin, uusi Asetukset-sivu ja dokumentin välilehdet
 
 **Mitä muutettiin**

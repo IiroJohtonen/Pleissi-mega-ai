@@ -11,6 +11,7 @@ import { id, now } from "../util.js";
 import { AI_MODEL_CHOICES, getMasterData, MASTER_DATA_DEFAULTS, masterDataSchema, saveMasterData } from "../master-data.js";
 import { scheduleEmbeddingIndex } from "../embedding.js";
 import { loginCodeMailReady, loginCodeSetting } from "../login-codes.js";
+import { knownSenderDomains, saveKnownSenderDomains, SENDER_TYPES } from "../sender-types.js";
 
 export const officeRouter: Router = express.Router();
 
@@ -21,7 +22,8 @@ const OFFICE_SELECT = `
          ai_relevance AS aiRelevance, reply_reminder_days AS replyReminderDays, due_reminder_days AS dueReminderDays,
          ai_monthly_limit AS aiMonthlyLimit, ai_warning_percent AS aiWarningPercent, two_factor AS twoFactor,
          resident_status_updates AS residentStatusUpdates, ai_prompt AS aiPrompt, ai_agent AS aiAgent,
-         incident_detection AS incidentDetection, memory_auto AS memoryAuto
+         incident_detection AS incidentDetection, memory_auto AS memoryAuto,
+         weekly_report AS weeklyReport
   FROM office_settings WHERE id = 1
 `;
 
@@ -94,6 +96,7 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     incidentDetection: z.boolean().optional(),
     // AI ehdottaa taloyhtiön muistiin tietoja kerran viikossa.
     memoryAuto: z.boolean().optional(),
+    weeklyReport: z.boolean().optional(),
     // Aiheittaiset rajat: seurataanko, montako asuntoa ja minkä ajan sisällä.
     incidentRules: z.array(z.object({
       topic: z.string().refine(topic => (ADJUSTABLE_TOPICS as string[]).includes(topic)),
@@ -160,6 +163,9 @@ officeRouter.put("/office", requireAdmin, (req, res) => {
     db.prepare("UPDATE office_settings SET incident_detection = ? WHERE id = 1").run(parsed.data.incidentDetection ? 1 : 0);
   }
   if (parsed.data.incidentRules) saveDetectionRules(parsed.data.incidentRules);
+  if (parsed.data.weeklyReport !== undefined) {
+    db.prepare("UPDATE office_settings SET weekly_report = ? WHERE id = 1").run(parsed.data.weeklyReport ? 1 : 0);
+  }
   if (parsed.data.memoryAuto !== undefined) {
     db.prepare("UPDATE office_settings SET memory_auto = ? WHERE id = 1").run(parsed.data.memoryAuto ? 1 : 0);
   }
@@ -270,4 +276,23 @@ officeRouter.put("/master-data", requireAdmin, (req, res) => {
   // Merkityshaun kytkentä: puuttuvat vektorit lasketaan (tai poistetaan) taustalla heti.
   if (parsed.data.embedding && JSON.stringify(parsed.data.embedding) !== JSON.stringify(before)) void scheduleEmbeddingIndex();
   res.json(getMasterData());
+});
+
+// Toimiston tuntemat lähettäjädomainit (esim. kaupunki = viranomainen, huoltoyhtiö = urakoitsija). Domain ohittaa
+// AI:n arvion lähettäjästä. Lukea saa jokainen käyttäjä, muuttaa vain pääkäyttäjä.
+officeRouter.get("/office/sender-domains", (_req, res) => {
+  res.json(knownSenderDomains());
+});
+
+officeRouter.put("/office/sender-domains", requireAdmin, (req, res) => {
+  const parsed = z.array(z.object({
+    domain: z.string().trim().min(3).max(200).regex(/^[^\s@]*@?[a-z0-9.-]+\.[a-z]{2,}$/i),
+    type: z.enum(SENDER_TYPES)
+  })).max(500).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista domainit: esimerkiksi hel.fi." });
+  const saved = saveKnownSenderDomains(parsed.data);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "sender_domains_changed", JSON.stringify({ count: saved.length }), now()
+  );
+  res.json(saved);
 });

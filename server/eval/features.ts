@@ -123,7 +123,7 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
   const bookingsBefore = (db.prepare("SELECT COUNT(*) AS count FROM bookings").get() as { count: number }).count;
   const repliesBefore = new Set((db.prepare("SELECT id FROM messages WHERE ticket_id = ?").all(ticketId) as { id: string }[]).map(row => row.id));
 
-  const { value, errors } = await capture(() => runAgentNow(ticketId));
+  const { value, errors } = await capture(() => runAgentNow(ticketId, { mode: "send" }));
   if (!value) return { actual: null, errors };
   const trace = db.prepare(`
     SELECT r.payload FROM audit_log a JOIN ai_requests r ON r.audit_id = a.id
@@ -133,7 +133,7 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
   const reply = (db.prepare("SELECT id, body FROM messages WHERE ticket_id = ? AND direction = 'outbound' ORDER BY created_at").all(ticketId) as { id: string; body: string }[])
     .filter(row => !repliesBefore.has(row.id)).map(row => row.body).join("\n");
   const bookings = (db.prepare("SELECT COUNT(*) AS count FROM bookings").get() as { count: number }).count - bookingsBefore;
-  return { actual: { outcome: value.outcome, reason: value.reason, tools, bookings, reply }, errors };
+  return { actual: { outcome: value.outcome === "drafted" ? "replied" : value.outcome, reason: value.reason, tools, bookings, reply }, errors };
 }
 
 // --- Ajo ja raportti --------------------------------------------------------------------------

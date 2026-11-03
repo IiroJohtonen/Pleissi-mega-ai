@@ -1,0 +1,26 @@
+{
+  "id": "assess-042",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "lähettäjä",
+    "välittäjä"
+  ],
+  "input": {
+    "subject": "Isännöitsijäntodistus",
+    "body": "Hei,\n\nolen kiinteistönvälittäjä ja myyn asuntoa taloyhtiössänne. Miten voin tilata isännöitsijäntodistuksen ja paljonko se maksaa?\n\nTerveisin\nVälittäjä, Kodinvälitys Oy",
+    "sender": "myynti@kodinvalitys.example"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "low"
+    ],
+    "senderTypeAcceptable": [
+      "broker"
+    ]
+  },
+  "critical": false,
+  "note": "Välittäjän yleinen kysymys."
+}

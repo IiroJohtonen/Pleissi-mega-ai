@@ -16,6 +16,8 @@ import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 import { topicLabel, topicOptions } from "../topics";
 import { AiLimitsCard } from "./AiLimits";
 import { ErpApiSettings } from "./ErpApi";
+import { SenderDomainsCard } from "../tickets/SenderType";
+import { AgentSettingsCard } from "./AgentSettings";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -486,6 +488,8 @@ export type OfficeInfo = {
   incidentRules?: IncidentRule[];
   // memoryAuto: 1 = AI ehdottaa taloyhtiön muistiin tietoja kerran viikossa.
   memoryAuto?: number;
+  // weeklyReport: 1 = vastuuisännöitsijät saavat viikkoraportin (trendihälytykset ja viikon luvut).
+  weeklyReport?: number;
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
   // twoFactor: kirjautumiskoodi sähköpostiin; twoFactorOverridden: palvelin on kytkenyt sen pois.
@@ -762,6 +766,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
   const [incidentDetection, setIncidentDetection] = useState(true);
   const [incidentRules, setIncidentRules] = useState<IncidentRule[]>([]);
   const [memoryAuto, setMemoryAuto] = useState(false);
+  const [weeklyReport, setWeeklyReport] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
   const [twoFactor, setTwoFactor] = useState(false);
@@ -798,6 +803,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         setIncidentDetection(office.incidentDetection !== 0);
         setIncidentRules(office.incidentRules ?? []);
         setMemoryAuto(Boolean(office.memoryAuto));
+        setWeeklyReport(Boolean(office.weeklyReport));
         setAiAvailable(office.aiAvailable !== false);
         setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
         setTwoFactor(Boolean(office.twoFactor));
@@ -834,7 +840,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
         body: JSON.stringify({
-          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection, memoryAuto,
+          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection, memoryAuto, weeklyReport,
           incidentRules: incidentRules.map(({ topic, tracked, threshold, windowHours }) => ({ topic, tracked, threshold, windowHours })),
           aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates, aiPrompt,
           unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
@@ -1197,6 +1203,23 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
           <p className="send-error">{t("AI ei ole käytössä palvelimella, joten ehdotuksia ei toistaiseksi haeta.")}</p>
         )}
 
+        <label className="switch-row">
+          <span>
+            <strong>{t("Lähetä vastuuisännöitsijöille viikkoraportti")}</strong>
+            <small>{t("Kerran viikossa sähköpostilla: kasvavat aiheet, viikon uudet ja suljetut tehtävät, myöhässä olevat tehtävät ja aikalupaukset.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={weeklyReport}
+            onChange={event => { setWeeklyReport(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("Kasvava aihe: taloyhtiön viimeisen kolmen kuukauden ilmoituksia on vähintään kaksi kertaa niin paljon kuin edellisen kolmen kuukauden aikana. Laskenta ei käytä AI:ta. Jos muistiehdotukset ovat päällä, ne tulevat samaan viestiin.")}
+        </p>
+
         </CollapseSection>
 
         <CollapseSection id="ai-prompt" title={t("AI-ehdotukset")}>
@@ -1234,6 +1257,8 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       {officeTab === "security" && <MasterDataSettings part="security" />}
       {officeTab === "ai" && <AiLimitsCard />}
       {officeTab === "ai" && <MasterDataSettings part="ai" />}
+      {officeTab === "ai" && <SenderDomainsCard editable />}
+      {officeTab === "ai" && <AgentSettingsCard />}
 
       {officeTab === "security" && (
         <a className="settings-card settings-link" href="#/log" id="section-log">
@@ -1291,7 +1316,8 @@ const aiFeatureLabels: Record<string, string> = {
   agent: t("AI-agentti"),
   incident: t("Yhteisten vikojen tulkinnat"),
   memory: t("Taloyhtiön muistin ehdotukset"),
-  draft_change: t("Luonnosten muokkauksen luokittelu")
+  draft_change: t("Luonnosten muokkauksen luokittelu"),
+  agent_guard: t("AI-agentin aiheen tarkistus")
 };
 
 export const formatUsd = (value: number) => `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;

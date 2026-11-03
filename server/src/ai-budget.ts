@@ -101,13 +101,14 @@ const startOfDay = () => {
 export const AI_FEATURE_GROUPS = ["agent", "assess", "suggest", "other"] as const;
 export type AiFeatureGroup = (typeof AI_FEATURE_GROUPS)[number];
 export function featureGroup(feature: string): AiFeatureGroup {
-  if (feature === "agent") return "agent";
+  // Kiellettyjen aiheiden tarkistus on osa agentin ajoa (paketti 10).
+  if (feature === "agent" || feature === "agent_guard") return "agent";
   if (feature === "assess") return "assess";
   if (feature === "suggest" || feature === "draft_change") return "suggest";
   return "other";
 }
 const GROUP_FEATURES = (group: AiFeatureGroup) =>
-  group === "agent" ? ["agent"] : group === "assess" ? ["assess"] : group === "suggest" ? ["suggest", "draft_change"] : null;
+  group === "agent" ? ["agent", "agent_guard"] : group === "assess" ? ["assess"] : group === "suggest" ? ["suggest", "draft_change"] : null;
 
 export type AiLimits = {
   monthlyLimit: number; warningPercent: number; dailyLimit: number;

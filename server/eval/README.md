@@ -43,6 +43,10 @@ menee vain keksittyä tai anonymisoitua dataa.
 ### Arviointi (assess)
 
 - `relevant` = odotettu ja `priority` kuuluu `priorityAcceptable`-listaan → läpäisty.
+- Valinnainen `senderTypeAcceptable` (esim. `["authority"]`): AI:n lähettäjätyypin pitää kuulua listaan
+  (resident, owner, board, contractor, broker, authority, other).
+- Kansiossa `cases/suggest` on vastausehdotuksen tapauksia (mm. tuntematon lähettäjä kysyy asukkaasta); ne
+  ajetaan, kun vastausehdotuksen evaluointi (`--feature suggest`) on käytössä.
 - Kriittinen virhe: odotettu emergency/urgent (kaikki hyväksyttävät) mutta tulos normal/low, odotettu
   relevantti mutta tulos false, tai `critical`-tapauksen (esim. injektio) mikä tahansa virhe.
 

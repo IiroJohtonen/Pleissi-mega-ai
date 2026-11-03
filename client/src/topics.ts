@@ -12,6 +12,7 @@ export const topicLabels: Record<string, string> = {
   ventilation: t("Ilmanvaihto"),
   common_room: t("Sauna tai pesutupa"),
   pests: t("Tuholaiset"),
+  safety: t("Turvallisuus"),
   noise: t("Melu tai häiriö"),
   waste: t("Jätehuolto"),
   booking: t("Varaukset"),

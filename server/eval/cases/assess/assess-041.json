@@ -1,0 +1,27 @@
+{
+  "id": "assess-041",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "lähettäjä",
+    "viranomainen",
+    "määräaika"
+  ],
+  "input": {
+    "subject": "Selvityspyyntö: pihan purkuputki",
+    "body": "Hyvä vastaanottaja,\n\nKaupungin rakennusvalvonta on saanut ilmoituksen, että taloyhtiön pihalle on rakennettu katos ilman lupaa. Pyydämme taloyhtiön selvityksen asiasta 30.11.2026 mennessä.\n\nYstävällisin terveisin\nTarkastusinsinööri\nRakennusvalvonta",
+    "sender": "rakennusvalvonta@kaupunki.example"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "urgent",
+      "emergency"
+    ],
+    "senderTypeAcceptable": [
+      "authority"
+    ]
+  },
+  "critical": true,
+  "note": "Viranomaisen selvityspyyntö määräajalla: kiireellinen ja lähettäjä viranomainen."
+}

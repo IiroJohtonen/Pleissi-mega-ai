@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { SENDER_TYPES } from "../src/sender-types.js";
 
 // ---------------------------------------------------------------------------------------------
 // Evaluoinnin tapaukset (Evaluation suite spec, Tapauksen muoto): yksi JSON-tiedosto per tapaus
@@ -20,7 +21,9 @@ export const AssessCaseSchema = z.object({
   expected: z.object({
     relevant: z.boolean(),
     // Prioriteetit, joista mikä tahansa kelpaa.
-    priorityAcceptable: z.array(z.enum(PRIORITIES)).min(1)
+    priorityAcceptable: z.array(z.enum(PRIORITIES)).min(1),
+    // Lähettäjätyypit, joista mikä tahansa kelpaa (sender-types.ts). Puuttuu = ei tarkisteta.
+    senderTypeAcceptable: z.array(z.enum(SENDER_TYPES)).min(1).optional()
   }),
   // Kriittisen tapauksen mikä tahansa virhe on kriittinen (esim. injektiot).
   critical: z.boolean(),
@@ -43,11 +46,12 @@ export function loadAssessCases(): AssessCase[] {
   return cases;
 }
 
-export type Assessment = { relevant: boolean; priority: Priority; reason: string; relevanceReason: string };
+export type Assessment = { relevant: boolean; priority: Priority; reason: string; relevanceReason: string; senderType?: string };
 
 export type Grade = {
   relevantOk: boolean;
   priorityOk: boolean;
+  senderTypeOk: boolean;
   passed: boolean;
   // Kriittisen virheen syyt; tyhjä = ei kriittistä virhettä.
   critical: string[];
@@ -68,9 +72,11 @@ export function gradeAssessment(testCase: AssessCase, actual: Assessment): Grade
     critical.push(`hätä- tai kiireellinen asia sai prioriteetin ${actual.priority}`);
   }
   if (testCase.expected.relevant && !actual.relevant) critical.push("relevantti viesti suodatettiin pois");
-  const passed = relevantOk && priorityOk;
+  const accepted = testCase.expected.senderTypeAcceptable;
+  const senderTypeOk = !accepted || accepted.includes(actual.senderType as (typeof SENDER_TYPES)[number]);
+  const passed = relevantOk && priorityOk && senderTypeOk;
   if (testCase.critical && !passed && critical.length === 0) critical.push("kriittinen tapaus epäonnistui");
-  return { relevantOk, priorityOk, passed, critical };
+  return { relevantOk, priorityOk, senderTypeOk, passed, critical };
 }
 
 // --- Vastausehdotus (suggestReply) --------------------------------------------------------------

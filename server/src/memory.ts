@@ -5,6 +5,8 @@ import { db } from "./db.js";
 import { ADJUSTABLE_TOPICS, isTopic, TOPIC_RULES } from "./incidents.js";
 import { sendEmail } from "./mail.js";
 import { id, now, stairwellOf, today } from "./util.js";
+import { promiseStats } from "./time-promise.js";
+import { refreshTrendAlerts, topicTrendAlerts, type TrendAlert } from "./trend-alerts.js";
 
 // ---------------------------------------------------------------------------------------------
 // Taloyhtiön muisti: ratkaistuista tehtävistä opitut pysyvät tiedot (toistuvat viat ja niiden syyt,
@@ -169,10 +171,21 @@ export function isoWeek(at = Date.now()) {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+// Viikkoraportti vastuuisännöitsijälle (trendihälytykset, viikon luvut). Oletuksena pois.
+export function weeklyReportEnabled(): boolean {
+  const row = db.prepare("SELECT weekly_report FROM office_settings WHERE id = 1").get() as { weekly_report: number } | undefined;
+  return Boolean(row?.weekly_report);
+}
+
 export async function weeklyMemoryProposals(at = Date.now()) {
-  if (!memoryAutoEnabled()) return;
+  // Trendihälytykset päivitetään joka ajolla (laskentaa, ei AI:ta), jotta uudet hälytykset tunnistetaan.
+  refreshTrendAlerts([...AUTHORIZED_COMPANY_IDS], at);
+  if (!memoryAutoEnabled()) {
+    if (weeklyReportEnabled()) await sendWeeklyDigests(at);
+    return;
+  }
   const weekAgo = new Date(at - 7 * 86_400_000).toISOString();
-  if (aiAvailable()) {
+  if (aiAvailable("memory")) {
     for (const companyId of AUTHORIZED_COMPANY_IDS) {
       const company = db.prepare("SELECT memory_scanned_at FROM companies WHERE id = ?").get(companyId) as { memory_scanned_at: string | null } | undefined;
       if (!company) continue;
@@ -205,14 +218,21 @@ async function weeklyTopicReport(companyId: string, weekAgo: string) {
   }
 }
 
-export type WeeklyDigest = { documentation: number; memory: number; gaps: number; reviews: number; companies: string[] };
+export type WeeklyDigest = {
+  documentation: number; memory: number; gaps: number; reviews: number; companies: string[];
+  // Viikkoraportti: viikon uudet ja suljetut tehtävät, avoimet myöhässä olevat, viikon aikalupaukset ja trendihälytykset.
+  report: { created: number; closed: number; overdue: number; promises: number; promisesKept: number };
+  trends: TrendAlert[];
+};
 
 // Kooste vastuuisännöitsijän taloyhtiöistä: odottavat ehdotukset, viikon osaamisaukot ja pian tarkistettavat ohjeet.
 export function weeklyDigestFor(userId: string, at = Date.now()): WeeklyDigest {
   const companies = (db.prepare("SELECT id, name FROM companies WHERE manager_id = ?").all(userId) as { id: string; name: string }[])
     .filter(company => AUTHORIZED_COMPANY_IDS.has(company.id));
   const ids = companies.map(company => company.id);
-  if (!ids.length) return { documentation: 0, memory: 0, gaps: 0, reviews: 0, companies: [] };
+  if (!ids.length) return { documentation: 0, memory: 0, gaps: 0, reviews: 0, companies: [], report: { created: 0, closed: 0, overdue: 0, promises: 0, promisesKept: 0 }, trends: [] };
+  const weekAgo = new Date(at - 7 * 86_400_000).toISOString();
+  const promises = promiseStats(ids, weekAgo);
   const placeholders = ids.map(() => "?").join(", ");
   const count = (sql: string, ...params: unknown[]) => (db.prepare(sql).get(...ids, ...params) as { count: number }).count;
   return {
@@ -222,7 +242,15 @@ export function weeklyDigestFor(userId: string, at = Date.now()): WeeklyDigest {
       new Date(at - 7 * 86_400_000).toISOString()),
     reviews: count(`SELECT COUNT(*) AS count FROM knowledge WHERE company_id IN (${placeholders}) AND status = 'active' AND review_at <= ?`,
       new Date(at + 30 * 86_400_000).toISOString().slice(0, 10)),
-    companies: companies.map(company => company.name)
+    companies: companies.map(company => company.name),
+    report: {
+      created: count(`SELECT COUNT(*) AS count FROM tickets WHERE company_id IN (${placeholders}) AND kind = 'ticket' AND created_at >= ?`, weekAgo),
+      closed: count(`SELECT COUNT(*) AS count FROM tickets WHERE company_id IN (${placeholders}) AND kind = 'ticket' AND closed_at >= ?`, weekAgo),
+      overdue: count(`SELECT COUNT(*) AS count FROM tickets WHERE company_id IN (${placeholders}) AND kind = 'ticket' AND status != 'closed' AND due_date < ?`,
+        new Date(at).toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" })),
+      promises: promises.promises, promisesKept: promises.kept
+    },
+    trends: topicTrendAlerts(ids, at)
   };
 }
 
@@ -234,9 +262,16 @@ async function sendWeeklyDigests(at: number) {
   for (const manager of managers) {
     if (db.prepare("SELECT 1 FROM weekly_digests WHERE user_id = ? AND week = ?").get(manager.id, week)) continue;
     const digest = weeklyDigestFor(manager.id, at);
-    if (!digest.documentation && !digest.memory && !digest.gaps && !digest.reviews) continue;
-    const subject = `Pleissin viikkokooste: ${digest.documentation} ehdotusta dokumentaatioon, ${digest.memory} muistiin, `
-      + `${digest.gaps} aihetta, joihin AI ei osannut vastata`;
+    const report = weeklyReportEnabled();
+    const learning = memoryAutoEnabled() && Boolean(digest.documentation || digest.memory || digest.gaps || digest.reviews);
+    if (!learning && !(report && digest.companies.length)) continue;
+    const subject = report
+      ? `Pleissin viikkoraportti: ${digest.report.created} uutta tehtävää${digest.trends.length ? `, ${digest.trends.length} kasvavaa aihetta` : ""}`
+      : `Pleissin viikkokooste: ${digest.documentation} ehdotusta dokumentaatioon, ${digest.memory} muistiin, `
+        + `${digest.gaps} aihetta, joihin AI ei osannut vastata`;
+    const weekAgoIso = new Date(at - 7 * 86_400_000).toISOString();
+    const trendLines = digest.trends.map(trend => `- ${trend.label}, ${trend.companyName}: ${trend.current} ilmoitusta 3 kk aikana `
+      + `(edelliset 3 kk: ${trend.previous})${trend.firstSeenAt && trend.firstSeenAt >= weekAgoIso ? " – uusi" : ""}`);
     const link = `${process.env.APP_URL || "http://localhost:5173"}/#/reports/memory`;
     try {
       await sendEmail({
@@ -247,12 +282,23 @@ async function sendWeeklyDigests(at: number) {
           `Hei ${manager.name},`,
           "",
           `Viikon yhteenveto taloyhtiöistäsi (${digest.companies.join(", ")}):`,
-          `- ${digest.documentation} ehdotusta dokumentaatioon`,
-          `- ${digest.memory} ehdotusta taloyhtiön muistiin`,
-          `- ${digest.gaps} kysymystä, joihin AI ei osannut vastata`,
-          ...(digest.reviews ? [`- ${digest.reviews} ohjetta tarkistettavana 30 päivän sisällä`] : []),
-          "",
-          `Hyväksy tai hylkää ehdotukset (Raportit › Taloyhtiön muisti): ${link}`
+          ...(report ? [
+            `- ${digest.report.created} uutta tehtävää, ${digest.report.closed} suljettu`,
+            `- ${digest.report.overdue} avointa tehtävää myöhässä`,
+            ...(digest.report.promises ? [`- asukkaille annettuja aikalupauksia ${digest.report.promises}, joista pitänyt ${digest.report.promisesKept}`] : []),
+            "",
+            ...(trendLines.length ? ["Kasvavat aiheet (kaksinkertaistunut kolmessa kuukaudessa):", ...trendLines] : ["Ei selvästi kasvavia aiheita."]),
+            `Trendit: ${process.env.APP_URL || "http://localhost:5173"}/#/reports/trends`,
+            ""
+          ] : []),
+          ...(learning ? [
+            `- ${digest.documentation} ehdotusta dokumentaatioon`,
+            `- ${digest.memory} ehdotusta taloyhtiön muistiin`,
+            `- ${digest.gaps} kysymystä, joihin AI ei osannut vastata`,
+            ...(digest.reviews ? [`- ${digest.reviews} ohjetta tarkistettavana 30 päivän sisällä`] : []),
+            "",
+            `Hyväksy tai hylkää ehdotukset (Raportit › Taloyhtiön muisti): ${link}`
+          ] : [])
         ].join("\n")
       });
       db.prepare("INSERT INTO weekly_digests (user_id, week, sent_at) VALUES (?, ?, ?)").run(manager.id, week, now());
