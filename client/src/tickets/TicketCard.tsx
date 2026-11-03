@@ -8,6 +8,7 @@ import { api, errorMessage, type OfficeUser, session } from "../session";
 import type { Ticket, TicketDetail } from "../types";
 import { isManagerRole, isOverdue, type TicketReminder } from "./ticket-utils";
 import { t } from "../i18n";
+import { SenderTypeBadge } from "./SenderType";
 
 // "Anna toiselle" -nappi: avaa listan toimiston isännöitsijöistä ja vaihtaa tehtävän käsittelijän.
 export function AssignPicker({
@@ -232,6 +233,7 @@ export function TicketCard({
               ? <em className="new-reply filtered" title={ticket.ai_reason}>{t("AI suodatti")}</em>
               : null}
             {isOverdue(ticket) ? <em className="new-reply overdue" title={t("Määräaika oli {0}", formatDay(ticket.due_date))}>{t("Myöhässä")}</em> : null}
+            <SenderTypeBadge ticket={ticket} />
           </strong>
           {/* Tägirivi vain, jos tägejä on (sensitive on tietokannasta luku 0/1, joten se muutetaan totuusarvoksi). */}
           {(reminders.length > 0 || Boolean(ticket.sensitive && !ticket.restricted)) && (
@@ -269,6 +271,7 @@ export function TicketCard({
             <h2>{ticket.subject}</h2>
             {urgent && <span className={`priority ${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>}
             <span className={`status-badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
+            <SenderTypeBadge ticket={ticket} />
             {/* Arkaluonteinen tehtävä (esim. terveystiedot): sisältö ei mene AI:lle, ja sen näkevät vain osa käyttäjistä. */}
             {ticket.sensitive || ticket.restricted ? (
               <span className="sensitive-tag" title={t("Tehtävä on arkaluonteinen: sitä ei lähetetä AI:lle, ja sen sisällön näkevät vain käsittelijä, vastuuisännöitsijä ja pääkäyttäjät.")}>

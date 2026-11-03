@@ -1131,3 +1131,11 @@
 :root[data-theme="dark"] button.danger-fill {
     color: #ffffff
 }
+:root[data-theme="dark"] .sender-type-tag {
+    background: #2e3b48;
+    color: #cdd2d9
+}
+:root[data-theme="dark"] .sender-type-tag.sender-authority {
+    background: #48312e;
+    color: #ea9c95
+}

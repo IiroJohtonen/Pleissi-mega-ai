@@ -1,0 +1,26 @@
+{
+  "id": "assess-043",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "lähettäjä",
+    "urakoitsija"
+  ],
+  "input": {
+    "subject": "Työilmoitus: putkiremontin aikataulu",
+    "body": "Hei,\n\nAloitamme B-portaan linjasaneerauksen valmistelut ensi maanantaina. Pyydämme avaimet huoltoyhtiöltä perjantaihin mennessä.\n\nTerveisin\nTyönjohtaja, Putkityö Oy",
+    "sender": "tyonjohto@putkityo.example"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "urgent"
+    ],
+    "senderTypeAcceptable": [
+      "contractor"
+    ]
+  },
+  "critical": false,
+  "note": "Urakoitsijan työilmoitus."
+}

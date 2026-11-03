@@ -810,6 +810,15 @@ db.exec(`
   if (!columns.includes("target_apartment_confirmed")) db.exec("ALTER TABLE tickets ADD COLUMN target_apartment_confirmed INTEGER NOT NULL DEFAULT 0");
   // Tehtävä yhdistettiin toiseen (ticket-links.ts mergeTickets); viestit ja liitteet ovat siellä.
   if (!columns.includes("merged_into")) db.exec("ALTER TABLE tickets ADD COLUMN merged_into TEXT");
+  // Lähettäjätyyppi (sender-types.ts): resident/owner/board/contractor/broker/authority/other.
+  // sender_type_source: ai, domain (toimiston domainlista), register (asukasrekisteri) tai manual (käsittelijä).
+  if (!columns.includes("sender_type")) db.exec("ALTER TABLE tickets ADD COLUMN sender_type TEXT");
+  if (!columns.includes("sender_type_source")) db.exec("ALTER TABLE tickets ADD COLUMN sender_type_source TEXT");
+  if (!columns.includes("sender_request")) db.exec("ALTER TABLE tickets ADD COLUMN sender_request TEXT");
+}
+// Toimiston tuntemat lähettäjädomainit: JSON [{domain, type}]. Ohittavat AI:n lähettäjätyypin.
+if (!officeColumns.some(existing => existing.name === "known_sender_domains")) {
+  db.exec("ALTER TABLE office_settings ADD COLUMN known_sender_domains TEXT NOT NULL DEFAULT '[]'");
 }
 if (!officeColumns.some(existing => existing.name === "incident_detection")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");

@@ -4,6 +4,29 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 3.11.2026 · Muiden kuin asukkaiden yhteydenotot: lähettäjän tyyppi
+
+**Mitä muutettiin**
+- **Lähettäjän tyyppi:** kun AI arvioi saapuvan viestin, se päättelee samalla, kuka viestin lähetti: asukas,
+  osakas, hallitus, huolto tai urakoitsija, välittäjä, viranomainen tai muu. Tyyppi näkyy jonossa merkkinä (ei
+  tavallisille asukkaille) ja tehtävällä, jossa käsittelijä voi korjata sen.
+- **Tunnetut lähettäjät:** pääkäyttäjä voi lisätä asetuksiin domaineja (esim. kaupungin tai huoltoyhtiön
+  osoitteet) ja niiden tyypin. Listalla oleva domain ratkaisee tyypin AI:n arvion sijaan.
+- **Viranomainen:** tehtävä on aina vähintään kiireellinen, viestissä mainittu määräaika tulee tehtävän
+  määräajaksi, ja asia kuuluu aina henkilökunnalle.
+- **Vastausehdotus muille kuin asukkaille:** välittäjän yleiseen kysymykseen (esim. isännöitsijäntodistus) haetaan
+  ohje dokumentaatiosta. Yksittäistä asuntoa koskevaan pyyntöön luonnos kertoo, että tietoihin tarvitaan osakkaan
+  valtuutus, ja vuokralaiselle, että asia kuuluu osakkaalle. Ohjetekstit tulevat taloyhtiön dokumentaatiosta.
+- **Yksityisyys:** tuntemattomalle lähettäjälle ei kerrota mitään asukkaista tai asunnoista. AI ei saa näissä
+  tehtävissä taloyhtiön muistia eikä aiempia tehtäviä.
+- **AI-agentti** hoitaa vain tunnistettujen asukkaiden ja osakkaiden asioita.
+
+**Miten**
+- Jono: lähettäjän tyyppi otsikon vieressä (esim. "Viranomainen", "Välittäjä").
+- Tehtävä: Lähettäjän tyyppi -valinta.
+- Asetukset › AI: Tunnetut lähettäjät.
+
+**Testit:** PR:n kuvauksessa
 ## 3.11.2026 · Ilmoitusten yhdistäminen, häiriöhistoria ja Turvallisuus-aihe
 
 **Mitä muutettiin**

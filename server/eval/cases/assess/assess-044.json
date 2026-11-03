@@ -1,0 +1,26 @@
+{
+  "id": "assess-044",
+  "feature": "assess",
+  "source": "synthetic",
+  "tags": [
+    "lähettäjä",
+    "hallitus"
+  ],
+  "input": {
+    "subject": "Hallituksen kokous",
+    "body": "Hei,\n\nhallituksen puheenjohtajana pyydän lisäämään seuraavan kokouksen esityslistalle pihan valaistuksen uusimisen.\n\nTerveisin\nHallituksen puheenjohtaja",
+    "sender": "puheenjohtaja@example.fi"
+  },
+  "expected": {
+    "relevant": true,
+    "priorityAcceptable": [
+      "normal",
+      "low"
+    ],
+    "senderTypeAcceptable": [
+      "board"
+    ]
+  },
+  "critical": false,
+  "note": "Hallituksen jäsenen pyyntö."
+}

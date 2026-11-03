@@ -7,6 +7,7 @@ import { deleteEmbedding } from "../embedding.js";
 import { RESOLUTION_MAX, setResolution, ticketHistory, trends } from "../history.js";
 import { isTopic } from "../incidents.js";
 import { type MemoryNote, MemoryUnavailableError, proposeCompanyMemory } from "../memory.js";
+import { SENDER_TYPES, setSenderType } from "../sender-types.js";
 import { confirmTargetApartment, mergeSuggestion, mergeTickets, targetHistory } from "../ticket-links.js";
 import { id, now } from "../util.js";
 
@@ -63,6 +64,16 @@ memoryRouter.put("/tickets/:id/target-apartment", (req, res) => {
     return res.status(400).json({ error: "Asunto ei kuulu tehtävän taloyhtiöön." });
   }
   confirmTargetApartment(ticket.id, parsed.data.apartmentId, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true });
+});
+
+// Käsittelijä korjaa lähettäjätyypin (AI:n tai domainlistan arvio).
+memoryRouter.put("/tickets/:id/sender-type", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as { id: string } | null;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ senderType: z.enum(SENDER_TYPES) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse lähettäjän tyyppi." });
+  setSenderType(ticket.id, parsed.data.senderType, res.locals.user?.name ?? "Käsittelijä");
   res.json({ ok: true });
 });
 

@@ -24,6 +24,11 @@ export type Ticket = {
   target_apartment_id?: string | null;
   target_apartment_text?: string | null;
   target_apartment_confirmed?: number;
+  // Lähettäjätyyppi (resident, owner, board, contractor, broker, authority, other), mistä se tuli
+  // (ai, domain, register, manual) ja pyynnön laji (general, apartment_specific, owner_matter).
+  sender_type?: string | null;
+  sender_type_source?: string | null;
+  sender_request?: string | null;
   // Tehtävä, johon tämä yhdistettiin.
   merged_into?: string | null;
   // Mikä ratkaisi asian (käsittelijän kirjaama).

@@ -11,6 +11,7 @@ import { id, now } from "../util.js";
 import { AI_MODEL_CHOICES, getMasterData, MASTER_DATA_DEFAULTS, masterDataSchema, saveMasterData } from "../master-data.js";
 import { scheduleEmbeddingIndex } from "../embedding.js";
 import { loginCodeMailReady, loginCodeSetting } from "../login-codes.js";
+import { knownSenderDomains, saveKnownSenderDomains, SENDER_TYPES } from "../sender-types.js";
 
 export const officeRouter: Router = express.Router();
 
@@ -246,4 +247,23 @@ officeRouter.put("/master-data", requireAdmin, (req, res) => {
   // Merkityshaun kytkentä: puuttuvat vektorit lasketaan (tai poistetaan) taustalla heti.
   if (parsed.data.embedding && JSON.stringify(parsed.data.embedding) !== JSON.stringify(before)) void scheduleEmbeddingIndex();
   res.json(getMasterData());
+});
+
+// Toimiston tuntemat lähettäjädomainit (esim. kaupunki = viranomainen, huoltoyhtiö = urakoitsija). Domain ohittaa
+// AI:n arvion lähettäjästä. Lukea saa jokainen käyttäjä, muuttaa vain pääkäyttäjä.
+officeRouter.get("/office/sender-domains", (_req, res) => {
+  res.json(knownSenderDomains());
+});
+
+officeRouter.put("/office/sender-domains", requireAdmin, (req, res) => {
+  const parsed = z.array(z.object({
+    domain: z.string().trim().min(3).max(200).regex(/^[^\s@]*@?[a-z0-9.-]+\.[a-z]{2,}$/i),
+    type: z.enum(SENDER_TYPES)
+  })).max(500).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Tarkista domainit: esimerkiksi hel.fi." });
+  const saved = saveKnownSenderDomains(parsed.data);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "sender_domains_changed", JSON.stringify({ count: saved.length }), now()
+  );
+  res.json(saved);
 });

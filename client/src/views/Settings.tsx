@@ -14,6 +14,7 @@ import { setTheme, storedTheme } from "../theme";
 import { MasterDataSettings } from "./MasterData";
 import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 import { topicLabel, topicOptions } from "../topics";
+import { SenderDomainsCard } from "../tickets/SenderType";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -1227,6 +1228,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
 
       {officeTab === "security" && <MasterDataSettings part="security" />}
       {officeTab === "ai" && <MasterDataSettings part="ai" />}
+      {officeTab === "ai" && <SenderDomainsCard editable />}
 
       {officeTab === "security" && (
         <a className="settings-card settings-link" href="#/log" id="section-log">

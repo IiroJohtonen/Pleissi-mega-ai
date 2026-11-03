@@ -15,6 +15,7 @@ import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
 import { MergeSuggestion, TargetApartmentField } from "./TicketLinks";
+import { SenderTypeField } from "./SenderType";
 import { UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
 import { Toast } from "../components/Toast";
@@ -837,6 +838,7 @@ export function TicketDrawer({
         ) : null}
         <MergeSuggestion ticket={ticket} onMerged={ticketId => { void onChanged(); openOtherTicket(ticketId); }} />
         <TargetApartmentField ticket={ticket} onChanged={onChanged} />
+        <SenderTypeField ticket={ticket} onChanged={onChanged} />
         {incident && (
           <p className="incident-notice">
             <span>

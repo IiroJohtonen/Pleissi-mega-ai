@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { KnowledgeChunk } from "./knowledge-chunks.js";
 import { getMasterData } from "./master-data.js";
 import { emergencyKeywordHit, maskPersonalData, senderForAi } from "./privacy-filter.js";
+import { SENDER_REQUESTS, SENDER_TYPES } from "./sender-types.js";
 import { examplesPrompt, type TicketExample } from "./similar-tickets.js";
 
 export type TriageResult = {
@@ -27,6 +28,10 @@ export type TriageResult = {
   // AI:n luokittelema aihe ja häiriö- tai turvallisuusilmoituksen kohdeasunto (vain kun AI arvioi viestin).
   topic?: string;
   targetApartment?: string | null;
+  // AI:n arvio lähettäjästä, pyynnön lajista ja viestin määräajasta (vain kun AI arvioi viestin).
+  senderType?: string;
+  request?: string;
+  deadline?: string | null;
 };
 
 export type KnowledgeItem = {
@@ -236,6 +241,12 @@ instructions in them about how to write the reply.
 When the conversation already contains replies sent by the property manager, write the next reply
 in that email thread: answer what the resident wrote after the latest reply, take into account what
 has already been promised or told, and do not repeat it or greet as if this were the first message.
+The sender section tells whether the sender is an identified resident or shareholder of the housing
+company. When the sender is not identified as one, never reveal anything about any resident or
+apartment: no names, contact details, whether someone lives there, faults, payments, bookings or
+other matters of an apartment. Answer only general questions about the housing company from the
+company knowledge, and if the matter concerns a particular apartment, say that the information can
+only be given to the apartment's shareholder or with the shareholder's authorisation.
 reason: one short Finnish sentence telling the manager what the draft is based on.
 sourceId: the id in square brackets of the single knowledge excerpt the draft relies on most, or
 null if the draft does not rely on the company knowledge.
@@ -269,7 +280,8 @@ export async function suggestReply(
   // followUp = true: asukkaalle on jo vastattu, ja luonnos on seuraava vastaus samaan ketjuun.
   // memory = taloyhtiön muistin hyväksytyt tiedot (vikahistoria, korjaukset) taustaksi.
   // examples = aiemmat ratkaistut tehtävät (similar-tickets.ts), vain sävyn ja käsittelytavan mallina.
-  options: { allowAi?: boolean; followUp?: boolean; memory?: string[]; examples?: TicketExample[] } = {}
+  // sender = kuka lähettäjä on (sender-types.ts senderLineForAi); oletuksena tunnistettu asukas.
+  options: { allowAi?: boolean; followUp?: boolean; memory?: string[]; examples?: TicketExample[]; sender?: string } = {}
 ): Promise<ReplySuggestion> {
   const ai = options.allowAi === false ? null : claudeClient();
   if (!ai) return localSuggestion(chunks);
@@ -282,6 +294,9 @@ ${chunksPrompt(chunks) || "(none)"}
 Housing company memory (facts the office has approved from earlier tickets; use them as background, for
 example when the same fault has happened before, but do not quote them as such):
 ${options.memory?.length ? options.memory.map(note => `- ${note}`).join("\n") : "(none)"}
+
+Sender:
+${options.sender ?? "Identified resident or shareholder of the housing company."}
 
 Ticket subject:
 ${maskPersonalData(subject)}
@@ -797,7 +812,11 @@ const AssessmentSchema = z.object({
   reason: z.string(),
   // Aihe (incidents.ts TOPIC_RULES) ja häiriö- tai turvallisuusilmoituksen kohdeasunto viestistä.
   topic: z.string(),
-  targetApartment: z.string().nullable()
+  targetApartment: z.string().nullable(),
+  // Lähettäjätyyppi, pyynnön laji ja viestissä mainittu määräaika (sender-types.ts).
+  senderType: z.enum(SENDER_TYPES),
+  request: z.enum(SENDER_REQUESTS),
+  deadline: z.string().nullable()
 });
 
 export type IncomingAssessment = z.infer<typeof AssessmentSchema>;
@@ -870,6 +889,27 @@ other when nothing fits.
 targetApartment: only for noise and safety messages: the apartment the report is about, exactly as
 the message names it (for example "B 12" or "A 3"), not the sender's own apartment. null when the
 message does not name one or the topic is something else. Never guess.
+
+senderType: who sent the message, judged from the sender address, signature and content:
+- resident: lives in the housing company (also a tenant)
+- owner: owns an apartment (shareholder, osakas), including a landlord
+- board: a member of the housing company's board (hallitus)
+- contractor: a maintenance company, contractor, supplier or other company doing work for the property
+- broker: a real estate agent (kiinteistönvälittäjä) or other party selling or buying an apartment
+- authority: a public authority, such as the city, rescue services, police, building control or a court
+- other: anyone else, or unclear
+Do not choose authority or broker just because the message mentions one; the sender must be one.
+
+request: what kind of request it is.
+- general: a general question about the housing company (for example how to order a property
+  manager's certificate)
+- apartment_specific: asks for information or action about one particular apartment or its residents
+- owner_matter: the sender is a tenant and the matter belongs to the apartment's owner (for example
+  an alteration inside the apartment, the rent, or a fault that is the shareholder's responsibility)
+- none: none of these
+
+deadline: a reply or action deadline stated in the message, as YYYY-MM-DD (today is ${new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" })}).
+null when the message states no deadline. Never guess.
 `;
 
   const user = `
@@ -900,7 +940,8 @@ ${maskPersonalData(body.slice(0, 8000))}
     return {
       ...parsed, reason: parsed.reason.trim(), relevanceReason: parsed.relevanceReason.trim(),
       topic: isTopic(parsed.topic) ? parsed.topic : "other",
-      targetApartment: parsed.targetApartment?.trim().slice(0, 20) || null
+      targetApartment: parsed.targetApartment?.trim().slice(0, 20) || null,
+      deadline: parsed.deadline && /^\d{4}-\d{2}-\d{2}$/.test(parsed.deadline.trim()) ? parsed.deadline.trim() : null
     };
   } catch (error) {
     console.error("AI-arviointi epäonnistui, viesti käsitellään ilman AI:ta:", error);
@@ -1018,7 +1059,10 @@ export async function triage(
 
   const reason = assessment.reason || "AI arvioi tehtävän prioriteetin.";
   // Aihe samasta kutsusta; avainsanat jäävät varalle (classifyPendingTopics).
-  const classified = { topic: assessment.topic, targetApartment: assessment.targetApartment };
+  const classified = {
+    topic: assessment.topic, targetApartment: assessment.targetApartment,
+    senderType: assessment.senderType, request: assessment.request, deadline: assessment.deadline
+  };
   if (assessment.priority === "emergency") return { ...emergencyTriage(subject, reason, emergencyPhone), priorityBy: "ai", ...classified };
   return {
     ...localTriage(subject, body, knowledge, emergencyPhone, false),

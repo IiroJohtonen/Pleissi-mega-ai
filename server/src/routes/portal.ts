@@ -7,6 +7,7 @@ import { attachAiLog, withAiLog } from "../ai-log.js";
 import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { processIncidents } from "../incidents.js";
+import { AGENT_SENDER_TYPES, applySenderType, type SenderType } from "../sender-types.js";
 import { applyClassification } from "../ticket-links.js";
 import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
@@ -123,6 +124,11 @@ export async function createPortalTicket(
 
   if (result.emergency) void alertEmergency(ticketId);
   applyClassification(ticketId, result);
+  // Portaalin käyttäjä on tunnistettu asukas: AI voi tarkentaa osakkaaksi tai hallituksen jäseneksi, ei muuksi.
+  applySenderType(ticketId, {
+    senderType: AGENT_SENDER_TYPES.includes(result.senderType as SenderType) ? result.senderType : null,
+    request: result.request
+  }, undefined);
   // Aihe ja yhteisten vikojen tunnistus taustalla.
   void processIncidents(ticketId);
 

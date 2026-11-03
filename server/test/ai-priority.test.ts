@@ -62,7 +62,8 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
           relevanceReason: advert ? "Viesti on mainos." : "Viesti koskee taloyhtiön asioita.",
           ...assessment,
           topic: disturbance ? "noise" : "other",
-          targetApartment: disturbance ? "B34" : null
+          targetApartment: disturbance ? "B34" : null,
+          senderType: "resident", request: "none", deadline: null
         };
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({

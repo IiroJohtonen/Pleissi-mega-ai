@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { suggestReply } from "../ai.js";
 import { SAFETY_ADVICE } from "../incidents.js";
+import { senderGuidance, senderLineForAi } from "../sender-types.js";
 import { withAiLog } from "../ai-log.js";
 import { searchKnowledgeChunks } from "../knowledge-chunks.js";
 import { selectSimilarTickets } from "../similar-tickets.js";
@@ -133,12 +134,19 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
   const followUp = messages.some(message => message.direction === "outbound" && message.channel !== "contractor");
   const conversation = messages.length ? conversationText(messages) : ticket.summary;
 
+  // Muun kuin asukkaan yhteydenotossa (välittäjä, asuntoa koskeva pyyntö, osakkaalle kuuluva asia) haku täydentyy
+  // ohjeen hakusanoilla: vastauksen ohjeteksti tulee dokumentaatiosta.
+  const residentIdentified = Boolean(ticket.resident_id);
+  const guidance = senderGuidance(ticket.sender_type ?? null, ticket.sender_request ?? null, residentIdentified);
   // AI saa vain tehtävään osuvat palat: haku otsikon, viimeisimpien viestien ja lisätiedon perusteella.
-  const chunks = await searchKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? ""].join("\n"));
+  const chunks = await searchKnowledgeChunks(ticket.company_id, [ticket.subject, conversation, options.data.context ?? "", guidance?.query ?? ""].join("\n"));
   // Arkaluonteinen tehtävä ei mene AI:lle: ehdotus tehdään dokumentaatiohaulla.
   const sensitive = detectSensitivity(ticket.id, `${ticket.subject}\n${conversation}`);
+  // Tunnistamattomalle lähettäjälle ei anneta AI:lle taloyhtiön muistia eikä aiempia tehtäviä, joissa voi olla
+  // asukkaiden ja asuntojen tietoja.
+  const senderKnown = residentIdentified && !guidance && !["contractor", "broker", "authority", "other"].includes(ticket.sender_type ?? "");
   // Aiemmat ratkaistut tehtävät sävyn ja käsittelytavan mallina, kun ne ovat taloyhtiössä käytössä.
-  const examples = sensitive ? [] : await selectSimilarTickets(ticket.company_id, `${ticket.subject}\n${conversation}`.slice(0, 2000), 3, ticket.id)
+  const examples = sensitive || !senderKnown ? [] : await selectSimilarTickets(ticket.company_id, `${ticket.subject}\n${conversation}`.slice(0, 2000), 3, ticket.id)
     .catch(error => {
       console.error("Aiempien tehtävien haku epäonnistui:", error instanceof Error ? error.message : error);
       return [];
@@ -146,9 +154,12 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
   const { result: suggestion } = await withAiLog(ticket.id, () =>
     suggestReply(ticket.subject, conversation, chunks,
       // Turvallisuusilmoituksessa vastaus muistuttaa aina hätänumerosta (käynnissä oleva tilanne).
-      [options.data.context ?? "", ticket.topic === "safety" ? `Turvallisuusilmoitus: kerro vastauksessa: "${SAFETY_ADVICE}"` : ""].filter(Boolean).join("\n"), {
-      allowAi: !sensitive, followUp, memory: sensitive ? [] : memoryForAi(ticket.company_id, { topic: ticket.topic, stairwell: ticketStairwell(ticket.id) }),
-      examples
+      [options.data.context ?? "", ticket.topic === "safety" ? `Turvallisuusilmoitus: kerro vastauksessa: "${SAFETY_ADVICE}"` : "", guidance?.note ?? ""]
+        .filter(Boolean).join("\n"), {
+      allowAi: !sensitive, followUp,
+      memory: sensitive || !senderKnown ? [] : memoryForAi(ticket.company_id, { topic: ticket.topic, stairwell: ticketStairwell(ticket.id) }),
+      examples,
+      sender: senderLineForAi(ticket.sender_type ?? null, residentIdentified)
     }));
   const source = chunks.find(chunk => chunk.id === suggestion.sourceId) ?? null;
   const timestamp = now();
