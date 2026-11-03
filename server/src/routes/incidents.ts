@@ -2,7 +2,6 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext, visibleCompanyIds } from "../access.js";
 import { aiAvailable, interpretIncident, type IncidentInterpretation } from "../ai.js";
-import { aiBudgetExhausted } from "../ai-budget.js";
 import { withAiLog } from "../ai-log.js";
 import { db } from "../db.js";
 import {
@@ -241,7 +240,7 @@ incidentsRouter.delete("/incidents/:id/tickets/:ticketId", (req, res) => {
 incidentsRouter.post("/incidents/:id/interpret", async (req, res) => {
   const incident = loadIncident(req.params.id);
   if (!incident) return res.status(404).json({ error: "Poikkeamaa ei löytynyt." });
-  if (!aiAvailable() || aiBudgetExhausted()) return res.status(503).json({ error: "AI ei ole juuri nyt käytettävissä." });
+  if (!aiAvailable("incident")) return res.status(503).json({ error: "AI ei ole juuri nyt käytettävissä." });
 
   const company = db.prepare("SELECT name FROM companies WHERE id = ?").get(incident.company_id) as { name: string };
   const topicLabel = TOPIC_RULES[incident.topic as TopicKey]?.label ?? incident.topic;

@@ -255,6 +255,32 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.doesNotMatch(sent, /Työtilaus|ovikoodi/, "urakoitsijalle lähetetty viesti ei ole vastaus asukkaalle");
   });
 
+  it("saman lähettäjän AI-arvioinnit rajoitetaan tunnissa, ja yli menevät luokitellaan avainsanoilla", async () => {
+    const service = await login(server, SERVICE_EMAIL);
+    assert.equal((await call(server, service, "PUT", "/office/ai-limits", { assessPerSenderHour: 1 })).status, 403);
+    assert.equal((await call(server, admin, "PUT", "/office/ai-limits", { assessPerSenderHour: -1 })).status, 400);
+    assert.equal((await call(server, admin, "PUT", "/office/ai-limits", { assessPerSenderHour: 1 })).status, 200);
+    try {
+      const send = (subject: string) => postInbound(server, admin, {
+        companyId: "demo-company", senderName: "Toistaja", senderEmail: "toistaja@example.com", subject, body: "Pyöräkellarin lukko on jäykkä.", channel: "email"
+      });
+      const before = requests.length;
+      const first = await send("Lukko 1");
+      const second = await send("Lukko 2");
+      assert.equal(requests.length, before + 1, "vain ensimmäinen viesti arvioidaan AI:lla");
+      const audit = (await call(server, admin, "GET", `/tickets/${second.data.ticketId}`)).data.audit as any[];
+      const triaged = JSON.parse(audit.find(entry => entry.action === "triaged" || entry.action === "emergency_routed").details);
+      assert.equal(triaged.priorityBy, "keywords");
+      assert.match(triaged.aiLimit, /tuntiraja/);
+      assert.equal(first.status, 201);
+      // Toinen lähettäjä saa oman arviointinsa.
+      await postInbound(server, admin, { companyId: "demo-company", senderName: "Muu", senderEmail: "muu@example.com", subject: "Lukko", body: "Pyöräkellarin lukko on jäykkä.", channel: "email" });
+      assert.equal(requests.length, before + 2);
+    } finally {
+      await call(server, admin, "PUT", "/office/ai-limits", { assessPerSenderHour: 10 });
+    }
+  });
+
   it("AI:n virhe ei estä tehtävän syntymistä, vaan prioriteetti tulee avainsanoista", async () => {
     failing = true;
     try {

@@ -210,6 +210,27 @@ describe("AI-agentti", () => {
     assert.ok(detail.notes.some((item: any) => item.body.includes("Vikailmoitus kuuluu huollolle.")));
   });
 
+  it("siirtää tehtävän henkilökunnalle, kun agentin ajot tehtävää kohden vuorokaudessa ovat täynnä", async () => {
+    assert.equal((await call(server, admin, "PUT", "/office/ai-limits", { agentRunsPerDay: 1 })).status, 200);
+    try {
+      const created = await call(server, matti, "POST", "/portal/tickets", {
+        subject: "Ovi", description: "Ulko-ovi narisee.", type: "Vikailmoitus", attachments: []
+      });
+      const ticketId = created.data.ticketId;
+      assert.equal((await call(server, admin, "POST", `/tickets/${ticketId}/agent`)).data.outcome, "handed_over");
+      const calls = aiCalls;
+      const second = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
+      assert.equal(second.status, 200);
+      assert.equal(second.data.outcome, "handed_over");
+      assert.match(second.data.reason, /jo 1 kertaa vuorokauden aikana/);
+      assert.equal(aiCalls, calls, "rajan täytyttyä AI:ta ei kutsuta");
+      const detail = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+      assert.ok(detail.notes.some((item: any) => item.body.includes("jo 1 kertaa")));
+    } finally {
+      await call(server, admin, "PUT", "/office/ai-limits", { agentRunsPerDay: 5 });
+    }
+  });
+
   it("kertoo, miksi agentti ei voi käsitellä tehtävää", async () => {
     const created = await call(server, admin, "POST", "/tickets", {
       companyId: "demo-company", subject: "Kysymys", summary: "Tunnistamaton lähettäjä kysyy saunasta."

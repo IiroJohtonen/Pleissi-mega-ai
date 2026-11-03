@@ -110,6 +110,7 @@ export function actionLabel(action: string) {
     ai_agent_replied: t("AI-agentti vastasi asukkaalle"),
     ai_agent_handover: t("AI-agentti jätti tehtävän henkilökunnalle"),
     ai_agent_trace: t("AI-agentin ajon jäljitys"),
+    ai_limits_updated: t("AI-rajoja muutettu"),
     topic_changed: t("Aihe vaihdettu"),
     incident_linked: t("Liitetty mahdolliseen yhteiseen vikaan"),
     incident_unlinked: t("Irrotettu yhteisestä viasta"),

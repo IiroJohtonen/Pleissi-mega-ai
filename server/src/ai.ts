@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { aiBudgetExhausted, recordAiUsage } from "./ai-budget.js";
+import { aiBudgetBlocked, allowAssessFor, recordAiUsage } from "./ai-budget.js";
 import { logAiRequest, logAiResponse } from "./ai-log.js";
 import { z } from "zod";
 import type { KnowledgeChunk } from "./knowledge-chunks.js";
@@ -23,6 +23,8 @@ export type TriageResult = {
   // true = AI arvioi, ettei viesti koske taloyhtiön asioita; tehtävä ei mene päätösjonoon.
   filtered?: boolean;
   filterReason?: string;
+  // AI-arviointi jätettiin tekemättä rajan vuoksi (esim. lähettäjän tuntiraja); prioriteetti avainsanoista.
+  aiLimit?: string;
 };
 
 export type KnowledgeItem = {
@@ -151,8 +153,9 @@ export function findKnowledgeAnswer(
 // Kun kuukauden AI-kuluraja on täynnä, toimitaan kuten ilman AI-avainta.
 // Malli: pääkäyttäjän perustiedoissa valitsema, muuten ympäristömuuttuja tai oletus. ai.model on
 // raporttien malli.
-function claudeClient(): { client: Anthropic; model: string } | null {
-  if (!process.env.ANTHROPIC_API_KEY || aiBudgetExhausted()) return null;
+// feature = toiminto (suggest, assess, agent …): toimintoryhmän osuus kuukausirajasta tarkistetaan sen mukaan.
+function claudeClient(feature?: string): { client: Anthropic; model: string } | null {
+  if (!process.env.ANTHROPIC_API_KEY || aiBudgetBlocked(feature)) return null;
   return { client: new Anthropic(), model: getMasterData().aiModels.reports || process.env.ANTHROPIC_MODEL || "claude-opus-5-5" };
 }
 
@@ -267,7 +270,7 @@ export async function suggestReply(
   // examples = aiemmat ratkaistut tehtävät (similar-tickets.ts), vain sävyn ja käsittelytavan mallina.
   options: { allowAi?: boolean; followUp?: boolean; memory?: string[]; examples?: TicketExample[] } = {}
 ): Promise<ReplySuggestion> {
-  const ai = options.allowAi === false ? null : claudeClient();
+  const ai = options.allowAi === false ? null : claudeClient("suggest");
   if (!ai) return localSuggestion(chunks);
   const model = replyModel();
 
@@ -426,7 +429,7 @@ export async function chunkDocumentWithAi(
   pages: DocumentPage[],
   options: { note?: string; existing?: string[] } = {}
 ): Promise<AiChunk[]> {
-  const ai = claudeClient();
+  const ai = claudeClient("chunking");
   if (!ai) throw new Error("AI ei ole käytössä");
   const model = fastModel();
   const result: AiChunk[] = [];
@@ -473,7 +476,7 @@ const EntrySchema = z.object({ title: z.string(), content: z.string(), tags: z.a
 // Muotoilee isännöitsijän vapaan tekstin tietopalaksi ja ehdottaa avainsanoja. Heittää virheen, jos AI
 // ei ole käytössä tai kutsu epäonnistuu.
 export async function formatKnowledgeEntry(text: string, documentTitle: string) {
-  const ai = claudeClient();
+  const ai = claudeClient("chunking");
   if (!ai) throw new Error("AI ei ole käytössä");
   const model = fastModel();
   const request = loggedRequest("format", {
@@ -510,7 +513,7 @@ export async function compareChunksWithAi(
   oldChunks: { id: string; title: string; content: string }[],
   newChunks: { id: string; title: string; content: string }[]
 ) {
-  const ai = claudeClient();
+  const ai = claudeClient("chunking");
   if (!ai) throw new Error("AI ei ole käytössä");
   const model = fastModel();
   const list = (chunks: { id: string; title: string; content: string }[]) =>
@@ -575,8 +578,8 @@ const TopicsSchema = z.object({
   }))
 });
 
-export function aiAvailable(): boolean {
-  return claudeClient() !== null;
+export function aiAvailable(feature?: string): boolean {
+  return claudeClient(feature) !== null;
 }
 
 // Ryhmittelee tehtävät toistuviksi aiheiksi merkityksen perusteella. Aiheet, joihin AI:n käytössä oleva
@@ -588,7 +591,7 @@ export async function analyzeRecurringTopics(
   tickets: TopicTicket[],
   knowledge: KnowledgeItem[] = []
 ): Promise<{ topics: RecurringTopic[]; covered: CoveredTopic[] }> {
-  const ai = claudeClient();
+  const ai = claudeClient("topics");
   if (!ai) throw new Error("AI ei ole käytössä");
 
   const system = `
@@ -708,7 +711,7 @@ export type IncidentInput = {
 // Tulkitsee mahdollisen yhteisen vian: mitä ilmoitukset kertovat, mikä on todennäköinen syy ja mitä
 // isännöitsijän kannattaa tehdä. Lisäksi luonnokset työtilaukseksi, tiedotteeksi ja vastaukseksi.
 export async function interpretIncident(input: IncidentInput, chunks: KnowledgeChunk[]): Promise<IncidentInterpretation> {
-  const ai = claudeClient();
+  const ai = claudeClient("incident");
   if (!ai) throw new Error("AI ei ole käytössä");
   const system = `
 You help a Finnish property manager. Several residents of the same housing company have reported the
@@ -793,7 +796,7 @@ export async function proposeMemories(input: {
   cases: string[];
   existing: string[];
 }): Promise<MemoryProposal[]> {
-  const ai = claudeClient();
+  const ai = claudeClient("memory");
   if (!ai) throw new Error("AI ei ole käytössä");
   const system = `
 You keep the long-term memory of a Finnish housing company for its property management office. You get
@@ -863,7 +866,7 @@ function deadlineText(days: number) {
 }
 
 export async function assessIncoming(subject: string, body: string, sender = ""): Promise<IncomingAssessment | null> {
-  const ai = claudeClient();
+  const ai = claudeClient("assess");
   if (!ai) return null;
   const model = assessModel();
   const days = getMasterData().priorityDays;
@@ -1034,8 +1037,15 @@ export async function triage(
   emergencyPhone?: string,
   options: TriageOptions = {}
 ): Promise<TriageResult> {
-  const assessment = options.aiPriority || options.aiRelevance ? await assessIncoming(subject, body, options.sender) : null;
-  const local = (): TriageResult => ({ ...localTriage(subject, body, knowledge, emergencyPhone), priorityBy: "keywords" });
+  const wanted = Boolean(options.aiPriority || options.aiRelevance) && aiAvailable("assess");
+  // Sama lähettäjä voi teettää AI-arvioinnin vain rajallisesti tunnissa; sen jälkeen avainsanoilla.
+  // Hätätilanteen tunnistus toimii avainsanoilla aina.
+  const limited = wanted && options.sender ? !allowAssessFor(options.sender) : false;
+  const assessment = wanted && !limited ? await assessIncoming(subject, body, options.sender) : null;
+  const local = (): TriageResult => ({
+    ...localTriage(subject, body, knowledge, emergencyPhone), priorityBy: "keywords",
+    ...(limited ? { aiLimit: "Lähettäjän AI-arviointien tuntiraja on täynnä." } : {})
+  });
   if (!assessment) return local();
 
   // Asiaan kuulumattomaksi arvioitua viestiä ei viedä jonoon. Turvasyistä hätäsanat voittavat kuitenkin AI:n

@@ -2,7 +2,7 @@ import express, { type Router } from "express";
 import { z } from "zod";
 import { canSeeTicket, isQueueHandler, RESTRICTED_SUBJECT, unidentifiedQueueSettings, visibleCompanyIds } from "../access.js";
 import { isAdmin, requireAdmin, requireManager } from "../auth.js";
-import { aiUsageSummary, refreshBudgetAlerts } from "../ai-budget.js";
+import { aiLimits, aiUsageSummary, refreshBudgetAlerts, saveAiLimits } from "../ai-budget.js";
 import { aiRequestPayload } from "../ai-log.js";
 import { listAlerts, markAlertResolved } from "../alerts.js";
 import { db } from "../db.js";
@@ -212,6 +212,30 @@ officeRouter.get("/audit/:id/ai-request", requireManager, (req, res) => {
     return res.status(404).json({ error: "AI-pyynnön sisältöä ei löytynyt." });
   }
   res.json(request);
+});
+
+// AI:n rajat: päiväraja, toimintoryhmien osuudet kuukausirajasta, agentin ajot tehtävää kohden vuorokaudessa
+// ja saapuvan viestin AI-arvioinnit lähettäjää kohden tunnissa. Kuukausiraja tallennetaan toimiston asetuksissa.
+officeRouter.get("/office/ai-limits", requireAdmin, (_req, res) => {
+  res.json(aiLimits());
+});
+
+officeRouter.put("/office/ai-limits", requireAdmin, (req, res) => {
+  const percent = z.number().int().min(0).max(100);
+  const parsed = z.object({
+    dailyLimit: z.number().min(0).max(100000).optional(),
+    featureLimits: z.object({ agent: percent, assess: percent, suggest: percent, other: percent }).optional(),
+    agentRunsPerDay: z.number().int().min(0).max(100).optional(),
+    assessPerSenderHour: z.number().int().min(0).max(1000).optional()
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Tarkista rajat: osuudet 0–100 %, agentin ajot 0–100 ja arvioinnit 0–1000." });
+  }
+  saveAiLimits(parsed.data);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
+    id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "ai_limits_updated", JSON.stringify(parsed.data), now()
+  );
+  res.json(aiLimits());
 });
 
 // AI:n käyttö ja kustannusarvio tältä kuulta sekä kuuden edellisen kuukauden historia.

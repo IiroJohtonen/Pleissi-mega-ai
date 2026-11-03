@@ -35,6 +35,23 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - Asetukset › Loki: "Näytä AI:lle lähetetty tieto ja vastaus".
 - Tehtävä: tapahtuma "AI-agentin ajon jäljitys" › "Näytä agentin työkalukutsut" (isännöitsijät ja pääkäyttäjät).
 
+## 2.11.2026 · AI:n rajat: päiväraja, toimintojen osuudet ja käyttörajat
+
+**Mitä muutettiin**
+- Kuukausirajan rinnalle tuli päiväraja (oletus 10 $). Kun se täyttyy, AI on pois käytöstä vuorokauden loppuun.
+- Toiminnoille voi antaa oman osuuden kuukausirajasta. Oletuksena AI-agentti saa käyttää enintään 40 % ja
+  raportit, dokumentit ja muisti enintään 30 %, joten saapuvien viestien arvioinnille ja vastausehdotuksille
+  jää aina vähintään 30 %.
+- AI-agentti käsittelee samaa tehtävää enintään 5 kertaa vuorokaudessa. Sen jälkeen tehtävä siirtyy
+  henkilökunnalle, ja perustelu näkyy tehtävällä.
+- Saman lähettäjän viestejä arvioidaan AI:lla enintään 10 tunnissa. Sen jälkeen viestit luokitellaan
+  avainsanoilla, ja syy näkyy tehtävän lokissa.
+- Hätätilanteet tunnistetaan aina avainsanoilla, vaikka AI ei olisi käytettävissä.
+
+**Miten**
+- Asetukset › Isännöitsijätoimiston tiedot › AI › AI-rajat (vain pääkäyttäjä). Muutokset kirjautuvat lokiin.
+- AI-kulujen mittarissa näkyy nyt myös tämän päivän kulut ja toimintojen osuudet.
+
 **Testit:** PR:n kuvauksessa
 ## 30.10.2026 · Merkityshaku: aiemmat tehtävät esimerkkeinä ja hybridihaku dokumentaatioon
 

@@ -1,6 +1,5 @@
 import { AUTHORIZED_COMPANY_IDS } from "./access.js";
 import { aiAvailable, proposeMemories } from "./ai.js";
-import { aiBudgetExhausted } from "./ai-budget.js";
 import { withAiLog } from "./ai-log.js";
 import { db } from "./db.js";
 import { ADJUSTABLE_TOPICS, isTopic, TOPIC_RULES } from "./incidents.js";
@@ -56,7 +55,7 @@ export class MemoryUnavailableError extends Error {
 // Hakee AI:lta muistiehdotukset taloyhtiön uusista ratkaisuista. Jos uusia ratkaistuja tehtäviä ei ole,
 // AI:ta ei kutsuta. Palauttaa lisättyjen ehdotusten määrän.
 export async function proposeCompanyMemory(companyId: string): Promise<{ proposed: number; cases: number }> {
-  if (!aiAvailable() || aiBudgetExhausted()) throw new MemoryUnavailableError("AI ei ole juuri nyt käytettävissä.", 503);
+  if (!aiAvailable("memory")) throw new MemoryUnavailableError("AI ei ole juuri nyt käytettävissä.", 503);
   const company = db.prepare("SELECT name, memory_scanned_at FROM companies WHERE id = ?").get(companyId) as
     { name: string; memory_scanned_at: string | null } | undefined;
   if (!company) throw new MemoryUnavailableError("Taloyhtiötä ei löytynyt.", 404);

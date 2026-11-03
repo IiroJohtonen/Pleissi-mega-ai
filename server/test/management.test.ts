@@ -29,7 +29,8 @@ describe("AI-kulujen raja", () => {
   });
 
   it("varoittaa rajan lähestyessä ja sulkee AI:n, kun raja täyttyy", () => {
-    db.prepare("UPDATE office_settings SET ai_monthly_limit = 10, ai_warning_percent = 80 WHERE id = 1").run();
+    // Päiväraja (ai-budget.test.ts) pois, jotta testi koskee vain kuukausirajaa.
+    db.prepare("UPDATE office_settings SET ai_monthly_limit = 10, ai_warning_percent = 80, ai_daily_limit = 0 WHERE id = 1").run();
     assert.equal(budget.aiBudgetExhausted(), false);
 
     // 1,5 M syötetokenia Opuksella = 6 $ (60 %): ei vielä varoitusta.
