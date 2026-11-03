@@ -1,0 +1,41 @@
+{
+  "id": "suggest-010",
+  "feature": "suggest",
+  "source": "synthetic",
+  "tags": [
+    "jäte"
+  ],
+  "input": {
+    "subject": "Vanha sohva",
+    "conversation": "Asukas: Voinko jättää vanhan sohvan jätekatokseen?",
+    "knowledge": [
+      {
+        "id": "chunk-jate",
+        "title": "Jätehuolto",
+        "content": "Sekajäte, bio, pahvi, lasi ja metalli lajitellaan pihan jätekatokseen. Isot huonekalut asukas vie itse jäteasemalle.",
+        "page": 2
+      },
+      {
+        "id": "chunk-pesula",
+        "title": "Pesutupa",
+        "content": "Pesutupa on kellarikerroksessa B-portaan alla. Vuoron voi varata klo 7–21. Koneet pestään käytön jälkeen, ja nukkasihti tyhjennetään.",
+        "page": null
+      }
+    ],
+    "managerContext": "",
+    "followUp": false,
+    "memory": []
+  },
+  "expected": {
+    "source": [
+      "chunk-jate"
+    ],
+    "mustInclude": [
+      "jäteasema"
+    ],
+    "mustNotInclude": [],
+    "maxWords": 180
+  },
+  "critical": false,
+  "note": "Jätehuolto-ohje: lähde ja ohje oikein."
+}

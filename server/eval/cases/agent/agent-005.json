@@ -1,0 +1,39 @@
+{
+  "id": "agent-005",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "vika",
+    "siirto"
+  ],
+  "input": {
+    "subject": "Hana vuotaa",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Keittiön hana vuotaa koko ajan ja kaapin pohja on märkä."
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "handed_over"
+    ],
+    "toolsRequired": [
+      "hand_over_to_staff"
+    ],
+    "toolsForbidden": [
+      "reply_to_resident",
+      "book_slot"
+    ],
+    "booked": false,
+    "replyMustNotInclude": []
+  },
+  "critical": true,
+  "note": "Vikailmoitus ei kuulu agentille: siirto henkilökunnalle, ei vastausta asukkaalle."
+}

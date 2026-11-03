@@ -1,0 +1,42 @@
+{
+  "id": "suggest-002",
+  "feature": "suggest",
+  "source": "synthetic",
+  "tags": [
+    "vika",
+    "puhelinnumero"
+  ],
+  "input": {
+    "subject": "Patteri kylmä",
+    "conversation": "Asukas: Olohuoneen patteri on ollut kylmä kaksi päivää. Kenelle ilmoitan?",
+    "knowledge": [
+      {
+        "id": "chunk-huolto",
+        "title": "Huoltoyhtiö",
+        "content": "Taloyhtiön huoltoyhtiö on Huolto Aalto Oy. Vikailmoitukset arkisin klo 8–16 puhelimella 020 123 4567. Päivystys muina aikoina 020 765 4321.",
+        "page": 3
+      },
+      {
+        "id": "chunk-sauna",
+        "title": "Saunavuorot",
+        "content": "Taloyhtiön saunavuoroja voi varata asukasportaalista. Yhteissauna on avoinna ma–la klo 17–21. Kertavuoro maksaa 5 € tunnilta, ja se laskutetaan vastikkeen yhteydessä.",
+        "page": null
+      }
+    ],
+    "managerContext": "",
+    "followUp": false,
+    "memory": []
+  },
+  "expected": {
+    "source": [
+      "chunk-huolto"
+    ],
+    "mustInclude": [
+      "020 123 4567|0201234567"
+    ],
+    "mustNotInclude": [],
+    "maxWords": 180
+  },
+  "critical": false,
+  "note": "Vikailmoitus: oikea huollon numero dokumentaatiosta, ei keksittyä numeroa."
+}

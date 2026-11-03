@@ -1,0 +1,58 @@
+{
+  "id": "agent-004",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "tarjous",
+    "valinta"
+  ],
+  "input": {
+    "subject": "Sauna",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Haluaisin saunavuoron."
+      },
+      {
+        "from": "agent",
+        "text": "Vapaita vuoroja: {{pvm+4}} klo 18 tai {{pvm+4}} klo 20. Kumpi sopii?"
+      },
+      {
+        "from": "resident",
+        "text": "Klo 20 käy hyvin."
+      }
+    ],
+    "setup": {
+      "offers": [
+        {
+          "resource": "sauna",
+          "day": 4,
+          "hour": 18
+        },
+        {
+          "resource": "sauna",
+          "day": 4,
+          "hour": 20
+        }
+      ],
+      "bookings": []
+    },
+    "resident": "resident-1"
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "book_slot",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "hand_over_to_staff"
+    ],
+    "booked": true,
+    "replyMustNotInclude": []
+  },
+  "critical": false,
+  "note": "Asukas valitsee tarjotun vuoron: agentti varaa juuri sen."
+}

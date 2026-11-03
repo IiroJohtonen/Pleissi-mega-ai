@@ -7,11 +7,12 @@ import { parseArgs } from "node:util";
 import { type Assessment, type AssessCase, type Grade, gradeAssessment, loadAssessCases } from "./cases.js";
 
 // ---------------------------------------------------------------------------------------------
-// Pleissin AI:n evaluointi (Evaluation suite spec). Ensimmäinen versio kattaa saapuvan viestin
-// arvioinnin (assessIncoming). Ajo kutsuu tuotannon funktiota oikealla Claude-API:lla, joten se maksaa
-// ja kestää minuutteja eikä kuulu npm testiin.
+// Pleissin AI:n evaluointi (Evaluation suite spec): saapuvan viestin arviointi (assessIncoming, oletus),
+// vastausehdotus (--feature suggest) ja AI-agentti (--feature agent, features.ts). Ajo kutsuu tuotannon
+// funktioita oikealla Claude-API:lla, joten se maksaa ja kestää minuutteja eikä kuulu npm testiin.
 //
-//   npm run eval                                   koko joukko
+//   npm run eval                                   koko joukko (arviointi)
+//   npm run eval -- --feature suggest              vastausehdotukset; agent = AI-agentti
 //   npm run eval -- --case assess-001              yksi tapaus (toistettavissa tai pilkuilla)
 //   npm run eval -- --model claude-sonnet-5-5      toinen malli
 //   npm run eval -- --baseline eval/results/2026-10-27-abc1234.json   uudet hylätyt ja läpäisyt
@@ -35,11 +36,11 @@ const { values: args } = parseArgs({
 });
 
 if (args.help) {
-  console.log("npm run eval -- [--case <id>[,<id>]] [--model <malli>] [--baseline <tulostiedosto.json>]");
+  console.log("npm run eval -- [--feature assess|suggest|agent] [--case <id>[,<id>]] [--model <malli>] [--baseline <tulostiedosto.json>]");
   process.exit(0);
 }
-if (args.feature !== "assess") {
-  console.error(`Toimintoa "${args.feature}" ei vielä evaluoida. Käytössä: assess.`);
+if (!["assess", "suggest", "agent"].includes(args.feature!)) {
+  console.error(`Toimintoa "${args.feature}" ei evaluoida. Käytössä: assess, suggest, agent.`);
   process.exit(2);
 }
 
@@ -56,7 +57,18 @@ process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "pleissi-eval-"));
 process.env.GMAIL_DISABLED = "1";
 // Väliaikaisen tietokannan käyttäjät luodaan tällä salasanalla, jotta sovellus ei arvo ja tulosta omaansa.
 process.env.INITIAL_PASSWORD = "eval-ei-kirjautumista";
-if (args.model) process.env.ANTHROPIC_MODEL = args.model;
+if (args.model) {
+  process.env.ANTHROPIC_MODEL = args.model;
+  process.env.ANTHROPIC_REPLY_MODEL = args.model;
+}
+
+if (args.feature === "suggest" || args.feature === "agent") {
+  const { runFeature } = await import("./features.js");
+  const wantedIds = (args.case ?? []).flatMap(value => value.split(",")).map(value => value.trim()).filter(Boolean);
+  const code = await runFeature(args.feature, wantedIds, args.baseline);
+  fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true });
+  process.exit(code);
+}
 
 const { db } = await import("../src/db.js");
 const { assessIncoming } = await import("../src/ai.js");
