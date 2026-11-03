@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import { DownloadLink, Dropdown, FactDropdown } from "../components/common";
 import { placeLabel, topicLabel, topicOptions } from "../topics";
 import { IncidentDrawer } from "../views/Incidents";
@@ -14,9 +14,13 @@ import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
+import { MergeSuggestion, TargetApartmentField } from "./TicketLinks";
+import { SenderTypeField } from "./SenderType";
 import { UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
 import { Toast } from "../components/Toast";
+import { AgentTraceDetails } from "../components/AiRequest";
+import { GuideEditor } from "../components/GuideEditor";
 import { t } from "../i18n";
 import { OpenResidentButton } from "../components/Reporter";
 
@@ -121,13 +125,16 @@ function TimelineMessage({
   message,
   attachments = [],
   replying = false,
-  onReply
+  onReply,
+  onToGuide
 }: {
   message: TicketDetail["messages"][number];
   attachments?: Attachment[];
   replying?: boolean;
   // Annetaan vain viesteille, joihin voi vastata sähköpostilla.
   onReply?: () => void;
+  // Lähetetystä vastauksesta yleinen ohje dokumentaatioon (isännöitsijä).
+  onToGuide?: () => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [showQuoted, setShowQuoted] = useState(false);
@@ -185,6 +192,44 @@ function TimelineMessage({
         </>
       )}
       <MessageAttachments attachments={attachments} />
+      {onToGuide && (
+        <button type="button" className="quiet-button message-guide" onClick={onToGuide} title={t("AI tekee vastauksesta yleisen ohjeen ilman henkilötietoja; tarkistat sen ennen tallennusta.")}>
+          {t("Vastaus dokumentaatioksi")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Lähetetystä vastauksesta tehty ohjeluonnos: AI poistaa henkilötiedot, isännöitsijä tarkistaa ja tallentaa.
+function ReplyGuidePanel({ ticketId, companyId, messageId, onClose }: { ticketId: string; companyId: string; messageId: string; onClose: () => void }) {
+  const [draft, setDraft] = useState<{ title: string; content: string } | null>(null);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    api<{ title: string; content: string }>(`/tickets/${encodeURIComponent(ticketId)}/messages/${encodeURIComponent(messageId)}/guide`, { method: "POST" })
+      .then(setDraft)
+      .catch(caught => setError(errorMessage(caught, t("Ohjeen luonnos epäonnistui."))));
+  }, [ticketId, messageId]);
+  return (
+    <div className="reply-guide">
+      <h4>{t("Vastaus dokumentaatioksi")}</h4>
+      {saved ? <p className="saved-indicator">{t("Ohje tallennettu AI-dokumentaatioon.")}</p>
+        : error ? <p className="send-error">{error}</p>
+        : !draft ? <p className="muted">{t("AI tekee ohjeesta luonnosta…")}</p>
+        : (
+          <GuideEditor
+            companyId={companyId}
+            initial={draft}
+            saveLabel={t("Tallenna ohje")}
+            onCancel={onClose}
+            onSave={async guide => {
+              await api(`/companies/${encodeURIComponent(companyId)}/knowledge-base/guides`, { method: "POST", body: JSON.stringify({ ...guide, ticketId }) });
+              setSaved(true);
+            }}
+          />
+        )}
+      {(saved || error) && <button type="button" className="secondary" onClick={onClose}>{t("Sulje")}</button>}
     </div>
   );
 }
@@ -390,6 +435,7 @@ export function TicketDrawer({
         usedAi: boolean;
         sensitive?: boolean;
         followUp?: boolean;
+        guidanceGap?: boolean;
       }>(`/tickets/${ticket.id}/suggest`, { method: "POST", body: JSON.stringify(context ? { context } : {}) });
       setSuggestion(result);
       setSuggestionToast({
@@ -400,7 +446,10 @@ export function TicketDrawer({
           : result.sensitive
           ? t("Tehtävä on arkaluonteinen, joten sitä ei lähetetty AI:lle. Ehdotus tehtiin avainsanahaulla dokumentaatiosta.")
           : t("AI ei ollut käytettävissä, joten ehdotus tehtiin avainsanahaulla dokumentaatiosta."),
-        message: result.reason
+        // Lähettäjän pyyntöön (esim. välittäjä) ei löytynyt ohjetta dokumentaatiosta: luonnos on yleinen.
+        message: result.guidanceGap
+          ? `${result.reason} ${t("Dokumentaatiosta ei löytynyt ohjetta tähän pyyntöön, joten luonnos on yleinen. Puuttuva ohje näkyy kohdassa Raportit › Osaamisaukot.")}`
+          : result.reason
       });
       setDraft(result.draft);
       setSaved(false);
@@ -460,6 +509,7 @@ export function TicketDrawer({
     : [];
 
   const [residents, setResidents] = useState<Resident[]>([]);
+  const [guideMessage, setGuideMessage] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
 
   // Toinen tehtävä (historia, yhteinen vika) avataan samassa näkymässä.
@@ -834,6 +884,9 @@ export function TicketDrawer({
         {ticket.company_pending ? (
           <UnidentifiedCompanyPanel ticket={ticket} companies={companies} users={officeUsers} onChanged={onChanged} />
         ) : null}
+        <MergeSuggestion ticket={ticket} onMerged={ticketId => { void onChanged(); openOtherTicket(ticketId); }} />
+        <TargetApartmentField ticket={ticket} onChanged={onChanged} />
+        <SenderTypeField ticket={ticket} onChanged={onChanged} />
         {incident && (
           <p className="incident-notice">
             <span>
@@ -1389,15 +1442,22 @@ export function TicketDrawer({
         <section className="drawer-timeline">
           <h3>{t("Aikajana")}</h3>
           {timeline.map(item => item.kind === "message" ? (
-            <TimelineMessage
-              key={item.id}
-              message={item.message}
-              attachments={detail.attachments.filter(attachment => attachment.message_id === item.message.id)}
-              replying={replyTarget?.id === item.message.id}
-              onReply={canReply && item.message.direction === "inbound" && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(item.message.sender)
-                ? () => startReply(item.message)
-                : undefined}
-            />
+            <Fragment key={item.id}>
+              <TimelineMessage
+                message={item.message}
+                attachments={detail.attachments.filter(attachment => attachment.message_id === item.message.id)}
+                replying={replyTarget?.id === item.message.id}
+                onReply={canReply && item.message.direction === "inbound" && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(item.message.sender)
+                  ? () => startReply(item.message)
+                  : undefined}
+                onToGuide={isManager() && !ticket.sensitive && item.message.direction === "outbound" && item.message.channel !== "contractor"
+                  ? () => setGuideMessage(item.message.id)
+                  : undefined}
+              />
+              {guideMessage === item.message.id && (
+                <ReplyGuidePanel ticketId={ticket.id} companyId={ticket.company_id} messageId={item.message.id} onClose={() => setGuideMessage(null)} />
+              )}
+            </Fragment>
           ) : item.kind === "note" ? (
             <div className="message note" key={item.id}>
               <small>{t("Sisäinen muistiinpano ·")}{" "}{actorLabel(item.note.author)} · {formatDate(item.created_at)}</small>
@@ -1408,6 +1468,7 @@ export function TicketDrawer({
               <span>{actionLabel(item.event.action)}</span>
               {eventNote(item.event.details) && <span className="event-note">{eventNote(item.event.details)}</span>}
               <small>{actorLabel(item.event.actor)} · {formatDate(item.created_at)}</small>
+              {item.event.action === "ai_agent_trace" && isManager() && <AgentTraceDetails auditId={item.id} />}
             </div>
           ))}
           {timeline.length === 0 && <p className="drawer-empty">{t("Ei tapahtumia.")}</p>}

@@ -7,6 +7,8 @@ import { attachAiLog, withAiLog } from "../ai-log.js";
 import type { ResidentAccount } from "../auth.js";
 import { attachmentsDir, db } from "../db.js";
 import { processIncidents } from "../incidents.js";
+import { AGENT_SENDER_TYPES, applySenderType, type SenderType } from "../sender-types.js";
+import { applyClassification } from "../ticket-links.js";
 import { alertEmergency } from "../notify.js";
 import { isImageOrPdf } from "../scan.js";
 import { QUEUE_POSITION_SQL } from "../booking-queue.js";
@@ -19,7 +21,7 @@ import {
 } from "./bookings.js";
 import { aiPriorityEnabled } from "./office.js";
 import { assignToCompanyManager } from "./tickets.js";
-import { continueAgent } from "../ai-agent.js";
+import { autoStartAgent, continueAgent } from "../ai-agent.js";
 
 export const portalRouter: Router = express.Router();
 
@@ -121,8 +123,16 @@ export async function createPortalTicket(
   beforeAttachments?.(ticketId);
 
   if (result.emergency) void alertEmergency(ticketId);
+  applyClassification(ticketId, result);
+  // Portaalin käyttäjä on tunnistettu asukas: tyyppi tulee asukasrekisterin rooleista, ja AI voi tarkentaa vain
+  // hallituksen jäseneksi (tai asukkaaksi tai osakkaaksi, kun henkilö on molempia).
+  applySenderType(ticketId, {
+    senderType: AGENT_SENDER_TYPES.includes(result.senderType as SenderType) ? result.senderType : null,
+    request: result.request
+  }, undefined);
   // Aihe ja yhteisten vikojen tunnistus taustalla.
-  void processIncidents(ticketId);
+  // AI-reseptionisti käynnistyy taustalla aiheen tunnistuksen jälkeen, kun automaattinen käynnistys on taloyhtiössä päällä.
+  void processIncidents(ticketId).then(() => { autoStartAgent(ticketId); });
 
   const attachmentError = await savePortalAttachments(ticketId, input.attachments, timestamp, resident.id);
   return { ticketId, attachmentError };

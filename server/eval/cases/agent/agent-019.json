@@ -1,0 +1,59 @@
+{
+  "id": "agent-019",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "luonnostila",
+    "sauna",
+    "hyväksyntä"
+  ],
+  "input": {
+    "subject": "Saunavuoro",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei, haluaisin saunavuoron {{pvm+5}} illalla."
+      },
+      {
+        "from": "office",
+        "text": "Hei! Vapaita saunavuoroja on {{pvm+5}} klo 17.00–18.00 ja klo 19.00–20.00. Kerrotko, kumpi sopii?"
+      },
+      {
+        "from": "resident",
+        "text": "Käy klo 17, kiitos."
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [
+        {
+          "resource": "sauna",
+          "day": 5,
+          "hour": 17
+        },
+        {
+          "resource": "sauna",
+          "day": 5,
+          "hour": 19
+        }
+      ],
+      "knowledge": []
+    },
+    "resident": "resident-1",
+    "mode": "draft"
+  },
+  "expected": {
+    "toolsRequired": [
+      "book_slot",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [],
+    "replyMustNotInclude": [],
+    "outcome": [
+      "drafted"
+    ],
+    "booked": true
+  },
+  "critical": true,
+  "note": "Luonnostilassa käsittelijä lähetti agentin tarjouksen; asukkaan hyväksymä vuoro varataan, ja vahvistus jää luonnokseksi."
+}

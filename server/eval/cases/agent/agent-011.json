@@ -1,0 +1,46 @@
+{
+  "id": "agent-011",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "dokumentaatio",
+    "lainaus"
+  ],
+  "input": {
+    "subject": "Saunavuoron peruminen",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei, mihin mennessä saunavuoron voi perua maksutta?"
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": [
+        {
+          "title": "Saunavuoron peruminen",
+          "content": "Saunavuoron voi perua maksutta viimeistään kaksi tuntia ennen vuoron alkua. Myöhemmin peruttu vuoro laskutetaan."
+        }
+      ]
+    },
+    "resident": "resident-1",
+    "mode": "send"
+  },
+  "expected": {
+    "toolsRequired": [
+      "search_company_documentation",
+      "answer_from_documentation"
+    ],
+    "toolsForbidden": [
+      "book_slot"
+    ],
+    "replyMustNotInclude": [],
+    "outcome": [
+      "replied"
+    ],
+    "booked": false
+  },
+  "critical": false,
+  "note": "Yleinen kysymys, johon dokumentaatio vastaa: agentti vastaa lainaamalla palaa, ja koodi tarkistaa lainauksen."
+}

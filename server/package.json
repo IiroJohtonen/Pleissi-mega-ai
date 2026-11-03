@@ -34,6 +34,7 @@
     "mailparser": "^3.9.39",
     "mammoth": "^1.13.0",
     "nodemailer": "^10.1.1",
+    "pdf-lib": "^1.17.1",
     "sqlite-vec": "^0.1.9",
     "tesseract.js": "^7.0.0",
     "unpdf": "^1.8.1",

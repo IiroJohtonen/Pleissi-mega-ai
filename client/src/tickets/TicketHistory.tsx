@@ -13,6 +13,8 @@ type History = {
   stairwell: string; apartmentNumber: string | null; apartment: HistoryItem[]; stair: HistoryItem[];
   incidents: { id: string; topic: string; stairwell: string; status: string; firstReportAt: string; handledAt: string | null;
     resolution: string | null; reports: number }[];
+  // Vahvistetun kohdeasunnon aiemmat häiriö- ja turvallisuusilmoitukset kaikilta ilmoittajilta.
+  target?: { apartmentNumber: string | null; reports: { id: string; ticketNumber: number | null; subject: string; topic: string | null; status: string; createdAt: string }[] } | null;
 };
 
 // Mikä ratkaisi asian: käsittelijän lyhyt kuvaus. Kerryttää taloyhtiön vikahistoriaa ja muistia.
@@ -83,9 +85,10 @@ export function TicketHistory({ ticket, onOpenTicket }: { ticket: Ticket; onOpen
     return () => {
       cancelled = true;
     };
-  }, [ticket.id, ticket.topic, ticket.apartment_number]);
+  }, [ticket.id, ticket.topic, ticket.apartment_number, ticket.target_apartment_id, ticket.target_apartment_confirmed]);
 
-  if (!history || (!history.apartment.length && !history.stair.length && !history.incidents.length)) return null;
+  const targetReports = history?.target?.reports ?? [];
+  if (!history || (!history.apartment.length && !history.stair.length && !history.incidents.length && !targetReports.length)) return null;
   const row = (item: HistoryItem) => (
     <li key={item.id}>
       <button type="button" className="link-button" onClick={() => onOpenTicket(item.id)}>
@@ -106,6 +109,19 @@ export function TicketHistory({ ticket, onOpenTicket }: { ticket: Ticket; onOpen
               <li key={item.id}>
                 <span className="history-title">{placeLabel(item.stairwell)}, {formatDateOnly(item.firstReportAt)}, {t("{0} asuntoa", item.reports)}</span>
                 {item.resolution && <p className="history-resolution">{t("Ratkaisu: {0}", item.resolution)}</p>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {targetReports.length > 0 && (
+        <>
+          <h4>{t("Ilmoitukset asunnosta {0} (kaikki ilmoittajat, 2 vuotta)", history.target?.apartmentNumber ?? "")}</h4>
+          <ul>
+            {targetReports.map(item => (
+              <li key={item.id}>
+                <button type="button" className="link-button" onClick={() => onOpenTicket(item.id)}>#{formatTicketNumber(item.ticketNumber)} {item.subject}</button>
+                <span>{[topicLabel(item.topic), formatDateOnly(item.createdAt), statusLabel(item.status)].join(", ")}</span>
               </li>
             ))}
           </ul>

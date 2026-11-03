@@ -24,7 +24,7 @@ type IntegrationMessage = {
   company_name: string | null;
 };
 
-type MessageList = { adapter: string | null; limit: number; counts: Record<MessageStatus, number>; messages: IntegrationMessage[] };
+type MessageList = { adapter: string | null; pull?: boolean; limit: number; counts: Record<MessageStatus, number>; messages: IntegrationMessage[] };
 
 const STATUSES: MessageStatus[] = ["pending", "sent", "failed", "superseded"];
 
@@ -38,7 +38,9 @@ const statusLabels: Record<MessageStatus, string> = {
 const eventLabels: Record<string, string> = {
   "task.created": t("Tehtävä luotu"),
   "task.updated": t("Tehtävä päivitetty"),
-  "task.comment.added": t("Kommentti lisätty")
+  "task.comment.added": t("Kommentti lisätty"),
+  "booking.created": t("Varaus tehty"),
+  "booking.cancelled": t("Varaus peruttu")
 };
 
 // Sanoma tiedostona sellaisenaan (sama JSON kuin ERP:hen lähtevä).
@@ -113,7 +115,9 @@ export function IntegrationLog() {
       <p className="muted">
         {data && (data.adapter
           ? t("Toiminnanohjausjärjestelmään (ERP) lähtevät tehtävät ja kommentit. Käytössä: {0}.", data.adapter === "mock" ? t("simuloitu ERP") : data.adapter)
-          : t("ERP-integraatio ei ole käytössä, joten uusia sanomia ei kirjata."))}
+          : data.pull
+            ? t("ERP hakee tehtävät ja kommentit jonosta. Lähetetty tarkoittaa, että ERP on hakenut sanoman.")
+            : t("ERP-integraatio ei ole käytössä, joten uusia sanomia ei kirjata."))}
         {" "}{t("Sanoman avaus kirjataan toimintalokiin.")}
       </p>
 

@@ -1,0 +1,35 @@
+{
+  "id": "suggest-007",
+  "feature": "suggest",
+  "source": "synthetic",
+  "tags": [
+    "jatkovastaus"
+  ],
+  "input": {
+    "subject": "Pesutupa",
+    "conversation": "Asukas: Missä pesutupa on?\nToimisto: Pesutupa on kellarikerroksessa B-portaan alla.\nAsukas: Kiitos! Mihin aikaan sitä saa käyttää?",
+    "knowledge": [
+      {
+        "id": "chunk-pesula",
+        "title": "Pesutupa",
+        "content": "Pesutupa on kellarikerroksessa B-portaan alla. Vuoron voi varata klo 7–21. Koneet pestään käytön jälkeen, ja nukkasihti tyhjennetään.",
+        "page": null
+      }
+    ],
+    "followUp": true,
+    "managerContext": "",
+    "memory": []
+  },
+  "expected": {
+    "source": [
+      "chunk-pesula"
+    ],
+    "mustInclude": [
+      "7|21"
+    ],
+    "mustNotInclude": [],
+    "maxWords": 180
+  },
+  "critical": false,
+  "note": "Jatkovastaus samaan ketjuun: ei aloiteta alusta eikä toisteta koko ohjetta."
+}

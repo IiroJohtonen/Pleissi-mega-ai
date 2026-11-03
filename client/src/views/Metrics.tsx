@@ -5,6 +5,7 @@ import { locale, t } from "../i18n";
 import { api, errorMessage, session } from "../session";
 import type { Company, Ticket } from "../types";
 import { CompanyMemory } from "./Memory";
+import { KnowledgeBase, KnowledgeGaps } from "./KnowledgeBase";
 import { Reports } from "./Reports";
 import { Trends } from "./Trends";
 
@@ -504,7 +505,7 @@ function CustomReports({ companies }: { companies: Company[] }) {
   );
 }
 
-export type ReportsTab = "metrics" | "custom" | "company" | "trends" | "memory";
+export type ReportsTab = "metrics" | "custom" | "company" | "trends" | "memory" | "base" | "gaps";
 
 export function ReportsHub({
   tab,
@@ -531,6 +532,8 @@ export function ReportsHub({
       )}
       {tab === "trends" && <Trends companies={companies} companyId={companyId} />}
       {tab === "memory" && <CompanyMemory companies={companies} companyId={companyId} />}
+      {tab === "base" && <KnowledgeBase companies={companies} companyId={companyId} />}
+      {tab === "gaps" && <KnowledgeGaps companies={companies} companyId={companyId} />}
     </section>
   );
 }

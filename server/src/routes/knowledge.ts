@@ -85,8 +85,10 @@ const validityDate = z.string().trim()
   .default("");
 
 // Tallentaa uuden tietueen. Jos se korvaa aiemman, vanha versio jää historiaan.
-function saveKnowledge(input: {
+export function saveKnowledge(input: {
   companyId: string;
+  // office = toimistotason ohje (näkyy kaikille taloyhtiöille AI:n haussa).
+  scope?: "company" | "office";
   kind: "fact" | "document";
   title: string;
   content: string;
@@ -157,6 +159,9 @@ function saveKnowledge(input: {
       { id: knowledgeId, company_id: input.companyId, status: "active" },
       localChunks({ title: input.title, content: input.content, kind: input.kind }, input.pages)
     );
+    // Toimistotason ohje ja tarkistuspäivä vuoden päähän.
+    db.prepare("UPDATE knowledge SET scope = ?, review_at = date('now', '+12 months') WHERE id = ?")
+      .run(input.scope ?? (replaced as (KnowledgeRow & { scope?: string }) | undefined)?.scope ?? "company", knowledgeId);
     if (input.pages) db.prepare("UPDATE knowledge SET pages = ? WHERE id = ?").run(JSON.stringify(input.pages), knowledgeId);
     if (input.formatted) db.prepare("UPDATE knowledge SET formatted = ? WHERE id = ?").run(input.formatted, knowledgeId);
   })();

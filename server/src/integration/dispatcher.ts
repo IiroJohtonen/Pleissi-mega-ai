@@ -4,9 +4,9 @@ import { sendEmail } from "../mail.js";
 import { formatTicketNumber } from "../numbers.js";
 import { id, now, VALID_EMAIL } from "../util.js";
 import type { AdapterResult, ErpAdapter } from "./adapter.js";
-import type { Comment, Envelope, EventType, Task } from "./canonical.js";
+import type { Booking, Comment, Envelope, EventType, Task } from "./canonical.js";
 import { MockErpAdapter } from "./mock-adapter.js";
-import { integrationAdapterName, type OutboxRow } from "./outbox.js";
+import { integrationAdapterName, type OutboxRow, type OutboxStatus } from "./outbox.js";
 
 // ---------------------------------------------------------------------------------------------
 // Jonon lähetys ERP:hen. Muutos on kirjattu jonoon heti; lähetys tehdään taustalla, kun saman tehtävän
@@ -60,7 +60,7 @@ function erpRef(entityType: string, entityId: string): string | null {
 }
 
 // Lähetettävä sanoma jonorivistä: kuori ja olion tila, jossa ERP:n tunniste on ajantasainen.
-export function buildEnvelope<T extends Task | Comment>(row: OutboxRow): Envelope<T> {
+export function buildEnvelope<T extends Task | Comment | Booking>(row: OutboxRow): Envelope<T> {
   const data = JSON.parse(row.payload) as T;
   data.externalRefs = { erp: erpRef(row.entity_type, row.entity_id) };
   return {
@@ -155,7 +155,9 @@ async function notifyFailure(row: OutboxRow, status: number | null, error: strin
   );
   const email = (ticket.manager_email ?? "").trim();
   if (!VALID_EMAIL.test(email)) return;
-  const what = row.event_type === "task.comment.added" ? "Viestin kirjaus" : row.event_type === "task.created" ? "Tehtävän kirjaus" : "Tehtävän muutoksen kirjaus";
+  const what = row.event_type === "task.comment.added" ? "Viestin kirjaus" : row.event_type === "task.created" ? "Tehtävän kirjaus"
+    : row.event_type === "booking.created" ? "Varauksen kirjaus" : row.event_type === "booking.cancelled" ? "Varauksen peruutuksen kirjaus"
+    : "Tehtävän muutoksen kirjaus";
   try {
     await sendEmail({
       to: email,
@@ -180,7 +182,7 @@ async function notifyFailure(row: OutboxRow, status: number | null, error: strin
 
 // Yhdistää saman tehtävän odottavat päivitykset uusimpaan: vanhemmat merkitään ohitetuiksi, ja uusin saa
 // kaikkien muuttuneet kentät sekä suurimman yrityskerran, jotta uudelleenyritysten porrastus ei ala alusta.
-function coalesce(updates: OutboxRow[]): OutboxRow {
+export function coalesce(updates: OutboxRow[]): OutboxRow {
   const newest = updates[updates.length - 1];
   if (updates.length === 1) return newest;
   const fields = [...new Set(updates.flatMap(row => (row.changed_fields ? JSON.parse(row.changed_fields) as string[] : [])))];
@@ -191,6 +193,69 @@ function coalesce(updates: OutboxRow[]): OutboxRow {
     db.prepare("UPDATE integration_outbox SET changed_fields = ?, attempts = ? WHERE event_id = ?").run(JSON.stringify(fields), attempts, newest.event_id);
   })();
   return { ...newest, changed_fields: JSON.stringify(fields), attempts };
+}
+
+// --- Varaukset ---------------------------------------------------------------------------------
+// Varaus lähtee ERP:hen omana olionaan. 201 + tunniste = ERP vahvisti; AI-agentin odottava varaus
+// (requested) muuttuu vahvistetuksi, ja asukkaalle lähtee vahvistus. 409 = vuoro on jo varattu ERP:ssä:
+// AI-agentin varaus perutaan Pleississä ja agentti tarjoaa uusia vuoroja; muun varauksen ristiriidasta
+// tulee hälytys henkilökunnalle (varausta ei poisteta asukkaalta ilman ihmisen päätöstä).
+// Peruutus lähtee vain, jos ERP on saanut varauksen; muuten luonti ja peruutus ohitetaan.
+
+type BookingHooks = { confirmed: (bookingId: string) => Promise<void>; rejected: (bookingId: string) => Promise<void> };
+let bookingHooks: BookingHooks | null = null;
+// AI-agentti rekisteröi vahvistuksen ja hylkäyksen käsittelyn (ai-agent.ts), jottei jono riipu agentista.
+export function onAgentBookingResult(hooks: BookingHooks) {
+  bookingHooks = hooks;
+}
+
+const markStatus = (eventId: string, status: OutboxStatus, supersededBy: string | null = null) =>
+  db.prepare("UPDATE integration_outbox SET status = ?, superseded_by = ? WHERE event_id = ?").run(status, supersededBy, eventId);
+
+async function processBooking(target: ErpAdapter, rows: OutboxRow[], at: number) {
+  if (Math.max(...rows.map(row => Date.parse(row.created_at))) + SEND_DELAY_MS() > at) return;
+  const created = rows.find(row => row.event_type === "booking.created");
+  const cancelled = rows.find(row => row.event_type === "booking.cancelled");
+  const bookingId = rows[0].entity_id;
+
+  if (created && cancelled) {
+    // Varaus peruttiin ennen kuin se ehti ERP:hen: kumpaakaan ei tarvitse lähettää.
+    markStatus(created.event_id, "superseded", cancelled.event_id);
+    markStatus(cancelled.event_id, "superseded", cancelled.event_id);
+    return;
+  }
+  if (created) {
+    if (!due(created.next_attempt_at, at)) return;
+    const result = await call(() => target.createBooking(buildEnvelope<Booking>(created)));
+    if (!result.ok && result.status === 409) {
+      db.prepare("UPDATE integration_outbox SET status = 'failed', attempts = attempts + 1, last_status_code = 409, last_error = ? WHERE event_id = ?")
+        .run(result.error, created.event_id);
+      console.error(`ERP-integraatio: booking.created ${created.event_id} hylättiin (409)`);
+      const booking = db.prepare("SELECT status, ticket_id FROM bookings WHERE id = ?").get(bookingId) as { status: string; ticket_id: string | null } | undefined;
+      if (booking?.status === "requested" && booking.ticket_id && bookingHooks) await bookingHooks.rejected(bookingId);
+      else {
+        raiseAlert(`integration:booking:${bookingId}`, "Varaus on päällekkäin ERP:n varauksen kanssa",
+          `Pleississä tehty varaus osuu ERP:ssä jo varattuun vuoroon (varaus ${bookingId}). Tarkista vuoro ja ilmoita asukkaalle tarvittaessa.`);
+      }
+      return;
+    }
+    if (!record(created, result, at)) return;
+    const booking = db.prepare("SELECT status FROM bookings WHERE id = ?").get(bookingId) as { status: string } | undefined;
+    if (booking?.status === "requested") {
+      db.prepare("UPDATE bookings SET status = 'confirmed' WHERE id = ?").run(bookingId);
+      if (bookingHooks) await bookingHooks.confirmed(bookingId);
+    }
+    return;
+  }
+  if (cancelled && due(cancelled.next_attempt_at, at)) {
+    const erpBookingId = erpRef("booking", bookingId);
+    if (!erpBookingId) {
+      // ERP ei koskaan saanut varausta (luonti hylättiin tai epäonnistui): peruttavaa ei ole.
+      markStatus(cancelled.event_id, "superseded", cancelled.event_id);
+      return;
+    }
+    record(cancelled, await call(() => target.cancelBooking(erpBookingId, buildEnvelope<Booking>(cancelled))), at);
+  }
 }
 
 // Lähettää yhden tehtävän lähtövalmiit rivit järjestyksessä.
@@ -231,8 +296,14 @@ export async function processOutbox(target: ErpAdapter | null = currentAdapter()
   try {
     const pending = db.prepare("SELECT * FROM integration_outbox WHERE status = 'pending' ORDER BY rowid").all() as OutboxRow[];
     const byTask = new Map<string, OutboxRow[]>();
-    for (const row of pending) byTask.set(row.task_id, [...(byTask.get(row.task_id) ?? []), row]);
+    const byBooking = new Map<string, OutboxRow[]>();
+    for (const row of pending) {
+      const groups = row.entity_type === "booking" ? byBooking : byTask;
+      const key = row.entity_type === "booking" ? row.entity_id : row.task_id;
+      groups.set(key, [...(groups.get(key) ?? []), row]);
+    }
     for (const rows of byTask.values()) await processTask(target, rows, at);
+    for (const rows of byBooking.values()) await processBooking(target, rows, at);
   } finally {
     running = false;
   }

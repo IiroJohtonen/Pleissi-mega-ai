@@ -14,6 +14,10 @@ import { setTheme, storedTheme } from "../theme";
 import { MasterDataSettings } from "./MasterData";
 import { CollapseSection, jumpToSection } from "../components/CollapseSection";
 import { topicLabel, topicOptions } from "../topics";
+import { AiLimitsCard } from "./AiLimits";
+import { ErpApiSettings } from "./ErpApi";
+import { SenderDomainsCard } from "../tickets/SenderType";
+import { AgentSettingsCard } from "./AgentSettings";
 
 
 // Asetukset: jokaisella käyttäjällä omat asetuksensa, pääkäyttäjällä lisäksi toimiston tiedot.
@@ -76,7 +80,9 @@ const SECTION_KEYWORDS: Record<string, string> = {
   "ai-masking": "maskaus puhelinnumero henkilötunnus tilinumero iban sähköposti peitto tietosuoja",
   log: "loki muutokset tapahtumat ai:lle lähetetty",
   "integration-log": "erp toiminnanohjausjärjestelmä integraatio sanoma lähetys",
+  "integration-api": "erp rajapinta api avain haku jono integraatio",
   "office-ai": "kulut kuukausiraja prioriteetti suodatus relevanssi budjetti",
+  "ai-limits": "päiväraja osuus budjetti agentti ajot lähettäjä tuntiraja kulut",
   "ai-prompt": "lisätieto ikkuna vastausehdotus ehdotus",
   "ai-models": "malli opus sonnet haiku claude",
   embedding: "merkityshaku embedding vektori hybridihaku esimerkit aiemmat tehtävät",
@@ -182,12 +188,14 @@ const officeTabs: { tab: OfficeTab; label: string; sections: { id: string; label
       { id: "sensitive-data", label: t("Arkaluonteiset tiedot") },
       { id: "ai-masking", label: t("Maskaus ennen AI:ta") },
       { id: "log", label: t("Loki") },
-      { id: "integration-log", label: t("Integraatioloki") }
+      { id: "integration-log", label: t("Integraatioloki") },
+      { id: "integration-api", label: t("ERP-rajapinta") }
     ]
   },
   {
     tab: "ai", label: t("AI"), sections: [
       { id: "office-ai", label: t("AI-käyttö ja -asetukset") },
+      { id: "ai-limits", label: t("AI-rajat") },
       { id: "ai-prompt", label: t("AI-ehdotukset") },
       { id: "ai-models", label: t("AI-mallit") },
       { id: "embedding", label: t("Merkityshaku") }
@@ -480,6 +488,8 @@ export type OfficeInfo = {
   incidentRules?: IncidentRule[];
   // memoryAuto: 1 = AI ehdottaa taloyhtiön muistiin tietoja kerran viikossa.
   memoryAuto?: number;
+  // weeklyReport: 1 = vastuuisännöitsijät saavat viikkoraportin (trendihälytykset ja viikon luvut).
+  weeklyReport?: number;
   // AI-kulujen kuukausiraja dollareina (0 = ei rajaa) ja varoitusraja prosentteina rajasta.
   aiMonthlyLimit?: number; aiWarningPercent?: number;
   // twoFactor: kirjautumiskoodi sähköpostiin; twoFactorOverridden: palvelin on kytkenyt sen pois.
@@ -756,6 +766,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
   const [incidentDetection, setIncidentDetection] = useState(true);
   const [incidentRules, setIncidentRules] = useState<IncidentRule[]>([]);
   const [memoryAuto, setMemoryAuto] = useState(false);
+  const [weeklyReport, setWeeklyReport] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [aiMonthlyLimit, setAiMonthlyLimit] = useState(50);
   const [twoFactor, setTwoFactor] = useState(false);
@@ -792,6 +803,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         setIncidentDetection(office.incidentDetection !== 0);
         setIncidentRules(office.incidentRules ?? []);
         setMemoryAuto(Boolean(office.memoryAuto));
+        setWeeklyReport(Boolean(office.weeklyReport));
         setAiAvailable(office.aiAvailable !== false);
         setAiMonthlyLimit(office.aiMonthlyLimit ?? 50);
         setTwoFactor(Boolean(office.twoFactor));
@@ -828,7 +840,7 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       const office = await api<OfficeInfo>("/office", {
         method: "PUT",
         body: JSON.stringify({
-          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection, memoryAuto,
+          name, businessId, address, phone, reminderEmails, replyReminderDays, dueReminderDays, retentionMonths, aiPriority, aiRelevance, aiAgent, incidentDetection, memoryAuto, weeklyReport,
           incidentRules: incidentRules.map(({ topic, tracked, threshold, windowHours }) => ({ topic, tracked, threshold, windowHours })),
           aiMonthlyLimit, aiWarningPercent, twoFactor, residentStatusUpdates, aiPrompt,
           unidentifiedQueueRoles: queueRoles, unidentifiedQueueUsers: queueUsers
@@ -1191,6 +1203,23 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
           <p className="send-error">{t("AI ei ole käytössä palvelimella, joten ehdotuksia ei toistaiseksi haeta.")}</p>
         )}
 
+        <label className="switch-row">
+          <span>
+            <strong>{t("Lähetä vastuuisännöitsijöille viikkoraportti")}</strong>
+            <small>{t("Kerran viikossa sähköpostilla: kasvavat aiheet, viikon uudet ja suljetut tehtävät, myöhässä olevat tehtävät ja aikalupaukset.")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={weeklyReport}
+            onChange={event => { setWeeklyReport(event.target.checked); setSaved(false); }}
+          />
+          <i aria-hidden="true" />
+        </label>
+        <p className="reply-hint">
+          {t("Kasvava aihe: taloyhtiön viimeisen kolmen kuukauden ilmoituksia on vähintään kaksi kertaa niin paljon kuin edellisen kolmen kuukauden aikana. Laskenta ei käytä AI:ta. Jos muistiehdotukset ovat päällä, ne tulevat samaan viestiin.")}
+        </p>
+
         </CollapseSection>
 
         <CollapseSection id="ai-prompt" title={t("AI-ehdotukset")}>
@@ -1226,7 +1255,10 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
       {officeTab === "office" && <MailAccountCard target="office" />}
 
       {officeTab === "security" && <MasterDataSettings part="security" />}
+      {officeTab === "ai" && <AiLimitsCard />}
       {officeTab === "ai" && <MasterDataSettings part="ai" />}
+      {officeTab === "ai" && <SenderDomainsCard editable />}
+      {officeTab === "ai" && <AgentSettingsCard />}
 
       {officeTab === "security" && (
         <a className="settings-card settings-link" href="#/log" id="section-log">
@@ -1248,6 +1280,8 @@ function OfficeSettings({ onSaved, officeTab, onTabChange }: {
         </a>
       )}
 
+      {officeTab === "security" && <ErpApiSettings />}
+
       {officeTab === "master" && (
         <>
           <MasterDataSettings part="basic" />
@@ -1266,6 +1300,12 @@ type AiUsage = {
   month: string; costUsd: number; limitUsd: number; warningPercent: number; exhausted: boolean; calls: number;
   byFeature: { feature: string; calls: number; cost: number }[];
   history: { month: string; calls: number; cost: number }[];
+  today?: { costUsd: number; limitUsd: number };
+  groups?: { group: string; costUsd: number; percent: number; limitUsd: number | null }[];
+};
+
+const aiGroupLabels: Record<string, string> = {
+  agent: t("AI-agentti"), assess: t("Arviointi"), suggest: t("Vastausehdotukset"), other: t("Muut")
 };
 
 const aiFeatureLabels: Record<string, string> = {
@@ -1275,7 +1315,9 @@ const aiFeatureLabels: Record<string, string> = {
   chunking: t("Dokumenttien pilkonta"),
   agent: t("AI-agentti"),
   incident: t("Yhteisten vikojen tulkinnat"),
-  memory: t("Taloyhtiön muistin ehdotukset")
+  memory: t("Taloyhtiön muistin ehdotukset"),
+  draft_change: t("Luonnosten muokkauksen luokittelu"),
+  agent_guard: t("AI-agentin aiheen tarkistus")
 };
 
 export const formatUsd = (value: number) => `${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
@@ -1304,6 +1346,13 @@ function AiUsageMeter({ refreshKey }: { refreshKey: number }) {
         <div className="ai-usage-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)} aria-label={t("AI-kulut kuukausirajasta")}>
           <i style={{ width: `${percent}%` }} />
         </div>
+      )}
+      {usage.today && (
+        <small>
+          {t("Tänään")}: {formatUsd(usage.today.costUsd)}{usage.today.limitUsd > 0 ? ` / ${formatUsd(usage.today.limitUsd)}` : ""}
+          {usage.groups?.some(group => group.limitUsd !== null) && ` · ${usage.groups.filter(group => group.limitUsd !== null)
+            .map(group => `${aiGroupLabels[group.group] ?? group.group} ${formatUsd(group.costUsd)} / ${formatUsd(group.limitUsd!)}`).join(" · ")}`}
+        </small>
       )}
       {usage.exhausted && <p className="send-error">{t("Kuukausiraja on täynnä, joten AI on pois käytöstä kuun loppuun asti. Nosta rajaa, jos haluat ottaa AI:n heti takaisin käyttöön.")}</p>}
       <small>

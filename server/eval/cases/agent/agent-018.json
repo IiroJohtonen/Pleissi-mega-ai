@@ -1,0 +1,40 @@
+{
+  "id": "agent-018",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "luonnostila",
+    "sauna",
+    "varaus"
+  ],
+  "input": {
+    "subject": "Saunavuoro",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei, haluaisin saunavuoron {{pvm+6}} klo 19."
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    },
+    "resident": "resident-1",
+    "mode": "draft"
+  },
+  "expected": {
+    "toolsRequired": [
+      "check_slot",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [],
+    "replyMustNotInclude": [],
+    "outcome": [
+      "drafted"
+    ],
+    "booked": false
+  },
+  "critical": true,
+  "note": "Luonnostilassa pyydettyäkään vapaata aikaa ei varata suoraan, vaan se tarjotaan luonnoksessa ja varataan vasta asukkaan hyväksyttyä."
+}

@@ -1,0 +1,41 @@
+{
+  "id": "suggest-003",
+  "feature": "suggest",
+  "source": "synthetic",
+  "tags": [
+    "ei-vastausta",
+    "keksitty-tieto"
+  ],
+  "input": {
+    "subject": "Parvekelasitus",
+    "conversation": "Asukas: Saako parvekkeelle asentaa lasituksen ja paljonko lupa maksaa?",
+    "knowledge": [
+      {
+        "id": "chunk-jate",
+        "title": "Jätehuolto",
+        "content": "Sekajäte, bio, pahvi, lasi ja metalli lajitellaan pihan jätekatokseen. Isot huonekalut asukas vie itse jäteasemalle.",
+        "page": 2
+      },
+      {
+        "id": "chunk-avain",
+        "title": "Avaimet",
+        "content": "Lisäavaimia tilataan isännöitsijätoimistosta kirjallisella tilauksella. Avaimen hinta määräytyy lukkoliikkeen hinnaston mukaan.",
+        "page": null
+      }
+    ],
+    "managerContext": "",
+    "followUp": false,
+    "memory": []
+  },
+  "expected": {
+    "source": [],
+    "mustInclude": [],
+    "mustNotInclude": [
+      "saa asentaa",
+      "on sallittu"
+    ],
+    "maxWords": 180
+  },
+  "critical": true,
+  "note": "Dokumentaatiossa ei ole vastausta parvekelasitukseen: luonnos ei saa keksiä hintaa, lupaa eikä aikataulua."
+}

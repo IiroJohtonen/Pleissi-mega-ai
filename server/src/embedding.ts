@@ -398,7 +398,7 @@ function memorySources(companyIds: string[], sourceId?: string): Source[] {
   if (!companyIds.length) return [];
   return (db.prepare(`
     SELECT id, company_id, text FROM company_memory
-    WHERE company_id IN (${placeholders(companyIds)}) AND status = 'approved' AND (valid_until IS NULL OR valid_until >= ?)
+    WHERE company_id IN (${placeholders(companyIds)}) AND status = 'approved' AND target = 'memory' AND (valid_until IS NULL OR valid_until >= ?)
       ${onlyId("id", sourceId)}
   `).all(...companyIds, today(), ...idParam(sourceId)) as { id: string; company_id: string; text: string }[])
     .map(row => ({ companyId: row.company_id, sourceType: "memory", sourceId: row.id, text: row.text.slice(0, TEXT_LIMIT) }));

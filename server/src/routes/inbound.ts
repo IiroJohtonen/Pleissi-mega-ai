@@ -6,6 +6,8 @@ import { triage } from "../ai.js";
 import { attachAiLog, withAiLog } from "../ai-log.js";
 import { db } from "../db.js";
 import { processIncidents } from "../incidents.js";
+import { applySenderType } from "../sender-types.js";
+import { applyClassification } from "../ticket-links.js";
 import { apartmentForForm, detectEmailForm, formContact, formSubject, parseFormFields } from "../email-forms.js";
 import { FORM_TYPES } from "../portal-form-data.js";
 import { importSiteForm } from "../site-forms.js";
@@ -16,7 +18,7 @@ import { detectSensitivity } from "../ticket-sensitivity.js";
 import { aiPriorityEnabled, aiRelevanceEnabled } from "./office.js";
 import { findResident } from "./residents.js";
 import { assignToCompanyManager } from "./tickets.js";
-import { continueAgent } from "../ai-agent.js";
+import { autoStartAgent, continueAgent } from "../ai-agent.js";
 
 export const inboundRouter: Router = express.Router();
 
@@ -209,7 +211,7 @@ if (input.sourceMessageId) {
     .get(companyId) as any;
   if (!company) return res.status(404).json({ error: "Company not found" });
 
-  const resident = (contact && findResident(companyId, contact.email || undefined, contact.name || undefined))
+  const resident = (contact && findResident(companyId, contact.email || undefined, contact.name || undefined, contact.phone || undefined))
     ?? findResident(
       companyId,
       input.senderEmail,
@@ -327,8 +329,13 @@ if (input.sourceMessageId) {
 }
 
   if (result.emergency && !filtered) void alertEmergency(ticketId);
+  // AI:n aihe ja häiriön kohdeasunto samasta arvioinnista; muuten aihe avainsanoista (processIncidents).
+  applyClassification(ticketId, result);
+  // Lähettäjätyyppi: toimiston domainlista, AI:n arvio tai asukasrekisteri. Viranomaisen tehtävä nostetaan kiireelliseksi.
+  if (!filtered && !companyPending) applySenderType(ticketId, result, input.senderEmail);
   // Aihe ja yhteisten vikojen tunnistus taustalla.
-  void processIncidents(ticketId);
+  // AI-reseptionisti käynnistyy taustalla aiheen tunnistuksen jälkeen, kun automaattinen käynnistys on taloyhtiössä päällä.
+  void processIncidents(ticketId).then(() => { if (!filtered && !companyPending) autoStartAgent(ticketId); });
 
   res.status(201).json({
     ticketId,

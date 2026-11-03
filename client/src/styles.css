@@ -5419,3 +5419,97 @@ button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:dis
 .trends .data-table th, .trends .data-table td { border: 0; border-bottom: 1px solid var(--line); }
 .trends .data-table tbody tr:last-child th, .trends .data-table tbody tr:last-child td { border-bottom: 0; }
 .trends .data-table tbody th { font-weight: 500; color: var(--ink); }
+
+/* AI-pyyntö ja vastaus rinnakkain lokissa; agentin työkalukutsut. */
+.ai-request-pair {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.ai-request-pair .ai-request-raw {
+  grid-column: 1 / -1;
+}
+
+.agent-trace {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+}
+
+.agent-trace pre {
+  margin: var(--space-1) 0;
+  white-space: pre-wrap;
+}
+
+/* ERP-rajapinta: luotu avain näytetään kerran kopioitavaksi. */
+.api-key-created {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.api-key-value {
+  display: block;
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* Lähettäjätyyppi: jonon merkki, tehtävän valinta ja asetusten domainlista. */
+.sender-type-tag { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #eef2f6; color: #3d4a57; font-size: var(--text-xs, 12px); font-style: normal; font-weight: 600; }
+.sender-type-tag.sender-authority { background: #fdecea; color: #a12a1f; }
+.sender-type-field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+.sender-type-field label { display: flex; align-items: center; gap: 8px; }
+.sender-domain-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+/* Oppiminen: ehdotuksen luokka, osaamisaukko, ohjeeditori ja vastaus dokumentaatioksi. */
+.memory-target,
+.memory-gap {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: var(--text-xs);
+}
+
+.memory-gap {
+  border-color: var(--accent, #28548f);
+}
+
+.message-guide {
+  margin-top: var(--space-2);
+}
+
+.reply-guide {
+  margin: var(--space-2) 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* AI-pyyntö ja vastaus rinnakkain lokissa; agentin työkalukutsut. */
+.ai-request-pair {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.ai-request-pair .ai-request-raw {
+  grid-column: 1 / -1;
+}
+
+.agent-trace {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+}
+
+.agent-trace pre {
+  margin: var(--space-1) 0;
+  white-space: pre-wrap;
+}
+
+/* Taloyhtiön muu isännöitsijä ja sen varahenkilövalinta vierekkäin. */
+.manager-pick { display: inline-flex; align-items: center; gap: 4px; }
+.ticket-form .manager-picks label.backup-pick { font-size: var(--text-xs); padding: 4px 8px; }

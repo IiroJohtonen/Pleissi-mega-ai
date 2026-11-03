@@ -58,6 +58,8 @@ export function Residents({
   const [editing, setEditing] = useState<Resident | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [movedInAt, setMovedInAt] = useState("");
   const [address, setAddress] = useState("");
   const [apartmentNumber, setApartmentNumber] = useState("");
   const [staircase, setStaircase] = useState("");
@@ -75,6 +77,8 @@ export function Residents({
     setEditing(resident);
     setName(resident?.name ?? "");
     setEmail(resident?.email ?? "");
+    setPhone(resident?.phone ?? "");
+    setMovedInAt(resident?.moved_in_at ?? "");
     setAddress(resident?.address ?? "");
     setApartmentNumber(resident?.apartment_number ?? "");
     setStaircase(resident?.staircase ?? "");
@@ -207,12 +211,14 @@ export function Residents({
         : `/companies/${encodeURIComponent(formCompanyId)}/residents`, {
         method: editing ? "PUT" : "POST",
         body: JSON.stringify({
-          name, email, roles, password: residentPassword || undefined,
+          name, email, phone, movedInAt, roles, password: residentPassword || undefined,
           ...(apartmentId && apartmentId !== "new" ? { apartmentId } : { address, apartmentNumber, staircase })
         })
       });
       setName("");
       setEmail("");
+      setPhone("");
+      setMovedInAt("");
       setAddress("");
       setApartmentNumber("");
       setAdding(false);
@@ -332,6 +338,17 @@ export function Residents({
                 <span>{t("Sähköposti")}</span>
                 <input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder={t("Valinnainen")} />
               </label>
+
+              <div className="form-columns">
+                <label>
+                  <span>{t("Puhelin")}</span>
+                  <input type="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder={t("Esim. 040 123 4567")} maxLength={40} />
+                </label>
+                <label>
+                  <span>{t("Muuttanut asuntoon")}</span>
+                  <input type="date" value={movedInAt} onChange={event => setMovedInAt(event.target.value)} />
+                </label>
+              </div>
 
               <fieldset className="role-choices">
                 <legend>{t("Rooli")}</legend>
@@ -645,7 +662,7 @@ export function Residents({
             }}
           >
             <strong>{resident.name}<RoleTags roles={resident.roles} /></strong>
-            <span>{resident.email || t("Ei sähköpostia")}</span>
+            <span>{resident.email || t("Ei sähköpostia")}{resident.phone && <small className="muted"> · {resident.phone}</small>}</span>
             {allCompanies && <span>{resident.company_name}</span>}
             <span>{resident.address}</span>
             <span className="type">{resident.apartment_number}</span>
@@ -674,12 +691,18 @@ export function Residents({
 
 type ResidentSortKey = "name" | "email" | "company" | "address" | "apartment";
 
-type ImportRow = { line: number; name: string; email: string; address: string; apartmentNumber: string };
+type ImportRow = {
+  line: number; name: string; email: string; address: string; apartmentNumber: string;
+  // Valinnaiset sarakkeet; mukana vain, kun tiedostossa on sarake.
+  phone?: string; movedInAt?: string;
+};
 
 // Sarakeotsikot, joista CSV:n sarakkeet tunnistetaan (pienaakkosin, ilman välejä).
 const CSV_COLUMNS: Record<keyof Omit<ImportRow, "line">, string[]> = {
   name: ["nimi", "name", "asukas"],
   email: ["sähköposti", "sahkoposti", "email", "e-mail", "sposti"],
+  phone: ["puhelin", "puhelinnumero", "puh", "phone", "matkapuhelin"],
+  movedInAt: ["muuttopäivä", "muuttopaiva", "muuttanut", "movedin"],
   address: ["osoite", "address", "katuosoite"],
   apartmentNumber: ["asunto", "huoneisto", "asuntonumero", "apartment"]
 };
@@ -753,7 +776,10 @@ export function tableToResidents(table: string[][]): { rows: ImportRow[]; missin
 
   const header = table[0].map(cell => cell.trim().toLowerCase().replace(/\s+/g, ""));
   const index = (key: keyof typeof CSV_COLUMNS) => header.findIndex(cell => CSV_COLUMNS[key].includes(cell));
-  const columns = { name: index("name"), email: index("email"), address: index("address"), apartmentNumber: index("apartmentNumber") };
+  const columns = {
+    name: index("name"), email: index("email"), address: index("address"), apartmentNumber: index("apartmentNumber"),
+    phone: index("phone"), movedInAt: index("movedInAt")
+  };
 
   const missing = [
     columns.name < 0 ? "nimi" : "",
@@ -770,7 +796,9 @@ export function tableToResidents(table: string[][]): { rows: ImportRow[]; missin
       name: (cells[columns.name] ?? "").trim(),
       email: columns.email >= 0 ? (cells[columns.email] ?? "").trim() : "",
       address: (cells[columns.address] ?? "").trim(),
-      apartmentNumber: (cells[columns.apartmentNumber] ?? "").trim()
+      apartmentNumber: (cells[columns.apartmentNumber] ?? "").trim(),
+      ...(columns.phone >= 0 ? { phone: (cells[columns.phone] ?? "").trim() } : {}),
+      ...(columns.movedInAt >= 0 ? { movedInAt: (cells[columns.movedInAt] ?? "").trim() } : {})
     }))
   };
 }
@@ -870,15 +898,15 @@ function ResidentImport({
             : t("Tiedoston pitää olla .xlsx-muodossa, ja asukkaat luetaan ensimmäiseltä välilehdeltä.")}
         </p>
         {format === "csv" ? (
-          <pre className="csv-example">{t("nimi;sähköposti;osoite;asunto")}{"\n"}{t("Matti Meikäläinen;matti@example.com;Koivikkotie 10;A 12")}</pre>
+          <pre className="csv-example">{t("nimi;sähköposti;osoite;asunto;puhelin")}{"\n"}{t("Matti Meikäläinen;matti@example.com;Koivikkotie 10;A 12;040 123 4567")}</pre>
         ) : (
           <div className="table-card import-example">
             <table className="data-table">
               <thead>
-                <tr><th>{t("nimi")}</th><th>{t("sähköposti")}</th><th>{t("osoite")}</th><th>{t("asunto")}</th></tr>
+                <tr><th>{t("nimi")}</th><th>{t("sähköposti")}</th><th>{t("osoite")}</th><th>{t("asunto")}</th><th>{t("puhelin")}</th></tr>
               </thead>
               <tbody>
-                <tr><td>{t("Matti Meikäläinen")}</td><td>{t("matti@example.com")}</td><td>{t("Koivikkotie 10")}</td><td>{t("A 12")}</td></tr>
+                <tr><td>{t("Matti Meikäläinen")}</td><td>{t("matti@example.com")}</td><td>{t("Koivikkotie 10")}</td><td>{t("A 12")}</td><td>{t("040 123 4567")}</td></tr>
               </tbody>
             </table>
           </div>

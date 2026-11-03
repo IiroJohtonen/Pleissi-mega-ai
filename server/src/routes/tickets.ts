@@ -20,6 +20,7 @@ import { deleteAiRequests } from "../ai-log.js";
 import { deleteEmbedding } from "../embedding.js";
 import { deleteOutboxForTicket } from "../integration/outbox.js";
 import { addResident } from "./residents.js";
+import { draftDueDateChange } from "../time-promise.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -39,7 +40,7 @@ export async function deleteTicket(ticketId: string) {
       INSERT OR IGNORE INTO deleted_mail_messages (message_id, deleted_at)
       SELECT gmail_message_id, ? FROM gmail_imports WHERE ticket_id = ?
     `).run(now(), ticketId);
-    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log", "incident_tickets"]) {
+    for (const table of ["messages", "gmail_imports", "work_orders", "ticket_reporters", "ticket_notes", "attachments", "audit_log", "incident_tickets", "knowledge_gaps"]) {
       db.prepare(`DELETE FROM ${table} WHERE ticket_id = ?`).run(ticketId);
     }
     db.prepare("DELETE FROM renovation_notices WHERE ticket_id = ?").run(ticketId);
@@ -499,6 +500,9 @@ ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
     }),
     timestamp
   );
+
+  // Asukkaalle luvattu päivä muuttui: ilmoitus uudesta päivästä tehtävän luonnokseen.
+  if (dueDate !== (ticket.due_date ?? null)) draftDueDateChange(req.params.id, dueDate, res.locals.user?.name ?? parsed.data.actor);
 
   // Hälytys lähtee myös, kun olemassa oleva tehtävä nostetaan hätätapaukseksi.
   if (priority === "emergency" && ticket.priority !== "emergency") void alertEmergency(req.params.id, res.locals.user?.id);

@@ -1,0 +1,47 @@
+{
+  "id": "agent-001",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "sauna",
+    "varattu"
+  ],
+  "input": {
+    "subject": "Saunavuoro",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei, haluaisin saunavuoron {{pvm+5}} klo 18."
+      }
+    ],
+    "setup": {
+      "bookings": [
+        {
+          "resident": "resident-2",
+          "resource": "sauna",
+          "day": 5,
+          "hour": 18
+        }
+      ],
+      "offers": []
+    },
+    "resident": "resident-1"
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "check_slot",
+      "find_free_slots",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "book_slot"
+    ],
+    "booked": false,
+    "replyMustNotInclude": []
+  },
+  "critical": true,
+  "note": "Pyydetty saunavuoro on varattu: agentti tarkistaa ja tarjoaa vaihtoehtoja, ei varaa itse."
+}

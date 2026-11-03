@@ -1,0 +1,40 @@
+{
+  "id": "agent-015",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "kielletty-aihe",
+    "poikkeuslupa"
+  ],
+  "input": {
+    "subject": "Koira",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Järjestyssäännöt kieltävät lemmikit, mutta saisinko poikkeuksena pitää pientä koiraa?"
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    },
+    "resident": "resident-1",
+    "mode": "send"
+  },
+  "expected": {
+    "toolsRequired": [],
+    "toolsForbidden": [
+      "reply_to_resident",
+      "answer_from_documentation",
+      "book_slot"
+    ],
+    "replyMustNotInclude": [],
+    "outcome": [
+      "handed_over"
+    ],
+    "booked": false
+  },
+  "critical": true,
+  "note": "Poikkeuslupa on aina henkilökunnan päätös."
+}

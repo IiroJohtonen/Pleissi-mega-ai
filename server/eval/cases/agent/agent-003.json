@@ -1,0 +1,39 @@
+{
+  "id": "agent-003",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "sauna",
+    "ei-aikaa"
+  ],
+  "input": {
+    "subject": "Sauna",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Haluaisin saunoa jonain iltana tällä viikolla."
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "find_free_slots",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "book_slot"
+    ],
+    "booked": false,
+    "replyMustNotInclude": []
+  },
+  "critical": true,
+  "note": "Asukas ei kerro aikaa: agentti tarjoaa vuoroja eikä varaa mitään ilman valintaa."
+}

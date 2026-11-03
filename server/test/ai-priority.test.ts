@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import http from "node:http";
+import path from "node:path";
+import Database from "better-sqlite3";
 import type { AddressInfo } from "node:net";
 import { after, before, describe, it } from "node:test";
 import { ADMIN_EMAIL, call, login, SERVICE_EMAIL, startServer, type TestServer , inbound as postInbound } from "./helpers.js";
@@ -55,10 +57,15 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
           : message.includes("tippuu") ? { priority: "emergency", reason: "Katosta tuleva vesi vahingoittaa rakenteita." }
           : { priority: "low", reason: "Viesti on palautetta." };
         const advert = message.includes("Tarjous");
+        // Häiriöilmoitus: aihe ja kohdeasunto samasta kutsusta.
+        const disturbance = message.includes("meteliä");
         const answer = {
           relevant: !advert,
           relevanceReason: advert ? "Viesti on mainos." : "Viesti koskee taloyhtiön asioita.",
-          ...assessment
+          ...assessment,
+          topic: disturbance ? "noise" : "other",
+          targetApartment: disturbance ? "B34" : null,
+          senderType: "resident", request: "none", deadline: null
         };
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
@@ -230,6 +237,76 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     assert.equal(stored.covered.length, 1);
   });
 
+  it("raportti saa toimiston vastaukset asukkaalle peitettyinä, ei urakoitsijaviestejä", async () => {
+    const ticket = await inbound("Pyykkituvan kuivausrumpu", "Kuivausrumpu ei käynnisty.");
+    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
+    try {
+      const add = db.prepare("INSERT INTO messages (id, ticket_id, direction, sender, subject, body, created_at, channel) VALUES (?, ?, 'outbound', 'Hanna', 'Re', ?, ?, ?)");
+      add.run("reply-1", ticket.id, "Huolto tulee maanantaina. Soita tarvittaessa 040 765 4321 tai hanna@example.com.", "2026-10-01T10:00:00.000Z", "email");
+      add.run("order-1", ticket.id, "Työtilaus: vaihtakaa rummun hihna, ovikoodi 1234.", "2026-10-01T11:00:00.000Z", "contractor");
+      add.run("reply-2", ticket.id, "Rumpu on korjattu.", "2026-10-02T10:00:00.000Z", "email");
+    } finally {
+      db.close();
+    }
+    const created = await call(server, admin, "POST", "/companies/demo-company/reports/topics", {
+      period: "month", since: new Date(Date.now() - 30 * 86_400_000).toISOString()
+    });
+    assert.equal(created.status, 200);
+    const sent = requests.at(-1).body.messages[0].content as string;
+    const line = sent.slice(sent.indexOf("Pyykkituvan kuivausrumpu"));
+    assert.match(line, /Office reply 1: Huolto tulee maanantaina/);
+    assert.match(line, /Office reply 2: Rumpu on korjattu/);
+    assert.doesNotMatch(sent, /040 765 4321|hanna@example\.com/, "toimiston vastauksen yhteystiedot peitetään");
+    assert.doesNotMatch(sent, /Työtilaus|ovikoodi/, "urakoitsijalle lähetetty viesti ei ole vastaus asukkaalle");
+  });
+
+  it("saman lähettäjän AI-arvioinnit rajoitetaan tunnissa, ja yli menevät luokitellaan avainsanoilla", async () => {
+    const service = await login(server, SERVICE_EMAIL);
+    assert.equal((await call(server, service, "PUT", "/office/ai-limits", { assessPerSenderHour: 1 })).status, 403);
+    assert.equal((await call(server, admin, "PUT", "/office/ai-limits", { assessPerSenderHour: -1 })).status, 400);
+    assert.equal((await call(server, admin, "PUT", "/office/ai-limits", { assessPerSenderHour: 1 })).status, 200);
+    try {
+      const send = (subject: string) => postInbound(server, admin, {
+        companyId: "demo-company", senderName: "Toistaja", senderEmail: "toistaja@example.com", subject, body: "Pyöräkellarin lukko on jäykkä.", channel: "email"
+      });
+      const before = requests.length;
+      const first = await send("Lukko 1");
+      const second = await send("Lukko 2");
+      assert.equal(requests.length, before + 1, "vain ensimmäinen viesti arvioidaan AI:lla");
+      const audit = (await call(server, admin, "GET", `/tickets/${second.data.ticketId}`)).data.audit as any[];
+      const triaged = JSON.parse(audit.find(entry => entry.action === "triaged" || entry.action === "emergency_routed").details);
+      assert.equal(triaged.priorityBy, "keywords");
+      assert.match(triaged.aiLimit, /tuntiraja/);
+      assert.equal(first.status, 201);
+      // Toinen lähettäjä saa oman arviointinsa.
+      await postInbound(server, admin, { companyId: "demo-company", senderName: "Muu", senderEmail: "muu@example.com", subject: "Lukko", body: "Pyöräkellarin lukko on jäykkä.", channel: "email" });
+      assert.equal(requests.length, before + 2);
+    } finally {
+      await call(server, admin, "PUT", "/office/ai-limits", { assessPerSenderHour: 10 });
+    }
+  });
+
+  it("AI luokittelee aiheen ja ehdottaa häiriön kohdeasunnon, jonka käsittelijä vahvistaa; historia näkyy kaikilta ilmoittajilta", async () => {
+    const report = async (sender: string) => (await postInbound(server, admin, {
+      companyId: "demo-company", senderName: sender, senderEmail: `${sender}@example.com`, subject: "Yöllä", body: "Naapurista kuuluu meteliä joka yö.", channel: "email"
+    })).data.ticketId as string;
+    const first = await report("eka");
+    let detail = (await call(server, admin, "GET", `/tickets/${first}`)).data;
+    assert.deepEqual([detail.ticket.topic, detail.ticket.topic_source], ["noise", "ai"]);
+    assert.deepEqual([detail.ticket.target_apartment_id, detail.ticket.target_apartment_text, detail.ticket.target_apartment_confirmed], ["apt-34", "B34", 0]);
+    // Vahvistamaton ehdotus ei vielä kerrytä historiaa.
+    const second = await report("toka");
+    assert.equal((await call(server, admin, "GET", `/tickets/${second}/history`)).data.target, null);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${first}/target-apartment`, { apartmentId: "apt-34" })).status, 200);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${second}/target-apartment`, { apartmentId: "apt-34" })).status, 200);
+    assert.equal((await call(server, admin, "PUT", `/tickets/${second}/target-apartment`, { apartmentId: "ei-ole" })).status, 400);
+    const history = (await call(server, admin, "GET", `/tickets/${second}/history`)).data.target;
+    assert.equal(history.apartmentNumber, "B 34");
+    assert.deepEqual(history.reports.map((item: any) => item.id), [first]);
+    detail = (await call(server, admin, "GET", `/tickets/${second}`)).data;
+    assert.ok(detail.audit.some((entry: any) => entry.action === "target_apartment_confirmed"));
+  });
+
   it("AI:n virhe ei estä tehtävän syntymistä, vaan prioriteetti tulee avainsanoista", async () => {
     failing = true;
     try {
@@ -257,6 +334,15 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     const suggested = await call(server, admin, "POST", `/tickets/${ticketId}/suggest`, { context: "Huoltomies käy torstaina klo 10." });
     assert.equal(suggested.status, 200);
     assert.equal(suggested.data.draft, "Huoltomies tulee torstaina.");
+    // AI:n luonnos tallentuu tehtävälle mittaria varten, ja AI:n vastaus pyynnön rinnalle lokiin.
+    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"), { readonly: true });
+    try {
+      assert.equal((db.prepare("SELECT ai_draft FROM tickets WHERE id = ?").get(ticketId) as { ai_draft: string }).ai_draft, "Huoltomies tulee torstaina.");
+      const stored = db.prepare("SELECT response FROM ai_requests WHERE ticket_id = ? AND feature = 'suggest'").get(ticketId) as { response: string };
+      assert.match(stored.response, /Huoltomies tulee torstaina/);
+    } finally {
+      db.close();
+    }
     assert.equal(suggested.data.usedAi, true);
     // Lisätieto tallentuu aikajanalle sisäiseksi muistiinpanoksi.
     const notes = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data.notes as { body: string }[];

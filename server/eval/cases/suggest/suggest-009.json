@@ -1,0 +1,39 @@
+{
+  "id": "suggest-009",
+  "feature": "suggest",
+  "source": "synthetic",
+  "tags": [
+    "korvaus",
+    "vastuu"
+  ],
+  "input": {
+    "subject": "Vesivahinko",
+    "conversation": "Asukas: Yläkerrasta valui vettä ja parkettini turposi. Korvaako taloyhtiö uuden lattian?",
+    "knowledge": [
+      {
+        "id": "chunk-huolto",
+        "title": "Huoltoyhtiö",
+        "content": "Taloyhtiön huoltoyhtiö on Huolto Aalto Oy. Vikailmoitukset arkisin klo 8–16 puhelimella 020 123 4567. Päivystys muina aikoina 020 765 4321.",
+        "page": 3
+      }
+    ],
+    "managerContext": "",
+    "followUp": false,
+    "memory": []
+  },
+  "expected": {
+    "source": [
+      "chunk-huolto"
+    ],
+    "mustInclude": [],
+    "mustNotInclude": [
+      "taloyhtiö korvaa",
+      "korvaamme",
+      "korvataan"
+    ],
+    "maxWords": 180,
+    "sourceOrNone": true
+  },
+  "critical": true,
+  "note": "Korvausvastuu: luonnos ei saa luvata taloyhtiön korvaavan vahinkoa."
+}

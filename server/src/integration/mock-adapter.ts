@@ -1,5 +1,5 @@
 import type { ErpAdapter, AdapterResult } from "./adapter.js";
-import type { Comment, Envelope, Task } from "./canonical.js";
+import type { Booking, Comment, Envelope, Task } from "./canonical.js";
 
 // ---------------------------------------------------------------------------------------------
 // ERP:tä simuloiva adapteri kehitykseen ja testeihin, kunnes oikea ERP on käytettävissä. Pitää tehtävät
@@ -16,11 +16,13 @@ const ERP_STATUS: Record<Task["status"], string> = {
 
 export type MockErpTask = { erpId: string; status: string; title: string; lastEventId: string; lastSequence: number };
 export type MockErpComment = { erpId: string; erpTaskId: string; text: string; internal: boolean };
+export type MockErpBooking = { erpId: string; resource: string; startsAt: string; endsAt: string; cancelled: boolean };
 
 export class MockErpAdapter implements ErpAdapter {
   readonly name = "mock";
   readonly tasks = new Map<string, MockErpTask>();
   readonly comments: MockErpComment[] = [];
+  readonly bookings = new Map<string, MockErpBooking>();
   // Kaikki kutsut järjestyksessä: testit tarkistavat, mitä ERP:hen lähti.
   readonly calls: { method: string; eventId: string; erpId: string | null }[] = [];
   private nextId = 1;
@@ -63,6 +65,37 @@ export class MockErpAdapter implements ErpAdapter {
     if ((envelope.sequence ?? 0) > task.lastSequence) {
       Object.assign(task, { status: ERP_STATUS[envelope.data.status], title: envelope.data.title, lastEventId: envelope.eventId, lastSequence: envelope.sequence });
     }
+    return { ok: true, status: 200 };
+  }
+
+  // Simuloitu ERP-kalenteri: päällekkäinen voimassa oleva varaus samaan tilaan → 409. Testit voivat lisätä
+  // ERP:n omia varauksia blockSlot-metodilla.
+  blockSlot(resource: string, startsAt: string, endsAt: string) {
+    const erpId = `ERP-B-${this.nextId++}`;
+    this.bookings.set(erpId, { erpId, resource, startsAt, endsAt, cancelled: false });
+    return erpId;
+  }
+
+  async createBooking(envelope: Envelope<Booking>): Promise<AdapterResult> {
+    this.calls.push({ method: "createBooking", eventId: envelope.eventId, erpId: null });
+    const failed = this.failure();
+    if (failed) return failed;
+    const { resource, startsAt, endsAt } = envelope.data;
+    const overlap = [...this.bookings.values()].some(booking => !booking.cancelled && booking.resource === resource
+      && Date.parse(booking.startsAt) < Date.parse(endsAt) && Date.parse(booking.endsAt) > Date.parse(startsAt));
+    if (overlap) return { ok: false, status: 409, error: "Vuoro on jo varattu ERP:ssä" };
+    const erpId = `ERP-B-${this.nextId++}`;
+    this.bookings.set(erpId, { erpId, resource, startsAt, endsAt, cancelled: false });
+    return { ok: true, status: 201, externalId: erpId };
+  }
+
+  async cancelBooking(erpBookingId: string, envelope: Envelope<Booking>): Promise<AdapterResult> {
+    this.calls.push({ method: "cancelBooking", eventId: envelope.eventId, erpId: erpBookingId });
+    const failed = this.failure();
+    if (failed) return failed;
+    const booking = this.bookings.get(erpBookingId);
+    if (!booking) return { ok: false, status: 404, error: "Varausta ei löydy ERP:stä" };
+    booking.cancelled = true;
     return { ok: true, status: 200 };
   }
 

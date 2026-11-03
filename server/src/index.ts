@@ -31,8 +31,11 @@ import { gmailRouter } from "./routes/gmail.js";
 import { inboundRouter } from "./routes/inbound.js";
 import { incidentsRouter } from "./routes/incidents.js";
 import { embeddingRouter } from "./routes/embedding.js";
+import { agentSettingsRouter } from "./routes/agent-settings.js";
 import { integrationRouter } from "./routes/integration.js";
+import { apiV1Router } from "./routes/api-v1.js";
 import { memoryRouter } from "./routes/memory.js";
+import { learningRouter } from "./routes/learning.js";
 import { keysRouter } from "./routes/keys.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
 import { metersRouter } from "./routes/meters.js";
@@ -113,6 +116,8 @@ app.post("/api/contact", rateLimit({
 
 // Raja kattaa vastauksen liitteet, jotka kulkevat pyynnössä base64-muodossa.
 app.use(express.json({ limit: "30mb" }));
+// ERP:n integraatiorajapinta tunnistetaan API-avaimella, ei kirjautumisella, joten se on ennen requireAuthia.
+app.use("/api/v1", apiV1Router);
 app.use("/api", requireAuth);
 app.use("/api", (_req, res, next) => requestUser.run(res.locals.user as User | undefined, next));
 
@@ -127,8 +132,8 @@ for (const router of [
   authRouter, loginCodesRouter, passwordResetRouter, officeRouter, rolesRouter, signatureRouter, companiesRouter, gmailRouter, knowledgeRouter, residentsRouter,
   parkingRouter, bookingsRouter, bookingQueueRouter, billingRouter, portalRouter, portalFormsRouter, heatingRouter, ticketsRouter, ticketActionsRouter, inboundRouter,
   workOrdersRouter, announcementsRouter, movesRouter, waitlistRouter, reportsRouter, renovationsRouter, keysRouter,
-  metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter, dataRouter, incidentsRouter, memoryRouter,
-  integrationRouter, embeddingRouter
+  metersRouter, apartmentsRouter, contactRouter, searchRouter, boardRouter, reportersRouter, dataRouter, incidentsRouter, memoryRouter, learningRouter,
+  integrationRouter, embeddingRouter, agentSettingsRouter
 ]) {
   app.use("/api", router);
 }

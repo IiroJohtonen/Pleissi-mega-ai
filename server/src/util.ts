@@ -43,6 +43,17 @@ export function statusAfterResidentReply(status: string) {
   return status;
 }
 
+// Puhelinnumero E.164-muotoon: välit, viivat ja sulut pois, 00 → +, suomalainen 0-alkuinen → +358.
+// Palauttaa null, jos numero ei kelpaa.
+export function normalizePhone(value: string | null | undefined): string | null {
+  let phone = (value ?? "").trim().replace(/[\s()./-]/g, "");
+  if (!phone) return null;
+  if (phone.startsWith("00")) phone = `+${phone.slice(2)}`;
+  else if (phone.startsWith("0")) phone = `+358${phone.slice(1)}`;
+  else if (!phone.startsWith("+") && phone.startsWith("358")) phone = `+${phone}`;
+  return /^\+[1-9]\d{6,14}$/.test(phone) ? phone : null;
+}
+
 export const ACTIVE_RESIDENT = "(r.moved_out_at IS NULL OR r.moved_out_at > date('now', 'localtime'))";
 
 export function today() {

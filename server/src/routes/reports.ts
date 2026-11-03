@@ -1,8 +1,8 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext, visibleCompanyIds } from "../access.js";
-import { aiAvailable, analyzeRecurringTopics, type CoveredTopic, type RecurringTopic, type TopicTicket } from "../ai.js";
-import { aiBudgetExhausted } from "../ai-budget.js";
+import { aiAvailable, analyzeRecurringTopics, type CoveredTopic, MAX_TOPIC_REPLIES, type RecurringTopic, type TopicTicket } from "../ai.js";
+import { aiBudgetBlocked, BUDGET_REASONS } from "../ai-budget.js";
 import { db } from "../db.js";
 import { isAdmin, type User } from "../auth.js";
 import { id, now, TICKET_STATUSES, today } from "../util.js";
@@ -31,6 +31,52 @@ function storedTopicReport(companyId: string, period: string) {
     : null;
 }
 
+export class TopicReportError extends Error {}
+
+// Luo tai päivittää toistuvien aiheiden raportin jakson tehtävistä (raporttinäkymä ja viikkoajo). AI-kutsu vain,
+// kun tehtäviä on vähintään kaksi. Palauttaa tehtävien määrän.
+export async function generateTopicReport(companyId: string, period: (typeof REPORT_PERIODS)[number], since: string, actor: string) {
+  // Toimiston vastaukset asukkaalle vanhimmasta alkaen; huoltoyhtiölle lähetetyt työtilausviestit eivät ole vastauksia.
+  const tickets = (db.prepare(`
+    SELECT t.id, t.ticket_number, t.type, t.subject, t.summary,
+           (SELECT json_group_array(body) FROM (
+              SELECT m.body FROM messages m
+              WHERE m.ticket_id = t.id AND m.direction = 'outbound' AND COALESCE(m.channel, '') != 'contractor'
+              ORDER BY m.created_at LIMIT ?
+            )) AS replies
+    FROM tickets t
+    WHERE t.company_id = ? AND t.created_at >= ? AND t.sensitive = 0 AND t.company_pending = 0
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).all(MAX_TOPIC_REPLIES, companyId, since, MAX_TOPIC_TICKETS) as (Omit<TopicTicket, "replies"> & { replies: string })[])
+    .map(ticket => ({ ...ticket, replies: JSON.parse(ticket.replies) as string[] }))
+    // Arkaluonteiset tehtävät eivät mene AI:lle, myöskään merkitsemättömät, joiden teksti osuu sanalistaan.
+    .filter(ticket => sensitiveMatches(`${ticket.subject}\n${ticket.summary}`).length === 0);
+
+  let topics: RecurringTopic[] = [];
+  let covered: CoveredTopic[] = [];
+  if (tickets.length >= 2) {
+    try {
+      // Mukaan annetaan AI:n käytössä oleva dokumentaatio, jotta jo dokumentoituja aiheita ei ehdoteta uudelleen.
+      ({ topics, covered } = await analyzeRecurringTopics(tickets, getKnowledge(companyId)));
+    } catch (error) {
+      console.error("Toistuvien aiheiden analyysi epäonnistui:", error);
+      throw new TopicReportError();
+    }
+  }
+
+  db.prepare(`
+    INSERT OR REPLACE INTO topic_reports
+      (company_id, period, generated_at, generated_by, ticket_count, topics, covered)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    companyId, period, now(), actor, tickets.length,
+    JSON.stringify(topics), JSON.stringify(covered)
+  );
+
+  return tickets.length;
+}
+
 // Viimeksi luotu AI-raportti toistuvista aiheista; null, jos jaksolle ei ole vielä luotu raporttia.
 reportsRouter.get("/companies/:companyId/reports/topics", (req, res) => {
   const companyId = companyIdFromContext(req.params.companyId);
@@ -53,48 +99,21 @@ reportsRouter.post("/companies/:companyId/reports/topics", async (req, res) => {
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista jakso." });
 
-  if (!aiAvailable()) {
+  if (!aiAvailable("topics")) {
+    const blocked = aiBudgetBlocked("topics");
     return res.status(503).json({
-      error: aiBudgetExhausted()
-        ? "AI-kulujen kuukausiraja on täynnä. Pääkäyttäjä voi nostaa rajaa asetuksista."
+      error: blocked
+        ? `${BUDGET_REASONS[blocked]} Pääkäyttäjä voi muuttaa rajoja asetuksista.`
         : "AI ei ole käytössä. Lisää ANTHROPIC_API_KEY palvelimen .env-tiedostoon."
     });
   }
 
-  const tickets = (db.prepare(`
-    SELECT t.id, t.ticket_number, t.type, t.subject, t.summary,
-           (SELECT m.body FROM messages m
-            WHERE m.ticket_id = t.id AND m.direction = 'outbound'
-            ORDER BY m.created_at LIMIT 1) AS reply
-    FROM tickets t
-    WHERE t.company_id = ? AND t.created_at >= ? AND t.sensitive = 0 AND t.company_pending = 0
-    ORDER BY created_at DESC
-    LIMIT ?
-  `).all(companyId, parsed.data.since, MAX_TOPIC_TICKETS) as TopicTicket[])
-    // Arkaluonteiset tehtävät eivät mene AI:lle, myöskään merkitsemättömät, joiden teksti osuu sanalistaan.
-    .filter(ticket => sensitiveMatches(`${ticket.subject}\n${ticket.summary}`).length === 0);
-
-  let topics: RecurringTopic[] = [];
-  let covered: CoveredTopic[] = [];
-  if (tickets.length >= 2) {
-    try {
-      // Mukaan annetaan AI:n käytössä oleva dokumentaatio, jotta jo dokumentoituja aiheita ei ehdoteta uudelleen.
-      ({ topics, covered } = await analyzeRecurringTopics(tickets, getKnowledge(companyId)));
-    } catch (error) {
-      console.error("Toistuvien aiheiden analyysi epäonnistui:", error);
-      return res.status(502).json({ error: "AI-analyysi epäonnistui. Yritä uudelleen." });
-    }
+  try {
+    await generateTopicReport(companyId, parsed.data.period, parsed.data.since, res.locals.user?.name ?? "Tuntematon");
+  } catch (error) {
+    if (error instanceof TopicReportError) return res.status(502).json({ error: "AI-analyysi epäonnistui. Yritä uudelleen." });
+    throw error;
   }
-
-  db.prepare(`
-    INSERT OR REPLACE INTO topic_reports
-      (company_id, period, generated_at, generated_by, ticket_count, topics, covered)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    companyId, parsed.data.period, now(), res.locals.user?.name ?? "Tuntematon", tickets.length,
-    JSON.stringify(topics), JSON.stringify(covered)
-  );
-
   res.json({ report: storedTopicReport(companyId, parsed.data.period), aiAvailable: true });
 });
 

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import path from "node:path";
+import Database from "better-sqlite3";
 import { after, before, describe, it } from "node:test";
 import { addDays, helsinkiIso, helsinkiParts } from "../src/util.js";
 import { ADMIN_EMAIL, call, login, PASSWORD, startServer, type TestServer } from "./helpers.js";
@@ -25,10 +27,20 @@ function fakeAnthropic(script: (request: Request, lastResult: string, firstMessa
         .filter(block => block.type === "tool_result")
         .map(block => typeof block.content === "string" ? block.content : JSON.stringify(block.content))
         .join("\n");
-      const call = script(request, lastResult, firstMessage);
+      res.setHeader("Content-Type", "application/json");
       calls++;
       onCall();
-      res.setHeader("Content-Type", "application/json");
+      // Kiellettyjen aiheiden erillinen luokittelu ennen agenttia: korvausasia on kielletty, muu sallittu.
+      if (JSON.stringify((request as { system?: unknown }).system ?? "").includes("screen a Finnish housing-company ticket")) {
+        const category = /korvau/i.test(firstMessage) ? "compensation" : "none";
+        res.end(JSON.stringify({
+          id: `msg_${calls}`, type: "message", role: "assistant", model: "claude-haiku-5-5",
+          content: [{ type: "text", text: JSON.stringify({ category, reason: category === "none" ? "" : "Asukas vaatii korvausta." }) }],
+          stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 }
+        }));
+        return;
+      }
+      const call = script(request, lastResult, firstMessage);
       res.end(JSON.stringify({
         id: `msg_${calls}`, type: "message", role: "assistant", model: "claude-opus-5-5",
         content: call ? [{ type: "tool_use", id: `toolu_${calls}`, name: call.name, input: call.input }] : [{ type: "text", text: "Valmis." }],
@@ -87,6 +99,11 @@ describe("AI-agentti", () => {
         if (lastResult.startsWith("Not booked")) return { name: "hand_over_to_staff", input: { reason: "Varaus ei onnistunut." } };
         return null;
       }
+      // Kysymys, johon dokumentaatio ei vastaa: osaamisaukko.
+      if (firstMessage.includes("uima-allas")) {
+        if (!lastResult) return { name: "hand_over_to_staff", input: { reason: "Vastausta ei löytynyt.", reason_type: "no_answer", general_question: "Onko taloyhtiössä uima-allas? Soita 040 555 6666." } };
+        return null;
+      }
       // Muu asia: henkilökunnalle.
       if (!lastResult) return { name: "hand_over_to_staff", input: { reason: "Vikailmoitus kuuluu huollolle." } };
       return null;
@@ -122,6 +139,27 @@ describe("AI-agentti", () => {
   }
   const logged = (action: string) => (detail: any) => detail.audit.some((entry: any) => entry.action === action);
 
+  // Tietokantaan suoraan (palvelin käynnissä, WAL): esim. luonnosmittarin rajan täyttävät lähetykset.
+  function withDb<T>(work: (db: Database.Database) => T): T {
+    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
+    try {
+      return work(db);
+    } finally {
+      db.close();
+    }
+  }
+
+  // Taloyhtiön aihe itsenäiseksi: 100 luonnosta lähti sellaisenaan, ja pääkäyttäjä hyväksyy aiheen.
+  async function makeAutonomous(topic: string) {
+    withDb(db => {
+      db.prepare(`INSERT OR IGNORE INTO tickets (id, company_id, type, priority, status, subject, summary, source_channel, ai_action, ai_reason, draft, created_at, updated_at, topic)
+        VALUES (?, 'demo-company', 'Kysymys', 'normal', 'closed', 'Raja', '', 'email', 'pending_decision', '', '', '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z', ?)`).run(`ticket-ready-${topic}`, topic);
+      const insert = db.prepare("INSERT OR IGNORE INTO audit_log VALUES (?, ?, 'Testi', 'reply_sent', ?, ?)");
+      for (let index = 0; index < 100; index++) insert.run(`audit-ready-${topic}-${index}`, `ticket-ready-${topic}`, JSON.stringify({ ai_draft_edit: "unchanged" }), "2020-01-01T00:00:00.000Z");
+    });
+    assert.equal((await call(server, admin, "PUT", `/agent/topics/${topic}`, { companyId: "demo-company", autonomous: true })).status, 200);
+  }
+
   it("tarjoaa vapaita vuoroja varatun tilalle ja varaa asukkaan valitseman vuoron", async () => {
     assert.equal((await call(server, liisa, "POST", "/portal/bookings", {
       resource: "sauna", startsAt: requested, endsAt: new Date(Date.parse(requested) + 3600_000).toISOString()
@@ -139,6 +177,10 @@ describe("AI-agentti", () => {
     const untouched = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
     assert.equal(untouched.ticket.status, "open");
     assert.ok(!logged("ai_agent_replied")(untouched));
+
+    // Aihe on taloyhtiössä hyväksytty itsenäiseksi, joten agentti vastaa itse (muuten luonnos).
+    const topic = (await waitFor(ticketId, detail => Boolean(detail.ticket.topic))).ticket.topic as string;
+    await makeAutonomous(topic);
 
     // Käsittelijä antaa tehtävän agentille. Agentti vastaa asukkaalle ja jää odottamaan valintaa AI tehtävissä.
     const run = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
@@ -164,6 +206,59 @@ describe("AI-agentti", () => {
     const bookings = (await call(server, matti, "GET", `/portal/bookings?resource=sauna&from=${encodeURIComponent(helsinkiIso(day, 0))}&to=${encodeURIComponent(helsinkiIso(addDays(day, 5), 0))}`)).data as any[];
     assert.deepEqual(bookings.filter(booking => booking.mine).map(booking => booking.starts_at), [offered[0]]);
     assert.ok(closed.audit.some((entry: any) => entry.action === "ai_agent_booked"));
+
+    // Jokainen ajo jättää jäljityksen: työkalukutsut syötteineen ja tuloksineen, myös lukutyökalut.
+    const traces = closed.audit.filter((entry: any) => entry.action === "ai_agent_trace")
+      .sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
+    assert.equal(traces.length, 2);
+    const first = JSON.parse((await call(server, admin, "GET", `/audit/${traces[0].id}/ai-request`)).data.payload);
+    assert.equal(first.outcome, "replied");
+    assert.deepEqual(first.steps.map((step: any) => step.tool), ["check_slot", "find_free_slots", "reply_to_resident"]);
+    assert.equal(first.steps[0].input.starts_at, requested);
+    const second = JSON.parse((await call(server, admin, "GET", `/audit/${traces[1].id}/ai-request`)).data.payload);
+    assert.deepEqual(second.steps.map((step: any) => step.tool), ["book_slot", "reply_to_resident"]);
+    assert.match(String(first.steps[0].output), /already booked/);
+    assert.ok(first.steps.every((step: any) => typeof step.ms === "number"));
+    // AI:n vastaukset tallentuvat pyynnön rinnalle.
+    const request = (await call(server, admin, "GET", "/audit")).data.find((entry: any) => entry.action === "ai_request" && entry.ticket_id === ticketId);
+    const stored = (await call(server, admin, "GET", `/audit/${request.id}/ai-request`)).data;
+    assert.ok(stored.response);
+    assert.match(stored.response, /tool_use/);
+    // Seuraavat testit ovat luonnostilassa.
+    assert.equal((await call(server, admin, "PUT", `/agent/topics/${topic}`, { companyId: "demo-company", autonomous: false })).status, 200);
+  });
+
+  it("luonnostilassa tarjoaa vuoroja luonnoksena ja varaa vuoron vasta asukkaan hyväksyttyä", async () => {
+    const created = await call(server, matti, "POST", "/portal/tickets", {
+      subject: "Sauna", description: `Haluaisin saunavuoron ${day} klo 18.`, type: "Pyyntö", attachments: []
+    });
+    const ticketId = created.data.ticketId as string;
+    await waitFor(ticketId, detail => Boolean(detail.ticket.topic));
+    const run = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
+    assert.equal(run.status, 200);
+    assert.deepEqual([run.data.outcome, run.data.booked], ["drafted", false]);
+    const drafted = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    assert.match(drafted.ticket.draft, /Vapaita vuoroja/);
+    assert.equal(drafted.ticket.agent_state, "offer_drafted");
+    assert.equal(drafted.ticket.ai_action, "pending_decision");
+    assert.ok(!drafted.messages.some((message: any) => message.direction === "outbound"), "asukkaalle ei lähtenyt mitään");
+
+    // Käsittelijä lähettää luonnoksen (sähköposti ei ole testissä käytössä, joten lähetys tehdään kuten
+    // activateDraftOffers): tarjous tulee voimaan ja agentti jatkaa asukkaan vastauksesta.
+    withDb(db => {
+      const sentAt = new Date().toISOString();
+      db.prepare("INSERT INTO ai_agent_offers (ticket_id, resource, starts_at, created_at) SELECT ticket_id, resource, starts_at, ? FROM ai_agent_draft_offers WHERE ticket_id = ?").run(sentAt, ticketId);
+      db.prepare("DELETE FROM ai_agent_draft_offers WHERE ticket_id = ?").run(ticketId);
+      db.prepare("UPDATE tickets SET ai_action = 'ai', agent_state = NULL, draft = '', status = 'answered' WHERE id = ?").run(ticketId);
+      db.prepare("INSERT INTO messages VALUES (?, ?, 'outbound', 'Isännöitsijä', 'Sauna', ?, ?, 'portal')").run(`message-sent-${ticketId}`, ticketId, drafted.ticket.draft, sentAt);
+    });
+
+    assert.equal((await call(server, matti, "POST", `/portal/tickets/${ticketId}/messages`, { body: "Käy ensimmäinen", attachments: [] })).status, 201);
+    const booked = await waitFor(ticketId, detail => logged("ai_agent_booked")(detail) && detail.ticket.draft === "Varasin vuoron.");
+    assert.equal(booked.ticket.ai_action, "pending_decision", "vahvistus odottaa käsittelijää");
+    assert.match(booked.ticket.ai_reason, /varasi/);
+    const bookings = (await call(server, matti, "GET", `/portal/bookings?resource=sauna&from=${encodeURIComponent(helsinkiIso(day, 0))}&to=${encodeURIComponent(helsinkiIso(addDays(day, 5), 0))}`)).data as any[];
+    assert.ok(bookings.filter(booking => booking.mine).some(booking => booking.starts_at === offered[0]));
   });
 
   it("ei varaa vuoroa, jota asukkaalle ei ole tarjottu", async () => {
@@ -190,6 +285,41 @@ describe("AI-agentti", () => {
     assert.ok(!detail.messages.some((message: any) => message.direction === "outbound"));
     // Perustelu näkyy käsittelijälle tehtävän sisäisenä muistiinpanona.
     assert.ok(detail.notes.some((item: any) => item.body.includes("Vikailmoitus kuuluu huollolle.")));
+  });
+
+  it("siirtää tehtävän henkilökunnalle, kun agentin ajot tehtävää kohden vuorokaudessa ovat täynnä", async () => {
+    assert.equal((await call(server, admin, "PUT", "/office/ai-limits", { agentRunsPerDay: 1 })).status, 200);
+    try {
+      const created = await call(server, matti, "POST", "/portal/tickets", {
+        subject: "Ovi", description: "Ulko-ovi narisee.", type: "Vikailmoitus", attachments: []
+      });
+      const ticketId = created.data.ticketId;
+      assert.equal((await call(server, admin, "POST", `/tickets/${ticketId}/agent`)).data.outcome, "handed_over");
+      const calls = aiCalls;
+      const second = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
+      assert.equal(second.status, 200);
+      assert.equal(second.data.outcome, "handed_over");
+      assert.match(second.data.reason, /jo 1 kertaa vuorokauden aikana/);
+      assert.equal(aiCalls, calls, "rajan täytyttyä AI:ta ei kutsuta");
+      const detail = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+      assert.ok(detail.notes.some((item: any) => item.body.includes("jo 1 kertaa")));
+    } finally {
+      await call(server, admin, "PUT", "/office/ai-limits", { agentRunsPerDay: 5 });
+    }
+  });
+
+  it("kysymys, johon ei löydy vastausta, kirjataan osaamisaukoksi yleisessä muodossa", async () => {
+    const created = await call(server, matti, "POST", "/portal/tickets", {
+      subject: "Allas", description: "Onko meillä uima-allas?", type: "Kysymys", attachments: []
+    });
+    const run = await call(server, admin, "POST", `/tickets/${created.data.ticketId}/agent`);
+    assert.equal(run.data.outcome, "handed_over");
+    const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
+    const gap = detail.audit.find((entry: any) => entry.action === "knowledge_gap");
+    assert.ok(gap);
+    assert.doesNotMatch(gap.details, /040 555 6666/, "henkilötiedot peitetään");
+    const report = (await call(server, admin, "GET", "/reports/knowledge-gaps?companyId=demo-company")).data;
+    assert.ok(report.topics.some((topic: any) => topic.questions.some((question: any) => question.question.startsWith("Onko taloyhtiössä uima-allas?"))));
   });
 
   it("kertoo, miksi agentti ei voi käsitellä tehtävää", async () => {

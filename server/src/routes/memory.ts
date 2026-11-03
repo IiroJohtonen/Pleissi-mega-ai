@@ -1,12 +1,15 @@
 import express, { type Router } from "express";
 import { z } from "zod";
 import { companyIdFromContext, getAuthorizedTicket, visibleCompanyIds } from "../access.js";
-import { requireManager } from "../auth.js";
+import { isAdmin, requireManager } from "../auth.js";
+import { saveKnowledge } from "./knowledge.js";
 import { db } from "../db.js";
 import { deleteEmbedding } from "../embedding.js";
 import { RESOLUTION_MAX, setResolution, ticketHistory, trends } from "../history.js";
 import { isTopic } from "../incidents.js";
 import { type MemoryNote, MemoryUnavailableError, proposeCompanyMemory } from "../memory.js";
+import { SENDER_TYPES, setSenderType } from "../sender-types.js";
+import { confirmTargetApartment, mergeSuggestion, mergeTickets, targetHistory } from "../ticket-links.js";
 import { id, now } from "../util.js";
 
 export const memoryRouter: Router = express.Router();
@@ -26,7 +29,53 @@ memoryRouter.put("/tickets/:id/resolution", (req, res) => {
 
 memoryRouter.get("/tickets/:id/history", (req, res) => {
   if (!getAuthorizedTicket(req.params.id)) return res.status(404).json({ error: "Ticket not found" });
-  res.json(ticketHistory(req.params.id));
+  // Kohdeasunnon häiriöhistoria kaikilta ilmoittajilta (vain henkilökunta; tämä reitti ei ole asukkaille).
+  res.json({ ...ticketHistory(req.params.id), target: targetHistory(req.params.id) });
+});
+
+// Yhdistämisehdotus: saman asukkaan avoin samanaiheinen tehtävä 14 päivän sisällä.
+memoryRouter.get("/tickets/:id/merge-suggestion", async (req, res) => {
+  if (!getAuthorizedTicket(req.params.id)) return res.status(404).json({ error: "Ticket not found" });
+  const candidate = await mergeSuggestion(req.params.id);
+  res.json({ candidate: candidate && getAuthorizedTicket(candidate.id)
+    ? { id: candidate.id, ticketNumber: candidate.ticket_number, subject: candidate.subject, createdAt: candidate.created_at }
+    : null });
+});
+
+// Liittää tehtävän aiempaan tehtävään (käsittelijän päätös, ei automaattinen).
+memoryRouter.post("/tickets/:id/merge", (req, res) => {
+  const parsed = z.object({ intoTicketId: z.string().min(1) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse tehtävä, johon yhdistetään." });
+  const source = getAuthorizedTicket(req.params.id) as { id: string; company_id: string; merged_into?: string | null } | null;
+  const target = getAuthorizedTicket(parsed.data.intoTicketId) as { id: string; company_id: string; merged_into?: string | null } | null;
+  if (!source || !target || source.id === target.id) return res.status(404).json({ error: "Tehtävää ei löytynyt." });
+  if (source.company_id !== target.company_id) return res.status(400).json({ error: "Tehtävät ovat eri taloyhtiöistä." });
+  if (source.merged_into || target.merged_into) return res.status(409).json({ error: "Tehtävä on jo yhdistetty." });
+  mergeTickets(source.id, target.id, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true, ticketId: target.id });
+});
+
+// Kohdeasunnon vahvistus (häiriö- ja turvallisuusilmoitukset).
+memoryRouter.put("/tickets/:id/target-apartment", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as { id: string; company_id: string } | null;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ apartmentId: z.string().nullable() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse asunto." });
+  if (parsed.data.apartmentId && !db.prepare("SELECT 1 FROM apartments WHERE id = ? AND company_id = ?").get(parsed.data.apartmentId, ticket.company_id)) {
+    return res.status(400).json({ error: "Asunto ei kuulu tehtävän taloyhtiöön." });
+  }
+  confirmTargetApartment(ticket.id, parsed.data.apartmentId, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true });
+});
+
+// Käsittelijä korjaa lähettäjätyypin (AI:n tai domainlistan arvio).
+memoryRouter.put("/tickets/:id/sender-type", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as { id: string } | null;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ senderType: z.enum(SENDER_TYPES) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Valitse lähettäjän tyyppi." });
+  setSenderType(ticket.id, parsed.data.senderType, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ok: true });
 });
 
 memoryRouter.get("/reports/trends", (req, res) => {
@@ -45,7 +94,8 @@ const view = (row: MemoryNote) => ({
     return ticket ? { id: ticket.id, ticketNumber: ticket.ticket_number, subject: ticket.sensitive ? "Arkaluonteinen tehtävä" : ticket.subject } : null;
   }).filter(Boolean),
   status: row.status, validUntil: row.valid_until, origin: row.origin, createdAt: row.created_at,
-  decidedBy: row.decided_by, decidedAt: row.decided_at, updatedAt: row.updated_at
+  decidedBy: row.decided_by, decidedAt: row.decided_at, updatedAt: row.updated_at,
+  target: row.target, docTitle: row.doc_title, gap: Boolean(row.gap), knowledgeId: row.knowledge_id
 });
 
 memoryRouter.get("/companies/:companyId/memory", (req, res) => {
@@ -53,7 +103,7 @@ memoryRouter.get("/companies/:companyId/memory", (req, res) => {
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const rows = db.prepare(`
     SELECT * FROM company_memory WHERE company_id = ? AND (status != 'rejected' OR decided_at >= ?)
-    ORDER BY CASE status WHEN 'proposed' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, updated_at DESC
+    ORDER BY CASE status WHEN 'proposed' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, gap DESC, updated_at DESC
   `).all(companyId, new Date(Date.now() - 30 * 86_400_000).toISOString()) as MemoryNote[];
   const company = db.prepare("SELECT memory_scanned_at FROM companies WHERE id = ?").get(companyId) as { memory_scanned_at: string | null };
   // Uudet ratkaistut tehtävät edellisen haun jälkeen: kertoo, kannattaako ehdotuksia hakea.
@@ -79,7 +129,8 @@ memoryRouter.post("/companies/:companyId/memory/propose", requireManager, async 
 });
 
 const noteSchema = z.object({
-  text: z.string().trim().min(5).max(500),
+  // Dokumentaatioehdotus voi olla pidempi kuin muistitieto (500 merkkiä, tarkistetaan erikseen).
+  text: z.string().trim().min(5).max(1500),
   topic: z.string().nullable().refine(topic => topic === null || isTopic(topic)),
   stairwell: z.string().trim().toUpperCase().max(3).regex(/^[A-ZÅÄÖ]*$/),
   validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()
@@ -90,7 +141,7 @@ memoryRouter.post("/companies/:companyId/memory", requireManager, (req, res) => 
   const companyId = companyIdFromContext(req.params.companyId);
   if (!companyId) return res.status(403).json({ error: "Company not authorized" });
   const parsed = noteSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Kirjoita tieto (5–500 merkkiä) ja tarkista porras." });
+  if (!parsed.success || parsed.data.text.length > 500) return res.status(400).json({ error: "Kirjoita tieto (5–500 merkkiä) ja tarkista porras." });
   const actor = res.locals.user?.name ?? "Isännöitsijä";
   const noteId = id("memory");
   db.prepare(`
@@ -100,7 +151,7 @@ memoryRouter.post("/companies/:companyId/memory", requireManager, (req, res) => 
   res.status(201).json(view(db.prepare("SELECT * FROM company_memory WHERE id = ?").get(noteId) as MemoryNote));
 });
 
-function loadNote(noteId: string) {
+export function loadNote(noteId: string) {
   const note = db.prepare("SELECT * FROM company_memory WHERE id = ?").get(noteId) as MemoryNote | undefined;
   return note && companyIdFromContext(note.company_id) ? note : null;
 }
@@ -109,10 +160,31 @@ function loadNote(noteId: string) {
 memoryRouter.put("/memory/:id", requireManager, (req, res) => {
   const note = loadNote(req.params.id);
   if (!note) return res.status(404).json({ error: "Tietoa ei löytynyt." });
-  const parsed = noteSchema.extend({ status: z.enum(["approved", "rejected"]) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Kirjoita tieto (5–500 merkkiä) ja tarkista porras." });
+  const parsed = noteSchema.extend({
+    status: z.enum(["approved", "rejected"]),
+    // Dokumentaatioehdotus: otsikko ja taso (tämä taloyhtiö tai kaikki toimiston taloyhtiöt).
+    docTitle: z.string().trim().min(1).max(120).nullable().optional(),
+    scope: z.enum(["company", "office"]).default("company")
+  }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Kirjoita tieto (5–1500 merkkiä) ja tarkista porras." });
+  if (note.target !== "documentation" && parsed.data.text.length > 500) return res.status(400).json({ error: "Muistitieto saa olla enintään 500 merkkiä." });
+  if (note.target === "none" && parsed.data.status === "approved") {
+    return res.status(400).json({ error: "Kertaluonteista päätöstä ei tallenneta. Kuittaa ehdotus." });
+  }
+  // Toimistotason ohje näkyy kaikille taloyhtiöille, joten sen hyväksyy pääkäyttäjä.
+  if (note.target === "documentation" && parsed.data.status === "approved" && parsed.data.scope === "office" && !isAdmin(res)) {
+    return res.status(403).json({ error: "Kaikkien taloyhtiöiden ohjeen voi hyväksyä vain pääkäyttäjä." });
+  }
   const actor = res.locals.user?.name ?? "Isännöitsijä";
   db.transaction(() => {
+    // Hyväksytystä dokumentaatioehdotuksesta syntyy AI-dokumentaation vakiotieto.
+    if (note.target === "documentation" && parsed.data.status === "approved" && !note.knowledge_id) {
+      const knowledgeId = saveKnowledge({
+        companyId: note.company_id, kind: "fact", title: parsed.data.docTitle || note.doc_title || "Ohje", content: parsed.data.text,
+        validFrom: "", validUntil: parsed.data.validUntil ?? "", audience: "ai", scope: parsed.data.scope
+      });
+      db.prepare("UPDATE company_memory SET knowledge_id = ?, doc_title = ? WHERE id = ?").run(knowledgeId, parsed.data.docTitle || note.doc_title, note.id);
+    }
     db.prepare(`
       UPDATE company_memory SET text = ?, topic = ?, stairwell = ?, valid_until = ?, status = ?, decided_by = ?, decided_at = ?, updated_at = ?
       WHERE id = ?
@@ -121,7 +193,8 @@ memoryRouter.put("/memory/:id", requireManager, (req, res) => {
     if (parsed.data.status !== "approved") deleteEmbedding("memory", note.id);
   })();
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
-    id("audit"), null, actor, `memory_${parsed.data.status}`, JSON.stringify({ memory: note.id, company: note.company_id }), now()
+    id("audit"), null, actor, `memory_${parsed.data.status}`,
+    JSON.stringify({ memory: note.id, company: note.company_id, target: note.target, scope: note.target === "documentation" ? parsed.data.scope : undefined }), now()
   );
   res.json(view(loadNote(note.id)!));
 });

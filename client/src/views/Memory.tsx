@@ -6,12 +6,21 @@ import { api, errorMessage } from "../session";
 import { placeLabel, topicLabel, topicOptions } from "../topics";
 import type { Company } from "../types";
 import { navigate } from "../routing";
+import { GuideEditor } from "../components/GuideEditor";
 
 type MemoryNote = {
   id: string; companyId: string; topic: string | null; stairwell: string; text: string;
   sources: { id: string; ticketNumber: number | null; subject: string }[];
   status: "proposed" | "approved" | "rejected"; validUntil: string | null; origin: "ai" | "manual";
   createdAt: string; decidedBy: string | null; decidedAt: string | null; updatedAt: string;
+  // memory = rakennustieto, documentation = asukasohje dokumentaatioon, none = kertaluonteinen päätös.
+  target: "memory" | "documentation" | "none"; docTitle: string | null; gap: boolean; knowledgeId: string | null;
+};
+
+const targetLabels: Record<MemoryNote["target"], string> = {
+  memory: t("Muistiin"),
+  documentation: t("Dokumentaatioon"),
+  none: t("Ei tallenneta (kertaluonteinen)")
 };
 type MemoryList = { notes: MemoryNote[]; scannedAt: string | null; newCases: number };
 type NoteFields = { text: string; topic: string | null; stairwell: string; validUntil: string | null };
@@ -106,15 +115,28 @@ export function CompanyMemory({ companies, companyId }: { companies: Company[]; 
     }
   }
 
-  const save = (note: MemoryNote, fields: NoteFields, status: "approved" | "rejected") =>
-    api(`/memory/${encodeURIComponent(note.id)}`, { method: "PUT", body: JSON.stringify({ ...fields, status }) });
+  const save = (note: MemoryNote, fields: NoteFields, status: "approved" | "rejected", extra: Record<string, unknown> = {}) =>
+    api(`/memory/${encodeURIComponent(note.id)}`, { method: "PUT", body: JSON.stringify({ ...fields, status, ...extra }) });
 
   const proposed = list?.notes.filter(note => note.status === "proposed") ?? [];
-  const approved = list?.notes.filter(note => note.status === "approved") ?? [];
+  const approved = list?.notes.filter(note => note.status === "approved" && note.target !== "documentation") ?? [];
+  const documented = list?.notes.filter(note => note.status === "approved" && note.target === "documentation") ?? [];
+  // Hyväksytystä tiedosta testitapaus evaluointiin (JSON-tiedosto kansioon server/eval/cases/suggest).
+  const exportCase = (note: MemoryNote) => void run(`export-${note.id}`, async () => {
+    const testCase = await api<unknown>(`/memory/${encodeURIComponent(note.id)}/eval-case`);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(testCase, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `opittu-${note.id}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
   const rejected = list?.notes.filter(note => note.status === "rejected") ?? [];
 
   const meta = (note: MemoryNote) => (
     <p className="memory-meta">
+      {note.origin === "ai" && <span className={`memory-target memory-target-${note.target}`}>{targetLabels[note.target]}</span>}
+      {note.gap && <span className="memory-gap" title={t("AI ei osannut vastata tähän; ratkaisu kannattaa tallentaa.")}>{t("Osaamisaukko")}</span>}
       <span>{note.topic ? topicLabel(note.topic) : t("Kaikki aiheet")}, {placeLabel(note.stairwell)}</span>
       {note.validUntil && <span>{t("voimassa {0} asti", formatDateOnly(note.validUntil))}</span>}
       <span>{note.origin === "ai" ? t("AI:n ehdotus {0}", formatDate(note.createdAt)) : t("Lisätty käsin {0}", formatDate(note.createdAt))}</span>
@@ -171,17 +193,42 @@ export function CompanyMemory({ companies, companyId }: { companies: Company[]; 
           <ul className="memory-list">
             {proposed.map(note => (
               <li key={note.id}>
-                <NoteEditor
-                  initial={fieldsOf(note)}
-                  busy={Boolean(busy)}
-                  submitLabel={t("Hyväksy")}
-                  onSubmit={fields => void run(`approve-${note.id}`, () => save(note, fields, "approved"), t("Tieto hyväksytty."))}
-                  extra={(
-                    <button type="button" className="danger" disabled={Boolean(busy)} onClick={() => void run(`reject-${note.id}`, () => save(note, fieldsOf(note), "rejected"))}>
-                      {t("Hylkää")}
-                    </button>
-                  )}
-                />
+                {note.target === "documentation" ? (
+                  // Dokumentaatioehdotus: ohje tarkistetaan ristiriitojen varalta ja tallennetaan AI-dokumentaatioon.
+                  <GuideEditor
+                    companyId={note.companyId}
+                    initial={{ title: note.docTitle ?? "", content: note.text }}
+                    saveLabel={t("Hyväksy dokumentaatioon")}
+                    onSave={guide => run(`approve-${note.id}`, () => save(note, { ...fieldsOf(note), text: guide.content }, "approved",
+                      { docTitle: guide.title, scope: guide.scope }), t("Ohje tallennettu AI-dokumentaatioon."))}
+                    extra={(
+                      <button type="button" className="danger" disabled={Boolean(busy)} onClick={() => void run(`reject-${note.id}`, () => save(note, fieldsOf(note), "rejected"))}>
+                        {t("Hylkää")}
+                      </button>
+                    )}
+                  />
+                ) : note.target === "none" ? (
+                  <div className="memory-text">
+                    <p>{note.text}</p>
+                    <div className="memory-actions">
+                      <button type="button" className="quiet-button" disabled={Boolean(busy)} onClick={() => void run(`reject-${note.id}`, () => save(note, fieldsOf(note), "rejected"))}>
+                        {t("Kuittaa")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <NoteEditor
+                    initial={fieldsOf(note)}
+                    busy={Boolean(busy)}
+                    submitLabel={t("Hyväksy")}
+                    onSubmit={fields => void run(`approve-${note.id}`, () => save(note, fields, "approved"), t("Tieto hyväksytty."))}
+                    extra={(
+                      <button type="button" className="danger" disabled={Boolean(busy)} onClick={() => void run(`reject-${note.id}`, () => save(note, fieldsOf(note), "rejected"))}>
+                        {t("Hylkää")}
+                      </button>
+                    )}
+                  />
+                )}
                 {meta(note)}
               </li>
             ))}
@@ -224,6 +271,7 @@ export function CompanyMemory({ companies, companyId }: { companies: Company[]; 
                     <p>{note.text}</p>
                     <div className="memory-actions">
                       <button type="button" className="quiet-button" disabled={Boolean(busy)} onClick={() => setEditing(note.id)}>{t("Muokkaa")}</button>
+                      {note.origin === "ai" && <button type="button" className="quiet-button" disabled={Boolean(busy)} onClick={() => exportCase(note)}>{t("Vie testitapaukseksi")}</button>}
                       <button
                         type="button"
                         className="quiet-button"
@@ -238,6 +286,26 @@ export function CompanyMemory({ companies, companyId }: { companies: Company[]; 
                     </div>
                   </div>
                 )}
+                {meta(note)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {documented.length > 0 && (
+        <div className="report-card">
+          <h2>{t("Viety dokumentaatioon ({0})", documented.length)}</h2>
+          <ul className="memory-list">
+            {documented.map(note => (
+              <li key={note.id}>
+                <div className="memory-text">
+                  <p><strong>{note.docTitle}</strong></p>
+                  <p>{note.text}</p>
+                  <div className="memory-actions">
+                    <button type="button" className="quiet-button" disabled={Boolean(busy)} onClick={() => exportCase(note)}>{t("Vie testitapaukseksi")}</button>
+                  </div>
+                </div>
                 {meta(note)}
               </li>
             ))}

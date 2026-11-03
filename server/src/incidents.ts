@@ -28,7 +28,12 @@ type TopicRule = {
   hint: string;
   // Työtilauksen pyyntö huoltoyhtiölle (paikka lisätään perään).
   request: string;
+  // Lisäohje asukkaalle vastaukseen (esim. turvallisuus: käynnissä olevaan tilanteeseen 112).
+  advice?: string;
 };
+
+// Käynnissä olevaan turvallisuustilanteeseen ohjataan aina hätänumeroon.
+export const SAFETY_ADVICE = "Jos tilanne on käynnissä tai joku on vaarassa, soita heti hätänumeroon 112.";
 
 export const TOPIC_RULES = {
   booking: {
@@ -107,9 +112,21 @@ export const TOPIC_RULES = {
     hint: "Tuholaiset leviävät asunnosta toiseen, joten usean asunnon havainto vaatii koko kiinteistön tarkastuksen.",
     request: "Pyydämme tuholaistarkastusta"
   },
+  // Turvallisuus ennen melua: "murto" tai "ilkivalta" ei ole häiriö.
+  safety: {
+    label: "Turvallisuus", about: "turvallisuudesta",
+    words: ["epäilyttäv", "murto", "murtau", "murtoyri", "varka", "varastet", "varasti", "varastanut", "varastivat", "ilkival", "vandal", "töhr", "sotku porraskäyt",
+      "tunkeutu", "tunkeilij", "tuntematon henkilö", "tuntemattomia henkilöitä", "outo auto", "epäilyttävä auto"],
+    tracked: true, threshold: 2, windowHours: 48,
+    hint: "Usea ilmoitus epäilyttävästä henkilöstä, ajoneuvosta, murrosta tai ilkivallasta viittaa samaan tapahtumaan; harkitse lukituksen ja valaistuksen tarkistusta ja tiedotetta.",
+    request: "Pyydämme tarkistamaan lukitukset, ovet ja valaistuksen",
+    advice: SAFETY_ADVICE
+  },
   noise: {
     label: "Melu tai häiriö", about: "melusta tai häiriöstä",
-    words: ["melu", "meteli", "häiri", "musiik", "bileet", "juhlat", "hiljaisuus", "kova ääni", "kovaa ääntä"],
+    words: ["melu", "meteli", "häiri", "musiik", "bileet", "juhlat", "hiljaisuus", "kova ääni", "kovaa ääntä", "kovaääni",
+      "kiroil", "huuta", "huusi", "huutaa", "huutoa", "riehu", "riita", "riidel", "tappel", "tapell", "paukutt", "paukku", "jyskyt", "kolist",
+      "porauk", "remonttimelu", "koira haukk", "haukkuu", "päihtyn", "humala"],
     tracked: true, threshold: 3, windowHours: 72,
     hint: "Usea ilmoitus samasta häiriöstä vahvistaa, että asia koskee useampaa asukasta.",
     request: ""
@@ -416,6 +433,7 @@ export function drafts(incident: Incident, tickets = incidentTickets(incident.id
       "Sinun ei tarvitse tehdä erillistä ilmoitusta samasta asiasta."
     ].join("\n"),
     reply: `Kiitos ilmoituksestasi. Olemme saaneet ${from} useita ilmoituksia ${topicRule.about}, ja vian selvittäminen on aloitettu. Ilmoitamme, kun asia on korjattu.`
+      + (topicRule.advice ? ` ${topicRule.advice}` : "")
   };
 }
 

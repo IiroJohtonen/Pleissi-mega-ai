@@ -224,3 +224,48 @@ export function notifyTicketStatus(ticketId: string, event: StatusEvent, actor: 
     id("audit"), ticketId, actor, "resident_notified", JSON.stringify({ event, recipients: recipients.length }), now()
   );
 }
+
+// AI-agentti siirsi automaattisesti käynnistyneen tehtävän henkilökunnalle: vastuuisännöitsijälle kerrotaan,
+// mitä kysyttiin ja miksi agentti ei vastannut. Arkaluonteiset tehtävät eivät tule agentille lainkaan.
+export async function notifyAgentHandover(ticketId: string, reason: string) {
+  const ticket = db.prepare(`
+    SELECT t.ticket_number, t.subject, c.name AS company, u.name AS manager_name, u.email AS manager_email,
+           (SELECT m.body FROM messages m WHERE m.ticket_id = t.id AND m.direction = 'inbound' ORDER BY m.created_at DESC LIMIT 1) AS message
+    FROM tickets t JOIN companies c ON c.id = t.company_id LEFT JOIN users u ON u.id = c.manager_id
+    WHERE t.id = ?
+  `).get(ticketId) as { ticket_number: number | null; subject: string; company: string; manager_name: string | null;
+    manager_email: string | null; message: string | null } | undefined;
+  if (!ticket) return;
+  const log = (action: string, details: Record<string, string>) =>
+    db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(id("audit"), ticketId, "system", action, JSON.stringify(details), now());
+  const email = (ticket.manager_email ?? "").trim();
+  if (!VALID_EMAIL.test(email)) return log("agent_handover_mail_failed", { error: "Vastuuisännöitsijän sähköpostiosoite puuttuu." });
+  const office = db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string };
+  const message = (ticket.message ?? "").trim();
+  try {
+    await sendEmail({
+      to: email,
+      notification: true,
+      subject: `AI-agentti siirsi tehtävän: ${ticket.subject} (${ticket.company})`,
+      body: [
+        `Hei ${ticket.manager_name ?? ""},`,
+        "",
+        `AI-agentti ei vastannut asukkaalle taloyhtiössä ${ticket.company}, vaan siirsi tehtävän henkilökunnalle.`,
+        "",
+        `Tehtävä: #${formatTicketNumber(ticket.ticket_number)} ${ticket.subject}`,
+        `Miksi agentti ei vastannut: ${reason}`,
+        "",
+        "Mitä kysyttiin:",
+        message.length > ALERT_MESSAGE_MAX ? `${message.slice(0, ALERT_MESSAGE_MAX)}…` : message || ticket.subject,
+        "",
+        `Avaa tehtävä Pleississä: ${process.env.APP_URL || "http://localhost:5173"}`,
+        "",
+        office.name
+      ].join("\n")
+    });
+    log("agent_handover_mail_sent", { to: ticket.manager_name || email });
+  } catch (error: any) {
+    console.error("AI-agentin siirtoilmoitus epäonnistui:", error?.message ?? error);
+    log("agent_handover_mail_failed", { to: ticket.manager_name || email, error: String(error?.message ?? error) });
+  }
+}

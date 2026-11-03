@@ -84,3 +84,21 @@ export async function extractText(
 
   throw new UnsupportedDocumentError("Tuettuja tiedostoja ovat PDF, Word (.docx) ja kuvat.");
 }
+
+// PDF:n sivumäärä ja jako eriin AI:lle: jokainen erä on oma PDF, jossa on enintään pagesPerBatch sivua.
+// firstPage on erän ensimmäisen sivun numero alkuperäisessä dokumentissa.
+export type PdfBatch = { firstPage: number; lastPage: number; data: Buffer };
+export async function pdfBatches(content: Buffer, pagesPerBatch: number): Promise<PdfBatch[]> {
+  const { PDFDocument } = await import("pdf-lib");
+  const source = await PDFDocument.load(content, { ignoreEncryption: true });
+  const pageCount = source.getPageCount();
+  if (pageCount <= pagesPerBatch) return [{ firstPage: 1, lastPage: pageCount, data: content }];
+  const batches: PdfBatch[] = [];
+  for (let start = 0; start < pageCount; start += pagesPerBatch) {
+    const indices = Array.from({ length: Math.min(pagesPerBatch, pageCount - start) }, (_, index) => start + index);
+    const part = await PDFDocument.create();
+    for (const page of await part.copyPages(source, indices)) part.addPage(page);
+    batches.push({ firstPage: start + 1, lastPage: start + indices.length, data: Buffer.from(await part.save()) });
+  }
+  return batches;
+}
