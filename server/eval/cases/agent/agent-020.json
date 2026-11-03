@@ -1,0 +1,61 @@
+{
+  "id": "agent-020",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "luonnostila",
+    "sauna",
+    "hylkäys"
+  ],
+  "input": {
+    "subject": "Saunavuoro",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei, haluaisin saunavuoron {{pvm+5}} illalla."
+      },
+      {
+        "from": "office",
+        "text": "Hei! Vapaita saunavuoroja on {{pvm+5}} klo 17.00–18.00 ja klo 19.00–20.00. Kerrotko, kumpi sopii?"
+      },
+      {
+        "from": "resident",
+        "text": "Kumpikaan ei käy. Olisiko seuraavana päivänä jotain vapaana?"
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [
+        {
+          "resource": "sauna",
+          "day": 5,
+          "hour": 17
+        },
+        {
+          "resource": "sauna",
+          "day": 5,
+          "hour": 19
+        }
+      ],
+      "knowledge": []
+    },
+    "resident": "resident-1",
+    "mode": "draft"
+  },
+  "expected": {
+    "toolsRequired": [
+      "find_free_slots",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "book_slot"
+    ],
+    "replyMustNotInclude": [],
+    "outcome": [
+      "drafted"
+    ],
+    "booked": false
+  },
+  "critical": true,
+  "note": "Asukas hylkäsi tarjouksen: agentti ehdottaa uutta aikaa eikä varaa mitään."
+}

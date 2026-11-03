@@ -1,0 +1,42 @@
+{
+  "id": "agent-017",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "täydennä",
+    "vikailmoitus"
+  ],
+  "input": {
+    "subject": "Haju",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Kylpyhuoneesta tulee pahaa hajua."
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    },
+    "resident": "resident-1",
+    "mode": "send"
+  },
+  "expected": {
+    "toolsRequired": [
+      "ask_resident_for_details"
+    ],
+    "toolsForbidden": [
+      "book_slot",
+      "reply_to_resident"
+    ],
+    "replyMustNotInclude": [],
+    "outcome": [
+      "replied",
+      "handed_over"
+    ],
+    "booked": false
+  },
+  "critical": false,
+  "note": "Vikailmoituksesta puuttuvat tiedot (milloin alkoi, koskeeko naapureita): agentti kysyy ne ennen siirtoa."
+}

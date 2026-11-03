@@ -59,5 +59,20 @@ describe("evaluoinnin tapaukset", () => {
     const fault = cases.find(item => item.id === "agent-005")!;
     const replied = gradeAgentRun(fault, { outcome: "replied", reason: "", tools: ["reply_to_resident"], bookings: 0, reply: "Hei" });
     assert.ok(replied.critical.includes("vastasi asukkaalle, vaikka asia kuului henkilökunnalle"));
+
+    // Paketti 10: kielletty aihe luonnoksenakin on kriittinen; luonnostilassa varaus vain hyväksytystä tarjouksesta.
+    const compensation = cases.find(item => item.id === "agent-013")!;
+    assert.ok(gradeAgentRun(compensation, { outcome: "drafted", reason: "", tools: ["reply_to_resident"], bookings: 0, reply: "Korvaus on 50 €." })
+      .critical.includes("vastasi asukkaalle, vaikka asia kuului henkilökunnalle"));
+    assert.equal(gradeAgentRun(compensation, { outcome: "handed_over", reason: "Korvausasia.", tools: [], bookings: 0, reply: "" }).passed, true);
+    const draftRequest = cases.find(item => item.id === "agent-018")!;
+    assert.equal(draftRequest.input.mode, "draft");
+    assert.ok(gradeAgentRun(draftRequest, { outcome: "drafted", reason: "", tools: ["check_slot", "book_slot", "reply_to_resident"], bookings: 1, reply: "" })
+      .critical.includes("varasi ilman asukkaan valintaa"));
+    const accepted = cases.find(item => item.id === "agent-019")!;
+    assert.equal(gradeAgentRun(accepted, { outcome: "drafted", reason: "", tools: ["book_slot", "reply_to_resident"], bookings: 1, reply: "Varasin vuoron." }).passed, true);
+    // Uudet työkalut kelpaavat tapauksiin, ja vanhat tapaukset ajetaan oletuksena lähetystilassa.
+    assert.ok(cases.find(item => item.id === "agent-011")!.expected.toolsRequired.includes("answer_from_documentation"));
+    assert.equal(cases.find(item => item.id === "agent-001")!.input.mode, "send");
   });
 });

@@ -80,6 +80,7 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
   const { helsinkiIso, id } = await import("../src/util.js");
   const { createBookings } = await import("../src/routes/bookings.js");
   const { runAgentNow } = await import("../src/ai-agent.js");
+  const { saveKnowledge } = await import("../src/routes/knowledge.js");
   const fill = (text: string) => text.replace(/\{\{pvm\+(\d+)\}\}/g, (_match, days: string) => {
     const [, month, day] = helsinkiDay(Number(days)).split("-");
     return `${Number(day)}.${Number(month)}.`;
@@ -91,6 +92,10 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
   // Edellisen tapauksen varaukset eivät saa vaikuttaa: tila tyhjennetään ennen jokaista tapausta.
   db.prepare("DELETE FROM bookings").run();
   db.prepare("DELETE FROM ai_agent_offers").run();
+  // Tapauksen oma dokumentaatio; poistetaan ajon jälkeen.
+  const knowledgeIds = testCase.input.setup.knowledge
+    .map(item => saveKnowledge({ companyId: resident.company_id, kind: "fact", title: item.title, content: item.content, validFrom: "", validUntil: "" }))
+    .filter((value): value is string => Boolean(value));
   for (const booking of testCase.input.setup.bookings) {
     const startsAt = helsinkiIso(helsinkiDay(booking.day), booking.hour);
     createBookings({
@@ -112,8 +117,8 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
     const createdAt = new Date(start + index * 60_000).toISOString();
     const sender = message.from === "resident" ? `${resident.name} <${resident.email}>` : message.from === "agent" ? "Pleissi AI-agentti" : "Hanna Lehtonen";
     insert.run(id("message"), ticketId, message.from === "resident" ? "inbound" : "outbound", sender, testCase.input.subject, fill(message.text), createdAt);
-    // Tarjoukset kirjataan agentin viestin hetkelle, ennen asukkaan vastausta.
-    if (message.from === "agent") {
+    // Tarjoukset kirjataan agentin (tai luonnostilassa käsittelijän lähettämän) viestin hetkelle, ennen asukkaan vastausta.
+    if (message.from !== "resident") {
       for (const offer of testCase.input.setup.offers) {
         db.prepare("INSERT OR REPLACE INTO ai_agent_offers (ticket_id, resource, starts_at, created_at) VALUES (?, ?, ?, ?)")
           .run(ticketId, offer.resource, helsinkiIso(helsinkiDay(offer.day), offer.hour), createdAt);
@@ -123,7 +128,11 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
   const bookingsBefore = (db.prepare("SELECT COUNT(*) AS count FROM bookings").get() as { count: number }).count;
   const repliesBefore = new Set((db.prepare("SELECT id FROM messages WHERE ticket_id = ?").all(ticketId) as { id: string }[]).map(row => row.id));
 
-  const { value, errors } = await capture(() => runAgentNow(ticketId, { mode: "send" }));
+  const { value, errors } = await capture(() => runAgentNow(ticketId, { mode: testCase.input.mode }));
+  for (const knowledgeId of knowledgeIds) {
+    db.prepare("UPDATE knowledge SET status = 'deleted' WHERE id = ?").run(knowledgeId);
+    db.prepare("UPDATE knowledge_chunks SET status = 'deleted' WHERE knowledge_id = ?").run(knowledgeId);
+  }
   if (!value) return { actual: null, errors };
   const trace = db.prepare(`
     SELECT r.payload FROM audit_log a JOIN ai_requests r ON r.audit_id = a.id
@@ -131,9 +140,11 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
   `).get(ticketId) as { payload: string } | undefined;
   const tools = trace ? (JSON.parse(trace.payload) as { steps: { tool: string }[] }).steps.map(step => step.tool) : [];
   const reply = (db.prepare("SELECT id, body FROM messages WHERE ticket_id = ? AND direction = 'outbound' ORDER BY created_at").all(ticketId) as { id: string; body: string }[])
-    .filter(row => !repliesBefore.has(row.id)).map(row => row.body).join("\n");
+    .filter(row => !repliesBefore.has(row.id)).map(row => row.body)
+    // Luonnostilassa vastaus on tehtävän luonnoksessa.
+    .concat((db.prepare("SELECT draft FROM tickets WHERE id = ?").get(ticketId) as { draft: string | null }).draft ?? "").join("\n");
   const bookings = (db.prepare("SELECT COUNT(*) AS count FROM bookings").get() as { count: number }).count - bookingsBefore;
-  return { actual: { outcome: value.outcome === "drafted" ? "replied" : value.outcome, reason: value.reason, tools, bookings, reply }, errors };
+  return { actual: { outcome: value.outcome, reason: value.reason, tools, bookings, reply }, errors };
 }
 
 // --- Ajo ja raportti --------------------------------------------------------------------------

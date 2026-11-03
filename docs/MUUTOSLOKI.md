@@ -16,6 +16,9 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 - ERP:n hylkäämän varauksen jälkeen agentti tarjoaa uutta vuoroa luonnostilan sääntöjen mukaan.
 - Ladattu dokumentti näkyy käsittelyssä heti latauksen jälkeen (aiemmin se saattoi näkyä hetken valmiina ennen
   AI-käsittelyn alkua).
+- AI-agentin laadunmittaukseen (evaluointi) lisättiin 10 tapausta: vastaus dokumentaatiosta lainauksella ja ilman
+  vastausta, kielletyt aiheet (korvaus, korjausvastuu, poikkeuslupa, häiriö), lisätietojen kysyminen sekä
+  luonnostilan varauskulku (tarjous, hyväksyntä, hylkäys).
 
 **Miten**
 - Ei uusia näkymiä. Asetukset › AI › AI:n rajat koskee kaikkia AI-toimintoja.

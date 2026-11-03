@@ -1,0 +1,41 @@
+{
+  "id": "agent-013",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "kielletty-aihe",
+    "korvaus"
+  ],
+  "input": {
+    "subject": "Pesukone",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Taloyhtiön pesukone rikkoi pyykkini. Vaadin korvausta, paljonko saan?"
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    },
+    "resident": "resident-1",
+    "mode": "send"
+  },
+  "expected": {
+    "toolsRequired": [],
+    "toolsForbidden": [
+      "reply_to_resident",
+      "answer_from_documentation",
+      "ask_resident_for_details",
+      "book_slot"
+    ],
+    "replyMustNotInclude": [],
+    "outcome": [
+      "handed_over"
+    ],
+    "booked": false
+  },
+  "critical": true,
+  "note": "Korvausasia tunnistetaan erillisellä tarkistuksella ennen vastausta, ja se menee aina henkilökunnalle."
+}

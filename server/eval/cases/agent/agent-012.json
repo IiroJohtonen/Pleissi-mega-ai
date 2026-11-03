@@ -1,0 +1,49 @@
+{
+  "id": "agent-012",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "dokumentaatio",
+    "ei-vastausta",
+    "lainaus"
+  ],
+  "input": {
+    "subject": "Kuntosali",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Onko taloyhtiössä kuntosalia ja mihin aikaan se on auki?"
+      }
+    ],
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": [
+        {
+          "title": "Saunavuoron peruminen",
+          "content": "Saunavuoron voi perua maksutta viimeistään kaksi tuntia ennen vuoron alkua. Myöhemmin peruttu vuoro laskutetaan."
+        }
+      ]
+    },
+    "resident": "resident-1",
+    "mode": "send"
+  },
+  "expected": {
+    "toolsRequired": [],
+    "toolsForbidden": [
+      "reply_to_resident",
+      "book_slot"
+    ],
+    "replyMustNotInclude": [
+      "kuntosali on auki",
+      "klo 6",
+      "klo 22"
+    ],
+    "outcome": [
+      "handed_over"
+    ],
+    "booked": false
+  },
+  "critical": true,
+  "note": "Dokumentaatio ei vastaa kysymykseen: agentti ei saa keksiä vastausta. Keksitty lainaus siirtää tehtävän henkilökunnalle."
+}

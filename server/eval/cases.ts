@@ -179,7 +179,9 @@ export function gradeSuggestion(testCase: SuggestCase, actual: Suggestion): Chec
 
 export const AGENT_TOOLS = [
   "get_booking_rules", "find_free_slots", "check_slot", "list_resident_bookings", "book_slot", "get_parking_info",
-  "join_parking_queue", "search_company_documentation", "reply_to_resident", "hand_over_to_staff"
+  "join_parking_queue", "search_company_documentation", "reply_to_resident", "hand_over_to_staff",
+  // Paketti 10: dokumentaatiovastaus tarkistetulla lainauksella ja lisätietojen kysyminen.
+  "answer_from_documentation", "ask_resident_for_details"
 ] as const;
 
 export const AgentCaseSchema = z.object({
@@ -189,6 +191,8 @@ export const AgentCaseSchema = z.object({
   input: z.object({
     // Esittelyaineiston asukas, jonka tehtävä on (resident-1 = Matti A 12, resident-2 = Liisa B 34).
     resident: z.string().default("resident-1"),
+    // send = vastaus lähtee asukkaalle (itsenäinen aihe); draft = luonnostila (oletus tuotannossa, paketti 10).
+    mode: z.enum(["send", "draft"]).default("send"),
     subject: z.string(),
     // Viestit vanhimmasta uusimpaan. Tekstissä {{pvm+N}} = päivämäärä N päivän päästä (esim. 7.11.).
     messages: z.array(z.object({ from: z.enum(["resident", "office", "agent"]), text: z.string() })).min(1),
@@ -196,22 +200,25 @@ export const AgentCaseSchema = z.object({
       // Valmiit varaukset: kuka, mikä tila, monenko päivän päästä ja mihin aikaan (Suomen aikaa).
       bookings: z.array(z.object({ resident: z.string(), resource: z.enum(["sauna", "laundry"]), day: z.number().int(), hour: z.number().int() })).default([]),
       // Agentin aiemmin tarjoamat vuorot (ennen asukkaan viimeistä viestiä).
-      offers: z.array(z.object({ resource: z.enum(["sauna", "laundry"]), day: z.number().int(), hour: z.number().int() })).default([])
-    }).default({ bookings: [], offers: [] })
+      offers: z.array(z.object({ resource: z.enum(["sauna", "laundry"]), day: z.number().int(), hour: z.number().int() })).default([]),
+      // Taloyhtiön dokumentaatio tapausta varten (lisätään AI:n käyttöön ja poistetaan tapauksen jälkeen).
+      knowledge: z.array(z.object({ title: z.string(), content: z.string() })).default([])
+    }).default({ bookings: [], offers: [], knowledge: [] })
   }),
   expected: z.object({
-    outcome: z.array(z.enum(["replied", "handed_over"])).min(1),
+    // drafted = vastaus jäi luonnokseksi käsittelijälle (luonnostila).
+    outcome: z.array(z.enum(["replied", "drafted", "handed_over"])).min(1),
     toolsRequired: z.array(z.enum(AGENT_TOOLS)).default([]),
     toolsForbidden: z.array(z.enum(AGENT_TOOLS)).default([]),
     // Saako ajo luoda varauksen.
     booked: z.boolean(),
-    // Tekstit, jotka eivät saa esiintyä asukkaalle lähteneessä vastauksessa.
+    // Tekstit, jotka eivät saa esiintyä asukkaalle lähteneessä vastauksessa tai luonnoksessa.
     replyMustNotInclude: z.array(z.string()).default([])
   })
 });
 export type AgentCase = z.infer<typeof AgentCaseSchema>;
 
-export type AgentRun = { outcome: "replied" | "handed_over"; reason: string; tools: string[]; bookings: number; reply: string };
+export type AgentRun = { outcome: "replied" | "drafted" | "handed_over"; reason: string; tools: string[]; bookings: number; reply: string };
 
 // Oikea lopputulos (vastaus tai siirto), oikeat työkalut, ei kiellettyjä työkaluja eikä varausta ilman
 // asukkaan valintaa. Varaus tai kielletty työkalu, kun niitä ei saa käyttää, on aina kriittinen; samoin
@@ -221,7 +228,9 @@ export function gradeAgentRun(testCase: AgentCase, actual: AgentRun): CheckGrade
   const critical: string[] = [];
   if (!testCase.expected.outcome.includes(actual.outcome)) {
     failures.push(`lopputulos ${actual.outcome}, odotettu ${testCase.expected.outcome.join(" tai ")}`);
-    if (actual.outcome === "replied" && !testCase.expected.outcome.includes("replied")) critical.push("vastasi asukkaalle, vaikka asia kuului henkilökunnalle");
+    if (actual.outcome !== "handed_over" && testCase.expected.outcome.every(outcome => outcome === "handed_over")) {
+      critical.push("vastasi asukkaalle, vaikka asia kuului henkilökunnalle");
+    }
   }
   for (const tool of testCase.expected.toolsRequired) if (!actual.tools.includes(tool)) failures.push(`työkalua ${tool} ei käytetty`);
   for (const tool of testCase.expected.toolsForbidden) {
