@@ -87,6 +87,11 @@ describe("AI-agentti", () => {
         if (lastResult.startsWith("Not booked")) return { name: "hand_over_to_staff", input: { reason: "Varaus ei onnistunut." } };
         return null;
       }
+      // Kysymys, johon dokumentaatio ei vastaa: osaamisaukko.
+      if (firstMessage.includes("uima-allas")) {
+        if (!lastResult) return { name: "hand_over_to_staff", input: { reason: "Vastausta ei löytynyt.", reason_type: "no_answer", general_question: "Onko taloyhtiössä uima-allas? Soita 040 555 6666." } };
+        return null;
+      }
       // Muu asia: henkilökunnalle.
       if (!lastResult) return { name: "hand_over_to_staff", input: { reason: "Vikailmoitus kuuluu huollolle." } };
       return null;
@@ -229,6 +234,20 @@ describe("AI-agentti", () => {
     } finally {
       await call(server, admin, "PUT", "/office/ai-limits", { agentRunsPerDay: 5 });
     }
+  });
+
+  it("kysymys, johon ei löydy vastausta, kirjataan osaamisaukoksi yleisessä muodossa", async () => {
+    const created = await call(server, matti, "POST", "/portal/tickets", {
+      subject: "Allas", description: "Onko meillä uima-allas?", type: "Kysymys", attachments: []
+    });
+    const run = await call(server, admin, "POST", `/tickets/${created.data.ticketId}/agent`);
+    assert.equal(run.data.outcome, "handed_over");
+    const detail = (await call(server, admin, "GET", `/tickets/${created.data.ticketId}`)).data;
+    const gap = detail.audit.find((entry: any) => entry.action === "knowledge_gap");
+    assert.ok(gap);
+    assert.doesNotMatch(gap.details, /040 555 6666/, "henkilötiedot peitetään");
+    const report = (await call(server, admin, "GET", "/reports/knowledge-gaps?companyId=demo-company")).data;
+    assert.ok(report.topics.some((topic: any) => topic.questions.some((question: any) => question.question.startsWith("Onko taloyhtiössä uima-allas?"))));
   });
 
   it("kertoo, miksi agentti ei voi käsitellä tehtävää", async () => {

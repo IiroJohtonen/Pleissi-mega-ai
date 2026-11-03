@@ -342,17 +342,33 @@ function tools(ticket: AgentTicket, state: RunState) {
   const handOverTool = betaZodTool({
     name: "hand_over_to_staff",
     description: "Leave the ticket to the property management staff. Use it when the matter is not about booking the sauna or laundry room or about parking, or when you cannot solve it with your tools. Do not reply to the resident in that case.",
-    inputSchema: z.object({ reason: z.string().min(1).describe("One short sentence in Finnish for the staff") }),
-    run: ({ reason }) => {
+    inputSchema: z.object({
+      reason: z.string().min(1).describe("One short sentence in Finnish for the staff"),
+      reason_type: z.enum(["no_answer", "out_of_scope", "needs_staff"]).default("needs_staff")
+        .describe("no_answer: the resident asked something your tools and the documentation do not answer; out_of_scope: not your matter; needs_staff: anything else"),
+      general_question: z.string().max(300).optional()
+        .describe("With no_answer: the resident's question in general form in Finnish, without names, apartments or other personal details")
+    }),
+    run: ({ reason, reason_type, general_question }) => {
       if (state.replied) return "You already replied; the ticket stays with you.";
       state.handedOver = true;
       state.reason = reason;
+      // Osaamisaukko: kysymys talteen yleisessä muodossa (henkilötiedot peitettyinä), jotta ratkaisu
+      // nousee muistiehdotuksissa kärkeen.
+      if (reason_type === "no_answer") recordKnowledgeGap(ticket, maskPersonalData(general_question?.trim() || ticket.subject));
       handOver(ticket, reason, state.manual);
       return "Handed over.";
     }
   });
 
   return [bookingRulesTool, freeSlotsTool, checkSlotTool, residentBookingsTool, bookTool, parkingTool, waitlistTool, knowledgeTool, replyTool, handOverTool];
+}
+
+function recordKnowledgeGap(ticket: AgentTicket, question: string) {
+  const topic = (db.prepare("SELECT topic FROM tickets WHERE id = ?").get(ticket.id) as { topic: string | null } | undefined)?.topic ?? null;
+  db.prepare("INSERT INTO knowledge_gaps (id, company_id, ticket_id, topic, question, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(id("gap"), ticket.company_id, ticket.id, topic, question.slice(0, 300), now());
+  audit(ticket.id, "knowledge_gap", { question: question.slice(0, 300) });
 }
 
 const AGENT_SIGNATURE = `\n\nYstävällisin terveisin\n${AGENT_ACTOR}\n(Tämä on automaattinen vastaus. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa sen käsittelyä.)`;
@@ -399,7 +415,9 @@ Your scope is exactly these matters:
   queue, and adding the resident to the parking queue
 Everything else is for the staff: fault reports, complaints, moves, renovations, keys, billing,
 cancelling or changing existing bookings, weekly slots, assigning a parking space, and anything you
-are unsure about. For those, call hand_over_to_staff and do not reply to the resident. If the
+are unsure about. For those, call hand_over_to_staff and do not reply to the resident. When the resident
+asks a question that your tools and the documentation do not answer, use reason_type no_answer and give
+the question in general form in general_question (no names, apartments or personal details). If the
 message mixes an in-scope request with something else, hand the whole ticket over.
 
 How to handle a booking request:
