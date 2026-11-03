@@ -282,6 +282,15 @@ describe("AI arvioi saapuvan tehtävän prioriteetin", () => {
     const suggested = await call(server, admin, "POST", `/tickets/${ticketId}/suggest`, { context: "Huoltomies käy torstaina klo 10." });
     assert.equal(suggested.status, 200);
     assert.equal(suggested.data.draft, "Huoltomies tulee torstaina.");
+    // AI:n luonnos tallentuu tehtävälle mittaria varten, ja AI:n vastaus pyynnön rinnalle lokiin.
+    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"), { readonly: true });
+    try {
+      assert.equal((db.prepare("SELECT ai_draft FROM tickets WHERE id = ?").get(ticketId) as { ai_draft: string }).ai_draft, "Huoltomies tulee torstaina.");
+      const stored = db.prepare("SELECT response FROM ai_requests WHERE ticket_id = ? AND feature = 'suggest'").get(ticketId) as { response: string };
+      assert.match(stored.response, /Huoltomies tulee torstaina/);
+    } finally {
+      db.close();
+    }
     assert.equal(suggested.data.usedAi, true);
     // Lisätieto tallentuu aikajanalle sisäiseksi muistiinpanoksi.
     const notes = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data.notes as { body: string }[];
