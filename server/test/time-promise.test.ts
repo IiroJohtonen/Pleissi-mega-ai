@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { after, before, describe, it } from "node:test";
-import { ADMIN_EMAIL, call, login, PASSWORD, startServer, type TestServer } from "./helpers.js";
+import { ADMIN_EMAIL, call, login, OTHER_MANAGER_EMAIL, PASSWORD, startServer, type TestServer } from "./helpers.js";
 
 // Aikalupaus: AI-agentin siirtäessä tehtävän asukkaalle kerrotaan päivä (tehtävän määräajasta, ei kellonaikaa),
 // vastuuisännöitsijää muistutetaan ennen lupauspäivää, ja Trendit näyttää, kuinka usein lupaukset pitävät.
@@ -60,28 +60,55 @@ describe("aikalupaus asukkaalle", () => {
     assert.fail(`Merkintää ${action} ei tullut`);
   }
 
-  it("siirrossa asukkaalle kerrotaan päivä tehtävän määräajasta; muistutus ja mittari", async () => {
+  it("lupaus luonnokseksi vain asetuksella; uusi päivä määräajan siirrossa; muistutus myös varahenkilölle; mittari", async () => {
+    // Asetus on oletuksena pois, ja sen voi kytkeä päälle vain automaattisen käynnistyksen ollessa päällä.
+    assert.equal((await call(server, admin, "GET", "/agent/settings")).data.timePromise, false);
+    await call(server, admin, "PUT", "/agent/settings", { autoStart: false });
+    assert.equal((await call(server, admin, "PUT", "/agent/settings", { timePromise: true })).status, 409);
+    await call(server, admin, "PUT", "/agent/settings", { autoStart: true });
+    assert.equal((await call(server, admin, "PUT", "/agent/settings", { timePromise: true })).data.timePromise, true);
+
     const created = await call(server, matti, "POST", "/portal/tickets", {
       subject: "Pesukone", description: "Vaadin korvausta pesukoneen rikkoutumisesta.", type: "Pyyntö", attachments: []
     });
     assert.equal(created.status, 201);
     const ticketId = created.data.ticketId as string;
-    const detail = await waitFor(ticketId, "time_promise_made");
+    const detail = await waitFor(ticketId, "time_promise_drafted");
     assert.ok(detail.ticket.due_date, "tehtävällä on määräaika");
-    assert.equal(detail.ticket.promised_date, detail.ticket.due_date);
-    const portal = (await call(server, matti, "GET", `/portal/tickets/${ticketId}`)).data;
-    const promise = (portal.messages as any[]).find(message => message.direction === "outbound");
-    assert.ok(promise, "asukas sai viestin");
-    assert.match(promise.body, new RegExp(`palaamme siihen viimeistään ${finnish(detail.ticket.promised_date).replace(/\./g, "\\.")}`));
-    assert.doesNotMatch(promise.body, /klo|\d{1,2}[:.]\d{2}\b(?!\.)/, "ei kellonaikaa");
+    assert.equal(detail.ticket.promise_draft_date, detail.ticket.due_date);
+    assert.equal(detail.ticket.promised_date, null, "lupaus kirjataan vasta lähetettäessä");
+    const label = finnish(detail.ticket.due_date).replace(/\./g, "\\.");
+    assert.match(detail.ticket.draft, new RegExp(`palaamme siihen viimeistään ${label}`));
+    assert.doesNotMatch(detail.ticket.draft, /klo/, "ei kellonaikaa");
+    assert.ok(!(detail.messages as any[]).some(message => message.direction === "outbound"), "asukkaalle ei lähtenyt mitään");
+
+    // Käsittelijä lähetti lupauksen (sähköposti ei ole testissä käytössä, joten lähetys kirjataan kuten recordSentPromise).
+    const sentAt = new Date(Date.now() - 60_000).toISOString();
+    const users = (await call(server, admin, "GET", "/users")).data as { id: string; email: string; name: string }[];
+    const backup = users.find(user => user.email === OTHER_MANAGER_EMAIL)!;
+    let db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
+    try {
+      db.prepare("UPDATE tickets SET promised_date = due_date, promised_at = ?, promise_draft_date = NULL, draft = '' WHERE id = ?").run(sentAt, ticketId);
+      db.prepare("INSERT OR REPLACE INTO company_managers (company_id, user_id, backup) VALUES ('demo-company', ?, 1)").run(backup.id);
+    } finally {
+      db.close();
+    }
+    assert.ok((await call(server, admin, "GET", "/companies")).data.find((company: any) => company.id === "demo-company").backup_ids.includes(backup.id));
+
+    // Määräajan siirto: luonnokseen ilmoitus uudesta päivästä.
+    const later = new Date(Date.now() + 20 * 86_400_000).toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
+    assert.equal((await call(server, admin, "PUT", `/tickets/${ticketId}/fields`, { dueDate: later })).status, 200);
+    const moved = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    assert.match(moved.ticket.draft, new RegExp(`käsittely on siirtynyt\\. Palaamme siihen viimeistään ${finnish(later).replace(/\./g, "\\.")}`));
+    assert.equal(moved.ticket.promise_draft_date, later);
 
     // Avoin lupaus näkyy mittarissa.
     let promises = (await call(server, admin, "GET", "/reports/trends?companyId=demo-company&months=3")).data.promises;
     assert.deepEqual([promises.promises, promises.open, promises.kept], [1, 1, 0]);
 
-    // Lupauspäivä on huomenna: palvelimen käynnistyessä ajettava muistutus menee vastuuisännöitsijälle.
+    // Lupauspäivä on huomenna: palvelimen käynnistyessä ajettava muistutus menee vastuuisännöitsijälle ja varahenkilölle.
     await server.stop();
-    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
+    db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
     try {
       const tomorrow = new Date(Date.now() + 86_400_000).toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
       db.prepare("UPDATE tickets SET promised_date = ? WHERE id = ?").run(tomorrow, ticketId);
@@ -92,10 +119,12 @@ describe("aikalupaus asukkaalle", () => {
     admin = await login(server, ADMIN_EMAIL);
     const reminded = await waitFor(ticketId, "time_promise_reminder_failed").catch(() => waitFor(ticketId, "time_promise_reminder_sent"));
     assert.ok(reminded.ticket.promise_reminded_at);
+    const targets = (reminded.audit as any[]).filter(entry => entry.action.startsWith("time_promise_reminder")).map(entry => JSON.parse(entry.details).to);
+    assert.ok(targets.includes(backup.name), `varahenkilö: ${JSON.stringify(targets)}`);
 
     // Käsittelijä vastaa ennen lupauspäivää: lupaus piti.
     const replied = await call(server, admin, "POST", `/tickets/${ticketId}/message`, { sender: "Isännöitsijä", body: "Selvitämme asian.", channel: "portal" });
-    assert.ok([200, 201].includes(replied.status), JSON.stringify(replied.data));
+    assert.equal(replied.status, 200);
     promises = (await call(server, admin, "GET", "/reports/trends?companyId=demo-company&months=3")).data.promises;
     assert.deepEqual([promises.promises, promises.kept, promises.keptShare], [1, 1, 1]);
   });

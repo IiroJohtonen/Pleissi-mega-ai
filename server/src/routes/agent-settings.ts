@@ -6,6 +6,7 @@ import {
 import { requireAdmin } from "../auth.js";
 import { db } from "../db.js";
 import { isTopic } from "../incidents.js";
+import { setTimePromiseEnabled, timePromiseEnabled } from "../time-promise.js";
 import { id, now } from "../util.js";
 
 // ---------------------------------------------------------------------------------------------
@@ -20,17 +21,23 @@ agentSettingsRouter.get("/agent/settings", requireAdmin, (req, res) => {
   const companies = agentAutoCompanies();
   const requested = typeof req.query.companyId === "string" ? req.query.companyId : "";
   const companyId = companies.some(company => company.id === requested) ? requested : companies[0]?.id ?? "";
-  res.json({ autoStart: agentAutoDefault(), companies, companyId, topics: companyId ? topicAutonomy(companyId) : [] });
+  res.json({ autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), companies, companyId, topics: companyId ? topicAutonomy(companyId) : [] });
 });
 
 agentSettingsRouter.put("/agent/settings", requireAdmin, (req, res) => {
-  const parsed = z.object({ autoStart: z.boolean() }).safeParse(req.body);
+  const parsed = z.object({ autoStart: z.boolean().optional(), timePromise: z.boolean().optional() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista asetus." });
-  setAgentAutoDefault(parsed.data.autoStart);
+  if (parsed.data.autoStart !== undefined) setAgentAutoDefault(parsed.data.autoStart);
+  // Aikalupauksen voi kytkeä päälle vain, kun AI-agentin automaattinen käynnistys on päällä (oletuksena tai jossain taloyhtiössä).
+  if (parsed.data.timePromise) {
+    const anyAuto = agentAutoDefault() || agentAutoCompanies().some(company => company.autoStart === true);
+    if (!anyAuto) return res.status(409).json({ error: "Kytke ensin AI-agentin automaattinen käynnistys päälle." });
+  }
+  if (parsed.data.timePromise !== undefined) setTimePromiseEnabled(parsed.data.timePromise);
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "agent_settings_updated", JSON.stringify(parsed.data), now()
   );
-  res.json({ autoStart: agentAutoDefault() });
+  res.json({ autoStart: agentAutoDefault(), timePromise: timePromiseEnabled() });
 });
 
 // Taloyhtiön ohitus: true = päällä, false = pois, null = toimiston oletus.

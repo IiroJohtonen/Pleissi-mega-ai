@@ -7,6 +7,7 @@ import { aiAvailable, classifyDraftChange, suggestReply } from "../ai.js";
 import { changedParts, rememberAiDraft, recordDraftChange, takeDraftComparison } from "../ai-draft-edits.js";
 import { SAFETY_ADVICE } from "../incidents.js";
 import { recordGuidanceGap, senderGuidance, senderLineForAi } from "../sender-types.js";
+import { recordSentPromise } from "../time-promise.js";
 import { withAiLog } from "../ai-log.js";
 import { searchKnowledgeChunks } from "../knowledge-chunks.js";
 import { selectSimilarTickets } from "../similar-tickets.js";
@@ -428,6 +429,8 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   `).run(timestamp, req.params.id);
   // AI-agentin luonnoksen tarjoamat vuorot tulevat voimaan, ja agentti jatkaa asukkaan vastauksesta.
   activateDraftOffers(req.params.id, !comparison || comparison.edit === "rewritten");
+  // Luonnoksen aikalupaus kirjataan, kun lähetetyssä viestissä on luvattu päivä.
+  recordSentPromise(req.params.id, parsed.data.body, timestamp, res.locals.user?.name ?? parsed.data.actor);
 
   const replyAuditId = id("audit");
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(

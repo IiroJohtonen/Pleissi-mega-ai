@@ -8,7 +8,7 @@ type AgentTopic = {
   topic: string; drafts: number; readyShare: number | null; ready: boolean; handovers: number; agentRuns: number;
   approved: boolean; approvedBy: string | null; approvedAt: string | null; autonomous: boolean;
 };
-type AgentSettingsData = { autoStart: boolean; companies: AgentCompany[]; companyId: string; topics: AgentTopic[] };
+type AgentSettingsData = { autoStart: boolean; timePromise: boolean; companies: AgentCompany[]; companyId: string; topics: AgentTopic[] };
 
 const overrideValue = (value: boolean | null) => (value === null ? "default" : value ? "on" : "off");
 const overrideFromValue = (value: string) => (value === "default" ? null : value === "on");
@@ -24,6 +24,7 @@ export function AgentSettingsCard() {
     .then(found => {
       setData({
         autoStart: Boolean(found?.autoStart),
+        timePromise: Boolean(found?.timePromise),
         companies: Array.isArray(found?.companies) ? found.companies : [],
         companyId: typeof found?.companyId === "string" ? found.companyId : "",
         topics: Array.isArray(found?.topics) ? found.topics : []
@@ -57,6 +58,21 @@ export function AgentSettingsCard() {
           <small>{t("Koskee taloyhtiöitä, joille ei ole valittu omaa asetusta. Vaatii, että AI-agentti on päällä.")}</small>
         </span>
         <input type="checkbox" role="switch" checked={data.autoStart} onChange={event => void save("/agent/settings", { autoStart: event.target.checked })} />
+        <i aria-hidden="true" />
+      </label>
+
+      <label className="switch-row">
+        <span>
+          <strong>{t("Aikalupaus asukkaalle")}</strong>
+          <small>{t("Kun agentti ei osaa vastata, tehtävän luonnokseksi tulee viesti, jossa kerrotaan päivä, johon mennessä asiaan palataan. Käsittelijä lähettää sen. Vaatii automaattisen käynnistyksen.")}</small>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={data.timePromise}
+          disabled={!data.timePromise && !data.autoStart && !data.companies.some(company => company.autoStart === true)}
+          onChange={event => void save("/agent/settings", { timePromise: event.target.checked })}
+        />
         <i aria-hidden="true" />
       </label>
 

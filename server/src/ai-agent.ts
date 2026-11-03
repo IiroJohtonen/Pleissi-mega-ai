@@ -12,7 +12,7 @@ import { drafts, type Incident } from "./incidents.js";
 import { memoryForAi } from "./memory.js";
 import { chunkSourceLabel, eligibleChunk, MIN_QUOTE_CHARS, quoteInChunk, searchKnowledgeChunks } from "./knowledge-chunks.js";
 import { notifyAgentHandover } from "./notify.js";
-import { makePromise } from "./time-promise.js";
+import { draftPromise } from "./time-promise.js";
 import { maskPersonalData } from "./privacy-filter.js";
 import { examplesPrompt, selectSimilarTickets } from "./similar-tickets.js";
 import { AGENT_SENDER_TYPES, type SenderType } from "./sender-types.js";
@@ -478,15 +478,10 @@ async function deliverOrDraft(ticket: AgentTicket, state: RunState, message: str
 // Tehtävä palaa henkilökunnalle: agentin hoitama tehtävä siirtyy takaisin päätösjonoon. Tehtävä, jota
 // agentti ei ollut vielä ottanut hoitaakseen, jää ennalleen. Painikkeesta käynnistetyssä ajossa perustelu
 // kirjataan aina sisäiseksi muistiinpanoksi.
-async function sendTimePromise(ticket: AgentTicket) {
-  const promise = makePromise(ticket.id, AGENT_ACTOR);
-  if (!promise) return;
-  try {
-    const sent = await deliverReply(ticket, promise.message);
-    if (!sent.ok) audit(ticket.id, "time_promise_not_sent", { error: sent.error });
-  } catch (error) {
-    audit(ticket.id, "time_promise_not_sent", { error: error instanceof Error ? error.message : String(error) });
-  }
+// Aikalupaus luonnokseksi, kun agentti ei osannut vastata ja automaattinen käynnistys on taloyhtiössä päällä.
+function draftTimePromise(ticket: AgentTicket) {
+  if (!agentAutoStartEnabled(ticket.company_id)) return;
+  draftPromise(ticket.id, AGENT_ACTOR);
 }
 
 // Automaattisesti käynnistyneestä siirrosta lähtee sähköposti vastuuisännöitsijälle.
@@ -496,9 +491,9 @@ function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; a
   audit(ticket.id, "ai_agent_handover", { reason });
   db.prepare("UPDATE tickets SET agent_state = NULL WHERE id = ?").run(ticket.id);
   if (run.auto) void notifyAgentHandover(ticket.id, reason);
-  // Aikalupaus: kun agentti siirtää tehtävän ilman käsittelijää, asukkaalle kerrotaan päivä, johon mennessä
-  // asiaan palataan (kerran tehtävää kohden).
-  if (!manual) void sendTimePromise(ticket);
+  // Aikalupaus: kun agentti ei osannut vastata, luonnokseen tulee viesti päivästä, johon mennessä asiaan palataan
+  // (asetus; kerran tehtävää kohden). Käsittelijä lähettää sen.
+  draftTimePromise(ticket);
   if (current?.ai_action === "ai") {
     db.prepare("UPDATE tickets SET ai_action = 'pending_decision', ai_reason = ?, status = 'open', updated_at = ? WHERE id = ?")
       .run(reason, now(), ticket.id);

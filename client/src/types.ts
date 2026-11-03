@@ -80,6 +80,8 @@ export type Company = {
   manager_name?: string | null;
   // Taloyhtiön muut isännöitsijät (ilman vastuuisännöitsijää).
   manager_ids?: string[];
+  // Muista isännöitsijöistä varahenkilöiksi merkityt.
+  backup_ids?: string[];
   resident_count?: number;
 };
 
