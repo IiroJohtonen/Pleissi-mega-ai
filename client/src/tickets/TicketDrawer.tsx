@@ -15,6 +15,7 @@ import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
 import { MergeSuggestion, TargetApartmentField } from "./TicketLinks";
+import { RecipientsField, saveRecipients } from "./Recipients";
 import { SenderTypeField } from "./SenderType";
 import { UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
@@ -330,7 +331,9 @@ export function TicketDrawer({
     draftEditor.current?.focus({ preventScroll: true });
   }
 
-  const recipient = (replyTarget ?? lastInbound)?.sender.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
+  // Käsittelijän muokkaama vastaanottajalista ohittaa oletuksen (viestin lähettäjä tai asukkaat).
+  const recipient = (detail.replyRecipientsCustom && detail.replyRecipients?.length ? detail.replyRecipients.join(", ") : "")
+    || (replyTarget ?? lastInbound)?.sender.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
     || detail.reporters.map(r => r.email?.trim()).filter(Boolean).join(", ");
   // Vastata voi kaikkiin keskeneräisiin tehtäviin; suljettu tehtävä avataan ensin uudelleen.
   const canReply = ticket.status !== "closed";
@@ -628,6 +631,14 @@ export function TicketDrawer({
           method: "POST",
           body: JSON.stringify({ residentId, actor: actorName() })
         });
+        // Uusi asukas sähköpostiketjuun: käsittelijä päättää, lisätäänkö hänen osoitteensa vastaanottajaksi. Lisätty
+        // osoite pysyy listalla, joten vastaukset menevät jatkossa sekä aiemmalle että uudelle vastaanottajalle.
+        const email = residents.find(resident => resident.id === residentId)?.email?.trim() ?? "";
+        const current = detail.replyRecipients ?? [];
+        if (email && !current.some(item => item.toLowerCase() === email.toLowerCase())
+          && window.confirm(t("Lisätäänkö {0} vastaanottajaksi tämän tehtävän sähköpostiketjuun? Vastaukset menevät jatkossa myös hänelle.", email))) {
+          await saveRecipients(ticket.id, [...current, email]);
+        }
       }
       await onChanged();
     } finally {
@@ -1267,6 +1278,7 @@ export function TicketDrawer({
                   </select>
                 </label>
               )}
+              <RecipientsField ticketId={ticket.id} recipients={detail.replyRecipients ?? []} onChanged={onChanged} />
               <div className="reply-cc">
                 <label>
                   <span>{t("Kopio (Cc)")}</span>

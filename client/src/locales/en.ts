@@ -2695,4 +2695,10 @@ export const en: Record<string, string> = {
   "Kun agentti ei osaa vastata, tehtävän luonnokseksi tulee viesti, jossa kerrotaan päivä, johon mennessä asiaan palataan. Käsittelijä lähettää sen. Vaatii automaattisen käynnistyksen.": "When the agent cannot answer, the ticket's draft gets a message telling the date by which the matter will be followed up. The handler sends it. Requires automatic start.",
   "Varahenkilö: {0}": "Backup person: {0}",
   "varahenkilö": "backup person",
+  "Vastaanottajien tallennus epäonnistui.": "Saving the recipients failed.",
+  "{0} ei ole kelvollinen sähköpostiosoite.": "{0} is not a valid email address.",
+  "Vastaanottajat": "Recipients",
+  "Poista vastaanottaja {0}": "Remove recipient {0}",
+  "Lisää vastaanottaja": "Add recipient",
+  "Lisätäänkö {0} vastaanottajaksi tämän tehtävän sähköpostiketjuun? Vastaukset menevät jatkossa myös hänelle.": "Add {0} as a recipient to this ticket's email thread? Replies will go to them as well from now on.",
 };

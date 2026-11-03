@@ -1049,6 +1049,30 @@ describe("sovellus", () => {
     }
   });
 
+  it("vastaanottajia voi lisätä ja poistaa kuten sähköpostissa, ja muutos tallentuu tehtävälle", async () => {
+    responses["/tickets/ticket-1"] = {
+      ticket: { ...overdueTicket, company_name: "As Oy Koivikko" }, messages: [], audit: [], reporters: [], apartments: [],
+      notes: [], workOrders: [], contractor: null, attachments: [], replyRecipients: ["vanha@example.com"], replyRecipientsCustom: false
+    };
+    responses["/tickets/ticket-1/recipients"] = { recipients: ["vanha@example.com", "uusi@example.com"], custom: true };
+    try {
+      const calls = mockApi();
+      await renderApp(staff("Isännöitsijä"), "#/tickets/ticket-1");
+      expect(await screen.findByText("vanha@example.com", {}, { timeout: 5000 })).toBeTruthy();
+      const input = screen.getByRole("textbox", { name: "Lisää vastaanottaja" });
+      fireEvent.change(input, { target: { value: "uusi@example.com" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      await vi.waitFor(() => {
+        const put = calls.find(request => request.method === "PUT" && request.url.endsWith("/tickets/ticket-1/recipients"));
+        expect(put && JSON.parse(String(put.body)).recipients).toEqual(["vanha@example.com", "uusi@example.com"]);
+      });
+      expect(await screen.findByRole("button", { name: "Poista vastaanottaja uusi@example.com" })).toBeTruthy();
+    } finally {
+      delete responses["/tickets/ticket-1"];
+      delete responses["/tickets/ticket-1/recipients"];
+    }
+  });
+
   it("päätösjonossa ei ole Osoita minulle -painiketta, koska tehtävät on jo osoitettu käyttäjälle", async () => {
     mockApi();
     await renderApp(staff("Asiakaspalvelu"), "#/queue");

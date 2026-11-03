@@ -181,6 +181,9 @@ export type TicketDetail = {
   replyAccounts: ReplyAccount[];
   // Käyttäjän allekirjoitus, joka lisätään vastauksen loppuun; tyhjä, jos sitä ei ole.
   signature: string;
+  // Vastauksen vastaanottajat ja onko lista käsittelijän muokkaama (muuten alkuperäinen lähettäjä).
+  replyRecipients?: string[];
+  replyRecipientsCustom?: boolean;
   // Remonttitehtävän muutostyöilmoitus; muilla tehtävillä null.
   renovation?: RenovationNotice | null;
   // Asukasportaalin lomakkeen kentät otsikoineen (huoltotyötilaus, häiriöilmoitus jne.); muilla null.

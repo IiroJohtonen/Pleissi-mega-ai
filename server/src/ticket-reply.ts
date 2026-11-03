@@ -1,5 +1,6 @@
 import { db } from "./db.js";
 import { type OutgoingAttachment, parseSender, type ReplyAccount, sendEmail } from "./mail.js";
+import { storedRecipients } from "./reply-recipients.js";
 import { id, now } from "./util.js";
 
 export type TicketReplyResult =
@@ -53,7 +54,9 @@ export async function sendTicketReply(input: {
     .map(row => row.email.trim())
     .filter(email => /^[^\s<>,;@]+@[^\s<>,;@]+$/.test(email));
 
-  const recipient = replyTo || reporterEmails.join(", ");
+  // Käsittelijän muokkaama vastaanottajalista (tehtävän Vastaanottajat-kenttä) ohittaa oletuksen.
+  const stored = storedRecipients(ticket.id);
+  const recipient = stored.length ? stored.join(", ") : replyTo || reporterEmails.join(", ");
   if (!recipient) {
     return { ok: false, status: 400, error: "Tehtävällä ei ole sähköpostiosoitetta, johon vastauksen voisi lähettää." };
   }
