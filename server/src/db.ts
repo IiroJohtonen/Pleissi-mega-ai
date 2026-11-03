@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
+import { DEFAULT_SENDER_DOMAINS } from "./default-sender-domains.js";
 
 // Tietokanta ja tiedostot ovat oletuksena käynnistyskansion data-kansiossa; DATA_DIR vaihtaa paikan.
 export const dataDir = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), "data"));
@@ -825,6 +826,8 @@ db.exec(`
 // Toimiston tuntemat lähettäjädomainit: JSON [{domain, type}]. Ohittavat AI:n lähettäjätyypin.
 if (!officeColumns.some(existing => existing.name === "known_sender_domains")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN known_sender_domains TEXT NOT NULL DEFAULT '[]'");
+  // Viranomaisten domainit valmiiksi listalle (kerran; pääkäyttäjä voi muokata).
+  db.prepare("UPDATE office_settings SET known_sender_domains = ?").run(JSON.stringify(DEFAULT_SENDER_DOMAINS));
 }
 if (!officeColumns.some(existing => existing.name === "incident_detection")) {
   db.exec("ALTER TABLE office_settings ADD COLUMN incident_detection INTEGER NOT NULL DEFAULT 1");
