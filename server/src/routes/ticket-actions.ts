@@ -3,7 +3,8 @@ import path from "node:path";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
-import { suggestReply } from "../ai.js";
+import { aiAvailable, classifyDraftChange, suggestReply } from "../ai.js";
+import { changedParts, rememberAiDraft, recordDraftChange, takeDraftComparison } from "../ai-draft-edits.js";
 import { SAFETY_ADVICE } from "../incidents.js";
 import { recordGuidanceGap, senderGuidance, senderLineForAi } from "../sender-types.js";
 import { withAiLog } from "../ai-log.js";
@@ -177,6 +178,9 @@ ticketActionsRouter.post("/tickets/:id/suggest", async (req, res) => {
     suggestion.reason, source?.knowledgeId ?? null, source?.documentTitle ?? null, source?.id ?? null,
     source?.page ?? null, timestamp, req.params.id
   );
+
+  // Mittaria varten talteen vain AI:n tekemä luonnos.
+  if (suggestion.usedAi) rememberAiDraft(req.params.id, suggestion.draft);
 
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"),
@@ -403,6 +407,8 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   });
   if (!reply.ok) return res.status(reply.status).json({ error: reply.error });
   const { to: recipient, subject, timestamp } = reply;
+  // Kuinka paljon käsittelijä muokkasi AI:n luonnosta. Vastauksen teksti on ilman allekirjoitusta.
+  const comparison = takeDraftComparison(req.params.id, parsed.data.body);
 
   // Lähetetyt liitteet tallennetaan tehtävän liitteisiin samaan paikkaan kuin saapuneet.
   for (const attachment of outgoing.filter(item => !item.stored)) {
@@ -421,16 +427,28 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     WHERE id = ?
   `).run(timestamp, req.params.id);
 
+  const replyAuditId = id("audit");
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
-    id("audit"),
+    replyAuditId,
     req.params.id,
     res.locals.user?.name ?? parsed.data.actor,
     "reply_sent",
-    JSON.stringify({ to: recipient, ...(cc.length > 0 ? { cc: cc.join(", ") } : {}), subject }),
+    JSON.stringify({
+      to: recipient, ...(cc.length > 0 ? { cc: cc.join(", ") } : {}), subject,
+      ...(comparison ? { ai_draft_similarity: comparison.similarity, ai_draft_edit: comparison.edit } : {})
+    }),
     timestamp
   );
 
   res.json({ ok: true, to: recipient });
+
+  // Muokatusta luonnoksesta luokitellaan taustalla, oliko muutos sävyä vai asiakorjaus. Vastaus on jo lähtenyt.
+  if (comparison && (comparison.edit === "light" || comparison.edit === "heavy") && aiAvailable()) {
+    const parts = changedParts(comparison.draft, parsed.data.body);
+    void withAiLog(req.params.id, () => classifyDraftChange(parts))
+      .then(({ result }) => { if (result) recordDraftChange(replyAuditId, result.change, result.reason); })
+      .catch(error => console.error("Luonnoksen muokkauksen luokittelu epäonnistui:", error instanceof Error ? error.message : error));
+  }
 });
 
 // Tiedoston liittäminen suoraan tehtävälle (ei lähetä mitään). Sallittu tehtävän tilasta riippumatta.

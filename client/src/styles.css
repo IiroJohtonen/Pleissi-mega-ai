@@ -5451,3 +5451,24 @@ button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:dis
   border-radius: var(--radius-md);
   background: var(--surface);
 }
+
+/* AI-pyyntö ja vastaus rinnakkain lokissa; agentin työkalukutsut. */
+.ai-request-pair {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.ai-request-pair .ai-request-raw {
+  grid-column: 1 / -1;
+}
+
+.agent-trace {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+}
+
+.agent-trace pre {
+  margin: var(--space-1) 0;
+  white-space: pre-wrap;
+}

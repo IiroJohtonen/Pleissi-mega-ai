@@ -822,6 +822,8 @@ db.exec(`
   if (!columns.includes("sender_type")) db.exec("ALTER TABLE tickets ADD COLUMN sender_type TEXT");
   if (!columns.includes("sender_type_source")) db.exec("ALTER TABLE tickets ADD COLUMN sender_type_source TEXT");
   if (!columns.includes("sender_request")) db.exec("ALTER TABLE tickets ADD COLUMN sender_request TEXT");
+  // Viimeisin AI:n vastausehdotus (ai-draft-edits.ts). Lähetettyä vastausta verrataan siihen; tyhjennetään, kun vastaus lähtee.
+  if (!columns.includes("ai_draft")) db.exec("ALTER TABLE tickets ADD COLUMN ai_draft TEXT");
 }
 // Toimiston tuntemat lähettäjädomainit: JSON [{domain, type}]. Ohittavat AI:n lähettäjätyypin.
 if (!officeColumns.some(existing => existing.name === "known_sender_domains")) {

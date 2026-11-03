@@ -20,6 +20,7 @@ import { UnidentifiedCompanyPanel } from "./TicketCompany";
 import { RenovationPanel } from "../views/Renovations";
 import { Toast } from "../components/Toast";
 import { GuideEditor } from "../components/GuideEditor";
+import { AgentTraceDetails } from "../components/AiRequest";
 import { t } from "../i18n";
 import { OpenResidentButton } from "../components/Reporter";
 
@@ -1467,6 +1468,7 @@ export function TicketDrawer({
               <span>{actionLabel(item.event.action)}</span>
               {eventNote(item.event.details) && <span className="event-note">{eventNote(item.event.details)}</span>}
               <small>{actorLabel(item.event.actor)} · {formatDate(item.created_at)}</small>
+              {item.event.action === "ai_agent_trace" && isManager() && <AgentTraceDetails auditId={item.id} />}
             </div>
           ))}
           {timeline.length === 0 && <p className="drawer-empty">{t("Ei tapahtumia.")}</p>}

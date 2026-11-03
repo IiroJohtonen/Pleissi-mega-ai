@@ -13,7 +13,13 @@ type TrendResult = {
   resolution: { topic: string; closed: number; medianHours: number }[];
   contractors: { name: string; orders: number; open: number; medianHours: number | null }[];
   incidents: { topic: string; stairwell: string; status: string; firstReportAt: string; resolution: string | null; companyName: string; reports: number }[];
+  aiDrafts?: {
+    topic: string; drafts: number; unchanged: number; light: number; heavy: number; rewritten: number; tone: number; fact: number;
+    unclassified: number; readyShare: number | null; ready: boolean; agentRuns: number; handovers: number; handoverShare: number | null;
+  }[];
 };
+
+const percent = (value: number | null) => (value === null ? "–" : `${Math.floor(value * 1000) / 10} %`);
 
 const monthLabel = (month: string) => `${Number(month.slice(5, 7))}/${month.slice(2, 4)}`;
 const hours = (value: number | null) => (value === null ? "–" : formatDuration(value * 3_600_000));
@@ -141,6 +147,39 @@ export function Trends({ companies, companyId }: { companies: Company[]; company
                 </table>
               )}
             </div>
+          </div>
+
+          <div className="report-card">
+            <h2>{t("AI-luonnosten muokkaus")}</h2>
+            <p className="muted">
+              {t("Kuinka paljon käsittelijät muokkaavat AI:n vastausehdotuksia ennen lähetystä, koko historialta. AI-agentti voi vastata aiheeseen itse vasta, kun vähintään 100 luonnoksesta 99 % on lähtenyt sellaisenaan tai pelkällä sävymuokkauksella.")}
+            </p>
+            {!result.aiDrafts?.length ? <p className="muted">{t("Ei vielä AI-luonnoksista lähetettyjä vastauksia.")}</p> : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>{t("Aihe")}</th><th className="num">{t("Luonnoksia")}</th><th className="num">{t("Sellaisenaan")}</th>
+                    <th className="num">{t("Sävymuokkaus")}</th><th className="num">{t("Asiakorjaus")}</th><th className="num">{t("Uudelleen kirjoitettu")}</th>
+                    <th className="num">{t("Kelpaa")}</th><th>{t("Agentin raja")}</th><th className="num">{t("Agentin siirrot")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.aiDrafts.map(row => (
+                    <tr key={row.topic}>
+                      <th scope="row">{topicLabel(row.topic)}</th>
+                      <td className="num">{row.drafts}</td>
+                      <td className="num">{row.unchanged}</td>
+                      <td className="num">{row.tone}</td>
+                      <td className="num" title={row.unclassified ? t("{0} muokkausta luokittelematta", row.unclassified) : undefined}>{row.fact}</td>
+                      <td className="num">{row.rewritten}</td>
+                      <td className="num">{percent(row.readyShare)}</td>
+                      <td>{row.ready ? t("Täyttyy") : row.drafts < 100 ? t("Luonnoksia {0}/100", row.drafts) : t("Ei täyty")}</td>
+                      <td className="num">{row.agentRuns ? `${row.handovers}/${row.agentRuns} (${percent(row.handoverShare)})` : "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           <div className="report-card">

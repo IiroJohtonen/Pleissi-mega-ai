@@ -1,6 +1,7 @@
 import { db } from "./db.js";
 import { TOPIC_RULES, type TopicKey } from "./incidents.js";
 import { helsinkiParts, id, now, stairwellOf } from "./util.js";
+import { draftTopicStats } from "./ai-draft-edits.js";
 
 // ---------------------------------------------------------------------------------------------
 // Taloyhtiön vikahistoria ja trendit. Kaikki on laskentaa tehtävistä, yhteisistä vioista ja
@@ -143,7 +144,7 @@ const median = (values: number[]) => {
 const hoursBetween = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / 3_600_000;
 
 export function trends(companyIds: string[], months: number) {
-  if (!companyIds.length) return { months: [], topics: [], repeats: [], resolution: [], contractors: [], incidents: [] };
+  if (!companyIds.length) return { months: [], topics: [], aiDrafts: [], repeats: [], resolution: [], contractors: [], incidents: [] };
   const since = (() => {
     const date = new Date();
     date.setDate(1);
@@ -270,6 +271,8 @@ export function trends(companyIds: string[], months: number) {
   return {
     months: monthList,
     topics,
+    // AI-luonnosten muokkaus ja agentin raja aiheittain koko historialta (ai-draft-edits.ts).
+    aiDrafts: draftTopicStats(companyIds).map(item => ({ ...item, label: TOPIC_RULES[item.topic as TopicKey]?.label ?? item.topic })),
     repeats,
     resolution,
     contractors: [...contractors.values()].map(item => ({
