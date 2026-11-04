@@ -10,7 +10,7 @@ import {
 } from "../format";
 import { actorName, api, errorMessage, fetchObjectUrl, isAdmin, isManager, MANAGEMENT_OFFICE, type OfficeUser, session } from "../session";
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
-import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
+import { splitAiNote, assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
@@ -141,6 +141,8 @@ function TimelineMessage({
   const inbound = message.direction === "inbound";
   // Saapuneesta viestistä näytetään oletuksena vain uusi teksti, ei lainattua aiempaa viestiä.
   const { text, quoted } = inbound ? splitQuotedReply(message.body) : { text: message.body, quoted: "" };
+  // Lähetetyn AI-vastauksen huomautus pienellä allekirjoituksen alla.
+  const { text: shown, note } = inbound ? { text, note: "" } : splitAiNote(text);
 
   return (
     <div className={`message ${message.direction} ${collapsed ? "collapsed" : ""} ${replying ? "replying" : ""}`}>
@@ -182,7 +184,8 @@ function TimelineMessage({
         </svg>
       </button>
       <strong>{message.subject}</strong>
-      <p>{text}</p>
+      <p>{shown}</p>
+      {note && <p className="ai-note">{note}</p>}
       {quoted && (
         <>
           <button className="message-quoted-toggle" onClick={() => setShowQuoted(!showQuoted)} aria-expanded={showQuoted}>

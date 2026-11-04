@@ -8,7 +8,7 @@ type AgentTopic = {
   topic: string; drafts: number; readyShare: number | null; ready: boolean; handovers: number; agentRuns: number;
   approved: boolean; approvedBy: string | null; approvedAt: string | null; autonomous: boolean;
 };
-type AgentSettingsData = { autoStart: boolean; timePromise: boolean; agentName: string; signature: string; companies: AgentCompany[]; companyId: string; topics: AgentTopic[] };
+type AgentSettingsData = { autoStart: boolean; timePromise: boolean; agentName: string; signature: string; note: string; companies: AgentCompany[]; companyId: string; topics: AgentTopic[] };
 
 const overrideValue = (value: boolean | null) => (value === null ? "default" : value ? "on" : "off");
 const overrideFromValue = (value: string) => (value === "default" ? null : value === "on");
@@ -29,6 +29,7 @@ export function AgentSettingsCard() {
         timePromise: Boolean(found?.timePromise),
         agentName: typeof found?.agentName === "string" ? found.agentName : "",
         signature: typeof found?.signature === "string" ? found.signature : "",
+        note: typeof found?.note === "string" ? found.note : "",
         companies: Array.isArray(found?.companies) ? found.companies : [],
         companyId: typeof found?.companyId === "string" ? found.companyId : "",
         topics: Array.isArray(found?.topics) ? found.topics : []
@@ -99,7 +100,12 @@ export function AgentSettingsCard() {
           {t("Tallenna nimi")}
         </button>
       </div>
-      {data.signature && <pre className="agent-signature-preview">{data.signature}</pre>}
+      {data.signature && (
+        <div className="agent-signature-preview">
+          <pre>{data.signature}</pre>
+          {data.note && <p className="ai-note">{data.note}</p>}
+        </div>
+      )}
 
       <h3>{t("Taloyhtiökohtaiset poikkeukset")}</h3>
       <div className="table-card">

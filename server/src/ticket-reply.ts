@@ -1,5 +1,6 @@
 import { db } from "./db.js";
 import { type OutgoingAttachment, parseSender, type ReplyAccount, sendEmail } from "./mail.js";
+import { composeBody } from "./mail-common.js";
 import { id, now } from "./util.js";
 
 export type TicketReplyResult =
@@ -19,6 +20,8 @@ export async function sendTicketReply(input: {
   account?: ReplyAccount;
   cc?: string[];
   attachments?: OutgoingAttachment[];
+  // Alaviite viestin loppuun (AI-vastauksen huomautus): sähköpostissa pienellä, aikajanalla viestin lopussa.
+  footnote?: string;
 }): Promise<TicketReplyResult> {
   const { ticket } = input;
   type InboundRow = { sender: string; subject: string; created_at: string };
@@ -80,6 +83,7 @@ export async function sendTicketReply(input: {
       cc: input.cc?.join(", ") || undefined,
       subject,
       body: input.body,
+      footnote: input.footnote,
       sourceMessageId: gmailImport?.gmail_message_id,
       attachments: (input.attachments ?? []).map(({ filename, mimeType, content }) => ({ filename, mimeType, content })),
       companyId: ticket.company_id,
@@ -117,7 +121,7 @@ export async function sendTicketReply(input: {
     "outbound",
     input.actor,
     subject,
-    input.body,
+    composeBody({ body: input.body, footnote: input.footnote }).text,
     timestamp,
     "email"
   );

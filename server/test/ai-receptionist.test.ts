@@ -112,7 +112,8 @@ describe("AI-reseptionisti", () => {
     assert.equal(settings.autoStart, false);
     // Agentin nimi allekirjoituksessa: oletus Aino-AI, pääkäyttäjä voi vaihtaa.
     assert.equal(settings.agentName, "Aino-AI");
-    assert.match(settings.signature, /Aino-AI, tekoälyavustaja[^]*kirjoitti tekoäly/);
+    assert.match(settings.signature, /Aino-AI, tekoälyavustaja/);
+    assert.match(settings.note, /^Tämän vastauksen kirjoitti tekoäly\./);
     const renamed = await call(server, admin, "PUT", "/agent/settings", { agentName: "Pleissi-Pete" });
     assert.match(renamed.data.signature, /Pleissi-Pete, tekoälyavustaja/);
     assert.equal((await call(server, admin, "PUT", "/agent/settings", { agentName: "" })).status, 400);

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getAuthorizedTicket } from "../access.js";
 import { aiAvailable, classifyDraftChange, suggestReply } from "../ai.js";
 import { changedParts, classifyDraftEdit, draftSimilarity, rememberAiDraft, recordDraftChange, takeDraftComparison } from "../ai-draft-edits.js";
-import { agentSignature } from "../agent-autonomy.js";
+import { agentSignatureLines, aiNote } from "../agent-autonomy.js";
 import { SAFETY_ADVICE } from "../incidents.js";
 import { recordGuidanceGap, senderGuidance, senderLineForAi } from "../sender-types.js";
 import { recordSentPromise } from "../time-promise.js";
@@ -401,7 +401,7 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
   const agentReply = Boolean(agentDraft.agent_owned && agentDraft.ai_draft)
     && classifyDraftEdit(draftSimilarity(agentDraft.ai_draft ?? "", parsed.data.body)) !== "rewritten";
   const body = agentReply
-    ? withSignature(parsed.data.body, agentSignature(res.locals.user?.name ?? "isännöitsijätoimisto"))
+    ? withSignature(parsed.data.body, agentSignatureLines())
     : parsed.data.signature ? withSignature(parsed.data.body, renderSignature(res.locals.user?.id)) : parsed.data.body;
 
   const accounts = replyAccountsFor(ticket, res.locals.user?.id);
@@ -419,6 +419,8 @@ ticketActionsRouter.post("/tickets/:id/reply", async (req, res) => {
     messageId: parsed.data.messageId,
     account: fromAccount,
     cc,
+    // AI-vastauksen huomautus allekirjoituksen alle pienellä (tarkistajan nimen kanssa).
+    footnote: agentReply ? aiNote(res.locals.user?.name ?? "isännöitsijätoimisto") : undefined,
     attachments: outgoing.map(({ filename, mimeType, content }) => ({ filename, mimeType, content }))
   });
   if (!reply.ok) return res.status(reply.status).json({ error: reply.error });

@@ -2,6 +2,7 @@ import addressparser from "nodemailer/lib/addressparser/index.js";
 import { db } from "./db.js";
 import { decryptSecret, encryptSecret } from "./mail-secrets.js";
 import {
+  composeBody,
   getMailAccount, importInboundEmail, type InboundEmail, isImported, isSkipped, mailEnabled, NOTIFICATION_HEADER,
   type OutgoingAttachment, type OutgoingEmail, pollWindow, saveMailAccount, skipMessage
 } from "./mail-common.js";
@@ -315,7 +316,11 @@ export async function sendViaMicrosoft(accountId: string, input: OutgoingEmail):
   const token = await accessToken(accountId);
   const message = {
     subject: input.subject,
-    body: { contentType: "Text", content: input.body },
+    // Alaviitteellinen viesti lähtee HTML:nä (alaviite pienellä), muuten tekstinä kuten ennenkin.
+    body: (() => {
+      const { text, html } = composeBody(input);
+      return html ? { contentType: "HTML", content: html } : { contentType: "Text", content: text };
+    })(),
     toRecipients: recipientsOf(input.to),
     ccRecipients: recipientsOf(input.cc),
     bccRecipients: recipientsOf(input.bcc),

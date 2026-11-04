@@ -14,9 +14,10 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
   agentti ei jatka asukkaan vastauksista, ja agentin tarjoamat vuorot raukeavat. Agentin luonnos jää vastauskenttään.
   Vastuu palaa käsittelijälle myös, kun agentti siirtää tehtävän henkilökunnalle tai käsittelijä kirjoittaa vastauksen
   itse.
-- **AI-allekirjoitus:** AI-agentin vastauksissa on allekirjoitus, josta asukas näkee, että vastauksen kirjoitti
-  tekoäly ("Aino-AI, tekoälyavustaja"). Kun käsittelijä lähettää agentin luonnoksen, allekirjoituksessa kerrotaan myös,
-  kuka vastauksen tarkisti. Agentin nimen voi vaihtaa asetuksista.
+- **AI-allekirjoitus:** AI-agentin vastauksissa on allekirjoitus "Aino-AI, tekoälyavustaja". Sen alla on pienellä
+  harmaalla huomautus, josta asukas näkee, että vastauksen kirjoitti tekoäly. Kun käsittelijä lähettää agentin
+  luonnoksen, huomautuksessa kerrotaan myös, kuka vastauksen tarkisti. Huomautus näkyy samoin hillitysti asukasportaalissa
+  ja tehtävän aikajanalla. Agentin nimen voi vaihtaa asetuksista.
 - Painikkeen ilmoitus kertoo nyt oikein, kun agentti teki luonnoksen.
 
 **Miten**

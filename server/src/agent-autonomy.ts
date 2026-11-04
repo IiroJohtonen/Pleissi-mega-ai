@@ -50,17 +50,23 @@ export function setAgentName(name: string) {
 
 // Allekirjoitus AI-agentin vastauksiin: asukas näkee aina, että vastauksen kirjoitti tekoäly. Kun käsittelijä lähettää
 // agentin luonnoksen, allekirjoituksessa kerrotaan myös, kuka vastauksen tarkisti.
-export function agentSignature(reviewer?: string): string {
+// Allekirjoituksen nimirivit ("Ystävällisin terveisin / Aino-AI, tekoälyavustaja / toimisto").
+export function agentSignatureLines(): string {
   const office = (db.prepare("SELECT name FROM office_settings WHERE id = 1").get() as { name: string } | undefined)?.name ?? "";
-  return [
-    "Ystävällisin terveisin",
-    `${agentName()}, tekoälyavustaja`,
-    ...(office ? [office] : []),
-    "",
-    reviewer
-      ? `Tämän vastauksen kirjoitti tekoäly, ja sen tarkisti ${reviewer}. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa asian käsittelyä.`
-      : "Tämän vastauksen kirjoitti tekoäly. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa asian käsittelyä."
-  ].join("\n");
+  return ["Ystävällisin terveisin", `${agentName()}, tekoälyavustaja`, ...(office ? [office] : [])].join("\n");
+}
+
+// Huomautus allekirjoituksen alle: sähköpostissa pienellä harmaalla (alaviite), portaalissa ja aikajanalla hillitysti.
+export const AI_NOTE_PREFIX = "Tämän vastauksen kirjoitti tekoäly";
+export function aiNote(reviewer?: string): string {
+  return reviewer
+    ? `${AI_NOTE_PREFIX}, ja sen tarkisti ${reviewer}. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa asian käsittelyä.`
+    : `${AI_NOTE_PREFIX}. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa asian käsittelyä.`;
+}
+
+// Koko allekirjoitus tekstinä (nimirivit ja huomautus), esim. asetusten esikatseluun.
+export function agentSignature(reviewer?: string): string {
+  return `${agentSignatureLines()}\n\n${aiNote(reviewer)}`;
 }
 
 export function agentAutoDefault(): boolean {

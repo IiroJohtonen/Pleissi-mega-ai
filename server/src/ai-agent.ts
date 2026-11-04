@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { aiAvailable, classifyAgentGuard, type AgentForbidden } from "./ai.js";
-import { agentAutoStartEnabled, agentSignature, topicAutonomous } from "./agent-autonomy.js";
+import { agentAutoStartEnabled, agentSignatureLines, aiNote, topicAutonomous } from "./agent-autonomy.js";
 import { rememberAiDraft } from "./ai-draft-edits.js";
 import { agentRunsToday, aiBudgetBlocked, aiLimits, BUDGET_REASONS, recordAiUsage } from "./ai-budget.js";
 import { type AgentTraceStep, logAgentTrace, logAiRequest, logAiResponse, withAiLog } from "./ai-log.js";
@@ -466,16 +466,17 @@ function recordKnowledgeGap(ticket: AgentTicket, question: string) {
 // Vastaus lähtee samaa reittiä kuin asukkaan viesti: sähköpostiin vastataan sähköpostilla ja portaalin
 // tehtävään viestillä portaalissa, jossa asukas näkee sen ja voi vastata.
 async function deliverReply(ticket: AgentTicket, message: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  // Allekirjoituksesta asukas näkee, että vastauksen kirjoitti tekoäly (agentin nimi asetuksista).
-  const body = `${message.trim()}\n\n${agentSignature()}`;
+  // Allekirjoituksesta asukas näkee, että vastauksen kirjoitti tekoäly (agentin nimi asetuksista). Huomautus on
+  // allekirjoituksen alla: sähköpostissa pienellä harmaalla alaviitteenä.
+  const body = `${message.trim()}\n\n${agentSignatureLines()}`;
   const email = db.prepare("SELECT 1 FROM messages WHERE ticket_id = ? AND direction = 'inbound' AND channel = 'email' LIMIT 1").get(ticket.id);
   if (email) {
-    const sent = await sendTicketReply({ ticket, body, actor: AGENT_ACTOR });
+    const sent = await sendTicketReply({ ticket, body, footnote: aiNote(), actor: AGENT_ACTOR });
     return sent.ok ? { ok: true } : { ok: false, error: sent.error };
   }
   if (ticket.source_channel !== "portal") return { ok: false, error: "The ticket has no channel for replying to the resident." };
   db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(id("message"), ticket.id, "outbound", AGENT_ACTOR, ticket.subject, body, now(), "portal");
+    .run(id("message"), ticket.id, "outbound", AGENT_ACTOR, ticket.subject, `${body}\n\n${aiNote()}`, now(), "portal");
   return { ok: true };
 }
 

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import {
-  agentAutoCompanies, agentAutoDefault, agentName, agentSignature, AutonomyError, setAgentAutoDefault, setAgentAutoOverride, setAgentName,
+  agentAutoCompanies, agentAutoDefault, agentName, agentSignatureLines, aiNote, AutonomyError, setAgentAutoDefault, setAgentAutoOverride, setAgentName,
   setTopicAutonomy, topicAutonomy
 } from "../agent-autonomy.js";
 import { requireAdmin } from "../auth.js";
@@ -23,7 +23,7 @@ agentSettingsRouter.get("/agent/settings", requireAdmin, (req, res) => {
   const requested = typeof req.query.companyId === "string" ? req.query.companyId : "";
   const companyId = companies.some(company => company.id === requested) ? requested : companies[0]?.id ?? "";
   res.json({
-    autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), agentName: agentName(), signature: agentSignature(),
+    autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), agentName: agentName(), signature: agentSignatureLines(), note: aiNote(),
     companies, companyId, topics: companyId ? topicAutonomy(companyId) : []
   });
 });
@@ -44,7 +44,7 @@ agentSettingsRouter.put("/agent/settings", requireAdmin, (req, res) => {
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "agent_settings_updated", JSON.stringify(parsed.data), now()
   );
-  res.json({ autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), agentName: agentName(), signature: agentSignature() });
+  res.json({ autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), agentName: agentName(), signature: agentSignatureLines(), note: aiNote() });
 });
 
 // Taloyhtiön ohitus: true = päällä, false = pois, null = toimiston oletus.

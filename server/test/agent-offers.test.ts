@@ -46,4 +46,16 @@ describe("luonnostilan tarjoukset", () => {
     assert.match(agentSignature(), /Tämän vastauksen kirjoitti tekoäly\./);
     assert.match(agentSignature("Hanna Lehtonen"), /kirjoitti tekoäly, ja sen tarkisti Hanna Lehtonen\./);
   });
+
+  it("AI-huomautus on sähköpostissa allekirjoituksen alla pienellä harmaalla, tekstiversiossa omana kappaleenaan", async () => {
+    const { composeBody } = await import("../src/mail-common.js");
+    const { agentSignatureLines, aiNote } = await import("../src/agent-autonomy.js");
+    const mail = composeBody({ body: `Vuoro on varattu <pe>.\n\n${agentSignatureLines()}`, footnote: aiNote() });
+    assert.match(mail.text, /Aino-AI, tekoälyavustaja[^]*\n\nTämän vastauksen kirjoitti tekoäly\./);
+    assert.ok(mail.html);
+    assert.match(mail.html!, /Vuoro on varattu &lt;pe&gt;\./, "teksti suojataan HTML:ssä");
+    assert.match(mail.html!, /font-size: 11px; line-height: 1\.4; color: #8a8f98;">Tämän vastauksen kirjoitti tekoäly/);
+    // Ilman alaviitettä viesti lähtee kuten ennenkin pelkkänä tekstinä.
+    assert.deepEqual(composeBody({ body: "Hei" }), { text: "Hei" });
+  });
 });
