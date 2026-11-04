@@ -110,13 +110,13 @@ describe("AI-reseptionisti", () => {
   it("automaattinen käynnistys on oletuksena pois; vain pääkäyttäjä muuttaa asetuksia", async () => {
     const settings = (await call(server, admin, "GET", "/agent/settings")).data;
     assert.equal(settings.autoStart, false);
-    // Agentin nimi allekirjoituksessa: oletus Aino, pääkäyttäjä voi vaihtaa.
-    assert.equal(settings.agentName, "Aino");
-    assert.match(settings.signature, /Aino, tekoälyavustaja[^]*kirjoitti tekoäly/);
+    // Agentin nimi allekirjoituksessa: oletus Aino-AI, pääkäyttäjä voi vaihtaa.
+    assert.equal(settings.agentName, "Aino-AI");
+    assert.match(settings.signature, /Aino-AI, tekoälyavustaja[^]*kirjoitti tekoäly/);
     const renamed = await call(server, admin, "PUT", "/agent/settings", { agentName: "Pleissi-Pete" });
     assert.match(renamed.data.signature, /Pleissi-Pete, tekoälyavustaja/);
     assert.equal((await call(server, admin, "PUT", "/agent/settings", { agentName: "" })).status, 400);
-    await call(server, admin, "PUT", "/agent/settings", { agentName: "Aino" });
+    await call(server, admin, "PUT", "/agent/settings", { agentName: "Aino-AI" });
     assert.equal((await call(server, service, "GET", "/agent/settings")).status, 403);
     const before = requests.length;
     await receive("Sauna", "Miten voin perua saunavuoron?");

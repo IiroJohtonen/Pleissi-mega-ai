@@ -12,7 +12,7 @@ import { id, now } from "./util.js";
 //   Raja tarkistetaan jokaisella ajolla: jos osuus putoaa rajan alle, aihe palaa luonnostilaan.
 // ---------------------------------------------------------------------------------------------
 
-export const DEFAULT_AGENT_NAME = "Aino";
+export const DEFAULT_AGENT_NAME = "Aino-AI";
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS agent_autonomy (

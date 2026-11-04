@@ -195,7 +195,7 @@ describe("AI-agentti", () => {
     const reply = proposed.messages.find((message: any) => message.direction === "outbound");
     assert.match(reply.body, /Vapaita vuoroja/);
     // Allekirjoituksesta asukas näkee, että vastauksen kirjoitti tekoäly.
-    assert.match(reply.body, /Aino, tekoälyavustaja/);
+    assert.match(reply.body, /Aino-AI, tekoälyavustaja/);
     assert.match(reply.body, /Tämän vastauksen kirjoitti tekoäly\./);
     // Agentilla on vastuu tehtävästä (vihreä painike).
     assert.equal(proposed.ticket.agent_owned, 1);

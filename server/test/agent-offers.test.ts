@@ -42,7 +42,7 @@ describe("luonnostilan tarjoukset", () => {
 
   it("AI-allekirjoitus kertoo, että vastauksen kirjoitti tekoäly, ja käsittelijän lähettämässä myös tarkistajan", async () => {
     const { agentSignature } = await import("../src/agent-autonomy.js");
-    assert.match(agentSignature(), /^Ystävällisin terveisin\nAino, tekoälyavustaja/);
+    assert.match(agentSignature(), /^Ystävällisin terveisin\nAino-AI, tekoälyavustaja/);
     assert.match(agentSignature(), /Tämän vastauksen kirjoitti tekoäly\./);
     assert.match(agentSignature("Hanna Lehtonen"), /kirjoitti tekoäly, ja sen tarkisti Hanna Lehtonen\./);
   });
