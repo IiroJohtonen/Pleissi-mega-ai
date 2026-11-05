@@ -22,6 +22,19 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 **Testit:** PR:n kuvauksessa
 
+## 3.11.2026 · Vastauksen vastaanottajat muokattavissa
+
+**Mitä muutettiin**
+- **Vastaanottajat-kenttä:** vastauksen yläpuolella, Kopio-kentän yllä, näkyvät vastaanottajat kuten sähköpostissa.
+  Osoitteita voi lisätä (Enter tai pilkku) ja poistaa (×). Muutos tallentuu tehtävälle, ja kaikki vastaukset menevät
+  sen jälkeen näihin osoitteisiin. Oletuksena vastaanottaja on kuten ennenkin viestin lähettäjä.
+- **Asukkaan vaihto:** kun tehtävälle valitaan asukas, jolla on sähköpostiosoite, Pleissi kysyy, lisätäänkö hänet
+  vastaanottajaksi tehtävän sähköpostiketjuun. Jos lisätään, vastaukset menevät jatkossa sekä aiemmalle että uudelle
+  vastaanottajalle. Vanhan osoitteen voi poistaa kentästä.
+
+**Miten**
+- Tehtävä › Vastaus asukkaalle › Vastaanottajat.
+
 ## 3.11.2026 · AI-agentin vastuu näkyy vihreänä ja AI-vastauksissa on oma allekirjoitus
 
 **Mitä muutettiin**

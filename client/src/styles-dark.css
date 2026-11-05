@@ -1139,6 +1139,22 @@
     background: #48312e;
     color: #ea9c95
 }
+:root[data-theme="dark"] .reply-to-field {
+    color: #afbdce
+}
+:root[data-theme="dark"] .recipient-chip {
+    background: #2f3c4a;
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .recipient-chip button {
+    color: #afbdce
+}
+:root[data-theme="dark"] .recipient-chip button:hover {
+    color: #e0e3e7
+}
+:root[data-theme="dark"] .reply-to + .reply-cc {
+    border-top: 1px solid #394656
+}
 :root[data-theme="dark"] .suggest-header .ai-button.agent-owned {
     color: #ffffff
 }
