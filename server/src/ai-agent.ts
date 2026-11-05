@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { aiAvailable, classifyAgentGuard, type AgentForbidden } from "./ai.js";
-import { agentAutoStartEnabled, agentSignatureLines, aiNote, topicAutonomous } from "./agent-autonomy.js";
+import { agentAutoStartEnabled, agentSignatureLines, aiNote } from "./agent-autonomy.js";
 import { rememberAiDraft } from "./ai-draft-edits.js";
 import { agentRunsToday, aiBudgetBlocked, aiLimits, BUDGET_REASONS, recordAiUsage } from "./ai-budget.js";
 import { type AgentTraceStep, logAgentTrace, logAiRequest, logAiResponse, withAiLog } from "./ai-log.js";
@@ -391,7 +391,7 @@ function tools(ticket: AgentTicket, state: RunState) {
         state.handedOver = true;
         state.reason = "AI-agentti ei löytänyt vastaukselle lainausta taloyhtiön dokumentaatiosta.";
         audit(ticket.id, "ai_agent_quote_failed", { chunk_id, quote: quote.slice(0, 300) });
-        handOver(ticket, state.reason, state);
+        handOver(ticket, state.reason, state, { toManager: true });
         return "The quote was not found in that chunk. The ticket was handed over to staff; do not reply.";
       }
       const sent = await deliverOrDraft(ticket, state, message);
@@ -444,7 +444,8 @@ function tools(ticket: AgentTicket, state: RunState) {
       // Osaamisaukko: kysymys talteen yleisessä muodossa (henkilötiedot peitettyinä), jotta ratkaisu
       // nousee muistiehdotuksissa kärkeen.
       if (reason_type === "no_answer") recordKnowledgeGap(ticket, maskPersonalData(general_question?.trim() || ticket.subject));
-      handOver(ticket, reason, state);
+      // Aiheesta ei ole dokumentaatiota: tehtävä ohjataan vastuuisännöitsijälle.
+      handOver(ticket, reason, state, { toManager: reason_type === "no_answer" });
       return "Handed over.";
     }
   });
@@ -534,13 +535,19 @@ export function stopAgent(ticketId: string, actor: string) {
   return true;
 }
 
-function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; auto?: boolean }) {
+// toManager: aiheesta ei ole dokumentaatiota (agentti ei löytänyt vastausta tai lainausta), joten tehtävä ohjataan
+// taloyhtiön vastuuisännöitsijälle: hänestä tulee käsittelijä, ja hän saa sähköpostin siitä, mitä kysyttiin ja miksi.
+function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; auto?: boolean }, options: { toManager?: boolean } = {}) {
   releaseResponsibility(ticket.id);
   const manual = run.manual;
   const current = loadTicket(ticket.id);
-  audit(ticket.id, "ai_agent_handover", { reason });
+  audit(ticket.id, "ai_agent_handover", { reason, to_manager: options.toManager || undefined });
   db.prepare("UPDATE tickets SET agent_state = NULL WHERE id = ?").run(ticket.id);
-  if (run.auto) void notifyAgentHandover(ticket.id, reason);
+  if (options.toManager) {
+    const manager = (db.prepare("SELECT manager_id FROM companies WHERE id = ?").get(ticket.company_id) as { manager_id: string | null } | undefined)?.manager_id;
+    if (manager) db.prepare("UPDATE tickets SET assignee_id = ? WHERE id = ?").run(manager, ticket.id);
+  }
+  if (run.auto || options.toManager) void notifyAgentHandover(ticket.id, reason);
   // Aikalupaus: kun agentti ei osannut vastata, luonnokseen tulee viesti päivästä, johon mennessä asiaan palataan
   // (asetus; kerran tehtävää kohden). Käsittelijä lähettää sen.
   draftTimePromise(ticket);
@@ -779,7 +786,7 @@ const rerun = new Set<string>();
 // Käsittelijä käynnistää agentin tehtävän painikkeesta. Agentti käsittelee tehtävän ja palauttaa tuloksen;
 // AI-kutsu tehdään vain tästä painikkeesta ja agentin hoitaman tehtävän asukkaan vastauksesta, jotta
 // tokeneita ei kulu tehtäviin, joita kukaan ei ole antanut agentille.
-// options.mode ohittaa aiheen autonomian (vain evaluointi: agentin päätökset arvioidaan lähetystilassa).
+// Painikkeesta agentti hoitaa tehtävän itse (send). options.mode valitsee tilan evaluoinnissa (esim. luonnostila).
 export async function runAgentNow(ticketId: string, options: { mode?: "send" | "draft" } = {}): Promise<AgentResult> {
   if (!aiAgentEnabled()) throw new AgentUnavailableError("AI-agentti ei ole käytössä. Pääkäyttäjä voi kytkeä sen päälle AI-asetuksista.", 403);
   const ticket = loadTicket(ticketId);
@@ -798,7 +805,8 @@ export async function runAgentNow(ticketId: string, options: { mode?: "send" | "
   }
   running.add(ticketId);
   try {
-    const { result } = await withAiLog(ticketId, () => runAgent(ticket, { manual: true, mode: options.mode ?? agentMode(ticket) }));
+    // Käsittelijä antoi tehtävän agentille: agentti hoitaa sen kokonaan (vastaa asukkaalle itse ja jatkaa vastauksista).
+    const { result } = await withAiLog(ticketId, () => runAgent(ticket, { manual: true, mode: options.mode ?? "send" }));
     return result;
   } catch (error) {
     console.error("AI-agentti epäonnistui tehtävällä", ticketId, error);
@@ -865,7 +873,7 @@ export function continueAgent(ticketId: string) {
           handOver(current, limited, { manual: false });
           break;
         }
-        await withAiLog(ticketId, () => runAgent(current, { manual: false, mode: agentMode(current) }));
+        await withAiLog(ticketId, () => runAgent(current, { manual: false, mode: "send" }));
       } while (rerun.has(ticketId));
     } catch (error) {
       console.error("AI-agentti epäonnistui tehtävällä", ticketId, error);
@@ -875,13 +883,6 @@ export function continueAgent(ticketId: string) {
       running.delete(ticketId);
     }
   })();
-}
-
-// Luonnostila on oletus myös painikkeesta käynnistetylle agentille. Vastaus lähtee itse vain, kun pääkäyttäjä on
-// hyväksynyt tehtävän aiheen taloyhtiölle ja taloyhtiön luonnosmittarin raja täyttyy.
-function agentMode(ticket: AgentTicket): "send" | "draft" {
-  const topic = (db.prepare("SELECT topic FROM tickets WHERE id = ?").get(ticket.id) as { topic: string | null } | undefined)?.topic ?? null;
-  return topicAutonomous(ticket.company_id, topic) ? "send" : "draft";
 }
 
 // Käsittelijä lähetti agentin luonnoksen, jossa tarjottiin vuoroja: tarjous tulee voimaan lähetyshetkellä, ja agentti
@@ -912,7 +913,8 @@ export function autoStartAgent(ticketId: string) {
   if (ineligibleReason(ticket) || running.has(ticketId) || !aiAvailable("agent") || runLimitReason(ticket)) return;
   // Yhteiseen vikaan kuuluva tehtävä hoidetaan poikkeaman viestillä, ei agentilla.
   if (openIncidentOf(ticketId)) return;
-  const mode = agentMode(ticket);
+  // Agentti hoitaa uuden tehtävän itse; aiheet ilman dokumentaatiota se ohjaa vastuuisännöitsijälle.
+  const mode = "send";
   running.add(ticketId);
   void (async () => {
     try {
@@ -968,7 +970,7 @@ async function bookingRejected(bookingId: string) {
     const notice = `The ${RESOURCE_NAMES[booking.resource] ?? booking.resource} booking you requested for the resident (${label}) was rejected by the `
       + "property management system because the slot was already booked there. The booking has been cancelled. "
       + "Tell the resident that this time was not available after all, offer the next free slots with find_free_slots, and do not book anything until the resident chooses.";
-    await withAiLog(ticket.id, () => runAgent(ticket, { manual: false, notice, mode: agentMode(ticket) }));
+    await withAiLog(ticket.id, () => runAgent(ticket, { manual: false, notice, mode: "send" }));
   } catch (error) {
     console.error("AI-agentti epäonnistui hylätyn varauksen jälkeen tehtävällä", ticket.id, error);
     handOver(ticket, `${reason} AI-agentti ei voinut tarjota uutta vuoroa.`, { manual: false });
