@@ -1,28 +1,20 @@
 import { useEffect, useState } from "react";
 import { t } from "../i18n";
 import { api, errorMessage } from "../session";
-import { topicLabel } from "../topics";
 
 type AgentCompany = { id: string; name: string; autoStart: boolean | null };
-type AgentTopic = {
-  topic: string; drafts: number; readyShare: number | null; ready: boolean; handovers: number; agentRuns: number;
-  approved: boolean; approvedBy: string | null; approvedAt: string | null; autonomous: boolean;
-};
-type AgentSettingsData = { autoStart: boolean; timePromise: boolean; agentName: string; signature: string; note: string; companies: AgentCompany[]; companyId: string; topics: AgentTopic[] };
+type AgentSettingsData = { autoStart: boolean; timePromise: boolean; agentName: string; signature: string; note: string; companies: AgentCompany[] };
 
 const overrideValue = (value: boolean | null) => (value === null ? "default" : value ? "on" : "off");
 const overrideFromValue = (value: string) => (value === "default" ? null : value === "on");
-const percent = (share: number | null) => (share === null ? "–" : `${Math.round(share * 1000) / 10} %`);
 
-// Asetukset › AI: AI-reseptionistin automaattinen käynnistys ja aiheiden autonomia. Vain pääkäyttäjälle.
+// Asetukset › AI: AI-reseptionistin automaattinen käynnistys, aikalupaus ja allekirjoitus. Vain pääkäyttäjälle.
 export function AgentSettingsCard() {
   const [data, setData] = useState<AgentSettingsData | null>(null);
   const [error, setError] = useState("");
-  // Taloyhtiö, jonka itsenäisiä aiheita tarkastellaan (raja ja hyväksyntä ovat taloyhtiökohtaisia).
-  const [companyId, setCompanyId] = useState("");
   // Agentin nimi allekirjoituksessa; tallennetaan erikseen.
   const [nameDraft, setNameDraft] = useState("");
-  const load = (company = companyId) => api<AgentSettingsData>(`/agent/settings${company ? `?companyId=${encodeURIComponent(company)}` : ""}`)
+  const load = () => api<AgentSettingsData>("/agent/settings")
     .then(found => {
       setData({
         autoStart: Boolean(found?.autoStart),
@@ -30,11 +22,8 @@ export function AgentSettingsCard() {
         agentName: typeof found?.agentName === "string" ? found.agentName : "",
         signature: typeof found?.signature === "string" ? found.signature : "",
         note: typeof found?.note === "string" ? found.note : "",
-        companies: Array.isArray(found?.companies) ? found.companies : [],
-        companyId: typeof found?.companyId === "string" ? found.companyId : "",
-        topics: Array.isArray(found?.topics) ? found.topics : []
+        companies: Array.isArray(found?.companies) ? found.companies : []
       });
-      if (typeof found?.companyId === "string") setCompanyId(found.companyId);
       if (typeof found?.agentName === "string") setNameDraft(found.agentName);
     })
     .catch(() => setError(t("AI-agentin asetusten lataus epäonnistui.")));
@@ -55,7 +44,7 @@ export function AgentSettingsCard() {
     <div className="settings-card" id="section-agent-receptionist">
       <h2>{t("AI-reseptionisti")}</h2>
       <p className="muted">
-        {t("Kun automaattinen käynnistys on päällä, AI-agentti käsittelee uudet tehtävät heti saapuessaan. Oletuksena agentti tekee vastauksesta luonnoksen, jonka käsittelijä tarkistaa ja lähettää, myös kun agentti käynnistetään tehtävältä painikkeesta. Agentti ei vastaa korvauksia, korjausvastuita, poikkeuslupia, riitoja, häiriöitä tai hätätilanteita koskeviin asioihin, vaan siirtää ne henkilökunnalle ja ilmoittaa vastuuisännöitsijälle sähköpostilla.")}
+        {t("AI-agentti hoitaa sille annetun tehtävän itse: vastaa asukkaalle ja tekee varaukset. Kun automaattinen käynnistys on päällä, agentti ottaa uudet tehtävät hoitaakseen heti niiden saapuessa. Jos aiheesta ei ole dokumentaatiota, agentti ohjaa tehtävän vastuuisännöitsijälle ja ilmoittaa hänelle sähköpostilla. Korvauksia, korjausvastuita, poikkeuslupia, riitoja, häiriöitä ja hätätilanteita koskeviin asioihin agentti ei vastaa, vaan siirtää ne henkilökunnalle.")}
       </p>
       {error && <p className="send-error">{error}</p>}
       <label className="switch-row">
@@ -131,54 +120,6 @@ export function AgentSettingsCard() {
           </tbody>
         </table>
       </div>
-
-      <h3>{t("Itsenäiset aiheet")}</h3>
-      <p className="reply-hint">
-        {t("Taloyhtiön aiheeseen agentti voi vastata itse vasta, kun taloyhtiön vähintään 100 luonnoksesta 99 % on lähtenyt sellaisenaan tai pelkällä sävymuokkauksella ja pääkäyttäjä on hyväksynyt aiheen taloyhtiölle. Jos osuus putoaa rajan alle, aihe palaa automaattisesti luonnostilaan.")}
-      </p>
-      {data.companies.length > 0 && (
-        <label className="agent-company">
-          <span>{t("Taloyhtiö")}</span>
-          <select value={companyId} onChange={event => { setCompanyId(event.target.value); void load(event.target.value); }}>
-            {data.companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-          </select>
-        </label>
-      )}
-      {data.topics.length === 0 ? <p className="muted">{t("Ei vielä AI-luonnoksista lähetettyjä vastauksia.")}</p> : (
-        <div className="table-card">
-          <table className="data-table">
-            <thead>
-              <tr><th>{t("Aihe")}</th><th>{t("Luonnoksia")}</th><th>{t("Kelpaa")}</th><th>{t("Tila")}</th><th /></tr>
-            </thead>
-            <tbody>
-              {data.topics.map(topic => (
-                <tr key={topic.topic}>
-                  <td>{topicLabel(topic.topic)}</td>
-                  <td>{topic.drafts}</td>
-                  <td>{percent(topic.readyShare)}</td>
-                  <td>
-                    {topic.autonomous ? t("Vastaa itse")
-                      : topic.approved ? t("Hyväksytty, raja ei täyty: luonnostila")
-                      : topic.ready ? t("Raja täyttyy: odottaa hyväksyntää")
-                      : t("Luonnostila")}
-                  </td>
-                  <td>
-                    {topic.approved ? (
-                      <button type="button" className="quiet-button" onClick={() => void save(`/agent/topics/${encodeURIComponent(topic.topic)}`, { companyId, autonomous: false })}>
-                        {t("Palauta luonnostilaan")}
-                      </button>
-                    ) : topic.ready ? (
-                      <button type="button" className="secondary" onClick={() => void save(`/agent/topics/${encodeURIComponent(topic.topic)}`, { companyId, autonomous: true })}>
-                        {t("Salli itsenäinen vastaus")}
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

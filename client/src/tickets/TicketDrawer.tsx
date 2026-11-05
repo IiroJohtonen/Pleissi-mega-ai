@@ -387,7 +387,7 @@ export function TicketDrawer({
   // varata vuoron; muut asiat se jättää käsittelijälle perustelun kanssa.
   const [agentRunning, setAgentRunning] = useState(false);
   async function runAgent() {
-    if (!window.confirm(t("AI-agentti lukee tehtävän. Sauna-, pyykkitupa- ja autopaikka-asioissa se vastaa asukkaalle itse ja voi varata vuoron. Muut asiat se jättää sinulle. Jatketaanko?"))) return;
+    if (!window.confirm(t("AI-agentti hoitaa tehtävän itse: vastaa asukkaalle ja tekee tarvittaessa varauksen. Jos aiheesta ei ole dokumentaatiota, agentti ohjaa tehtävän vastuuisännöitsijälle. Jatketaanko?"))) return;
     setAgentRunning(true);
     setSuggestError("");
     try {

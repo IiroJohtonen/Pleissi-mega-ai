@@ -4,6 +4,24 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 5.11.2026 · AI-agentti hoitaa tehtävän itse
+
+**Mitä muutettiin**
+- Kun tehtävä annetaan AI-agentille ("Anna AI-agentin hoitaa" tai automaattinen käynnistys), agentti hoitaa sen
+  kokonaan: vastaa asukkaalle, tekee varaukset ja jatkaa asukkaan vastauksista. Vastaus ei enää jää luonnokseksi.
+- Aihekohtaista hyväksyntää (99 % / 100 -raja ja pääkäyttäjän hyväksyntä) ei enää ole, ja sen osio poistettiin
+  asetuksista.
+- Jos aiheesta ei ole dokumentaatiota (agentti ei löydä vastausta tai sen lainausta ei löydy dokumentaatiosta), tehtävä
+  ohjataan taloyhtiön vastuuisännöitsijälle: hänestä tulee käsittelijä, ja hän saa sähköpostin siitä, mitä kysyttiin ja
+  miksi agentti ei vastannut.
+- Korvaukset, korjausvastuut, poikkeusluvat, riidat, häiriöt ja hätätilanteet menevät edelleen aina henkilökunnalle.
+
+**Miten**
+- Tehtävä › Vastaus asukkaalle › "Anna AI-agentin hoitaa".
+- Asetukset › AI › AI-reseptionisti (aiheiden hyväksyntä poistunut).
+
+**Testit:** PR:n kuvauksessa
+
 ## 3.11.2026 · AI-agentin vastuu näkyy vihreänä ja AI-vastauksissa on oma allekirjoitus
 
 **Mitä muutettiin**
