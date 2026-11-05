@@ -21,6 +21,7 @@ import { deleteEmbedding } from "../embedding.js";
 import { deleteOutboxForTicket } from "../integration/outbox.js";
 import { addResident } from "./residents.js";
 import { draftDueDateChange } from "../time-promise.js";
+import { EMAIL_PATTERN, MAX_RECIPIENTS, replyRecipients as replyRecipientsFor, saveRecipients } from "../reply-recipients.js";
 
 export const ticketsRouter: Router = express.Router();
 
@@ -398,10 +399,25 @@ ticketsRouter.get("/tickets/:id", (req, res) => {
   // Poistopyynnön vuoksi säilytetty tehtävä: anonymisoidaan, kun tehtävä suljetaan.
   const erasurePending = pendingErasure(req.params.id) ?? null;
 
+  // Vastauksen vastaanottajat (Vastaanottajat-kenttä): käsittelijän muokkaama lista tai oletus.
+  const { recipients: replyRecipients, custom: replyRecipientsCustom } = replyRecipientsFor(req.params.id);
+
   res.json({
     ticket, messages, audit, reporters, apartments, notes, attachments, workOrders, contractor, replyAccounts, signature,
-    renovation, form, erasurePending
+    renovation, form, erasurePending, replyRecipients, replyRecipientsCustom
   });
+});
+
+// Käsittelijä muokkaa vastauksen vastaanottajia (lisää tai poistaa osoitteita). Tyhjä lista palauttaa oletuksen.
+ticketsRouter.put("/tickets/:id/recipients", (req, res) => {
+  const ticket = getAuthorizedTicket(req.params.id) as { id: string } | null;
+  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+  const parsed = z.object({ recipients: z.array(z.string().trim()).max(MAX_RECIPIENTS) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: `Vastaanottajia voi olla enintään ${MAX_RECIPIENTS}.` });
+  const invalid = parsed.data.recipients.find(email => !EMAIL_PATTERN.test(email));
+  if (invalid) return res.status(400).json({ error: `${invalid} ei ole kelvollinen sähköpostiosoite.` });
+  const recipients = saveRecipients(ticket.id, parsed.data.recipients, res.locals.user?.name ?? "Käsittelijä");
+  res.json({ ...replyRecipientsFor(ticket.id), recipients });
 });
 
 ticketsRouter.put("/tickets/:id/fields", async (req, res) => {
