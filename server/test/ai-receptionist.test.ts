@@ -137,28 +137,43 @@ describe("AI-reseptionisti", () => {
     await call(server, admin, "PUT", "/agent/companies/demo-company", { autoStart: null });
   });
 
-  it("vastaa dokumentaatiosta tarkistetulla lainauksella luonnoksena, jota ei lähetetä", async () => {
-    const { ticketId } = await receive("Saunavuoron peruminen", "Miten voin perua saunavuoron?");
-    const detail = await waitFor(ticketId, "ai_agent_drafted");
-    assert.equal(detail.ticket.draft, "Voit perua vuoron maksutta kaksi tuntia ennen.");
-    assert.equal(detail.ticket.ai_draft, "Voit perua vuoron maksutta kaksi tuntia ennen.");
+  // Asukasportaalin tehtävä: agentin vastaus näkyy asukkaalle portaalissa (sähköposti ei ole testissä käytössä).
+  async function portal(subject: string, description: string) {
+    const matti = await login(server, "matti@example.com");
+    const created = await call(server, matti, "POST", "/portal/tickets", { subject, description, type: "Kysymys", attachments: [] });
+    assert.equal(created.status, 201);
+    return { ticketId: created.data.ticketId as string, matti };
+  }
+
+  it("hoitaa tehtävän itse: vastaa dokumentaatiosta tarkistetulla lainauksella ilman aihekohtaista hyväksyntää", async () => {
+    const { ticketId } = await portal("Saunavuoron peruminen", "Miten voin perua saunavuoron?");
+    const detail = await waitFor(ticketId, "ai_agent_replied");
+    const replies = (detail.messages as any[]).filter(message => message.direction === "outbound");
+    assert.equal(replies.length, 1, "vastaus lähti asukkaalle");
+    assert.match(replies[0].body, /^Voit perua vuoron maksutta kaksi tuntia ennen\./);
+    assert.match(replies[0].body, /Aino-AI, tekoälyavustaja\n[^]*\n\nTämän vastauksen kirjoitti tekoäly\./);
     assert.equal(detail.ticket.knowledge_source_chunk_id, chunkId);
-    assert.equal(detail.ticket.ai_action, "pending_decision");
-    assert.equal((detail.messages as any[]).filter(message => message.direction === "outbound").length, 0, "asukkaalle ei lähtenyt mitään");
-    // Luonnostilassakin agentilla on vastuu tehtävästä.
     assert.equal(detail.ticket.agent_owned, 1);
-    // Luonnostilassa ei ole autopaikkajonoon lisäystä; varaus on rajattu asukkaan hyväksymään tarjoukseen (koodissa).
     const agentRequest = [...requests].reverse().find(request => Array.isArray(request.tools) && request.tools.length > 0)!;
     const names = (agentRequest.tools as { name: string }[]).map(tool => tool.name);
-    assert.ok(!names.includes("join_parking_queue"));
-    assert.ok(names.includes("answer_from_documentation") && names.includes("ask_resident_for_details"));
+    assert.ok(names.includes("answer_from_documentation") && names.includes("ask_resident_for_details") && names.includes("book_slot"));
   });
 
-  it("keksitty lainaus siirtää tehtävän henkilökunnalle ja vastuuisännöitsijälle lähtee ilmoitus", async () => {
-    const { ticketId } = await receive("Saunavuoron peruminen", "Miten voin perua saunavuoron? [keksitty]");
+  it("aihe ilman dokumentaatiota (lainausta ei löydy) ohjataan vastuuisännöitsijälle sähköposti-ilmoituksella", async () => {
+    // Taloyhtiön vastuuisännöitsijä.
+    const manager = ((await call(server, admin, "GET", "/users")).data as any[]).find(user => user.email === "hanna.lehtonen@pohjantahti-isannointi.fi").id as string;
+    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
+    try {
+      db.prepare("UPDATE companies SET manager_id = ? WHERE id = 'demo-company'").run(manager);
+    } finally {
+      db.close();
+    }
+    const { ticketId } = await portal("Saunavuoron peruminen", "Miten voin perua saunavuoron? [keksitty]");
     const detail = await waitFor(ticketId, "ai_agent_handover");
     assert.ok((detail.audit as any[]).some(entry => entry.action === "ai_agent_quote_failed"));
-    assert.equal(detail.ticket.draft, "");
+    assert.equal(detail.ticket.assignee_id, manager, "vastuuisännöitsijä on käsittelijä");
+    assert.equal(detail.ticket.agent_owned, 0);
+    assert.equal((detail.messages as any[]).filter(message => message.direction === "outbound").length, 0, "asukkaalle ei lähtenyt keksittyä vastausta");
     await waitFor(ticketId, "agent_handover_mail_failed").catch(() => waitFor(ticketId, "agent_handover_mail_sent"));
     assert.match(detail.ticket.ai_reason, /lainausta/);
   });
@@ -173,28 +188,7 @@ describe("AI-reseptionisti", () => {
     assert.ok(!made[0].tools);
   });
 
-  it("itsenäinen aihe vaatii rajan ja pääkäyttäjän hyväksynnän; täydennä-kysymyksen vastaus siirtää henkilökunnalle", async () => {
-    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: true })).status, 409);
-    assert.equal((await call(server, service, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: true })).status, 403);
-    // 100 viemäriaiheen luonnosta lähti sellaisenaan: raja täyttyy.
-    const db = new Database(path.join(server.dataDir, "kotilo.sqlite"));
-    try {
-      const ticket = db.prepare("SELECT id FROM tickets LIMIT 1").get() as { id: string };
-      db.prepare("INSERT INTO tickets (id, company_id, type, priority, status, subject, summary, source_channel, ai_action, ai_reason, draft, created_at, updated_at, topic) SELECT 'ticket-drain', company_id, type, priority, 'closed', 'Viemäri', '', 'email', 'pending_decision', '', '', '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z', 'drain' FROM tickets WHERE id = ?").run(ticket.id);
-      const insert = db.prepare("INSERT INTO audit_log VALUES (?, 'ticket-drain', 'Testi', 'reply_sent', ?, ?)");
-      for (let index = 0; index < 100; index++) insert.run(`audit-drain-${index}`, JSON.stringify({ ai_draft_edit: "unchanged" }), new Date().toISOString());
-    } finally {
-      db.close();
-    }
-    const approved = await call(server, admin, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: true });
-    assert.equal(approved.status, 200);
-    assert.ok(approved.data.topics.some((topic: any) => topic.topic === "drain" && topic.autonomous));
-    // Hyväksyntä ja raja ovat taloyhtiökohtaisia: toisessa taloyhtiössä aihe on luonnostilassa.
-    const other = (await call(server, admin, "POST", "/companies", { name: "As Oy Toinen" })).data.companyId as string;
-    const otherTopics = (await call(server, admin, "GET", `/agent/settings?companyId=${other}`)).data.topics as any[];
-    assert.ok(!otherTopics.some(topic => topic.topic === "drain" && topic.approved));
-    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { companyId: other, autonomous: true })).status, 409);
-
+  it("täydennä: agentti kysyy puuttuvat tiedot, ja asukkaan vastaus siirtää tehtävän henkilökunnalle", async () => {
     // Portaalin tehtävä: vastaus näkyy asukkaalle portaalissa.
     const matti = await login(server, "matti@example.com");
     const created = await call(server, matti, "POST", "/portal/tickets", {
@@ -213,7 +207,5 @@ describe("AI-reseptionisti", () => {
     assert.equal(after.ticket.ai_action, "pending_decision");
     assert.equal(after.ticket.agent_state, null);
     assert.equal(requests.length, before, "siirto ilman uutta AI-kutsua");
-
-    assert.equal((await call(server, admin, "PUT", "/agent/topics/drain", { companyId: "demo-company", autonomous: false })).status, 200);
   });
 });

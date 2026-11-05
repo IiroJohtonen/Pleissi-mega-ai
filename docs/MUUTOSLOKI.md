@@ -7,6 +7,10 @@ tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 ## 3.11.2026 · AI-agentin vastuu näkyy vihreänä ja AI-vastauksissa on oma allekirjoitus
 
 **Mitä muutettiin**
+- **Agentti hoitaa tehtävän itse:** kun tehtävä annetaan agentille (painikkeesta tai automaattisesti), agentti vastaa
+  asukkaalle ja tekee varaukset itse. Aihekohtaista hyväksyntää (99 % / 100 -raja) ei enää ole, ja sen osio poistettiin
+  asetuksista. Jos aiheesta ei ole dokumentaatiota, agentti ohjaa tehtävän vastuuisännöitsijälle: hänestä tulee
+  käsittelijä, ja hän saa sähköpostin siitä, mitä kysyttiin ja miksi agentti ei vastannut.
 - **Vihreä painike:** kun käsittelijä painaa "Anna AI-agentin hoitaa" ja agentti ottaa tehtävän hoitaakseen (vastaa
   tai tekee luonnoksen), painike muuttuu vihreäksi ja siinä lukee "AI-agentti hoitaa". Se tarkoittaa, että AI-agentilla
   on vastuu tehtävän käsittelystä.
