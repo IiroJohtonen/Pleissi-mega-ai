@@ -194,7 +194,11 @@ describe("AI-agentti", () => {
     assert.ok(offered.every(startsAt => startsAt !== requested && startsAt >= helsinkiIso(day, 0)));
     const reply = proposed.messages.find((message: any) => message.direction === "outbound");
     assert.match(reply.body, /Vapaita vuoroja/);
-    assert.match(reply.body, /automaattinen vastaus/);
+    // Allekirjoituksesta asukas näkee, että vastauksen kirjoitti tekoäly.
+    assert.match(reply.body, /Aino-AI, tekoälyavustaja/);
+    assert.match(reply.body, /Tämän vastauksen kirjoitti tekoäly\./);
+    // Agentilla on vastuu tehtävästä (vihreä painike).
+    assert.equal(proposed.ticket.agent_owned, 1);
     // Asukas näkee vastauksen portaalissa.
     const portal = (await call(server, matti, "GET", `/portal/tickets/${ticketId}`)).data;
     assert.ok(portal.messages.some((message: any) => message.direction === "outbound"));
@@ -261,6 +265,29 @@ describe("AI-agentti", () => {
     assert.ok(bookings.filter(booking => booking.mine).some(booking => booking.starts_at === offered[0]));
   });
 
+  it("vihreän painikkeen painallus lopettaa agentin käsittelyn: vastuu ja tarjoukset palaavat käsittelijälle", async () => {
+    const created = await call(server, matti, "POST", "/portal/tickets", {
+      subject: "Sauna", description: `Haluaisin saunavuoron ${day} klo 18.`, type: "Pyyntö", attachments: []
+    });
+    const ticketId = created.data.ticketId as string;
+    await waitFor(ticketId, detail => Boolean(detail.ticket.topic));
+    assert.equal((await call(server, admin, "POST", `/tickets/${ticketId}/agent`)).data.outcome, "drafted");
+    const owned = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    assert.equal(owned.ticket.agent_owned, 1);
+    assert.equal(owned.ticket.agent_state, "offer_drafted");
+
+    assert.equal((await call(server, admin, "DELETE", `/tickets/${ticketId}/agent`)).status, 200);
+    const stopped = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    assert.deepEqual([stopped.ticket.agent_owned, stopped.ticket.agent_state, stopped.ticket.ai_action], [0, null, "pending_decision"]);
+    assert.match(stopped.ticket.draft, /Vapaita vuoroja/, "agentin luonnos jää kenttään");
+    assert.ok(logged("ai_agent_stopped")(stopped));
+    // Asukkaan vastaus ei enää käynnistä agenttia.
+    const calls = aiCalls;
+    assert.equal((await call(server, matti, "POST", `/portal/tickets/${ticketId}/messages`, { body: "Käy ensimmäinen", attachments: [] })).status, 201);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    assert.equal(aiCalls, calls);
+  });
+
   it("ei varaa vuoroa, jota asukkaalle ei ole tarjottu", async () => {
     const created = await call(server, matti, "POST", "/portal/tickets", {
       subject: "Pyykkitupa", description: "Varaatko minulle pyykkitupa-ajan?", type: "Pyyntö", attachments: []
@@ -283,6 +310,7 @@ describe("AI-agentti", () => {
     assert.equal(detail.ticket.status, "open");
     assert.equal(detail.ticket.ai_action, "pending_decision");
     assert.ok(!detail.messages.some((message: any) => message.direction === "outbound"));
+    assert.equal(detail.ticket.agent_owned, 0, "siirretty tehtävä on käsittelijän vastuulla");
     // Perustelu näkyy käsittelijälle tehtävän sisäisenä muistiinpanona.
     assert.ok(detail.notes.some((item: any) => item.body.includes("Vikailmoitus kuuluu huollolle.")));
   });

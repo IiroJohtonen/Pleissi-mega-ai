@@ -1155,3 +1155,9 @@
 :root[data-theme="dark"] .reply-to + .reply-cc {
     border-top: 1px solid #394656
 }
+:root[data-theme="dark"] .suggest-header .ai-button.agent-owned {
+    color: #ffffff
+}
+:root[data-theme="dark"] .suggest-header .ai-button.agent-owned:hover:not(:disabled) {
+    background: #d5dae2
+}

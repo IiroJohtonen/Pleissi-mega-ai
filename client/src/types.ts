@@ -31,6 +31,8 @@ export type Ticket = {
   sender_request?: string | null;
   // Tehtävä, johon tämä yhdistettiin.
   merged_into?: string | null;
+  // 1 = AI-agentilla on vastuu tehtävän käsittelystä.
+  agent_owned?: number;
   // Mikä ratkaisi asian (käsittelijän kirjaama).
   resolution?: string | null;
   // renovation = remonttitehtävä, joka ei mene päätösjonoon; muut tehtävät ovat "ticket".

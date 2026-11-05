@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { DownloadLink, LanguageToggle } from "../components/common";
 import { fileToBase64, formatDate, formatDay, formatFileSize, formatTicketNumber } from "../format";
 import { api, errorMessage, fetchObjectUrl, logout, type ResidentAccount } from "../session";
-import { splitQuotedReply } from "../tickets/ticket-utils";
+import { splitAiNote, splitQuotedReply } from "../tickets/ticket-utils";
 import type { Announcement } from "./Announcements";
 import { BookingCalendar, type QueueEntry, SlotQueueList } from "./Bookings";
 import { formatReading, METER_TYPES, type MeterReading, meterLabel, meterUnit, parseReading } from "./Meters";
@@ -402,7 +402,14 @@ function PortalTicketThread({ ticketId, onBack }: { ticketId: string; onBack: ()
         {thread.messages.map(message => (
           <div key={message.id} className={`portal-message ${message.direction === "inbound" ? "mine" : "theirs"}`}>
             <small>{message.direction === "inbound" ? t("Sinä") : t("Isännöitsijä")} · {formatDate(message.created_at)}</small>
-            <p>{message.direction === "inbound" ? splitQuotedReply(message.body).text : message.body}</p>
+            {message.direction === "inbound" ? <p>{splitQuotedReply(message.body).text}</p> : (() => {
+              // AI-vastauksen huomautus pienellä allekirjoituksen alla.
+              const { text, note } = splitAiNote(message.body);
+              return <>
+                <p>{text}</p>
+                {note && <p className="ai-note">{note}</p>}
+              </>;
+            })()}
           </div>
         ))}
         {thread.messages.length === 0 && <p className="muted">{t("Ei viestejä.")}</p>}

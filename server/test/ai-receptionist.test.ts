@@ -110,6 +110,14 @@ describe("AI-reseptionisti", () => {
   it("automaattinen käynnistys on oletuksena pois; vain pääkäyttäjä muuttaa asetuksia", async () => {
     const settings = (await call(server, admin, "GET", "/agent/settings")).data;
     assert.equal(settings.autoStart, false);
+    // Agentin nimi allekirjoituksessa: oletus Aino-AI, pääkäyttäjä voi vaihtaa.
+    assert.equal(settings.agentName, "Aino-AI");
+    assert.match(settings.signature, /Aino-AI, tekoälyavustaja/);
+    assert.match(settings.note, /^Tämän vastauksen kirjoitti tekoäly\./);
+    const renamed = await call(server, admin, "PUT", "/agent/settings", { agentName: "Pleissi-Pete" });
+    assert.match(renamed.data.signature, /Pleissi-Pete, tekoälyavustaja/);
+    assert.equal((await call(server, admin, "PUT", "/agent/settings", { agentName: "" })).status, 400);
+    await call(server, admin, "PUT", "/agent/settings", { agentName: "Aino-AI" });
     assert.equal((await call(server, service, "GET", "/agent/settings")).status, 403);
     const before = requests.length;
     await receive("Sauna", "Miten voin perua saunavuoron?");
@@ -137,6 +145,8 @@ describe("AI-reseptionisti", () => {
     assert.equal(detail.ticket.knowledge_source_chunk_id, chunkId);
     assert.equal(detail.ticket.ai_action, "pending_decision");
     assert.equal((detail.messages as any[]).filter(message => message.direction === "outbound").length, 0, "asukkaalle ei lähtenyt mitään");
+    // Luonnostilassakin agentilla on vastuu tehtävästä.
+    assert.equal(detail.ticket.agent_owned, 1);
     // Luonnostilassa ei ole autopaikkajonoon lisäystä; varaus on rajattu asukkaan hyväksymään tarjoukseen (koodissa).
     const agentRequest = [...requests].reverse().find(request => Array.isArray(request.tools) && request.tools.length > 0)!;
     const names = (agentRequest.tools as { name: string }[]).map(tool => tool.name);

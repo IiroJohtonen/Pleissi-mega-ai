@@ -10,7 +10,7 @@ import {
 } from "../format";
 import { actorName, api, errorMessage, fetchObjectUrl, isAdmin, isManager, MANAGEMENT_OFFICE, type OfficeUser, session } from "../session";
 import type { Company, ReplyAccount, Resident, TicketDetail } from "../types";
-import { assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
+import { splitAiNote, assignableUsers, canAssignTickets, isOverdue, splitQuotedReply } from "./ticket-utils";
 import { AssignPicker, AttachmentsMenu } from "./TicketCard";
 import { AiSuggestModal, CreateResidentModal } from "./TicketModals";
 import { TicketWorkOrders } from "./TicketWorkOrders";
@@ -142,6 +142,8 @@ function TimelineMessage({
   const inbound = message.direction === "inbound";
   // Saapuneesta viestistä näytetään oletuksena vain uusi teksti, ei lainattua aiempaa viestiä.
   const { text, quoted } = inbound ? splitQuotedReply(message.body) : { text: message.body, quoted: "" };
+  // Lähetetyn AI-vastauksen huomautus pienellä allekirjoituksen alla.
+  const { text: shown, note } = inbound ? { text, note: "" } : splitAiNote(text);
 
   return (
     <div className={`message ${message.direction} ${collapsed ? "collapsed" : ""} ${replying ? "replying" : ""}`}>
@@ -183,7 +185,8 @@ function TimelineMessage({
         </svg>
       </button>
       <strong>{message.subject}</strong>
-      <p>{text}</p>
+      <p>{shown}</p>
+      {note && <p className="ai-note">{note}</p>}
       {quoted && (
         <>
           <button className="message-quoted-toggle" onClick={() => setShowQuoted(!showQuoted)} aria-expanded={showQuoted}>
@@ -391,11 +394,16 @@ export function TicketDrawer({
     setAgentRunning(true);
     setSuggestError("");
     try {
-      const result = await api<{ outcome: "replied" | "handed_over"; reason: string; resolved: boolean; booked: boolean }>(
+      const result = await api<{ outcome: "replied" | "drafted" | "handed_over"; reason: string; resolved: boolean; booked: boolean }>(
         `/tickets/${ticket.id}/agent`, { method: "POST" }
       );
       setSuggestionToast(result.outcome === "handed_over"
         ? { title: t("AI-agentti jätti tehtävän sinulle."), message: result.reason }
+        : result.outcome === "drafted"
+        ? {
+          title: t("AI-agentti hoitaa tehtävää ja teki vastausluonnoksen."),
+          message: result.booked ? t("Agentti varasi asukkaan hyväksymän vuoron. Tarkista ja lähetä vahvistus.") : t("Tarkista luonnos ja lähetä se asukkaalle.")
+        }
         : {
           title: result.resolved ? t("AI-agentti hoiti tehtävän ja sulki sen.") : t("AI-agentti vastasi asukkaalle ja odottaa hänen vastaustaan."),
           message: result.booked ? t("Agentti varasi vuoron asukkaalle. Vastaus ja varaus näkyvät tehtävän aikajanalla.")
@@ -405,6 +413,22 @@ export function TicketDrawer({
       await onChanged();
     } catch (error) {
       setSuggestError(errorMessage(error, t("AI-agentin käsittely epäonnistui. Yritä uudelleen.")));
+    } finally {
+      setAgentRunning(false);
+    }
+  }
+
+  // Vihreän "AI-agentti hoitaa" -painikkeen painallus: agentti lopettaa käsittelyn, ja vastuu palaa käsittelijälle.
+  async function stopAgent() {
+    if (!window.confirm(t("Lopetetaanko AI-agentin käsittely? Tehtävä palaa sinulle, eikä agentti jatka asukkaan vastauksista. Agentin luonnos jää vastauskenttään."))) return;
+    setAgentRunning(true);
+    setSuggestError("");
+    try {
+      await api(`/tickets/${ticket.id}/agent`, { method: "DELETE" });
+      setSuggestionToast({ title: t("AI-agentti lopetti tehtävän käsittelyn."), message: t("Tehtävä on nyt sinun vastuullasi.") });
+      await onChanged();
+    } catch (error) {
+      setSuggestError(errorMessage(error, t("AI-agentin pysäytys epäonnistui. Yritä uudelleen.")));
     } finally {
       setAgentRunning(false);
     }
@@ -1201,13 +1225,18 @@ export function TicketDrawer({
             <h3>{t("Vastaus asukkaalle")}</h3>
             <div className="suggest-actions">
             {MANAGEMENT_OFFICE.aiAgent && (
+              // Vihreä painike: AI-agentilla on vastuu tehtävän käsittelystä. Vastuu palaa käsittelijälle, kun agentti
+              // siirtää tehtävän tai käsittelijä kirjoittaa vastauksen itse.
               <button
-                className="ai-button"
-                onClick={() => void runAgent()}
-                disabled={agentRunning || suggesting || Boolean(ticket.sensitive)}
-                title={ticket.sensitive ? t("Arkaluonteista tehtävää ei lähetetä AI:lle.") : t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat ja vastaa asukkaalle")}
+                className={`ai-button${ticket.agent_owned ? " agent-owned" : ""}`}
+                onClick={() => void (ticket.agent_owned ? stopAgent() : runAgent())}
+                aria-pressed={Boolean(ticket.agent_owned)}
+                disabled={agentRunning || suggesting || (Boolean(ticket.sensitive) && !ticket.agent_owned)}
+                title={ticket.sensitive && !ticket.agent_owned ? t("Arkaluonteista tehtävää ei lähetetä AI:lle.")
+                  : ticket.agent_owned ? t("AI-agentilla on vastuu tämän tehtävän käsittelystä. Paina, niin agentti lopettaa käsittelyn ja tehtävä palaa sinulle.")
+                  : t("AI-agentti hoitaa sauna-, pyykkitupa- ja autopaikka-asiat ja vastaa asukkaalle")}
               >
-                {agentRunning ? t("AI-agentti käsittelee…") : t("Anna AI-agentin hoitaa")}
+                {agentRunning ? t("AI-agentti käsittelee…") : ticket.agent_owned ? t("AI-agentti hoitaa") : t("Anna AI-agentin hoitaa")}
               </button>
             )}
             <button

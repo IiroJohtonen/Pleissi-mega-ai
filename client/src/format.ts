@@ -126,6 +126,7 @@ export function actionLabel(action: string) {
     ticket_merged_from: t("Toinen tehtävä yhdistetty tähän"),
     target_apartment_confirmed: t("Kohdeasunto vahvistettu"),
     ai_agent_drafted: t("AI-agentti laati vastausluonnoksen"),
+    ai_agent_stopped: t("AI-agentti poistettiin tehtävältä"),
     time_promise_made: t("Asukkaalle kerrottu päivä, johon mennessä asiaan palataan"),
     time_promise_drafted: t("Luonnokseen lisätty päivä, johon mennessä asiaan palataan"),
     time_promise_not_sent: t("Aikalupauksen lähetys asukkaalle epäonnistui"),

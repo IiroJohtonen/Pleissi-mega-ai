@@ -174,6 +174,14 @@ export function canAssignTickets(company: Company | undefined) {
 
 // Erottaa sähköpostivastauksesta lainatun aiemman viestin ("… kirjoitti:" ja >-rivit), jotta
 // aikajanalla näkyy vain lähettäjän uusi teksti. Palauttaa uuden tekstin ja lainatun osan erikseen.
+// AI-vastauksen huomautus allekirjoituksen alla ("Tämän vastauksen kirjoitti tekoäly…"): näytetään pienellä ja hillitysti,
+// kuten sähköpostissa.
+const AI_NOTE = "Tämän vastauksen kirjoitti tekoäly";
+export function splitAiNote(body: string): { text: string; note: string } {
+  const index = body.lastIndexOf(`\n\n${AI_NOTE}`);
+  return index < 0 ? { text: body, note: "" } : { text: body.slice(0, index), note: body.slice(index + 2).trim() };
+}
+
 export function splitQuotedReply(body: string): { text: string; quoted: string } {
   const lines = body.split(/\r?\n/);
   const isQuote = (line: string) => line.trimStart().startsWith(">");
