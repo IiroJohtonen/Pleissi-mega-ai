@@ -8,7 +8,7 @@ type AgentTopic = {
   topic: string; drafts: number; readyShare: number | null; ready: boolean; handovers: number; agentRuns: number;
   approved: boolean; approvedBy: string | null; approvedAt: string | null; autonomous: boolean;
 };
-type AgentSettingsData = { autoStart: boolean; timePromise: boolean; companies: AgentCompany[]; companyId: string; topics: AgentTopic[] };
+type AgentSettingsData = { autoStart: boolean; timePromise: boolean; agentName: string; signature: string; note: string; companies: AgentCompany[]; companyId: string; topics: AgentTopic[] };
 
 const overrideValue = (value: boolean | null) => (value === null ? "default" : value ? "on" : "off");
 const overrideFromValue = (value: string) => (value === "default" ? null : value === "on");
@@ -20,16 +20,22 @@ export function AgentSettingsCard() {
   const [error, setError] = useState("");
   // Taloyhtiö, jonka itsenäisiä aiheita tarkastellaan (raja ja hyväksyntä ovat taloyhtiökohtaisia).
   const [companyId, setCompanyId] = useState("");
+  // Agentin nimi allekirjoituksessa; tallennetaan erikseen.
+  const [nameDraft, setNameDraft] = useState("");
   const load = (company = companyId) => api<AgentSettingsData>(`/agent/settings${company ? `?companyId=${encodeURIComponent(company)}` : ""}`)
     .then(found => {
       setData({
         autoStart: Boolean(found?.autoStart),
         timePromise: Boolean(found?.timePromise),
+        agentName: typeof found?.agentName === "string" ? found.agentName : "",
+        signature: typeof found?.signature === "string" ? found.signature : "",
+        note: typeof found?.note === "string" ? found.note : "",
         companies: Array.isArray(found?.companies) ? found.companies : [],
         companyId: typeof found?.companyId === "string" ? found.companyId : "",
         topics: Array.isArray(found?.topics) ? found.topics : []
       });
       if (typeof found?.companyId === "string") setCompanyId(found.companyId);
+      if (typeof found?.agentName === "string") setNameDraft(found.agentName);
     })
     .catch(() => setError(t("AI-agentin asetusten lataus epäonnistui.")));
   useEffect(() => { void load(); }, []);
@@ -75,6 +81,31 @@ export function AgentSettingsCard() {
         />
         <i aria-hidden="true" />
       </label>
+
+      <h3>{t("Agentin allekirjoitus")}</h3>
+      <p className="reply-hint">
+        {t("AI-agentin vastauksissa on aina allekirjoitus, josta asukas näkee, että vastauksen kirjoitti tekoäly. Kun käsittelijä lähettää agentin luonnoksen, allekirjoituksessa kerrotaan myös, kuka vastauksen tarkisti.")}
+      </p>
+      <div className="agent-name-form">
+        <label>
+          <span>{t("Agentin nimi")}</span>
+          <input value={nameDraft} maxLength={40} onChange={event => setNameDraft(event.target.value)} />
+        </label>
+        <button
+          type="button"
+          className="secondary"
+          disabled={!nameDraft.trim() || nameDraft.trim() === data.agentName}
+          onClick={() => void save("/agent/settings", { agentName: nameDraft.trim() })}
+        >
+          {t("Tallenna nimi")}
+        </button>
+      </div>
+      {data.signature && (
+        <div className="agent-signature-preview">
+          <pre>{data.signature}</pre>
+          {data.note && <p className="ai-note">{data.note}</p>}
+        </div>
+      )}
 
       <h3>{t("Taloyhtiökohtaiset poikkeukset")}</h3>
       <div className="table-card">

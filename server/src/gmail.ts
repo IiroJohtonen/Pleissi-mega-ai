@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
 import { db } from "./db.js";
 import {
+  composeBody,
   extractEmails, htmlToText, importInboundEmail, isImported, isSkipped, mailEnabled, NOTIFICATION_HEADER, OFFICE_ACCOUNT,
   type OutgoingAttachment, type OutgoingEmail, pollWindow, saveMailAccount, skipMessage
 } from "./mail-common.js";
@@ -369,6 +370,18 @@ export async function sendViaGmail(accountId: string, input: OutgoingEmail): Pro
 
   const attachments = input.attachments ?? [];
   const boundary = `kotilo-${crypto.randomUUID()}`;
+  // Alaviitteellinen viesti lähtee teksti- ja HTML-versiona (multipart/alternative).
+  const { text, html } = composeBody(input);
+  const alternative = `kotilo-alt-${crypto.randomUUID()}`;
+  const textPart = ['Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(text, "utf8"))].join("\r\n");
+  const bodyPart = html
+    ? [
+        `Content-Type: multipart/alternative; boundary="${alternative}"`, "",
+        `--${alternative}`, textPart,
+        `--${alternative}`, 'Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(html, "utf8")),
+        `--${alternative}--`
+      ].join("\r\n")
+    : textPart;
 
   const headers = [
     ...(input.to ? [`To: ${input.to}`] : []),
@@ -378,9 +391,7 @@ export async function sendViaGmail(accountId: string, input: OutgoingEmail): Pro
     `Subject: ${encodeHeaderValue(input.subject)}`,
     "MIME-Version: 1.0",
     ...(input.notification ? [`${NOTIFICATION_HEADER}: 1`, "Auto-Submitted: auto-generated"] : []),
-    ...(attachments.length > 0
-      ? [`Content-Type: multipart/mixed; boundary="${boundary}"`]
-      : ['Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: base64"])
+    ...(attachments.length > 0 ? [`Content-Type: multipart/mixed; boundary="${boundary}"`] : [])
   ];
 
   if (originalMessageId) {
@@ -388,23 +399,18 @@ export async function sendViaGmail(accountId: string, input: OutgoingEmail): Pro
     headers.push(`References: ${`${references} ${originalMessageId}`.trim()}`);
   }
 
-  const encodedBody = base64Lines(Buffer.from(input.body, "utf8"));
-
-  // Liitteiden kanssa viesti on moniosainen: ensin teksti, sitten jokainen liite omana osanaan.
-  const content = attachments.length > 0
-    ? [
+  // Liitteiden kanssa viesti on moniosainen: ensin teksti (tai teksti ja HTML), sitten jokainen liite omana osanaan.
+  // Ilman liitteitä tekstiosan otsakkeet ovat viestin otsakkeita.
+  const message = attachments.length > 0
+    ? `${headers.join("\r\n")}\r\n\r\n${[
         `--${boundary}`,
-        'Content-Type: text/plain; charset="UTF-8"',
-        "Content-Transfer-Encoding: base64",
-        "",
-        encodedBody,
+        bodyPart,
         ...attachments.flatMap(attachment => [`--${boundary}`, attachmentPart(attachment)]),
         `--${boundary}--`
-      ].join("\r\n")
-    : encodedBody;
+      ].join("\r\n")}`
+    : `${[...headers, bodyPart.split("\r\n\r\n")[0]].join("\r\n")}\r\n\r\n${bodyPart.slice(bodyPart.indexOf("\r\n\r\n") + 4)}`;
 
-  const raw = Buffer.from(`${headers.join("\r\n")}\r\n\r\n${content}`, "utf8")
-    .toString("base64url");
+  const raw = Buffer.from(message, "utf8").toString("base64url");
 
   const response = await auth.request<{ id: string }>({
     url: "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",

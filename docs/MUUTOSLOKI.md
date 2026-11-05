@@ -4,6 +4,28 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 3.11.2026 · AI-agentin vastuu näkyy vihreänä ja AI-vastauksissa on oma allekirjoitus
+
+**Mitä muutettiin**
+- **Vihreä painike:** kun käsittelijä painaa "Anna AI-agentin hoitaa" ja agentti ottaa tehtävän hoitaakseen (vastaa
+  tai tekee luonnoksen), painike muuttuu vihreäksi ja siinä lukee "AI-agentti hoitaa". Se tarkoittaa, että AI-agentilla
+  on vastuu tehtävän käsittelystä.
+- **Agentin poisto:** vihreän painikkeen uusi painallus lopettaa agentin käsittelyn. Tehtävä palaa käsittelijälle,
+  agentti ei jatka asukkaan vastauksista, ja agentin tarjoamat vuorot raukeavat. Agentin luonnos jää vastauskenttään.
+  Vastuu palaa käsittelijälle myös, kun agentti siirtää tehtävän henkilökunnalle tai käsittelijä kirjoittaa vastauksen
+  itse.
+- **AI-allekirjoitus:** AI-agentin vastauksissa on allekirjoitus "Aino-AI, tekoälyavustaja". Sen alla on pienellä
+  harmaalla huomautus, josta asukas näkee, että vastauksen kirjoitti tekoäly. Kun käsittelijä lähettää agentin
+  luonnoksen, huomautuksessa kerrotaan myös, kuka vastauksen tarkisti. Huomautus näkyy samoin hillitysti asukasportaalissa
+  ja tehtävän aikajanalla. Agentin nimen voi vaihtaa asetuksista.
+- Painikkeen ilmoitus kertoo nyt oikein, kun agentti teki luonnoksen.
+
+**Miten**
+- Tehtävä › Vastaus asukkaalle: "Anna AI-agentin hoitaa" / vihreä "AI-agentti hoitaa" (painallus poistaa agentin).
+- Asetukset › AI › AI-reseptionisti › Agentin allekirjoitus (nimi ja esikatselu).
+
+**Testit:** PR:n kuvauksessa
+
 ## 3.11.2026 · AI-roadmapin paketit yhdessä: yhteensopivuuskorjaukset
 
 **Mitä muutettiin**

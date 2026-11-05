@@ -5513,3 +5513,19 @@ button.danger:hover:not(:disabled), .drawer-actions button.danger:hover:not(:dis
 /* Taloyhtiön muu isännöitsijä ja sen varahenkilövalinta vierekkäin. */
 .manager-pick { display: inline-flex; align-items: center; gap: 4px; }
 .ticket-form .manager-picks label.backup-pick { font-size: var(--text-xs); padding: 4px 8px; }
+
+/* AI-agentilla on vastuu tehtävästä: vihreä painike. */
+.suggest-header .ai-button.agent-owned {
+  border-color: #2e7d4f;
+  background: #2e7d4f;
+  color: #fff;
+}
+.suggest-header .ai-button.agent-owned:hover:not(:disabled) { border-color: #24653f; background: #24653f; }
+
+/* AI-agentin nimi ja allekirjoituksen esikatselu asetuksissa. */
+.agent-name-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-bottom: 8px; }
+.agent-signature-preview { margin: 0 0 16px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-2); }
+.agent-signature-preview pre { margin: 0; white-space: pre-wrap; font: inherit; font-size: var(--text-sm); }
+
+/* AI-vastauksen huomautus allekirjoituksen alla: pieni ja hillitty, kuten sähköpostissa. */
+.ai-note { margin: 10px 0 0; color: var(--ink-3); font-size: 11px; line-height: 1.4; }

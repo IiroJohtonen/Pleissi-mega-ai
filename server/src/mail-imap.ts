@@ -5,6 +5,7 @@ import addressparser from "nodemailer/lib/addressparser/index.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import { decryptSecret, encryptSecret } from "./mail-secrets.js";
 import {
+  composeBody,
   extractEmails, getMailAccount, htmlToText, importInboundEmail, type InboundEmail, isImported, isSkipped, mailEnabled,
   NOTIFICATION_HEADER, officeName, type OutgoingEmail, pollWindow, saveMailAccount, skipMessage
 } from "./mail-common.js";
@@ -207,7 +208,11 @@ export async function sendViaImap(accountId: string, input: OutgoingEmail): Prom
     bcc: input.bcc,
     replyTo: input.replyTo,
     subject: input.subject,
-    text: input.body,
+    // Alaviitteellinen viesti lähtee teksti- ja HTML-versiona.
+    ...(() => {
+      const { text, html } = composeBody(input);
+      return html ? { text, html } : { text };
+    })(),
     attachments: (input.attachments ?? []).map(attachment => ({
       filename: attachment.filename, content: attachment.content, contentType: attachment.mimeType
     })),

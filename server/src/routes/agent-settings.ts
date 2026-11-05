@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import {
-  agentAutoCompanies, agentAutoDefault, AutonomyError, setAgentAutoDefault, setAgentAutoOverride, setTopicAutonomy, topicAutonomy
+  agentAutoCompanies, agentAutoDefault, agentName, agentSignatureLines, aiNote, AutonomyError, setAgentAutoDefault, setAgentAutoOverride, setAgentName,
+  setTopicAutonomy, topicAutonomy
 } from "../agent-autonomy.js";
 import { requireAdmin } from "../auth.js";
 import { db } from "../db.js";
@@ -21,11 +22,16 @@ agentSettingsRouter.get("/agent/settings", requireAdmin, (req, res) => {
   const companies = agentAutoCompanies();
   const requested = typeof req.query.companyId === "string" ? req.query.companyId : "";
   const companyId = companies.some(company => company.id === requested) ? requested : companies[0]?.id ?? "";
-  res.json({ autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), companies, companyId, topics: companyId ? topicAutonomy(companyId) : [] });
+  res.json({
+    autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), agentName: agentName(), signature: agentSignatureLines(), note: aiNote(),
+    companies, companyId, topics: companyId ? topicAutonomy(companyId) : []
+  });
 });
 
 agentSettingsRouter.put("/agent/settings", requireAdmin, (req, res) => {
-  const parsed = z.object({ autoStart: z.boolean().optional(), timePromise: z.boolean().optional() }).safeParse(req.body);
+  const parsed = z.object({
+    autoStart: z.boolean().optional(), timePromise: z.boolean().optional(), agentName: z.string().trim().min(1).max(40).optional()
+  }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Tarkista asetus." });
   if (parsed.data.autoStart !== undefined) setAgentAutoDefault(parsed.data.autoStart);
   // Aikalupauksen voi kytkeä päälle vain, kun AI-agentin automaattinen käynnistys on päällä (oletuksena tai jossain taloyhtiössä).
@@ -34,10 +40,11 @@ agentSettingsRouter.put("/agent/settings", requireAdmin, (req, res) => {
     if (!anyAuto) return res.status(409).json({ error: "Kytke ensin AI-agentin automaattinen käynnistys päälle." });
   }
   if (parsed.data.timePromise !== undefined) setTimePromiseEnabled(parsed.data.timePromise);
+  if (parsed.data.agentName !== undefined) setAgentName(parsed.data.agentName);
   db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(
     id("audit"), null, res.locals.user?.name ?? "Pääkäyttäjä", "agent_settings_updated", JSON.stringify(parsed.data), now()
   );
-  res.json({ autoStart: agentAutoDefault(), timePromise: timePromiseEnabled() });
+  res.json({ autoStart: agentAutoDefault(), timePromise: timePromiseEnabled(), agentName: agentName(), signature: agentSignatureLines(), note: aiNote() });
 });
 
 // Taloyhtiön ohitus: true = päällä, false = pois, null = toimiston oletus.

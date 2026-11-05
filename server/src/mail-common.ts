@@ -60,7 +60,29 @@ export type OutgoingEmail = {
   accountId?: string;
   // Kotilon oma ilmoitus toimiston käyttäjälle: merkitään otsakkeella, jotta sitä ei tuoda tehtäväksi.
   notification?: boolean;
+  // Alaviite viestin loppuun (esim. "Tämän vastauksen kirjoitti tekoäly"). HTML-versiossa pienellä harmaalla, tekstiversiossa
+  // omana kappaleenaan.
+  footnote?: string;
 };
+
+const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// Viestin teksti- ja HTML-versio. HTML tehdään vain, kun viestissä on alaviite; muuten viesti lähtee kuten ennenkin
+// pelkkänä tekstinä.
+export function composeBody(input: Pick<OutgoingEmail, "body" | "footnote">): { text: string; html?: string } {
+  const footnote = input.footnote?.trim();
+  if (!footnote) return { text: input.body };
+  const paragraphs = (text: string) => escapeHtml(text.trim()).replace(/\r?\n/g, "<br>\n");
+  return {
+    text: `${input.body.trimEnd()}\n\n${footnote}`,
+    html: [
+      "<!DOCTYPE html><html><body>",
+      `<div style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #1c232a;">${paragraphs(input.body)}</div>`,
+      `<p style="margin: 18px 0 0; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.4; color: #8a8f98;">${paragraphs(footnote)}</p>`,
+      "</body></html>"
+    ].join("\n")
+  };
+}
 
 export type MailAccount = {
   id: string;

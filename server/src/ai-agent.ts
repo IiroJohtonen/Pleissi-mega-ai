@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { aiAvailable, classifyAgentGuard, type AgentForbidden } from "./ai.js";
-import { agentAutoStartEnabled, topicAutonomous } from "./agent-autonomy.js";
+import { agentAutoStartEnabled, agentSignatureLines, aiNote, topicAutonomous } from "./agent-autonomy.js";
 import { rememberAiDraft } from "./ai-draft-edits.js";
 import { agentRunsToday, aiBudgetBlocked, aiLimits, BUDGET_REASONS, recordAiUsage } from "./ai-budget.js";
 import { type AgentTraceStep, logAgentTrace, logAiRequest, logAiResponse, withAiLog } from "./ai-log.js";
@@ -462,20 +462,21 @@ function recordKnowledgeGap(ticket: AgentTicket, question: string) {
   audit(ticket.id, "knowledge_gap", { question: question.slice(0, 300) });
 }
 
-const AGENT_SIGNATURE = `\n\nYstävällisin terveisin\n${AGENT_ACTOR}\n(Tämä on automaattinen vastaus. Jos asiasi ei ratkennut, vastaa tähän viestiin, niin henkilökunta jatkaa sen käsittelyä.)`;
 
 // Vastaus lähtee samaa reittiä kuin asukkaan viesti: sähköpostiin vastataan sähköpostilla ja portaalin
 // tehtävään viestillä portaalissa, jossa asukas näkee sen ja voi vastata.
 async function deliverReply(ticket: AgentTicket, message: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const body = `${message.trim()}${AGENT_SIGNATURE}`;
+  // Allekirjoituksesta asukas näkee, että vastauksen kirjoitti tekoäly (agentin nimi asetuksista). Huomautus on
+  // allekirjoituksen alla: sähköpostissa pienellä harmaalla alaviitteenä.
+  const body = `${message.trim()}\n\n${agentSignatureLines()}`;
   const email = db.prepare("SELECT 1 FROM messages WHERE ticket_id = ? AND direction = 'inbound' AND channel = 'email' LIMIT 1").get(ticket.id);
   if (email) {
-    const sent = await sendTicketReply({ ticket, body, actor: AGENT_ACTOR });
+    const sent = await sendTicketReply({ ticket, body, footnote: aiNote(), actor: AGENT_ACTOR });
     return sent.ok ? { ok: true } : { ok: false, error: sent.error };
   }
   if (ticket.source_channel !== "portal") return { ok: false, error: "The ticket has no channel for replying to the resident." };
   db.prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(id("message"), ticket.id, "outbound", AGENT_ACTOR, ticket.subject, body, now(), "portal");
+    .run(id("message"), ticket.id, "outbound", AGENT_ACTOR, ticket.subject, `${body}\n\n${aiNote()}`, now(), "portal");
   return { ok: true };
 }
 
@@ -498,7 +499,43 @@ function draftTimePromise(ticket: AgentTicket) {
 }
 
 // Automaattisesti käynnistyneestä siirrosta lähtee sähköposti vastuuisännöitsijälle.
+// AI-agentti ottaa tehtävän vastuulleen (tehtävällä näkyy vihreä "AI-agentti hoitaa").
+function takeResponsibility(ticketId: string) {
+  // Käsittelijä pysäytti agentin kesken ajon: vastuu ei palaa agentille ajon päättyessä.
+  if (stoppedDuringRun.delete(ticketId)) {
+    db.prepare("UPDATE tickets SET agent_owned = 0, ai_action = CASE WHEN ai_action = 'ai' THEN 'pending_decision' ELSE ai_action END WHERE id = ?").run(ticketId);
+    return;
+  }
+  db.prepare("UPDATE tickets SET agent_owned = 1 WHERE id = ?").run(ticketId);
+}
+const stoppedDuringRun = new Set<string>();
+
+// Vastuu palaa henkilökunnalle: agentti siirsi tehtävän tai käsittelijä vastasi itse.
+export function releaseResponsibility(ticketId: string) {
+  db.prepare("UPDATE tickets SET agent_owned = 0 WHERE id = ?").run(ticketId);
+}
+
+// Käsittelijä poisti tehtävän AI-agentilta (painoi vihreää "AI-agentti hoitaa" -painiketta): agentti lopettaa
+// käsittelyn. Agentti ei jatka asukkaan vastauksista, tarjotut vuorot raukeavat, ja tehtävä palaa päätösjonoon.
+// Jo tehty luonnos jää kenttään käsittelijän muokattavaksi.
+export function stopAgent(ticketId: string, actor: string) {
+  const ticket = loadTicket(ticketId);
+  if (!ticket) return false;
+  if (running.has(ticketId)) stoppedDuringRun.add(ticketId);
+  db.prepare(`
+    UPDATE tickets SET agent_owned = 0, agent_state = NULL, updated_at = ?,
+      ai_action = CASE WHEN ai_action = 'ai' THEN 'pending_decision' ELSE ai_action END,
+      status = CASE WHEN ai_action = 'ai' AND status != 'closed' THEN 'open' ELSE status END
+    WHERE id = ?
+  `).run(now(), ticketId);
+  db.prepare("DELETE FROM ai_agent_draft_offers WHERE ticket_id = ?").run(ticketId);
+  db.prepare("DELETE FROM ai_agent_offers WHERE ticket_id = ?").run(ticketId);
+  db.prepare("INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)").run(id("audit"), ticketId, actor, "ai_agent_stopped", "{}", now());
+  return true;
+}
+
 function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; auto?: boolean }) {
+  releaseResponsibility(ticket.id);
   const manual = run.manual;
   const current = loadTicket(ticket.id);
   audit(ticket.id, "ai_agent_handover", { reason });
@@ -706,6 +743,7 @@ ${examplesPrompt(await similarExamples(ticket))}${notice ? `\n\nSystem notice (f
     `).run(state.booked ? "AI-agentti varasi asukkaan hyväksymän vuoron ja laati vahvistuksen. Tarkista ja lähetä se."
       : "AI-agentti laati vastausluonnoksen. Tarkista ja lähetä se.", offers ? "offer_drafted" : null, now(), ticket.id);
     audit(ticket.id, "ai_agent_drafted", { outcome: state.outcome, details_requested: state.detailsRequested || undefined, chunk_id: state.source?.chunkId });
+    takeResponsibility(ticket.id);
     return { outcome: "drafted", reason: "", resolved: false, booked: false };
   }
   if (state.replied) {
@@ -718,6 +756,7 @@ ${examplesPrompt(await similarExamples(ticket))}${notice ? `\n\nSystem notice (f
       WHERE id = ?
     `).run(status, now(), status, now(), ticket.id);
     audit(ticket.id, "ai_agent_replied", { outcome: state.outcome, booked: state.booked, chunk_id: state.source?.chunkId, quote: state.source?.quote });
+    takeResponsibility(ticket.id);
     return { outcome: "replied", reason: "", resolved: state.outcome === "resolved", booked: state.booked };
   }
   if (!state.handedOver) {
@@ -792,6 +831,7 @@ async function replyForIncident(ticket: AgentTicket, incident: Incident): Promis
   if (!sent.ok) throw new AgentUnavailableError(`Vastaus ei lähtenyt: ${sent.error}`, 502);
   db.prepare("UPDATE tickets SET ai_action = 'ai', status = 'waiting_third_party', updated_at = ? WHERE id = ?").run(now(), ticket.id);
   audit(ticket.id, "ai_agent_replied", { outcome: "awaiting_incident", incident: incident.id });
+  takeResponsibility(ticket.id);
   return { outcome: "replied", reason: "Tehtävä kuuluu mahdolliseen yhteiseen vikaan, joten asukkaalle kerrottiin, että vika on tiedossa.", resolved: false, booked: false };
 }
 
