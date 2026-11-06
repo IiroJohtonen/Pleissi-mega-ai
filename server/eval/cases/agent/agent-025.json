@@ -1,0 +1,43 @@
+{
+  "id": "agent-025",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "autopaikka",
+    "osittainen vastaus"
+  ],
+  "input": {
+    "subject": "Kysymyksiä",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Paljonko lämmityspaikka maksaa kuukaudessa? Ja milloin on taloyhtiön seuraava yhtiökokous?"
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "get_parking_info"
+    ],
+    "toolsForbidden": [
+      "hand_over_to_staff",
+      "book_slot",
+      "assign_parking_space"
+    ],
+    "booked": false,
+    "replyMustNotInclude": [
+      "yhtiökokous on"
+    ]
+  },
+  "critical": false,
+  "note": "Osittainen vastaus: hinta kerrotaan työkalusta, yhtiökokouksen ajankohtaa ei keksitä, vaan se jää isännöitsijälle (open_items), ja asukkaalle kerrotaan, että isännöitsijä palaa asiaan."
+}

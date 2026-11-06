@@ -4,6 +4,24 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 6.11.2026 · AI-agentti vastaa osaan kysymyksistä ja ohjaa loput isännöitsijälle
+
+**Mitä muutettiin**
+- Kun asukkaan viestissä on sekä asioita, joihin agentti osaa vastata (dokumentaatiosta tai varaus- ja
+  autopaikkatiedoista), että asioita, jotka kuuluvat henkilökunnalle, agentti ei enää siirrä koko tehtävää. Se vastaa
+  siihen, mihin pystyy, ja kertoo, että isännöitsijä palaa muihin kysymyksiin. Tehtävä ohjataan vastuuisännöitsijälle,
+  joka saa sähköpostin avoimiksi jääneistä asioista.
+- Korvaukset, korjausvastuut, poikkeusluvat, riidat, häiriöt ja hätätilanteet menevät edelleen kokonaan henkilökunnalle.
+- Asukas voi pyytää tiettyä autopaikkaa tunnuksella (esim. "paikka 1"). Agentti kertoo, onko paikka vapaana ja mitä se
+  maksaa, ja antaa sen, jos se on vapaa eikä kukaan ole jonossa edellä. Jos paikka ei ole vapaa, agentti tarjoaa muita
+  vapaita paikkoja kertomatta, kenellä paikka on.
+
+**Miten**
+- Tehtävä › "Anna AI-agentin hoitaa": viesti, jossa on esim. autopaikan hintakysymys ja asia, johon dokumentaatio ei
+  vastaa.
+
+**Testit:** PR:n kuvauksessa
+
 ## 6.11.2026 · Varausaiheet erikseen, agentti varaa jatkuvat vuorot ja autopaikat
 
 **Mitä muutettiin**

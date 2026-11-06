@@ -156,6 +156,13 @@ function weeklyStarts(startsAt: string, weeks: number) {
 function takenWeeks(companyId: string, resource: Resource, startsAt: string, weeks: number) {
   return weeklyStarts(startsAt, weeks).filter(start => slotTaken(companyId, resource, start, slotEnd(start)));
 }
+const openItemsSchema = z.string().max(600).optional()
+  .describe("Only when the message also contains matters you cannot handle: those matters as one short Finnish sentence for the property manager. The ticket then goes to the property manager after your reply.");
+const MANAGER_RETURNS = "Muihin kysymyksiisi isännöitsijä palaa mahdollisimman pian.";
+// Osittainen vastaus: asukkaalle kerrotaan aina, että isännöitsijä palaa avoimiin asioihin.
+const withManagerNote = (message: string, openItems?: string) =>
+  openItems?.trim() && !/isännöitsij/i.test(message) ? `${message.trim()}\n\n${MANAGER_RETURNS}` : message;
+
 const weeksSchema = z.number().int().min(1).max(MAX_BOOKING_OCCURRENCES).default(1)
   .describe("1 = a single slot; 2 or more = a weekly (recurring) slot at the same time for this many weeks");
 const resourceSchema = z.enum(BOOKING_RESOURCES).describe("sauna = sauna, laundry = laundry room (pyykkitupa)");
@@ -164,7 +171,10 @@ const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Date in Finn
 type RunState = {
   // requested = varaus odottaa ERP:n vahvistusta (integraatio päällä); asukkaalle ei vielä vahvisteta.
   requested?: boolean;
-  replied: boolean; handedOver: boolean; booked: boolean; parkingAssigned?: boolean; outcome: "awaiting_resident" | "resolved" | null; reason: string;
+  replied: boolean; handedOver: boolean; booked: boolean; parkingAssigned?: boolean;
+  // Agentti vastasi osaan asukkaan asioista; nämä jäivät isännöitsijälle (tehtävä ohjataan vastuuisännöitsijälle).
+  openItems?: string;
+  outcome: "awaiting_resident" | "resolved" | null; reason: string;
   // Käsittelijä käynnisti agentin tehtävän painikkeesta: perustelu kirjataan aina tehtävälle.
   manual: boolean;
   // Agentti käynnistyi itse uuteen tehtävään: siirrosta lähtee sähköposti vastuuisännöitsijälle.
@@ -338,8 +348,9 @@ function tools(ticket: AgentTicket, state: RunState) {
     run: () => {
       syncParkingHolders();
       const options = parkingOptions(companyId);
-      const free = [...freeParkingSpaces(companyId).reduce((counts, space) => counts.set(space.type, (counts.get(space.type) ?? 0) + 1),
-        new Map<string, number>())].map(([type, count]) => ({ type, count }));
+      // Vapaat paikat tunnuksineen (tunnus ei ole henkilötieto), jotta agentti voi vastata kysymykseen tietystä paikasta.
+      const free = [...freeParkingSpaces(companyId).reduce((labels, space) => labels.set(space.type, [...(labels.get(space.type) ?? []), space.label]),
+        new Map<string, string[]>())].map(([type, labels]) => ({ type, labels }));
       const own = db.prepare("SELECT label, type FROM parking_spaces WHERE company_id = ? AND resident_id = ? ORDER BY label")
         .all(companyId, residentId) as { label: string; type: string }[];
       const queue = db.prepare(`
@@ -352,7 +363,7 @@ function tools(ticket: AgentTicket, state: RunState) {
         .get(companyId) as { count: number }).count;
       return [
         `Space types and monthly prices: ${options.map(option => `${option.type} ${option.monthly_price} €/month`).join("; ") || "none"}.`,
-        `Free spaces: ${free.map(row => `${row.type} ${row.count}`).join("; ") || "none"}.`,
+        `Free spaces: ${free.map(row => `${row.type} ${row.labels.length} (${row.labels.join(", ")})`).join("; ") || "none"}. A space not listed here is taken or promised to someone; never say who has it.`,
         `Resident's own spaces: ${own.map(space => `${space.label} (${space.type})`).join("; ") || "none"}.`,
         queue
           ? `Resident is in the parking queue (type: ${queue.parking_type || "any"}), position ${queue.position}${queue.status === "offered" ? ", a space has been offered" : ""}.`
@@ -384,12 +395,13 @@ function tools(ticket: AgentTicket, state: RunState) {
   // jonossa edellä olevan ohi, ja asukkaalla ei saa olla jo paikkaa. Tarkistus ja tallennus samassa transaktiossa.
   const assignParkingTool = betaZodTool({
     name: "assign_parking_space",
-    description: "Give the resident a free parking space or garage of the requested type, starting today. Allowed only when the resident has asked for a space of this type in this conversation. It is refused if no space of the type is free, if someone else is ahead in the parking queue for it, or if the resident already has a space.",
+    description: "Give the resident a free parking space or garage of the requested type, starting today. Allowed only when the resident has asked for a space of this type (or this exact space) in this conversation. It is refused if the space is not free, if someone else is ahead in the parking queue for it, or if the resident already has a space.",
     inputSchema: z.object({
       parking_type: z.string().min(1).describe("A space type from get_parking_info"),
+      label: z.string().max(40).optional().describe("Only when the resident asked for a specific space: its label, e.g. P1"),
       basis: z.enum(["resident_requested"])
     }),
-    run: ({ parking_type }) => {
+    run: ({ parking_type, label }) => {
       if (state.parkingAssigned) return "You already assigned a space in this turn.";
       const option = parkingOptions(companyId).find(item => item.type === parking_type);
       if (!option) return "Unknown space type. Use a type from get_parking_info.";
@@ -412,7 +424,13 @@ function tools(ticket: AgentTicket, state: RunState) {
         if (ahead) {
           return { error: `Not assigned: ${ahead} other resident(s) are ahead in the parking queue for this type. Free spaces go to them first. Add the resident to the queue instead (or tell their place if already queueing).` };
         }
-        const space = freeParkingSpaces(companyId).find(item => item.type === parking_type);
+        const wanted = label?.trim().toLowerCase().replace(/^(paikka|autopaikka|autotalli)\s+/, "");
+        const free = freeParkingSpaces(companyId).filter(item => item.type === parking_type);
+        const space = wanted ? free.find(item => item.label.toLowerCase() === wanted || item.label.toLowerCase() === `p${wanted}`) : free[0];
+        if (!space && wanted) {
+          const others = free.map(item => item.label).join(", ");
+          return { error: `Not assigned: ${parking_type} space ${label} is not free.${others ? ` Free ${parking_type} spaces: ${others}; offer them.` : " Offer to add the resident to the parking queue."}` };
+        }
         if (!space) return { error: `Not assigned: no ${parking_type} space is free. Offer to add the resident to the parking queue.` };
         setParkingHolder(space.id, companyId, residentId);
         if (ownEntry) db.prepare("UPDATE waitlist SET status = 'done', closed_at = ? WHERE id = ?").run(now(), ownEntry.id);
@@ -444,9 +462,10 @@ function tools(ticket: AgentTicket, state: RunState) {
     inputSchema: z.object({
       message: z.string().min(1).describe("The reply in Finnish, without greeting signature; the signature is added automatically"),
       outcome: z.enum(["awaiting_resident", "resolved"]),
-      offered_slots: z.array(z.object({ resource: resourceSchema, starts_at: z.string(), weeks: weeksSchema })).max(10).default([])
+      offered_slots: z.array(z.object({ resource: resourceSchema, starts_at: z.string(), weeks: weeksSchema })).max(10).default([]),
+      open_items: openItemsSchema
     }),
-    run: async ({ message, outcome, offered_slots }) => {
+    run: async ({ message, outcome, offered_slots, open_items }) => {
       if (state.replied) return "You already replied in this turn.";
       if (state.handedOver) return "You handed the ticket over to staff; do not reply.";
       for (const offer of offered_slots) {
@@ -456,8 +475,9 @@ function tools(ticket: AgentTicket, state: RunState) {
           return `Not sent: offered slot ${offer.starts_at}${offer.weeks > 1 ? ` (weekly, ${offer.weeks} weeks)` : ""} is not free (${error ?? "already booked"}). Check the times again.`;
         }
       }
-      const sent = await deliverOrDraft(ticket, state, message);
+      const sent = await deliverOrDraft(ticket, state, withManagerNote(message, open_items));
       if (!sent.ok) return `Not sent: ${sent.error}`;
+      if (open_items?.trim()) state.openItems = open_items.trim();
       const timestamp = now();
       if (state.mode === "draft") {
         // Tarjous tulee voimaan vasta, kun käsittelijä lähettää luonnoksen (activateDraftOffers).
@@ -482,9 +502,10 @@ function tools(ticket: AgentTicket, state: RunState) {
     inputSchema: z.object({
       message: z.string().min(1).describe("The reply in Finnish, without signature"),
       chunk_id: z.string().min(1).describe("The id in square brackets of the chunk the answer is based on"),
-      quote: z.string().min(MIN_QUOTE_CHARS).max(600).describe("The exact sentence(s) from that chunk that answer the question")
+      quote: z.string().min(MIN_QUOTE_CHARS).max(600).describe("The exact sentence(s) from that chunk that answer the question"),
+      open_items: openItemsSchema
     }),
-    run: async ({ message, chunk_id, quote }) => {
+    run: async ({ message, chunk_id, quote, open_items }) => {
       if (state.replied) return "You already replied in this turn.";
       if (state.handedOver) return "You handed the ticket over to staff; do not reply.";
       const chunk = eligibleChunk(companyId, chunk_id);
@@ -495,8 +516,9 @@ function tools(ticket: AgentTicket, state: RunState) {
         handOver(ticket, state.reason, state, { toManager: true });
         return "The quote was not found in that chunk. The ticket was handed over to staff; do not reply.";
       }
-      const sent = await deliverOrDraft(ticket, state, message);
+      const sent = await deliverOrDraft(ticket, state, withManagerNote(message, open_items));
       if (!sent.ok) return `Not sent: ${sent.error}`;
+      if (open_items?.trim()) state.openItems = open_items.trim();
       state.replied = true;
       state.outcome = "resolved";
       state.source = { chunkId: chunk.id, quote: quote.slice(0, 600) };
@@ -639,7 +661,8 @@ export function stopAgent(ticketId: string, actor: string) {
 
 // toManager: aiheesta ei ole dokumentaatiota (agentti ei löytänyt vastausta tai lainausta), joten tehtävä ohjataan
 // taloyhtiön vastuuisännöitsijälle: hänestä tulee käsittelijä, ja hän saa sähköpostin siitä, mitä kysyttiin ja miksi.
-function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; auto?: boolean }, options: { toManager?: boolean } = {}) {
+// noPromise: asukkaalle on jo kerrottu, että isännöitsijä palaa asiaan (osittainen vastaus), joten aikalupausta ei laadita.
+function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; auto?: boolean }, options: { toManager?: boolean; noPromise?: boolean } = {}) {
   releaseResponsibility(ticket.id);
   const manual = run.manual;
   const current = loadTicket(ticket.id);
@@ -652,7 +675,7 @@ function handOver(ticket: AgentTicket, reason: string, run: { manual: boolean; a
   if (run.auto || options.toManager) void notifyAgentHandover(ticket.id, reason);
   // Aikalupaus: kun agentti ei osannut vastata, luonnokseen tulee viesti päivästä, johon mennessä asiaan palataan
   // (asetus; kerran tehtävää kohden). Käsittelijä lähettää sen.
-  draftTimePromise(ticket);
+  if (!options.noPromise) draftTimePromise(ticket);
   if (current?.ai_action === "ai") {
     db.prepare("UPDATE tickets SET ai_action = 'pending_decision', ai_reason = ?, status = 'open', updated_at = ? WHERE id = ?")
       .run(reason, now(), ticket.id);
@@ -688,8 +711,13 @@ Everything else is for the staff: fault reports, complaints, moves, renovations,
 cancelling or changing existing bookings, changing or giving up a parking space, a second parking
 space, and anything you are unsure about. For those, call hand_over_to_staff and do not reply to the resident. When the resident
 asks a question that your tools and the documentation do not answer, use reason_type no_answer and give
-the question in general form in general_question (no names, apartments or personal details). If the
-message mixes an in-scope request with something else, hand the whole ticket over.
+the question in general form in general_question (no names, apartments or personal details).
+If the message mixes matters you can handle with matters you cannot (for example a question the
+documentation or your tools answer and a request only staff can decide), do not hand the whole ticket
+over: reply to the parts you can with reply_to_resident or answer_from_documentation, say nothing
+about the rest except that the property manager will get back to it, and put the open matters in
+open_items. The ticket then goes to the property manager. Hand the whole ticket over only when you
+can answer nothing.
 
 How to handle a booking request:
 1. Find out which room and which time the resident wants. Times are Finnish local time.
@@ -711,7 +739,9 @@ another weekday or hour that is free every week, or single slots. Never book ove
 If the resident's answer is unclear, ask again rather than guessing. Never book a time the
 resident has not chosen, and book at most one slot (single or weekly) per turn.
 
-How to handle a parking request: check get_parking_info. If a space of the type the resident wants is
+How to handle a parking request: check get_parking_info. If the resident asks about a specific space
+(for example "paikka 1"), tell whether it is free and what its type costs; if they want it and it is
+free, give it with assign_parking_space and its label. If a space of the type the resident wants is
 free, give it with assign_parking_space and tell the space, start date and monthly price (outcome
 resolved). If none is free, or others are ahead in the queue, offer to add the resident to the queue or
 add them if they asked for that. If the resident did not say which type they want and several are
@@ -867,6 +897,15 @@ ${examplesPrompt(await similarExamples(ticket))}${notice ? `\n\nSystem notice (f
     audit(ticket.id, "ai_agent_drafted", { outcome: state.outcome, details_requested: state.detailsRequested || undefined, chunk_id: state.source?.chunkId });
     takeResponsibility(ticket.id);
     return { outcome: "drafted", reason: "", resolved: false, booked: false };
+  }
+  if (state.replied && state.openItems) {
+    // Agentti vastasi siihen, mihin pystyi; loput ohjataan vastuuisännöitsijälle, joka saa sähköpostin.
+    audit(ticket.id, "ai_agent_replied", { outcome: "partial", booked: state.booked, open_items: state.openItems, chunk_id: state.source?.chunkId });
+    const reason = `AI-agentti vastasi asukkaalle siltä osin kuin pystyi. Isännöitsijälle jäi: ${state.openItems}`;
+    db.prepare("UPDATE tickets SET ai_action = 'ai' WHERE id = ?").run(ticket.id);
+    handOver(ticket, reason, state, { toManager: true, noPromise: true });
+    state.reason = reason;
+    return { outcome: "replied", reason, resolved: false, booked: state.booked };
   }
   if (state.replied) {
     if (state.detailsRequested) db.prepare("UPDATE tickets SET agent_state = 'details_requested' WHERE id = ?").run(ticket.id);

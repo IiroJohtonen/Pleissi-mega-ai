@@ -1,0 +1,39 @@
+{
+  "id": "agent-024",
+  "feature": "agent",
+  "source": "production",
+  "tags": [
+    "autopaikka",
+    "tietty paikka"
+  ],
+  "input": {
+    "subject": "Autopaikka",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei, haluaisin varata autopaikan 1. Onko se vapaana ja paljonko autopaikka maksaa kuukaudessa?"
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "get_parking_info"
+    ],
+    "toolsForbidden": [
+      "book_slot"
+    ],
+    "booked": false,
+    "replyMustNotInclude": []
+  },
+  "critical": false,
+  "note": "Tuotannosta: agentti siirsi koko tehtävän, koska asukas pyysi tiettyä paikkaa. Agentin pitää kertoa, onko paikka vapaana ja mitä se maksaa, ja antaa se, jos se on vapaa eikä kukaan ole jonossa edellä."
+}
