@@ -72,6 +72,20 @@ describe("AI-agentti: jatkuvat vuorot ja autopaikat", () => {
         }
         return { name: "reply_to_resident", input: { message: lastResult.slice(0, 500), outcome: lastResult.startsWith("Booked") ? "resolved" : "awaiting_resident" } };
       }
+      // Tietty paikka: asukas pyytää paikkaa tunnuksella.
+      const specific = /autotallin (T\d)/.exec(firstMessage);
+      if (specific) {
+        if (!lastResult) return { name: "assign_parking_space", input: { parking_type: "Autotalli", label: specific[1], basis: "resident_requested" } };
+        return { name: "reply_to_resident", input: { message: lastResult.slice(0, 500), outcome: "resolved" } };
+      }
+      // Osittainen vastaus: hinta kerrotaan, lasitusasia jää isännöitsijälle.
+      if (firstMessage.includes("lasitus")) {
+        if (!lastResult) return { name: "get_parking_info", input: {} };
+        return {
+          name: "reply_to_resident",
+          input: { message: "Autotallin hinta on 45 € kuukaudessa.", outcome: "resolved", open_items: "Asukas kysyy luvasta parvekelasitukseen." }
+        };
+      }
       if (firstMessage.includes("autotallin")) {
         if (!lastResult) return { name: "assign_parking_space", input: { parking_type: "Autotalli", basis: "resident_requested" } };
         return { name: "reply_to_resident", input: { message: lastResult.slice(0, 500), outcome: "resolved" } };
@@ -199,5 +213,42 @@ describe("AI-agentti: jatkuvat vuorot ja autopaikat", () => {
     const second = await runAgent(matti, "Autotalli", "Haluaisin vuokrata autotallin.");
     assert.match(second.reply, /already has the space T2/);
     assert.equal(withDb(db => (db.prepare("SELECT COUNT(*) AS count FROM parking_spaces WHERE resident_id = 'resident-1'").get() as { count: number }).count), 1);
+  });
+
+  it("antaa pyydetyn paikan tunnuksella, tai kertoo vapaat paikat, jos pyydetty ei ole vapaa", async () => {
+    const holder = (spaceId: string) => withDb(db => (db.prepare("SELECT resident_id FROM parking_spaces WHERE id = ?").get(spaceId) as { resident_id: string | null }).resident_id);
+    withDb(db => {
+      db.prepare("DELETE FROM parking_assignments WHERE company_id = ? AND parking_id = 'space-t2'").run(companyId);
+      db.prepare("UPDATE parking_spaces SET resident_id = NULL WHERE id = 'space-t2'").run();
+      db.prepare("INSERT INTO parking_spaces (id, company_id, label, type, resident_id, note, created_at) VALUES ('space-t3', ?, 'T3', 'Autotalli', NULL, '', ?)")
+        .run(companyId, new Date().toISOString());
+    });
+    // T1:llä on tuleva haltija: sitä ei anneta, ja agentti saa tiedon vapaista paikoista.
+    const taken = await runAgent(matti, "Autotalli", "Haluaisin autotallin T1.");
+    assert.match(taken.reply, /space T1 is not free\. Free Autotalli spaces: T2, T3/);
+    assert.equal(holder("space-t1"), null);
+    // Vapaa T3 annetaan, vaikka T2 olisi listassa ensin.
+    const assigned = await runAgent(matti, "Autotalli", "Haluaisin autotallin T3.");
+    assert.match(assigned.reply, /Assigned Autotalli T3/);
+    assert.equal(holder("space-t3"), "resident-1");
+    assert.equal(holder("space-t2"), null);
+  });
+
+  it("vastaa siihen, mihin pystyy, ja ohjaa avoimet asiat vastuuisännöitsijälle", async () => {
+    const manager = ((await call(server, admin, "GET", "/users")).data as any[]).find(user => user.email === "hanna.lehtonen@pohjantahti-isannointi.fi").id as string;
+    withDb(db => db.prepare("UPDATE companies SET manager_id = ? WHERE id = ?").run(manager, companyId));
+    const { run, detail, reply } = await runAgent(liisa, "Autotalli ja lasitus", "Paljonko autotalli maksaa? Saako parvekkeelle lasitus luvan?");
+    assert.equal(run.outcome, "replied");
+    assert.equal(run.resolved, false);
+    // Asukas saa vastauksen ja tiedon, että isännöitsijä palaa avoimiin asioihin.
+    assert.match(reply, /45 € kuukaudessa/);
+    assert.match(reply, /isännöitsijä palaa mahdollisimman pian/);
+    // Tehtävä on vastuuisännöitsijällä ja odottaa henkilökuntaa; aikalupausta ei laadittu.
+    assert.equal(detail.ticket.assignee_id, manager);
+    assert.deepEqual([detail.ticket.ai_action, detail.ticket.status, detail.ticket.agent_owned], ["pending_decision", "open", 0]);
+    assert.match(detail.ticket.ai_reason, /parvekelasitukseen/);
+    const handover = detail.audit.find((entry: any) => entry.action === "ai_agent_handover");
+    assert.equal(JSON.parse(handover.details).to_manager, true);
+    assert.ok(detail.audit.some((entry: any) => entry.action === "ai_agent_replied" && JSON.parse(entry.details).outcome === "partial"));
   });
 });
