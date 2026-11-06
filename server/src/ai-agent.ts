@@ -16,13 +16,13 @@ import { draftPromise } from "./time-promise.js";
 import { maskPersonalData } from "./privacy-filter.js";
 import { examplesPrompt, selectSimilarTickets } from "./similar-tickets.js";
 import { AGENT_SENDER_TYPES, type SenderType } from "./sender-types.js";
-import { BOOKING_RESOURCES, bookingRules, createBookings } from "./routes/bookings.js";
+import { BOOKING_RESOURCES, bookingRules, createBookings, MAX_BOOKING_OCCURRENCES } from "./routes/bookings.js";
 import { aiAgentEnabled } from "./routes/office.js";
-import { parkingOptions, syncParkingHolders } from "./routes/parking.js";
+import { parkingOptions, setParkingHolder, syncParkingHolders } from "./routes/parking.js";
 import { sendTicketReply } from "./ticket-reply.js";
 import { deleteBookingsAndRelease } from "./booking-queue.js";
 import { currentAdapter, onAgentBookingResult } from "./integration/dispatcher.js";
-import { addDays, helsinkiIso, helsinkiParts, id, now } from "./util.js";
+import { addDays, helsinkiIso, helsinkiParts, id, now, today } from "./util.js";
 
 // ---------------------------------------------------------------------------------------------
 // AI-agentti hoitaa asukkaan toistuvat asiat itse: sauna- ja pyykkitupavuorot sekä autopaikat.
@@ -107,13 +107,19 @@ function conversation(ticketId: string) {
   }).join("\n---\n");
 }
 
-// Vuoron alku on tasatunti taloyhtiön varausajan sisällä.
-function slotError(companyId: string, resource: Resource, startsAt: string): string | null {
+// Vuoron alku on tasatunti taloyhtiön varausajan sisällä. weeks > 1 = jatkuva (viikoittainen) vuoro, joka vaatii,
+// että viikoittaiset vuorot on sallittu ja viikkoja on enintään asetuksen verran.
+function slotError(companyId: string, resource: Resource, startsAt: string, weeks = 1): string | null {
   const start = Date.parse(startsAt);
   if (Number.isNaN(start)) return "Aika ei ole kelvollinen ISO-aikaleima.";
   if (start <= Date.now()) return "Aika on jo mennyt.";
   const rule = bookingRules(companyId)[resource];
-  if (!rule.single) return `Yksittäisten ${RESOURCE_NAMES[resource]}vuorojen varaaminen ei ole käytössä tässä taloyhtiössä.`;
+  if (weeks > 1) {
+    if (!rule.weekly) return `Viikoittaisten ${RESOURCE_NAMES[resource]}vuorojen varaaminen ei ole käytössä tässä taloyhtiössä.`;
+    if (weeks > rule.weeklyWeeks) return `Viikoittaisen vuoron voi varata enintään ${rule.weeklyWeeks} viikoksi.`;
+  } else if (!rule.single) {
+    return `Yksittäisten ${RESOURCE_NAMES[resource]}vuorojen varaaminen ei ole käytössä tässä taloyhtiössä.`;
+  }
   const { hour, minute } = helsinkiParts(startsAt);
   if (minute !== 0 || hour < rule.firstHour || hour + SLOT_HOURS > rule.lastHour) {
     return `Vuorot alkavat tasatunnein klo ${rule.firstHour}–${rule.lastHour - SLOT_HOURS} (Suomen aikaa).`;
@@ -128,13 +134,37 @@ function slotTaken(companyId: string, resource: Resource, startsAt: string, ends
 }
 
 const slotEnd = (startsAt: string) => new Date(Date.parse(startsAt) + SLOT_HOURS * 3600_000).toISOString();
+
+// Vapaat autopaikat: ei nykyistä haltijaa eikä tänään tai myöhemmin alkavaa tai voimassa olevaa haltijajaksoa,
+// jotta paikkaa ei anneta päällekkäin jo sovitun haltijan kanssa (esim. muuttaja, jonka jakso alkaa ensi kuussa).
+function freeParkingSpaces(companyId: string) {
+  return db.prepare(`
+    SELECT p.id, p.label, p.type FROM parking_spaces p
+    WHERE p.company_id = ? AND p.resident_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM parking_assignments pa WHERE pa.parking_id = p.id AND (pa.end_date IS NULL OR pa.end_date > ?))
+    ORDER BY p.label COLLATE NOCASE
+  `).all(companyId, today()) as { id: string; label: string; type: string }[];
+}
+
+// Jatkuvan vuoron viikot: sama paikallinen kellonaika joka viikko (kesä- ja talviajan vaihde huomioituna).
+function weeklyStarts(startsAt: string, weeks: number) {
+  const { day, hour } = helsinkiParts(startsAt);
+  return Array.from({ length: weeks }, (_, week) => helsinkiIso(addDays(day, week * 7), hour));
+}
+
+// Varatut viikot: jatkuva vuoro varataan vain, jos jokainen viikko on vapaa (yksittäiset ja toiset jatkuvat vuorot).
+function takenWeeks(companyId: string, resource: Resource, startsAt: string, weeks: number) {
+  return weeklyStarts(startsAt, weeks).filter(start => slotTaken(companyId, resource, start, slotEnd(start)));
+}
+const weeksSchema = z.number().int().min(1).max(MAX_BOOKING_OCCURRENCES).default(1)
+  .describe("1 = a single slot; 2 or more = a weekly (recurring) slot at the same time for this many weeks");
 const resourceSchema = z.enum(BOOKING_RESOURCES).describe("sauna = sauna, laundry = laundry room (pyykkitupa)");
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Date in Finnish time, YYYY-MM-DD");
 
 type RunState = {
   // requested = varaus odottaa ERP:n vahvistusta (integraatio päällä); asukkaalle ei vielä vahvisteta.
   requested?: boolean;
-  replied: boolean; handedOver: boolean; booked: boolean; outcome: "awaiting_resident" | "resolved" | null; reason: string;
+  replied: boolean; handedOver: boolean; booked: boolean; parkingAssigned?: boolean; outcome: "awaiting_resident" | "resolved" | null; reason: string;
   // Käsittelijä käynnisti agentin tehtävän painikkeesta: perustelu kirjataan aina tehtävälle.
   manual: boolean;
   // Agentti käynnistyi itse uuteen tehtävään: siirrosta lähtee sähköposti vastuuisännöitsijälle.
@@ -157,7 +187,7 @@ function tools(ticket: AgentTicket, state: RunState) {
 
   const bookingRulesTool = betaZodTool({
     name: "get_booking_rules",
-    description: "Booking rules of this housing company's sauna and laundry room: bookable hours, whether single slots can be booked, and prices.",
+    description: "Booking rules of this housing company's sauna and laundry room: bookable hours, whether single and weekly slots can be booked, and prices.",
     inputSchema: z.object({}),
     run: () => {
       const rules = bookingRules(companyId);
@@ -165,24 +195,29 @@ function tools(ticket: AgentTicket, state: RunState) {
         const rule = rules[resource];
         return `${resource}: ${SLOT_HOURS}-hour slots starting on the hour ${rule.firstHour}:00–${rule.lastHour - SLOT_HOURS}:00 Finnish time; ` +
           `single slots ${rule.single ? "allowed" : "NOT allowed (staff must handle)"}; single slot price ${rule.singlePrice} €; ` +
-          `weekly slots ${rule.weekly ? "exist, but only staff books them" : "not in use"}.`;
+          (rule.weekly
+            ? `weekly slots allowed for at most ${rule.weeklyWeeks} weeks at a time, monthly price ${rule.monthlyPrice} €.`
+            : "weekly slots NOT allowed.");
       }).join("\n");
     }
   });
 
   const freeSlotsTool = betaZodTool({
     name: "find_free_slots",
-    description: "List free single slots for the sauna or the laundry room between two dates (inclusive), optionally limited to an hour range. Returns each free slot with its starts_at value, which you pass to the other tools.",
+    description: "List free slots for the sauna or the laundry room between two dates (inclusive), optionally limited to an hour range. With weeks of 2 or more, lists only start times that are free every week for a weekly slot. Returns each free slot with its starts_at value, which you pass to the other tools.",
     inputSchema: z.object({
       resource: resourceSchema,
       from_date: daySchema,
       to_date: daySchema,
       earliest_hour: z.number().int().min(0).max(23).optional().describe("Earliest start hour, Finnish time"),
-      latest_hour: z.number().int().min(0).max(23).optional().describe("Latest start hour, Finnish time")
+      latest_hour: z.number().int().min(0).max(23).optional().describe("Latest start hour, Finnish time"),
+      weeks: weeksSchema
     }),
-    run: ({ resource, from_date, to_date, earliest_hour, latest_hour }) => {
+    run: ({ resource, from_date, to_date, earliest_hour, latest_hour, weeks }) => {
       const rule = bookingRules(companyId)[resource];
-      if (!rule.single) return `Single ${resource} slots cannot be booked in this housing company.`;
+      if (weeks > 1 && !rule.weekly) return `Weekly ${resource} slots cannot be booked in this housing company.`;
+      if (weeks > 1 && weeks > rule.weeklyWeeks) return `A weekly slot can be booked for at most ${rule.weeklyWeeks} weeks.`;
+      if (weeks === 1 && !rule.single) return `Single ${resource} slots cannot be booked in this housing company.`;
       const todayDay = helsinkiParts(now()).day;
       const from = from_date < todayDay ? todayDay : from_date;
       if (to_date < from) return "to_date is before from_date (or in the past).";
@@ -192,8 +227,8 @@ function tools(ticket: AgentTicket, state: RunState) {
         for (let hour = rule.firstHour; hour + SLOT_HOURS <= rule.lastHour; hour += SLOT_HOURS) {
           if ((earliest_hour !== undefined && hour < earliest_hour) || (latest_hour !== undefined && hour > latest_hour)) continue;
           const startsAt = helsinkiIso(day, hour);
-          if (Date.parse(startsAt) <= Date.now() || slotTaken(companyId, resource, startsAt, slotEnd(startsAt))) continue;
-          free.push(`${slotLabel(startsAt, slotEnd(startsAt))} (starts_at: ${startsAt})`);
+          if (Date.parse(startsAt) <= Date.now() || takenWeeks(companyId, resource, startsAt, weeks).length) continue;
+          free.push(`${slotLabel(startsAt, slotEnd(startsAt))}${weeks > 1 ? `, weekly for ${weeks} weeks` : ""} (starts_at: ${startsAt})`);
           if (free.length >= MAX_LISTED_SLOTS) break;
         }
       }
@@ -203,14 +238,23 @@ function tools(ticket: AgentTicket, state: RunState) {
 
   const checkSlotTool = betaZodTool({
     name: "check_slot",
-    description: "Check whether one sauna or laundry slot is free. Use it for the exact time the resident asked for.",
-    inputSchema: z.object({ resource: resourceSchema, starts_at: z.string().describe("ISO timestamp from find_free_slots, or the requested time converted to ISO") }),
-    run: ({ resource, starts_at }) => {
-      const error = slotError(companyId, resource, starts_at);
+    description: "Check whether a sauna or laundry slot is free. Use it for the exact time the resident asked for. With weeks of 2 or more, checks every week of a weekly slot and lists the weeks that are already booked.",
+    inputSchema: z.object({
+      resource: resourceSchema,
+      starts_at: z.string().describe("ISO timestamp from find_free_slots, or the requested time converted to ISO"),
+      weeks: weeksSchema
+    }),
+    run: ({ resource, starts_at, weeks }) => {
+      const error = slotError(companyId, resource, starts_at, weeks);
       if (error) return `Not bookable: ${error}`;
-      return slotTaken(companyId, resource, starts_at, slotEnd(starts_at))
-        ? `${slotLabel(starts_at, slotEnd(starts_at))} is already booked.`
-        : `${slotLabel(starts_at, slotEnd(starts_at))} is free.`;
+      const startsAt = new Date(Date.parse(starts_at)).toISOString();
+      const taken = takenWeeks(companyId, resource, startsAt, weeks);
+      if (weeks === 1) {
+        return taken.length ? `${slotLabel(startsAt, slotEnd(startsAt))} is already booked.` : `${slotLabel(startsAt, slotEnd(startsAt))} is free.`;
+      }
+      return taken.length
+        ? `Weekly slot not bookable: these weeks are already booked by someone: ${taken.map(start => slotLabel(start, slotEnd(start))).join(", ")}. A weekly slot is booked only when every week is free; offer another time.`
+        : `${slotLabel(startsAt, slotEnd(startsAt))} is free every week for ${weeks} weeks.`;
     }
   });
 
@@ -231,25 +275,27 @@ function tools(ticket: AgentTicket, state: RunState) {
 
   const bookTool = betaZodTool({
     name: "book_slot",
-    description: "Book one free single slot for the resident. Allowed only when the resident has asked for exactly this time (basis resident_requested), or has accepted this slot from times you offered earlier in this conversation (basis resident_accepted_offer). Never book a time the resident has not chosen.",
+    description: "Book a free slot for the resident: a single slot (weeks 1) or a weekly slot at the same time for several weeks (weeks 2 or more). A weekly slot is booked only if every week is free; otherwise nothing is booked. Allowed only when the resident has asked for exactly this time and this kind of slot (basis resident_requested), or has accepted this slot from times you offered earlier in this conversation (basis resident_accepted_offer). Never book a time the resident has not chosen.",
     inputSchema: z.object({
       resource: resourceSchema,
       starts_at: z.string(),
+      weeks: weeksSchema,
       basis: z.enum(["resident_requested", "resident_accepted_offer"])
     }),
-    run: ({ resource, starts_at, basis }) => {
+    run: ({ resource, starts_at, weeks, basis }) => {
       if (state.booked) return "You already booked a slot in this turn. Book more only after the resident asks again.";
       // Luonnostilassa varataan vain asukkaan hyväksymä tarjottu vuoro; pyydettykin aika tarjotaan ensin.
       if (state.mode === "draft" && basis !== "resident_accepted_offer") {
         return "Not booked: offer this time to the resident first and book it only after the resident accepts it.";
       }
       const startsAt = new Date(Date.parse(starts_at)).toISOString();
-      const error = Number.isNaN(Date.parse(starts_at)) ? "Invalid timestamp." : slotError(companyId, resource, startsAt);
+      const error = Number.isNaN(Date.parse(starts_at)) ? "Invalid timestamp." : slotError(companyId, resource, startsAt, weeks);
       if (error) return `Not booked: ${error}`;
       if (basis === "resident_accepted_offer") {
-        // Tarjouksen jälkeen asukkaan on pitänyt vastata, jotta hyväksyntä on hänen eikä AI:n päätelmä.
-        const offer = db.prepare("SELECT created_at FROM ai_agent_offers WHERE ticket_id = ? AND resource = ? AND starts_at = ?")
-          .get(ticket.id, resource, startsAt) as { created_at: string } | undefined;
+        // Tarjouksen jälkeen asukkaan on pitänyt vastata, jotta hyväksyntä on hänen eikä AI:n päätelmä. Tarjous koskee
+        // samaa vuorotyyppiä: yksittäiseksi tarjottua vuoroa ei varata jatkuvaksi eikä toisin päin.
+        const offer = db.prepare("SELECT created_at FROM ai_agent_offers WHERE ticket_id = ? AND resource = ? AND starts_at = ? AND weeks = ?")
+          .get(ticket.id, resource, startsAt, weeks) as { created_at: string } | undefined;
         const answered = offer && db.prepare(
           "SELECT 1 FROM messages WHERE ticket_id = ? AND direction = 'inbound' AND created_at > ? LIMIT 1"
         ).get(ticket.id, offer.created_at);
@@ -257,22 +303,31 @@ function tools(ticket: AgentTicket, state: RunState) {
       }
       // ERP-integraation ollessa päällä varaus jää odottamaan ERP:n vahvistusta (integration/dispatcher.ts).
       const requested = currentAdapter() !== null;
+      const starts = weeklyStarts(startsAt, weeks);
+      // Kaikki tai ei mitään: jatkuva vuoro ei saa ohittaa varattuja viikkoja eikä mennä kenenkään varauksen päälle.
       const result = createBookings({
-        companyId, resource, occurrences: [{ startsAt, endsAt: slotEnd(startsAt) }], residentId,
+        companyId, resource, occurrences: starts.map(start => ({ startsAt: start, endsAt: slotEnd(start) })), residentId,
         note: ticket.ticket_number ? `AI-agentti, tehtävä #T${String(ticket.ticket_number).padStart(6, "0")}` : "AI-agentti",
-        createdBy: AGENT_ACTOR, status: requested ? "requested" : "confirmed", ticketId: ticket.id
+        createdBy: AGENT_ACTOR, status: requested ? "requested" : "confirmed", ticketId: ticket.id, allOrNothing: true
       });
-      if (result.created === 0) return `Not booked: ${slotLabel(startsAt, slotEnd(startsAt))} was just booked by someone else. Offer other times.`;
+      if (result.created === 0) {
+        return weeks > 1
+          ? `Not booked: these weeks are already booked by someone: ${result.skipped.map(start => slotLabel(start, slotEnd(start))).join(", ")}. Nothing was booked. Offer another weekly time.`
+          : `Not booked: ${slotLabel(startsAt, slotEnd(startsAt))} was just booked by someone else. Offer other times.`;
+      }
       state.booked = true;
-      audit(ticket.id, "ai_agent_booked", { resource, startsAt, endsAt: slotEnd(startsAt), basis, status: requested ? "requested" : "confirmed" });
+      const label = weeks > 1
+        ? `${RESOURCE_NAMES[resource]} weekly ${slotLabel(startsAt, slotEnd(startsAt))} for ${weeks} weeks (last ${slotLabel(starts[starts.length - 1], slotEnd(starts[starts.length - 1]))})`
+        : `${RESOURCE_NAMES[resource]} ${slotLabel(startsAt, slotEnd(startsAt))}`;
+      audit(ticket.id, "ai_agent_booked", { resource, startsAt, endsAt: slotEnd(startsAt), weeks, basis, status: requested ? "requested" : "confirmed" });
       if (requested) {
         state.requested = true;
-        return `Booking requested: ${RESOURCE_NAMES[resource]} ${slotLabel(startsAt, slotEnd(startsAt))}. It is NOT confirmed yet: `
+        return `Booking requested: ${label}. It is NOT confirmed yet: `
           + "the property management system confirms it shortly, and the resident then gets a confirmation message automatically. "
           + "In your reply, tell the resident that the booking has been requested and that a confirmation will follow; do not say that it is confirmed. "
           + "Use outcome awaiting_resident.";
       }
-      return `Booked ${RESOURCE_NAMES[resource]} ${slotLabel(startsAt, slotEnd(startsAt))} for the resident.`;
+      return `Booked ${label} for the resident.`;
     }
   });
 
@@ -283,8 +338,8 @@ function tools(ticket: AgentTicket, state: RunState) {
     run: () => {
       syncParkingHolders();
       const options = parkingOptions(companyId);
-      const free = db.prepare("SELECT type, COUNT(*) AS count FROM parking_spaces WHERE company_id = ? AND resident_id IS NULL GROUP BY type")
-        .all(companyId) as { type: string; count: number }[];
+      const free = [...freeParkingSpaces(companyId).reduce((counts, space) => counts.set(space.type, (counts.get(space.type) ?? 0) + 1),
+        new Map<string, number>())].map(([type, count]) => ({ type, count }));
       const own = db.prepare("SELECT label, type FROM parking_spaces WHERE company_id = ? AND resident_id = ? ORDER BY label")
         .all(companyId, residentId) as { label: string; type: string }[];
       const queue = db.prepare(`
@@ -302,7 +357,7 @@ function tools(ticket: AgentTicket, state: RunState) {
         queue
           ? `Resident is in the parking queue (type: ${queue.parking_type || "any"}), position ${queue.position}${queue.status === "offered" ? ", a space has been offered" : ""}.`
           : `Resident is not in the parking queue. ${queueLength} people are queueing.`,
-        "Only staff assigns parking spaces and makes parking contracts; you can add the resident to the queue."
+        "You can give the resident a free space with assign_parking_space when nobody is ahead in the queue; otherwise add the resident to the queue."
       ].join("\n");
     }
   });
@@ -325,6 +380,52 @@ function tools(ticket: AgentTicket, state: RunState) {
     }
   });
 
+  // Autopaikan tai autotallin antaminen: vain vapaa paikka (ei nykyistä eikä tulevaa haltijaa), ei kenenkään
+  // jonossa edellä olevan ohi, ja asukkaalla ei saa olla jo paikkaa. Tarkistus ja tallennus samassa transaktiossa.
+  const assignParkingTool = betaZodTool({
+    name: "assign_parking_space",
+    description: "Give the resident a free parking space or garage of the requested type, starting today. Allowed only when the resident has asked for a space of this type in this conversation. It is refused if no space of the type is free, if someone else is ahead in the parking queue for it, or if the resident already has a space.",
+    inputSchema: z.object({
+      parking_type: z.string().min(1).describe("A space type from get_parking_info"),
+      basis: z.enum(["resident_requested"])
+    }),
+    run: ({ parking_type }) => {
+      if (state.parkingAssigned) return "You already assigned a space in this turn.";
+      const option = parkingOptions(companyId).find(item => item.type === parking_type);
+      if (!option) return "Unknown space type. Use a type from get_parking_info.";
+      type Assignment = { error: string } | { space: { id: string; label: string; type: string }; queueEntry: string | null };
+      const result = db.transaction((): Assignment => {
+        syncParkingHolders();
+        const own = db.prepare("SELECT label FROM parking_spaces WHERE company_id = ? AND resident_id = ? LIMIT 1").get(companyId, residentId) as
+          { label: string } | undefined;
+        if (own) return { error: `Not assigned: the resident already has the space ${own.label}. Changing or adding spaces is for the staff; hand over if the resident wants that.` };
+        const ownEntry = db.prepare(`
+          SELECT id, created_at FROM waitlist WHERE company_id = ? AND resident_id = ? AND resource = 'parking' AND status IN ('waiting', 'offered')
+          ORDER BY created_at LIMIT 1
+        `).get(companyId, residentId) as { id: string; created_at: string } | undefined;
+        // Jonossa edellä: muut, jotka odottavat tätä tyyppiä tai mitä tahansa paikkaa, ja ovat jonottaneet kauemmin.
+        const ahead = (db.prepare(`
+          SELECT COUNT(*) AS count FROM waitlist
+          WHERE company_id = ? AND resource = 'parking' AND status IN ('waiting', 'offered') AND resident_id != ?
+            AND (parking_type = ? OR COALESCE(parking_type, '') = '') AND created_at < ?
+        `).get(companyId, residentId, parking_type, ownEntry?.created_at ?? "9999") as { count: number }).count;
+        if (ahead) {
+          return { error: `Not assigned: ${ahead} other resident(s) are ahead in the parking queue for this type. Free spaces go to them first. Add the resident to the queue instead (or tell their place if already queueing).` };
+        }
+        const space = freeParkingSpaces(companyId).find(item => item.type === parking_type);
+        if (!space) return { error: `Not assigned: no ${parking_type} space is free. Offer to add the resident to the parking queue.` };
+        setParkingHolder(space.id, companyId, residentId);
+        if (ownEntry) db.prepare("UPDATE waitlist SET status = 'done', closed_at = ? WHERE id = ?").run(now(), ownEntry.id);
+        return { space, queueEntry: ownEntry?.id ?? null };
+      })();
+      if ("error" in result) return result.error;
+      state.parkingAssigned = true;
+      audit(ticket.id, "ai_agent_parking_assigned", { parkingId: result.space.id, label: result.space.label, type: parking_type, queueEntry: result.queueEntry });
+      return `Assigned ${parking_type} ${result.space.label} to the resident from today (${today()}), monthly price ${option.monthly_price} €. `
+        + "Tell the resident the space, the start date and the monthly price; the office adds it to the billing.";
+    }
+  });
+
   const knowledgeTool = betaZodTool({
     name: "search_company_documentation",
     description: "Search this housing company's documentation (house rules, sauna and laundry rules, parking rules) for facts you need in the reply.",
@@ -343,16 +444,16 @@ function tools(ticket: AgentTicket, state: RunState) {
     inputSchema: z.object({
       message: z.string().min(1).describe("The reply in Finnish, without greeting signature; the signature is added automatically"),
       outcome: z.enum(["awaiting_resident", "resolved"]),
-      offered_slots: z.array(z.object({ resource: resourceSchema, starts_at: z.string() })).max(10).default([])
+      offered_slots: z.array(z.object({ resource: resourceSchema, starts_at: z.string(), weeks: weeksSchema })).max(10).default([])
     }),
     run: async ({ message, outcome, offered_slots }) => {
       if (state.replied) return "You already replied in this turn.";
       if (state.handedOver) return "You handed the ticket over to staff; do not reply.";
       for (const offer of offered_slots) {
         const startsAt = new Date(Date.parse(offer.starts_at)).toISOString();
-        const error = Number.isNaN(Date.parse(offer.starts_at)) ? "Invalid timestamp." : slotError(companyId, offer.resource, startsAt);
-        if (error || slotTaken(companyId, offer.resource, startsAt, slotEnd(startsAt))) {
-          return `Not sent: offered slot ${offer.starts_at} is not free (${error ?? "already booked"}). Check the times again.`;
+        const error = Number.isNaN(Date.parse(offer.starts_at)) ? "Invalid timestamp." : slotError(companyId, offer.resource, startsAt, offer.weeks);
+        if (error || takenWeeks(companyId, offer.resource, startsAt, offer.weeks).length) {
+          return `Not sent: offered slot ${offer.starts_at}${offer.weeks > 1 ? ` (weekly, ${offer.weeks} weeks)` : ""} is not free (${error ?? "already booked"}). Check the times again.`;
         }
       }
       const sent = await deliverOrDraft(ticket, state, message);
@@ -361,11 +462,11 @@ function tools(ticket: AgentTicket, state: RunState) {
       if (state.mode === "draft") {
         // Tarjous tulee voimaan vasta, kun käsittelijä lähettää luonnoksen (activateDraftOffers).
         db.prepare("DELETE FROM ai_agent_draft_offers WHERE ticket_id = ?").run(ticket.id);
-        const saveDraftOffer = db.prepare("INSERT OR REPLACE INTO ai_agent_draft_offers (ticket_id, resource, starts_at) VALUES (?, ?, ?)");
-        for (const offer of offered_slots) saveDraftOffer.run(ticket.id, offer.resource, new Date(Date.parse(offer.starts_at)).toISOString());
+        const saveDraftOffer = db.prepare("INSERT OR REPLACE INTO ai_agent_draft_offers (ticket_id, resource, starts_at, weeks) VALUES (?, ?, ?, ?)");
+        for (const offer of offered_slots) saveDraftOffer.run(ticket.id, offer.resource, new Date(Date.parse(offer.starts_at)).toISOString(), offer.weeks);
       } else {
-        const saveOffer = db.prepare("INSERT OR REPLACE INTO ai_agent_offers (ticket_id, resource, starts_at, created_at) VALUES (?, ?, ?, ?)");
-        for (const offer of offered_slots) saveOffer.run(ticket.id, offer.resource, new Date(Date.parse(offer.starts_at)).toISOString(), timestamp);
+        const saveOffer = db.prepare("INSERT OR REPLACE INTO ai_agent_offers (ticket_id, resource, starts_at, created_at, weeks) VALUES (?, ?, ?, ?, ?)");
+        for (const offer of offered_slots) saveOffer.run(ticket.id, offer.resource, new Date(Date.parse(offer.starts_at)).toISOString(), timestamp, offer.weeks);
       }
       state.replied = true;
       state.outcome = outcome;
@@ -429,7 +530,7 @@ function tools(ticket: AgentTicket, state: RunState) {
 
   const handOverTool = betaZodTool({
     name: "hand_over_to_staff",
-    description: "Leave the ticket to the property management staff. Use it when the matter is not about booking the sauna or laundry room or about parking, or when you cannot solve it with your tools. Do not reply to the resident in that case.",
+    description: "Leave the ticket to the property management staff. Use it when the matter is not about booking the sauna or laundry room, about parking spaces or garages, or a question the documentation answers, or when you cannot solve it with your tools. Do not reply to the resident in that case.",
     inputSchema: z.object({
       reason: z.string().min(1).describe("One short sentence in Finnish for the staff"),
       reason_type: z.enum(["no_answer", "out_of_scope", "needs_staff"]).default("needs_staff")
@@ -451,7 +552,8 @@ function tools(ticket: AgentTicket, state: RunState) {
   });
 
   // Luonnostilassa agentti varaa vain asukkaan hyväksymän tarjotun vuoron eikä lisää jonoon.
-  const actions = state.mode === "draft" ? [bookTool] : [bookTool, waitlistTool];
+  // Autopaikka annetaan vain, kun vastaus lähtee asukkaalle saman tien (ei luonnostilassa).
+  const actions = state.mode === "draft" ? [bookTool] : [bookTool, waitlistTool, assignParkingTool];
   return [bookingRulesTool, freeSlotsTool, checkSlotTool, residentBookingsTool, ...actions, parkingTool, knowledgeTool,
     replyTool, answerTool, detailsTool, handOverTool];
 }
@@ -570,9 +672,11 @@ routine requests on your own, also when the office is closed, so that residents 
 You are now handling a ticket from a resident of the housing company ${companyName}.
 
 Your scope is exactly these matters:
-- booking a sauna slot or a laundry room (pyykkitupa) slot for the resident
-- parking spaces: telling what is available and what it costs, telling the resident's place in the
-  queue, and adding the resident to the parking queue
+- booking a sauna slot or a laundry room (pyykkitupa) slot for the resident: a single slot, or a
+  weekly (recurring) slot when the housing company allows weekly slots
+- parking spaces and garages: telling what is available and what it costs, telling the resident's
+  place in the queue, giving the resident a free space of the type they asked for with
+  assign_parking_space, and adding the resident to the parking queue when no space can be given
 - general questions about the housing company that the documentation answers (rules, practices,
   opening hours, how to do something). Search with search_company_documentation and answer with
   answer_from_documentation, quoting word for word the sentence(s) of one chunk your answer is based on.
@@ -581,8 +685,8 @@ Your scope is exactly these matters:
   ask_resident_for_details (the apartment, a photo, when the problem started, whether it affects
   neighbours). When the report already has these details, hand it over.
 Everything else is for the staff: fault reports, complaints, moves, renovations, keys, billing,
-cancelling or changing existing bookings, weekly slots, assigning a parking space, and anything you
-are unsure about. For those, call hand_over_to_staff and do not reply to the resident. When the resident
+cancelling or changing existing bookings, changing or giving up a parking space, a second parking
+space, and anything you are unsure about. For those, call hand_over_to_staff and do not reply to the resident. When the resident
 asks a question that your tools and the documentation do not answer, use reason_type no_answer and give
 the question in general form in general_question (no names, apartments or personal details). If the
 message mixes an in-scope request with something else, hand the whole ticket over.
@@ -599,8 +703,19 @@ How to handle a booking request:
 4. When the resident later replies choosing one of the offered times, book it with book_slot
    (basis resident_accepted_offer) and confirm (outcome resolved). If it was taken meanwhile, offer
    new times.
+Weekly slots: book one only when the resident asks for a recurring slot (for example "joka tiistai",
+"vakiovuoro", "viikoittain"). Ask for how many weeks if they did not say, offering the longest the rules
+allow. Pass weeks to check_slot, find_free_slots, offered_slots and book_slot. A weekly slot is booked
+only when every week is free; if some weeks are taken by others, tell the resident which, and offer
+another weekday or hour that is free every week, or single slots. Never book over anyone's booking.
 If the resident's answer is unclear, ask again rather than guessing. Never book a time the
-resident has not chosen, and book at most one slot per turn.
+resident has not chosen, and book at most one slot (single or weekly) per turn.
+
+How to handle a parking request: check get_parking_info. If a space of the type the resident wants is
+free, give it with assign_parking_space and tell the space, start date and monthly price (outcome
+resolved). If none is free, or others are ahead in the queue, offer to add the resident to the queue or
+add them if they asked for that. If the resident did not say which type they want and several are
+free, ask (outcome awaiting_resident).
 
 Writing the reply: polite, short Finnish, written to the resident. Use only facts from your tools
 and the company documentation; never invent prices, rules or times. Say times with weekday, date
@@ -889,16 +1004,16 @@ export function continueAgent(ticketId: string) {
 // jatkaa asukkaan vastauksesta (varaa hyväksytyn vuoron, tarjoaa uutta aikaa tai lopettaa). Jos käsittelijä kirjoitti
 // vastauksen kokonaan uudelleen, tarjousta ei oteta käyttöön.
 export function activateDraftOffers(ticketId: string, rewritten: boolean) {
-  const offers = db.prepare("SELECT resource, starts_at FROM ai_agent_draft_offers WHERE ticket_id = ?").all(ticketId) as
-    { resource: string; starts_at: string }[];
+  const offers = db.prepare("SELECT resource, starts_at, weeks FROM ai_agent_draft_offers WHERE ticket_id = ?").all(ticketId) as
+    { resource: string; starts_at: string; weeks: number }[];
   db.prepare("DELETE FROM ai_agent_draft_offers WHERE ticket_id = ?").run(ticketId);
   const state = (db.prepare("SELECT agent_state FROM tickets WHERE id = ?").get(ticketId) as { agent_state: string | null } | undefined)?.agent_state;
   if (state !== "offer_drafted") return;
   db.prepare("UPDATE tickets SET agent_state = NULL WHERE id = ?").run(ticketId);
   if (rewritten || !offers.length) return;
   const timestamp = now();
-  const save = db.prepare("INSERT OR REPLACE INTO ai_agent_offers (ticket_id, resource, starts_at, created_at) VALUES (?, ?, ?, ?)");
-  for (const offer of offers) save.run(ticketId, offer.resource, offer.starts_at, timestamp);
+  const save = db.prepare("INSERT OR REPLACE INTO ai_agent_offers (ticket_id, resource, starts_at, created_at, weeks) VALUES (?, ?, ?, ?, ?)");
+  for (const offer of offers) save.run(ticketId, offer.resource, offer.starts_at, timestamp, offer.weeks);
   db.prepare("UPDATE tickets SET ai_action = 'ai' WHERE id = ?").run(ticketId);
   audit(ticketId, "ai_agent_offer_sent", { offers: offers.length });
 }
@@ -931,15 +1046,24 @@ export function autoStartAgent(ticketId: string) {
 
 // --- ERP:n vastaus agentin varaukseen ------------------------------------------------------------
 
-type AgentBooking = { id: string; resource: Resource; starts_at: string; ends_at: string; ticket_id: string | null };
+type AgentBooking = { id: string; resource: Resource; starts_at: string; ends_at: string; ticket_id: string | null; series_id: string | null };
+const AGENT_BOOKING_SELECT = "SELECT id, resource, starts_at, ends_at, ticket_id, series_id FROM bookings";
 
-// ERP vahvisti varauksen: asukkaalle vakioteksti samaan ketjuun (ei AI-kutsua), ja tehtävä suljetaan.
+// ERP vahvisti varauksen: asukkaalle vakioteksti samaan ketjuun (ei AI-kutsua), ja tehtävä suljetaan. Jatkuvasta
+// vuorosta lähtee yksi vahvistus, kun ERP on vahvistanut sen jokaisen viikon.
 async function bookingConfirmed(bookingId: string) {
-  const booking = db.prepare("SELECT id, resource, starts_at, ends_at, ticket_id FROM bookings WHERE id = ?").get(bookingId) as AgentBooking | undefined;
+  const booking = db.prepare(`${AGENT_BOOKING_SELECT} WHERE id = ?`).get(bookingId) as AgentBooking | undefined;
   const ticket = booking?.ticket_id ? loadTicket(booking.ticket_id) : undefined;
   if (!booking || !ticket) return;
-  const label = slotLabel(booking.starts_at, booking.ends_at);
-  const sent = await deliverReply(ticket, `Hei,\n\nvarauksesi on nyt vahvistettu: ${RESOURCE_NAMES[booking.resource] ?? booking.resource} ${label}.`);
+  const series = booking.series_id
+    ? db.prepare(`${AGENT_BOOKING_SELECT} WHERE series_id = ? ORDER BY starts_at`).all(booking.series_id) as AgentBooking[]
+    : [booking];
+  if (booking.series_id && db.prepare("SELECT 1 FROM bookings WHERE series_id = ? AND status = 'requested' LIMIT 1").get(booking.series_id)) return;
+  const label = slotLabel(series[0].starts_at, series[0].ends_at);
+  const what = series.length > 1
+    ? `jatkuva vuoro ${RESOURCE_NAMES[booking.resource] ?? booking.resource} joka viikko ${series.length} viikon ajan, ensimmäinen ${label} ja viimeinen ${slotLabel(series[series.length - 1].starts_at, series[series.length - 1].ends_at)}`
+    : `${RESOURCE_NAMES[booking.resource] ?? booking.resource} ${label}`;
+  const sent = await deliverReply(ticket, `Hei,\n\nvarauksesi on nyt vahvistettu: ${what}.`);
   audit(ticket.id, "ai_agent_booking_confirmed", { bookingId, resource: booking.resource, startsAt: booking.starts_at, sent: sent.ok });
   if (!sent.ok) {
     note(ticket.id, `ERP vahvisti varauksen (${label}), mutta vahvistus ei lähtenyt asukkaalle: ${sent.error}`);
@@ -952,10 +1076,12 @@ async function bookingConfirmed(bookingId: string) {
 
 // ERP hylkäsi varauksen, koska vuoro oli jo varattu siellä: varaus perutaan Pleississä, ja agentti
 // käynnistetään uudelleen tarjoamaan seuraavia vapaita vuoroja. Jos se ei onnistu, asia siirtyy henkilökunnalle.
+// Jatkuva vuoro on kaikki tai ei mitään: yhdenkin viikon hylkäys perii koko sarjan.
 async function bookingRejected(bookingId: string) {
-  const booking = db.prepare("SELECT id, resource, starts_at, ends_at, ticket_id FROM bookings WHERE id = ?").get(bookingId) as AgentBooking | undefined;
+  const booking = db.prepare(`${AGENT_BOOKING_SELECT} WHERE id = ?`).get(bookingId) as AgentBooking | undefined;
   if (!booking) return;
-  deleteBookingsAndRelease("id = ?", [booking.id]);
+  if (booking.series_id) deleteBookingsAndRelease("series_id = ?", [booking.series_id]);
+  else deleteBookingsAndRelease("id = ?", [booking.id]);
   const ticket = booking.ticket_id ? loadTicket(booking.ticket_id) : undefined;
   if (!ticket) return;
   const label = slotLabel(booking.starts_at, booking.ends_at);
@@ -967,8 +1093,8 @@ async function bookingRejected(bookingId: string) {
   }
   running.add(ticket.id);
   try {
-    const notice = `The ${RESOURCE_NAMES[booking.resource] ?? booking.resource} booking you requested for the resident (${label}) was rejected by the `
-      + "property management system because the slot was already booked there. The booking has been cancelled. "
+    const notice = `The ${RESOURCE_NAMES[booking.resource] ?? booking.resource} ${booking.series_id ? "weekly booking" : "booking"} you requested for the resident (${label}${booking.series_id ? " is one of its weeks" : ""}) was rejected by the `
+      + `property management system because the slot was already booked there. The ${booking.series_id ? "whole weekly booking has" : "booking has"} been cancelled. `
       + "Tell the resident that this time was not available after all, offer the next free slots with find_free_slots, and do not book anything until the resident chooses.";
     await withAiLog(ticket.id, () => runAgent(ticket, { manual: false, notice, mode: "send" }));
   } catch (error) {

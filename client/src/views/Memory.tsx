@@ -3,7 +3,7 @@ import { Dropdown } from "../components/common";
 import { formatDate, formatDateOnly, formatTicketNumber } from "../format";
 import { t } from "../i18n";
 import { api, errorMessage } from "../session";
-import { placeLabel, topicLabel, topicOptions } from "../topics";
+import { BOOKING_TOPICS, placeLabel, topicLabel, topicOptions } from "../topics";
 import type { Company } from "../types";
 import { navigate } from "../routing";
 import { GuideEditor } from "../components/GuideEditor";
@@ -26,7 +26,7 @@ type MemoryList = { notes: MemoryNote[]; scannedAt: string | null; newCases: num
 type NoteFields = { text: string; topic: string | null; stairwell: string; validUntil: string | null };
 
 const ANY_TOPIC = "";
-const fieldTopicOptions = [{ value: ANY_TOPIC, label: t("Kaikki aiheet") }, ...topicOptions.filter(option => option.value !== "booking" && option.value !== "other")];
+const fieldTopicOptions = [{ value: ANY_TOPIC, label: t("Kaikki aiheet") }, ...topicOptions.filter(option => !BOOKING_TOPICS.includes(option.value) && option.value !== "other")];
 
 // Tiedon kentät: teksti, aihe, porras ja voimassaolo. Käytetään ehdotuksen muokkaukseen ja uuden lisäämiseen.
 function NoteEditor({ initial, busy, submitLabel, onSubmit, onCancel, extra }: {

@@ -146,6 +146,9 @@ export function createBookings(input: {
   status?: "confirmed" | "requested";
   // Tehtävä, jolta varaus tehtiin (AI-agentti).
   ticketId?: string | null;
+  // Kaikki tai ei mitään (AI-agentti): jos yksikin vuoro on jo varattu tai virheellinen, mitään ei varata.
+  // Tarkistus ja tallennus tehdään samassa transaktiossa, joten väliin ei ehdi kenenkään muun varaus.
+  allOrNothing?: boolean;
 }): { created: number; skipped: string[]; ids: string[] } {
   const seriesId = input.occurrences.length > 1 ? id("series") : null;
   const overlap = db.prepare(`
@@ -161,12 +164,23 @@ export function createBookings(input: {
   let created = 0;
   const skipped: string[] = [];
   const ids: string[] = [];
+  const bookable = ({ startsAt, endsAt }: { startsAt: string; endsAt: string }) => endsAt > startsAt
+    && Date.parse(endsAt) > Date.now()
+    && Date.parse(endsAt) - Date.parse(startsAt) <= 4 * 60 * 60 * 1000
+    && !overlap.get(input.companyId, input.resource, endsAt, startsAt);
+  // Saman pyynnön vuorot eivät saa mennä toistensa päälle.
+  const sorted = [...input.occurrences].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const selfOverlap = sorted.some((occurrence, index) => index > 0 && occurrence.startsAt < sorted[index - 1].endsAt);
   db.transaction(() => {
+    if (input.allOrNothing) {
+      const blocked = input.occurrences.filter(occurrence => !bookable(occurrence)).map(occurrence => occurrence.startsAt);
+      if (blocked.length || selfOverlap) {
+        skipped.push(...(blocked.length ? blocked : input.occurrences.map(occurrence => occurrence.startsAt)));
+        return;
+      }
+    }
     for (const { startsAt, endsAt } of input.occurrences) {
-      const valid = endsAt > startsAt
-        && Date.parse(endsAt) > Date.now()
-        && Date.parse(endsAt) - Date.parse(startsAt) <= 4 * 60 * 60 * 1000;
-      if (!valid || overlap.get(input.companyId, input.resource, endsAt, startsAt)) {
+      if (!bookable({ startsAt, endsAt })) {
         skipped.push(startsAt);
         continue;
       }

@@ -133,6 +133,14 @@ async function runAgentCase(testCase: AgentCase): Promise<{ actual: AgentRun | n
     db.prepare("UPDATE knowledge SET status = 'deleted' WHERE id = ?").run(knowledgeId);
     db.prepare("UPDATE knowledge_chunks SET status = 'deleted' WHERE knowledge_id = ?").run(knowledgeId);
   }
+  // Agentin antama autopaikka palautetaan vapaaksi, jotta seuraavat tapaukset näkevät saman lähtötilanteen.
+  for (const row of db.prepare("SELECT details FROM audit_log WHERE ticket_id = ? AND action = 'ai_agent_parking_assigned'").all(ticketId) as { details: string }[]) {
+    const { parkingId, queueEntry } = JSON.parse(row.details || "{}") as { parkingId?: string; queueEntry?: string | null };
+    if (queueEntry) db.prepare("UPDATE waitlist SET status = 'waiting', closed_at = NULL WHERE id = ?").run(queueEntry);
+    if (!parkingId) continue;
+    db.prepare("DELETE FROM parking_assignments WHERE parking_id = ? AND resident_id = ? AND end_date IS NULL").run(parkingId, testCase.input.resident);
+    db.prepare("UPDATE parking_spaces SET resident_id = NULL WHERE id = ?").run(parkingId);
+  }
   if (!value) return { actual: null, errors };
   const trace = db.prepare(`
     SELECT r.payload FROM audit_log a JOIN ai_requests r ON r.audit_id = a.id

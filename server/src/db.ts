@@ -831,6 +831,11 @@ db.exec(`
     PRIMARY KEY (ticket_id, resource, starts_at)
   )
 `);
+// weeks: 1 = tarjottu yksittäinen vuoro, 2+ = jatkuva vuoro niin monelle viikolle.
+for (const table of ["ai_agent_offers", "ai_agent_draft_offers"]) {
+  const columns = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(column => column.name);
+  if (!columns.includes("weeks")) db.exec(`ALTER TABLE ${table} ADD COLUMN weeks INTEGER NOT NULL DEFAULT 1`);
+}
 
 // Tehtävän aihe (lämmitys, hissi, vesivuoto…) yhteisten vikojen tunnistusta ja suodatusta varten.
 // topic_source: keywords = päätelty tekstistä, manual = käsittelijän valitsema (ei päätellä uudelleen).

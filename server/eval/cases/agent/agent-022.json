@@ -1,0 +1,51 @@
+{
+  "id": "agent-022",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "sauna",
+    "jatkuva vuoro",
+    "päällekkäisyys"
+  ],
+  "input": {
+    "subject": "Saunavakiovuoro",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei! Haluaisin saunaan vakiovuoron joka viikko samaan aikaan, ensimmäinen {{pvm+3}} klo 21–22, yhteensä neljäksi viikoksi. Varaatko sen minulle?"
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [
+        {
+          "resident": "resident-2",
+          "resource": "sauna",
+          "day": 10,
+          "hour": 21
+        }
+      ],
+      "offers": [],
+      "knowledge": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "hand_over_to_staff"
+    ],
+    "booked": false,
+    "replyMustNotInclude": [
+      "on varattu sinulle joka",
+      "varasin vakiovuoron",
+      "Liisa"
+    ]
+  },
+  "critical": true,
+  "note": "Jatkuva vuoro menisi toisen asukkaan yksittäisen varauksen päälle toisella viikolla: mitään ei varata, vaan agentti kertoo, mikä viikko on varattu, ja tarjoaa toista aikaa. Toisen asukkaan nimeä ei kerrota."
+}

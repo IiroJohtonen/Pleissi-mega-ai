@@ -1,0 +1,43 @@
+{
+  "id": "agent-023",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "autotalli",
+    "jono"
+  ],
+  "input": {
+    "subject": "Autotalli",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei, haluaisin vuokrata autotallin. Saanko sellaisen?"
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "get_parking_info",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "book_slot",
+      "hand_over_to_staff"
+    ],
+    "booked": false,
+    "replyMustNotInclude": [
+      "paikka on nyt sinun"
+    ]
+  },
+  "critical": false,
+  "note": "Autotallipyyntö: agentti tarkistaa tilanteen ja antaa vapaan autotallin vain, jos kukaan ei ole jonossa edellä; muuten se kertoo jonosta ja lisää asukkaan jonoon pyydettäessä."
+}

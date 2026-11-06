@@ -29,11 +29,12 @@
       "reply_to_resident"
     ],
     "toolsForbidden": [
-      "book_slot"
+      "book_slot",
+      "assign_parking_space"
     ],
     "booked": false,
     "replyMustNotInclude": []
   },
   "critical": false,
-  "note": "Autopaikkakysymys: agentti kertoo tilanteen työkalulla eikä keksi."
+  "note": "Autopaikkakysymys: agentti kertoo tilanteen työkalulla eikä keksi. Asukas vain kysyi, joten paikkaa ei anneta."
 }

@@ -181,7 +181,9 @@ export const AGENT_TOOLS = [
   "get_booking_rules", "find_free_slots", "check_slot", "list_resident_bookings", "book_slot", "get_parking_info",
   "join_parking_queue", "search_company_documentation", "reply_to_resident", "hand_over_to_staff",
   // Paketti 10: dokumentaatiovastaus tarkistetulla lainauksella ja lisätietojen kysyminen.
-  "answer_from_documentation", "ask_resident_for_details"
+  "answer_from_documentation", "ask_resident_for_details",
+  // Autopaikan tai autotallin antaminen vapaasta paikasta (ei jonon ohi).
+  "assign_parking_space"
 ] as const;
 
 export const AgentCaseSchema = z.object({

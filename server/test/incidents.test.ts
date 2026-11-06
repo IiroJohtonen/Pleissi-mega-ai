@@ -12,7 +12,16 @@ describe("tehtävän aihe", () => {
     assert.equal(classifyTopic("Hissi on jumissa"), "elevator");
     assert.equal(classifyTopic("Lattiakaivo tulvii"), "drain");
     assert.equal(classifyTopic("Kosteusläikkä katossa"), "water_leak");
-    assert.equal(classifyTopic("Haluaisin varata saunavuoron"), "booking");
+    // Varaukset jaetaan omiin aiheisiinsa, jotta autotalliasiaa ei ehdoteta yhdistettäväksi saunavuoroon.
+    assert.equal(classifyTopic("Haluaisin varata saunavuoron"), "sauna_booking");
+    assert.equal(classifyTopic("Voinko varata saunan perjantaiksi?"), "sauna_booking");
+    assert.equal(classifyTopic("Pyykkivuoro tiistaille"), "laundry_booking");
+    assert.equal(classifyTopic("Haluaisin varata pesutuvan lauantaiksi"), "laundry_booking");
+    assert.equal(classifyTopic("Haluaisin vuokrata autotallin"), "parking");
+    assert.equal(classifyTopic("Varaan autopaikan muuton jälkeen"), "parking");
+    assert.equal(classifyTopic("Voinko varata kerhohuoneen juhliin?"), "booking");
+    // Saunan vika on yhteisen tilan vika, ei varaus.
+    assert.equal(classifyTopic("Saunan kiuas on rikki"), "common_room");
     // "ovi" tunnistetaan vain kokonaisena sanana.
     assert.equal(classifyTopic("Ulko-ovi ei mene lukkoon"), "door");
     assert.equal(classifyTopic("Kovin hyvä palvelu, kiitos"), "other");
@@ -243,7 +252,7 @@ describe("yhteisten vikojen rajat", () => {
     const office = (await call(server, admin, "GET", "/office")).data;
     const elevator = office.incidentRules.find((item: any) => item.topic === "elevator");
     assert.deepEqual([elevator.tracked, elevator.threshold, elevator.windowHours], [true, 2, 24]);
-    assert.ok(!office.incidentRules.some((item: any) => item.topic === "booking" || item.topic === "other"));
+    assert.ok(!office.incidentRules.some((item: any) => ["booking", "sauna_booking", "laundry_booking", "parking", "other"].includes(item.topic)));
 
     // Väärä raja hylätään selkeällä viestillä.
     const invalid = await call(server, admin, "PUT", "/office", { name: office.name, incidentRules: [{ topic: "elevator", tracked: true, threshold: 1, windowHours: 24 }] });
