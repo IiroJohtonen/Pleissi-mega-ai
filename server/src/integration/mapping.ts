@@ -1,3 +1,4 @@
+import { isBookingTopic } from "../booking-topics.js";
 import type { Booking, Comment, FullTask, Task } from "./canonical.js";
 
 // ---------------------------------------------------------------------------------------------
@@ -89,7 +90,7 @@ export function toTask(row: TaskRow, context: TaskContext): Task {
     ...identity,
     sensitive: false,
     description: row.summary.trim() || null,
-    category: row.topic === "booking" ? "booking" : CATEGORY[row.type] ?? "other",
+    category: isBookingTopic(row.topic) ? "booking" : CATEGORY[row.type] ?? "other",
     priority: PRIORITY[row.priority] ?? "normal",
     channel: CHANNEL[row.source_channel] ?? "manual",
     housingCompanyId: row.company_id,

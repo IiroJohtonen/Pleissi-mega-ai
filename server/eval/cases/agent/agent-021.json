@@ -1,0 +1,40 @@
+{
+  "id": "agent-021",
+  "feature": "agent",
+  "source": "synthetic",
+  "tags": [
+    "sauna",
+    "jatkuva vuoro"
+  ],
+  "input": {
+    "subject": "Saunavakiovuoro",
+    "messages": [
+      {
+        "from": "resident",
+        "text": "Hei! Haluaisin saunaan vakiovuoron joka viikko samaan aikaan, ensimmäinen {{pvm+3}} klo 21–22, yhteensä neljäksi viikoksi. Varaatko sen minulle?"
+      }
+    ],
+    "resident": "resident-1",
+    "setup": {
+      "bookings": [],
+      "offers": [],
+      "knowledge": []
+    }
+  },
+  "expected": {
+    "outcome": [
+      "replied"
+    ],
+    "toolsRequired": [
+      "book_slot",
+      "reply_to_resident"
+    ],
+    "toolsForbidden": [
+      "hand_over_to_staff"
+    ],
+    "booked": true,
+    "replyMustNotInclude": []
+  },
+  "critical": false,
+  "note": "Jatkuva vuoro: kaikki neljä viikkoa ovat vapaina, joten agentti varaa viikoittaisen vuoron (weeks 4) ja vahvistaa sen."
+}

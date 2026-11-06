@@ -4,6 +4,29 @@ Jokaisesta päivityksestä kirjataan päivämäärä, mitä muutettiin ja miten.
 tulokset ovat testaussivulla: https://claude.ai/artifact/9ioRJQ7LnYLHtmq6WHi3ri
 
 
+## 6.11.2026 · Varausaiheet erikseen, agentti varaa jatkuvat vuorot ja autopaikat
+
+**Mitä muutettiin**
+- **Aiheet:** entinen "Varaukset" jaettiin neljään aiheeseen: Saunavuorot, Pyykkivuorot, Autopaikat ja autotallit
+  sekä Muut varaukset. Jo olemassa olevat varaustehtävät saivat tarkemman aiheen (käsittelijän itse valitsemaa aihetta
+  ei muutettu). Yhdistämisehdotus ei siksi enää yhdistä esimerkiksi autotallipyyntöä saunavuoropyyntöön.
+- Saunan tai pesutuvan vika (esim. kiuas rikki) on edelleen aihe "Sauna tai pesutupa", ei varaus.
+- **Jatkuvat vuorot:** AI-agentti voi varata asukkaalle jatkuvan (viikoittaisen) sauna- tai pyykkivuoron, kun
+  taloyhtiön asetuksissa viikoittaiset vuorot on sallittu, ja enintään asetuksen viikkomäärän. Vuoro varataan vain, jos
+  jokainen viikko on vapaa: jos yksikin viikko menisi jonkun yksittäisen tai jatkuvan varauksen päälle, mitään ei
+  varata, ja agentti kertoo asukkaalle, mikä viikko on varattu, ja tarjoaa toista aikaa.
+- **Autopaikat ja autotallit:** agentti voi antaa asukkaalle vapaan paikan siitä tyypistä, jota asukas pyysi. Paikkaa
+  ei anneta, jos joku muu on jonossa edellä (samaa tyyppiä tai mitä tahansa paikkaa), jos paikalla on jo tuleva haltija
+  tai jos asukkaalla on jo paikka. Muuten agentti kertoo jonosta ja lisää asukkaan jonoon. Asukkaan oma jonopaikka
+  merkitään hoidetuksi.
+
+**Miten**
+- Tehtävä › Aihe: uudet aiheet valikossa ja raporteissa.
+- Tehtävä › "Anna AI-agentin hoitaa": pyyntö "vakiovuoro saunaan joka torstai" tai "haluaisin autotallin".
+- Varaukset- ja Autopaikat-näkymät: agentin tekemät varaukset ja paikat näkyvät niissä.
+
+**Testit:** PR:n kuvauksessa
+
 ## 5.11.2026 · AI-agentti hoitaa tehtävän itse
 
 **Mitä muutettiin**

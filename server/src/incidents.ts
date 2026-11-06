@@ -1,9 +1,12 @@
 import { AUTHORIZED_COMPANY_IDS } from "./access.js";
+import { isBookingTopic } from "./booking-topics.js";
 import { db } from "./db.js";
 import { sendEmail } from "./mail.js";
 import { formatTicketNumber } from "./numbers.js";
 import { sendTicketReply } from "./ticket-reply.js";
 import { id, now, stairwellOf, VALID_EMAIL } from "./util.js";
+
+export { BOOKING_TOPICS, isBookingTopic } from "./booking-topics.js";
 
 // ---------------------------------------------------------------------------------------------
 // Yhteisten vikojen tunnistus. Jokainen tehtävä saa aiheen (lämmitys, hissi, vesivuoto…) tekstin
@@ -36,9 +39,29 @@ type TopicRule = {
 export const SAFETY_ADVICE = "Jos tilanne on käynnissä tai joku on vaarassa, soita heti hätänumeroon 112.";
 
 export const TOPIC_RULES = {
+  // Varausaiheet ennen vikoja: "haluan saunavuoron" on varaus, "sauna ei lämpene" on vika (common_room).
+  // Autopaikat ennen yleisiä varauksia, jotta "varaan autopaikan" ei päädy samaan aiheeseen kuin saunavuoro.
+  parking: {
+    label: "Autopaikat ja autotallit", about: "autopaikoista ja autotalleista",
+    words: ["autopaik", "autotalli", "autokatos", "parkkipaik", "lämmityspaik", "latauspaik", "sähköautopaik", "pysäköin", "pysäköint", "autohalli",
+      "parkkihalli", "autopaikkajono", "jonoon autopaik"],
+    tracked: false, threshold: 0, windowHours: 0, hint: "", request: ""
+  },
+  sauna_booking: {
+    label: "Saunavuorot", about: "saunavuoroista",
+    words: ["saunavuor", "saunavaraus", "saunan varau", "saunan vuoro", "varata sauna", "varaan sauna", "varata saunan", "varaan saunan", "saunaan vuoro",
+      "oma saunavuoro", "yhteissaunavuor", "lenkkisaunavuor"],
+    tracked: false, threshold: 0, windowHours: 0, hint: "", request: ""
+  },
+  laundry_booking: {
+    label: "Pyykkivuorot", about: "pyykkivuoroista",
+    words: ["pyykkivuor", "pesuvuor", "pesutupavuor", "pesutuvan vuoro", "pesutuvan varau", "kuivaushuoneen vuoro", "kuivaushuoneen varau",
+      "varata pesutupa", "varaan pesutuva", "varata pesutuva", "mankelivuor"],
+    tracked: false, threshold: 0, windowHours: 0, hint: "", request: ""
+  },
   booking: {
-    label: "Varaukset", about: "varauksista",
-    words: ["saunavuor", "pyykkivuor", "pesuvuor", "varata", "varaus", "varaan", "vuoron", "vuoroa", "autopaik", "lämmityspaik", "parkkipaik"],
+    label: "Muut varaukset", about: "varauksista",
+    words: ["varata", "varaus", "varaan", "vuoron", "vuoroa", "kerhohuone", "juhlatila"],
     tracked: false, threshold: 0, windowHours: 0, hint: "", request: ""
   },
   hot_water: {
@@ -147,7 +170,7 @@ const rule = (topic: string): TopicRule => TOPIC_RULES[topic as TopicKey] ?? TOP
 export const isTopic = (value: string): value is TopicKey => value in TOPIC_RULES;
 
 // Aiheet, joiden seurantaa ja rajoja isännöitsijä voi muuttaa (varaukset ja muu eivät ole vikoja).
-export const ADJUSTABLE_TOPICS: TopicKey[] = TOPIC_KEYS.filter(topic => topic !== "booking" && topic !== "other");
+export const ADJUSTABLE_TOPICS: TopicKey[] = TOPIC_KEYS.filter(topic => !isBookingTopic(topic) && topic !== "other");
 export const RULE_LIMITS = { threshold: { min: 2, max: 50 }, windowHours: { min: 1, max: 720 } };
 
 export type DetectionRule = { topic: TopicKey; label: string; tracked: boolean; threshold: number; windowHours: number;
@@ -239,6 +262,24 @@ export function classifyPendingTopics(ticketId?: string) {
     update.run(fromSubject !== "other" ? fromSubject : classifyTopic(`${row.summary}\n${(row.body ?? "").slice(0, 2000)}`), row.id);
   }
 }
+
+// Varausaihe jaettiin saunavuoroihin, pyykkivuoroihin ja autopaikkoihin. Aiemmin yleiseksi varaukseksi päätellyt
+// tehtävät saavat tarkemman aiheen; käsittelijän valitsemaa aihetta ei muuteta, eikä tehtävä vaihdu muuksi kuin varaukseksi.
+export function splitBookingTopics() {
+  const rows = db.prepare(`
+    SELECT t.id, t.subject, t.summary,
+           (SELECT m.body FROM messages m WHERE m.ticket_id = t.id AND m.direction = 'inbound' ORDER BY m.created_at LIMIT 1) AS body
+    FROM tickets t
+    WHERE t.topic = 'booking' AND COALESCE(t.topic_source, '') != 'manual'
+  `).all() as { id: string; subject: string; summary: string; body: string | null }[];
+  const update = db.prepare("UPDATE tickets SET topic = ? WHERE id = ? AND topic = 'booking'");
+  for (const row of rows) {
+    const fromSubject = classifyTopic(row.subject);
+    const topic = isBookingTopic(fromSubject) ? fromSubject : classifyTopic(`${row.subject}\n${row.summary}\n${(row.body ?? "").slice(0, 2000)}`);
+    if (topic !== "booking" && isBookingTopic(topic)) update.run(topic, row.id);
+  }
+}
+splitBookingTopics();
 
 export function incidentDetectionEnabled(): boolean {
   const row = db.prepare("SELECT incident_detection FROM office_settings WHERE id = 1").get() as { incident_detection: number } | undefined;

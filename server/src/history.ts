@@ -1,7 +1,7 @@
 import { promiseStats } from "./time-promise.js";
 import { topicTrendAlerts } from "./trend-alerts.js";
 import { db } from "./db.js";
-import { TOPIC_RULES, type TopicKey } from "./incidents.js";
+import { isBookingTopic, TOPIC_RULES, type TopicKey } from "./incidents.js";
 import { helsinkiParts, id, now, stairwellOf } from "./util.js";
 import { draftTopicStats } from "./ai-draft-edits.js";
 
@@ -85,7 +85,7 @@ export function ticketHistory(ticketId: string) {
 
   // Porras: samanaiheiset tehtävät muista saman portaan asunnoista. Aiheettomat ja muu-aihe jätetään pois.
   const stairwell = stairwellOf(ticket.apartment_number, ticket.staircase);
-  const tracked = ticket.topic && ticket.topic !== "other" && ticket.topic !== "booking";
+  const tracked = ticket.topic && ticket.topic !== "other" && !isBookingTopic(ticket.topic);
   const stair = tracked && stairwell
     ? (db.prepare(`${HISTORY_SELECT}
         WHERE t.company_id = ? AND t.topic = ? AND t.id != ? AND t.kind = 'ticket' AND t.ai_action != 'filtered'
@@ -198,7 +198,7 @@ export function trends(companyIds: string[], months: number) {
 
   // Toistuvat viat: sama asunto ja aihe vähintään kahdesti 6 kk:ssa tai sama porras ja aihe vähintään kolmesti.
   const sixMonths = monthsAgo(6);
-  const recent = rows.filter(row => row.created_at >= sixMonths && row.topic && row.topic !== "other" && row.topic !== "booking");
+  const recent = rows.filter(row => row.created_at >= sixMonths && row.topic && row.topic !== "other" && !isBookingTopic(row.topic));
   const groups = new Map<string, typeof recent>();
   for (const row of recent) {
     const stair = stairwellOf(row.apartment_number, row.staircase);

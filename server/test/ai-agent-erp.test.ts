@@ -37,7 +37,13 @@ describe("AI-agentin varaus ERP-integraatiossa", () => {
         const result = typeof last.content === "string" ? "" : last.content.filter(block => block.type === "tool_result")
           .map(block => (typeof block.content === "string" ? block.content : JSON.stringify(block.content))).join("\n");
         if (result) toolResults.push(result);
-        const call = !result ? { name: "book_slot", input: { resource: "sauna", starts_at: requested, basis: "resident_requested" } }
+        else toolResults.length = 0;
+        const first = body.messages[0].content;
+        const weekly = (typeof first === "string" ? first : JSON.stringify(first)).includes("vakiovuoro");
+        const call = !result
+          ? { name: "book_slot", input: weekly
+            ? { resource: "sauna", starts_at: helsinkiIso(day, 20), weeks: 3, basis: "resident_requested" }
+            : { resource: "sauna", starts_at: requested, basis: "resident_requested" } }
           : result.startsWith("Booking requested") ? { name: "reply_to_resident", input: { message: "Varauspyyntö on lähetetty, saat vahvistuksen pian.", outcome: "awaiting_resident" } }
           : null;
         res.setHeader("Content-Type", "application/json");
@@ -100,5 +106,27 @@ describe("AI-agentin varaus ERP-integraatiossa", () => {
     // Integraatioloki näyttää varaussanoman.
     const log = (await call(server, admin, "GET", "/integration/messages")).data;
     assert.ok(log.messages.some((message: any) => message.event_type === "booking.created" && message.status === "sent"));
+  });
+
+  it("jatkuvasta vuorosta lähtee yksi vahvistus, kun ERP on vahvistanut jokaisen viikon", async () => {
+    const created = await call(server, matti, "POST", "/portal/tickets", {
+      subject: "Sauna", description: "Haluaisin vakiovuoron saunaan joka viikko klo 20.", type: "Pyyntö", attachments: []
+    });
+    const ticketId = created.data.ticketId;
+    const run = await call(server, admin, "POST", `/tickets/${ticketId}/agent`);
+    assert.deepEqual([run.data.outcome, run.data.booked], ["replied", true]);
+    let detail = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    const deadline = Date.now() + 10_000;
+    while (detail.ticket.status !== "closed") {
+      if (Date.now() > deadline) throw new Error(`ERP ei vahvistanut:\n${server.output()}`);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      detail = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    }
+    // Annetaan muiden viikkojen vahvistusten ehtiä: viestejä ei saa tulla viikkoa kohden.
+    await new Promise(resolve => setTimeout(resolve, 800));
+    detail = (await call(server, admin, "GET", `/tickets/${ticketId}`)).data;
+    const confirmations = detail.messages.filter((message: any) => message.direction === "outbound" && /nyt vahvistettu/.test(message.body));
+    assert.equal(confirmations.length, 1);
+    assert.match(confirmations[0].body, /jatkuva vuoro sauna joka viikko 3 viikon ajan/);
   });
 });

@@ -1156,6 +1156,10 @@ reason: one short sentence in Finnish telling the property manager why you chose
 
 topic: the one key that best describes what the message is about, from this list:
 ${Object.entries(TOPIC_RULES).map(([key, rule]) => `${key} (${rule.label})`).join(", ")}.
+Booking topics are for wanting to book, change or cancel something: sauna_booking for a sauna slot,
+laundry_booking for a laundry room or drying room slot, parking for a parking space, garage, carport or
+the parking queue, booking for any other booking. A fault in the sauna or laundry room itself ("the
+sauna stove does not heat up") is common_room, not a booking topic.
 Use noise for disturbance from other residents (noise, shouting, swearing, fighting, parties, smoking
 in the stairwell) and safety for a suspicious person or vehicle, a break-in, theft or vandalism. Use
 other when nothing fits.

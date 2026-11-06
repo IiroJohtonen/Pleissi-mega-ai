@@ -15,9 +15,15 @@ export const topicLabels: Record<string, string> = {
   safety: t("Turvallisuus"),
   noise: t("Melu tai häiriö"),
   waste: t("Jätehuolto"),
-  booking: t("Varaukset"),
+  sauna_booking: t("Saunavuorot"),
+  laundry_booking: t("Pyykkivuorot"),
+  parking: t("Autopaikat ja autotallit"),
+  booking: t("Muut varaukset"),
   other: t("Muu")
 };
+
+// Varausaiheet eivät ole vikoja (server/src/booking-topics.ts).
+export const BOOKING_TOPICS = ["sauna_booking", "laundry_booking", "parking", "booking"];
 
 export const topicOptions = Object.entries(topicLabels).map(([value, label]) => ({ value, label }));
 
